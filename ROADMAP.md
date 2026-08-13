@@ -7,6 +7,7 @@
 - Authenticated ingestion/read API with bounded payloads and security headers.
 - JSON Lines, HTTPS webhook, and ServiceNow IRE preview/publish adapters.
 - Hardened container baseline, CI, tests, and extension documentation.
+- Topo Lab deterministic estate generator, mixed Linux/Windows personas, fault injection, expected graphs, and a 500-host idempotency test.
 
 ## M1 — host discovery alpha
 
@@ -14,6 +15,7 @@
 - Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and jobs.
 - Isolated gRPC plugin supervisor with signed manifests and resource limits.
 - SSH/Linux and WinRM/Windows plugins using fixed command allowlists.
+- SSH and WinRM protocol frontends backed by Topo Lab personas and sanitized real-system fixtures.
 - Linux systemd and Windows service agents with encrypted offline buffering.
 - Scheduler, credential references, Vault/Kubernetes Secret adapters, audit log, and ServiceNow IRE query validation.
 
@@ -33,4 +35,3 @@
 ## Release gates
 
 No production claim is made until mTLS enrollment, persistent storage, audit logs, signed releases, upgrade/restore tests, external penetration testing, and ServiceNow idempotency/duplicate-CI acceptance suites pass.
-

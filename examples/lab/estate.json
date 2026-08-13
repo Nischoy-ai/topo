@@ -1,0 +1,18 @@
+{
+  "version": "v1alpha1",
+  "seed": 42,
+  "site_id": "lab",
+  "hosts": [
+    {"persona": "ubuntu-24.04", "count": 350},
+    {"persona": "windows-2022", "count": 150}
+  ],
+  "faults": {
+    "auth_failure_percent": 2,
+    "timeout_percent": 1,
+    "permission_denied_percent": 3,
+    "malformed_percent": 0.5,
+    "disappear_after_first_scan_percent": 2,
+    "latency_ms": 2,
+    "jitter_ms": 8
+  }
+}

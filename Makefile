@@ -1,4 +1,4 @@
-.PHONY: test build run smoke
+.PHONY: test build run smoke lab-test
 
 test:
 	go test ./...
@@ -13,3 +13,5 @@ run:
 smoke:
 	go run ./cmd/topo discover local
 
+lab-test: build
+	go test -run TestDiscoverFiveHundredHostsAndIdempotentResolution ./pkg/lab

@@ -6,6 +6,8 @@ Topo is an independent public product repository under the Nischoy organization.
 
 This repository is the first working vertical slice of the project plan. It currently includes local host and network-interface discovery, an authenticated controller ingestion API, in-memory identity resolution, JSON Lines and HTTPS webhook publishers, and ServiceNow IRE payload generation. SSH, WinRM, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling are intentionally tracked as subsequent milestones rather than represented as complete.
 
+It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
+
 ## Quick start
 
 Requires Go 1.23 or later.
@@ -16,6 +18,16 @@ make build
 ./bin/topo discover local
 ./bin/topo discover -format servicenow-preview local
 ```
+
+Run a clean, repeatable 500-host simulation:
+
+```sh
+./bin/topo lab serve -scenario examples/lab/clean-500.json
+# In another terminal:
+./bin/topo lab run -scenario examples/lab/clean-500.json -repeat 2 -min-coverage 100
+```
+
+See [Topo Lab](docs/topo-lab.md) for personas, fault injection, expected graphs, and limitations.
 
 Start the controller with authentication enabled:
 

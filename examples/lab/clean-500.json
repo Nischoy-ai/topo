@@ -1,0 +1,13 @@
+{
+  "version": "v1alpha1",
+  "seed": 42,
+  "site_id": "lab",
+  "hosts": [
+    {"persona": "ubuntu-24.04", "count": 350},
+    {"persona": "windows-2022", "count": 150}
+  ],
+  "faults": {
+    "latency_ms": 1,
+    "jitter_ms": 3
+  }
+}
