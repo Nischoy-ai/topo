@@ -1,0 +1,72 @@
+# Nischoy Topo
+
+Nischoy Topo is an open-source, destination-neutral discovery data plane for hybrid IT. It collects evidence about infrastructure, normalizes assets and relationships into a stable schema, and publishes them to ServiceNow or another CMDB without making the destination the discovery engine.
+
+Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
+
+This repository is the first working vertical slice of the project plan. It currently includes local host and network-interface discovery, an authenticated controller ingestion API, in-memory identity resolution, JSON Lines and HTTPS webhook publishers, and ServiceNow IRE payload generation. SSH, WinRM, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling are intentionally tracked as subsequent milestones rather than represented as complete.
+
+## Quick start
+
+Requires Go 1.23 or later.
+
+```sh
+make test
+make build
+./bin/topo discover local
+./bin/topo discover -format servicenow-preview local
+```
+
+Start the controller with authentication enabled:
+
+```sh
+TOPO_API_KEY='replace-with-a-long-random-value' ./bin/topo serve
+curl http://localhost:8080/healthz
+```
+
+Submit an observation produced by the CLI:
+
+```sh
+./bin/topo discover local > observation.jsonl
+curl -H 'Authorization: Bearer replace-with-a-long-random-value' \
+  -H 'Content-Type: application/json' \
+  --data-binary @observation.jsonl http://localhost:8080/v1/observations
+```
+
+## Architecture
+
+The canonical `ObservationEnvelope` separates immutable source observations from resolved assets. Each asset has a source-native identity, optional strong identifiers, attributes, and evidence. Relationships refer to native identities within the observation. IP addresses remain mutable attributes and do not determine identity.
+
+The public extension points are small Go interfaces:
+
+- `discovery.Plugin`: capability description, configuration validation, connectivity check, and discovery.
+- `publisher.Publisher`: destination validation, preview, and batch publication.
+- `store.Repository`: immutable observation storage and resolved-asset reads.
+
+The JSON Schema and Protobuf definitions under `api/` are the cross-process contract. They are currently `v1alpha1`; breaking changes are allowed until `v1` but must increment the schema version.
+
+The product family uses these names as capabilities are delivered:
+
+- **Topo Relay** — agentless discovery collector deployed in a network segment.
+- **Topo Agent** — outbound-only endpoint discovery agent.
+- **Topo Hub** — self-hosted controller and local asset view.
+- **Topo Connect** — ServiceNow and other CMDB publishers.
+- **Topo Graph** — the future full CMDB product.
+
+## ServiceNow behavior
+
+Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_source_info` for stable source identity. Publishing uses `/api/now/identifyreconcile/enhanced`; it does not write CMDB tables directly. Preview mode produces the complete proposed payload without network access. A production deployment must configure an `Nischoy Topo` discovery source, reconciliation rules, and explicit canonical-attribute mappings in ServiceNow before enabling writes; Nischoy Topo does not invent custom `cmdb_ci` fields for its internal identifiers.
+
+## Security posture
+
+- The controller can require a bearer API key and caps request bodies at 10 MiB.
+- Destination URLs must use HTTPS; client timeouts and bounded response reads are mandatory.
+- The local plugin needs no privileged account and executes no shell commands.
+- The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
+- Secrets are read from the environment and never serialized into observations.
+
+The current API-key transport is suitable for local evaluation only. Do not expose the controller to an untrusted network until collector enrollment, mTLS, certificate rotation, audit logging, and a persistent secret provider are implemented. See [SECURITY.md](SECURITY.md).
+
+## Project status
+
+Nischoy Topo is pre-alpha. The implementation order and acceptance gates are in [ROADMAP.md](ROADMAP.md). Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under Apache 2.0.

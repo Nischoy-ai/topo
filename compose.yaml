@@ -1,0 +1,16 @@
+services:
+  controller:
+    build: .
+    command: ["serve", "-addr", ":8080"]
+    environment:
+      TOPO_API_KEY: "${TOPO_API_KEY:?set TOPO_API_KEY}"
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+

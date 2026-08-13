@@ -1,0 +1,7 @@
+/bin/
+/dist/
+/.env
+*.jsonl
+*.db
+.DS_Store
+

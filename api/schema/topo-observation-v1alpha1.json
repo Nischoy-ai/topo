@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Nischoy-ai/topo/main/api/schema/topo-observation-v1alpha1.json",
+  "title": "Nischoy Topo ObservationEnvelope v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "site_id", "collector_id", "plugin", "observed_at", "assets"],
+  "properties": {
+    "schema_version": {"const": "v1alpha1"},
+    "observation_id": {"type": "string", "minLength": 1},
+    "site_id": {"type": "string", "minLength": 1},
+    "collector_id": {"type": "string", "minLength": 1},
+    "plugin": {"type": "string", "minLength": 1},
+    "job_id": {"type": "string"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+    "assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}},
+    "relationships": {"type": "array", "items": {"$ref": "#/$defs/relationship"}},
+    "errors": {"type": "array", "items": {"$ref": "#/$defs/collectionError"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": ["source", "collected_at", "confidence"],
+      "properties": {
+        "source": {"type": "string"}, "collected_at": {"type": "string", "format": "date-time"},
+        "path": {"type": "string"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "asset": {
+      "type": "object", "additionalProperties": false, "required": ["type", "native_id"],
+      "properties": {
+        "type": {"type": "string"}, "native_id": {"type": "string", "minLength": 1}, "name": {"type": "string"},
+        "identifiers": {"type": "object", "additionalProperties": {"type": "string"}},
+        "attributes": {"type": "object"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "relationship": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from_native_id", "to_native_id"],
+      "properties": {
+        "type": {"type": "string"}, "from_native_id": {"type": "string"}, "to_native_id": {"type": "string"},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "collectionError": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message", "retryable"],
+      "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "retryable": {"type": "boolean"}}
+    }
+  }
+}

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package topo.v1alpha1;
+
+option go_package = "github.com/Nischoy-ai/topo/gen/topo/v1alpha1;topov1alpha1";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+message Evidence {
+  string source = 1;
+  google.protobuf.Timestamp collected_at = 2;
+  string path = 3;
+  double confidence = 4;
+}
+
+message Asset {
+  string type = 1;
+  string native_id = 2;
+  string name = 3;
+  map<string, string> identifiers = 4;
+  google.protobuf.Struct attributes = 5;
+  repeated Evidence evidence = 6;
+}
+
+message Relationship {
+  string type = 1;
+  string from_native_id = 2;
+  string to_native_id = 3;
+  repeated Evidence evidence = 4;
+}
+
+message CollectionError {
+  string code = 1;
+  string message = 2;
+  bool retryable = 3;
+}
+
+message ObservationEnvelope {
+  string schema_version = 1;
+  string observation_id = 2;
+  string site_id = 3;
+  string collector_id = 4;
+  string plugin = 5;
+  string job_id = 6;
+  google.protobuf.Timestamp observed_at = 7;
+  repeated Asset assets = 8;
+  repeated Relationship relationships = 9;
+  repeated CollectionError errors = 10;
+  map<string, string> labels = 11;
+}
+
+service CollectorService {
+  rpc SubmitObservation(ObservationEnvelope) returns (SubmitObservationResponse);
+}
+
+message SubmitObservationResponse {
+  string observation_id = 1;
+  string status = 2;
+}
