@@ -11,11 +11,13 @@
 
 ## M1 — host discovery alpha
 
+- **Implemented alpha:** Linux SSH discovery with password/private-key authentication, mandatory host-key policy, fixed command allowlist, bounded output, concurrency and deadlines.
+- **Implemented alpha:** Topo Lab SSH frontend and a two-scan, 500-host acceptance test using real SSH handshakes and sessions entirely in memory.
 - PostgreSQL migrations and immutable observation/event repositories.
 - Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and jobs.
 - Isolated gRPC plugin supervisor with signed manifests and resource limits.
-- SSH/Linux and WinRM/Windows plugins using fixed command allowlists.
-- SSH and WinRM protocol frontends backed by Topo Lab personas and sanitized real-system fixtures.
+- WinRM/Windows plugin using fixed command allowlists.
+- WinRM protocol frontend backed by Topo Lab personas and sanitized Linux/Windows real-system fixtures.
 - Linux systemd and Windows service agents with encrypted offline buffering.
 - Scheduler, credential references, Vault/Kubernetes Secret adapters, audit log, and ServiceNow IRE query validation.
 
