@@ -11,7 +11,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Latest completed milestone:** Linux SSH discovery alpha
 - **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/1>
 - **Merged commit:** `1622d676088c0a25bf1127b897621d28ffecdcd6`
-- **Next milestone:** Windows WinRM discovery alpha
+- **Current milestone:** Windows WinRM discovery alpha
+- **Current slice:** Audited CIM identity/hardware/network discovery and Topo Lab WS-Management frontend implemented on `agent/windows-winrm-core`.
+- **Verified in this slice:** Exact operation rejection, TLS/Lab configuration validation, fault isolation, and two scans of 500 Windows personas with 100% expected identity coverage and no duplicates.
+- **Next slice:** NTLM/Negotiate, volumes, registry software, patches, services, sanitized fixtures, and the mixed 500-Linux/500-Windows gate.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature

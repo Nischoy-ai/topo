@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery, an authenticated controller ingestion API, in-memory identity resolution, JSON Lines and HTTPS webhook publishers, and ServiceNow IRE payload generation. WinRM, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling are intentionally tracked as subsequent milestones rather than represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; the first Windows WinRM slice for audited CIM identity, hardware, OS, and network collection; an authenticated controller ingestion API; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. Broader WinRM inventory and enterprise authentication, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -40,6 +40,18 @@ TOPO_SSH_PASSWORD=topo-lab ./bin/topo discover ssh \
 ```
 
 The insecure host-key option is intentionally restricted to an explicit flag for Topo Lab. Real targets should use `-known-hosts`. See [Linux SSH discovery](docs/ssh-discovery.md).
+
+Exercise Windows personas through real WS-Management SOAP exchanges on an isolated loopback endpoint:
+
+```sh
+./bin/topo lab winrm-serve -scenario examples/lab/clean-500.json
+# In another terminal:
+./bin/topo lab winrm-targets -scenario examples/lab/clean-500.json > winrm-targets.txt
+TOPO_WINRM_PASSWORD=topo-lab ./bin/topo discover winrm \
+  -targets winrm-targets.txt -site lab -lab-basic > windows-observation.jsonl
+```
+
+Basic authentication and HTTP are accepted only with the explicit Lab flag and loopback targets. Production targets require HTTPS and an authenticated client; built-in NTLM/Negotiate remains pending. See [Windows WinRM discovery](docs/winrm-discovery.md).
 
 Start the controller with authentication enabled:
 
@@ -87,6 +99,7 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - Destination URLs must use HTTPS; client timeouts and bounded response reads are mandatory.
 - The local plugin needs no privileged account and executes no shell commands.
 - The SSH plugin executes a fixed audited command set, requires host-key verification by default, bounds command output, and applies connection and command deadlines.
+- The WinRM plugin executes fixed CIM resource/query pairs, requires HTTPS outside loopback-only Lab mode, bounds SOAP responses, and applies operation deadlines and concurrency limits.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are read from the environment and never serialized into observations.
 
