@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local host and network-interface discovery, an authenticated controller ingestion API, in-memory identity resolution, JSON Lines and HTTPS webhook publishers, and ServiceNow IRE payload generation. SSH, WinRM, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling are intentionally tracked as subsequent milestones rather than represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery, an authenticated controller ingestion API, in-memory identity resolution, JSON Lines and HTTPS webhook publishers, and ServiceNow IRE payload generation. WinRM, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling are intentionally tracked as subsequent milestones rather than represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -28,6 +28,18 @@ Run a clean, repeatable 500-host simulation:
 ```
 
 See [Topo Lab](docs/topo-lab.md) for personas, fault injection, expected graphs, and limitations.
+
+Exercise 500 Linux targets through real SSH handshakes and sessions without provisioning VMs:
+
+```sh
+./bin/topo lab ssh-serve -scenario examples/lab/clean-500.json
+# In another terminal:
+./bin/topo lab ssh-targets -scenario examples/lab/clean-500.json > targets.txt
+TOPO_SSH_PASSWORD=topo-lab ./bin/topo discover ssh \
+  -targets targets.txt -site lab -insecure-host-key > observation.jsonl
+```
+
+The insecure host-key option is intentionally restricted to an explicit flag for Topo Lab. Real targets should use `-known-hosts`. See [Linux SSH discovery](docs/ssh-discovery.md).
 
 Start the controller with authentication enabled:
 
@@ -74,6 +86,7 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - The controller can require a bearer API key and caps request bodies at 10 MiB.
 - Destination URLs must use HTTPS; client timeouts and bounded response reads are mandatory.
 - The local plugin needs no privileged account and executes no shell commands.
+- The SSH plugin executes a fixed audited command set, requires host-key verification by default, bounds command output, and applies connection and command deadlines.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are read from the environment and never serialized into observations.
 

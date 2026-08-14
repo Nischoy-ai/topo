@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,10 +20,13 @@ import (
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
+	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
 	"github.com/Nischoy-ai/topo/pkg/lab"
 	"github.com/Nischoy-ai/topo/pkg/model"
 	"github.com/Nischoy-ai/topo/pkg/publisher/jsonlines"
 	"github.com/Nischoy-ai/topo/pkg/publisher/servicenow"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 var version = "dev"
@@ -56,7 +62,7 @@ func usage() error {
 
 func runLab(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo lab <generate|expected|serve|run>")
+		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets>")
 	}
 	switch args[0] {
 	case "generate":
@@ -67,9 +73,80 @@ func runLab(args []string) error {
 		return labServe(args[1:])
 	case "run":
 		return labRun(args[1:])
+	case "ssh-serve":
+		return labSSHServe(args[1:])
+	case "ssh-targets":
+		return labSSHTargets(args[1:])
 	default:
 		return fmt.Errorf("unknown lab command %q", args[0])
 	}
+}
+
+func labSSHServe(args []string) error {
+	fs := flag.NewFlagSet("lab ssh-serve", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:2222", "listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	server, err := lab.NewSSHServer(estate)
+	if err != nil {
+		return err
+	}
+	listener, err := net.Listen("tcp", *addr)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		_ = listener.Close()
+	}()
+	slog.Info("Topo Lab SSH listening", "address", listener.Addr(), "linux_hosts", countLinuxHosts(estate), "username", "host ID")
+	return server.Serve(listener)
+}
+
+func labSSHTargets(args []string) error {
+	fs := flag.NewFlagSet("lab ssh-targets", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:2222", "SSH server address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	for _, host := range estate.Hosts {
+		if host.OS == "linux" {
+			fmt.Printf("%s@%s\n", host.ID, *addr)
+		}
+	}
+	return nil
+}
+
+func countLinuxHosts(estate lab.Estate) int {
+	count := 0
+	for _, host := range estate.Hosts {
+		if host.OS == "linux" {
+			count++
+		}
+	}
+	return count
 }
 
 func labGenerate(args []string) error {
@@ -222,6 +299,9 @@ func serve(args []string) error {
 	return err
 }
 func discover(args []string) error {
+	if len(args) > 0 && args[0] == "ssh" {
+		return discoverSSH(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -258,6 +338,94 @@ func discover(args []string) error {
 	default:
 		return fmt.Errorf("unsupported format %q", *format)
 	}
+}
+
+func discoverSSH(args []string) error {
+	fs := flag.NewFlagSet("discover ssh", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one username@host:port target per line")
+	passwordEnv := fs.String("password-env", "TOPO_SSH_PASSWORD", "environment variable containing the SSH password")
+	privateKeyPath := fs.String("private-key", "", "PEM private key path")
+	knownHostsPath := fs.String("known-hosts", "", "known_hosts path")
+	insecureHostKey := fs.Bool("insecure-host-key", false, "skip host key verification (Topo Lab only)")
+	concurrency := fs.Int("concurrency", 32, "maximum concurrent SSH connections")
+	connectTimeout := fs.Duration("connect-timeout", 10*time.Second, "SSH connection timeout")
+	commandTimeout := fs.Duration("command-timeout", 10*time.Second, "per-command timeout")
+	maxOutputBytes := fs.Int64("max-output-bytes", 4<<20, "maximum output retained per SSH command")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "ssh-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+
+	var callback ssh.HostKeyCallback
+	switch {
+	case *insecureHostKey:
+		slog.Warn("SSH host key verification disabled; use only with Topo Lab")
+		callback = ssh.InsecureIgnoreHostKey() // #nosec G106 -- explicit lab-only CLI option.
+	case *knownHostsPath != "":
+		callback, err = knownhosts.New(*knownHostsPath)
+		if err != nil {
+			return fmt.Errorf("load known_hosts: %w", err)
+		}
+	default:
+		return errors.New("-known-hosts is required unless -insecure-host-key is explicitly set for Topo Lab")
+	}
+
+	var signer ssh.Signer
+	if *privateKeyPath != "" {
+		key, err := os.ReadFile(*privateKeyPath)
+		if err != nil {
+			return fmt.Errorf("read private key: %w", err)
+		}
+		signer, err = ssh.ParsePrivateKey(key)
+		if err != nil {
+			return fmt.Errorf("parse private key: %w", err)
+		}
+	}
+	password := os.Getenv(*passwordEnv)
+	if password == "" && signer == nil {
+		return fmt.Errorf("no SSH credential: set %s or provide -private-key", *passwordEnv)
+	}
+
+	plugin := sshlinux.Plugin{Config: sshlinux.Config{Password: password, Signer: signer, HostKeyCallback: callback, Concurrency: *concurrency, ConnectTimeout: *connectTimeout, CommandTimeout: *commandTimeout, MaxOutputBytes: *maxOutputBytes}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
+}
+
+func readTargets(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	var targets []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" && !strings.HasPrefix(line, "#") {
+			targets = append(targets, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return targets, nil
 }
 func env(k, d string) string {
 	if v := os.Getenv(k); v != "" {
