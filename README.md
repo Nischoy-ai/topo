@@ -95,3 +95,5 @@ The current API-key transport is suitable for local evaluation only. Do not expo
 ## Project status
 
 Nischoy Topo is pre-alpha. The implementation order and acceptance gates are in [ROADMAP.md](ROADMAP.md). Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under Apache 2.0.
+
+For durable project context across coding sessions, start with [the project plan and current handoff](docs/project-plan.md). Coding agents must also follow [AGENTS.md](AGENTS.md); those files are maintained as repository state so progress does not depend on chat history.

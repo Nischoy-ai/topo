@@ -4,7 +4,7 @@ For the SSH protocol frontend and the production Linux SSH plugin, see [Linux SS
 
 Topo Lab simulates large IT estates without creating hundreds of virtual machines. It is deterministic: the same scenario and seed produce the same host identities, attributes, relationships, and injected faults.
 
-Topo Lab currently uses an explicit HTTP lab protocol. This exercises network requests, bounded concurrency, cancellation, timeouts, decoding, partial results, identity stability, and repeated scans. It does **not** claim to validate SSH or WinRM compatibility. Those protocol frontends will reuse the same persona engine as their production discovery plugins are implemented.
+Topo Lab offers an explicit HTTP lab protocol for fast generic estate tests and an SSH frontend that performs genuine SSH handshakes and session-channel execution against the same persona engine. The SSH acceptance suite validates Topo's protocol client and command routing, while the deterministic responses avoid provisioning VMs. WinRM compatibility is not implemented yet; its protocol frontend is the current milestone.
 
 ## Quick start
 
