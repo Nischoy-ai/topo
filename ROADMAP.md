@@ -13,13 +13,14 @@
 
 - **Implemented alpha:** Linux SSH discovery with password/private-key authentication, mandatory host-key policy, fixed command allowlist, bounded output, concurrency and deadlines.
 - **Implemented alpha:** Topo Lab SSH frontend and a two-scan, 500-host acceptance test using real SSH handshakes and sessions entirely in memory.
-- PostgreSQL migrations and immutable observation/event repositories.
+- **Current milestone:** WinRM/Windows discovery and a Topo Lab WinRM frontend, culminating in a repeatable 500-Linux/500-Windows mixed-estate acceptance test.
+- Credential references, Vault/Kubernetes Secret adapters, and ServiceNow IRE duplicate-CI validation.
 - Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and jobs.
 - Isolated gRPC plugin supervisor with signed manifests and resource limits.
-- WinRM/Windows plugin using fixed command allowlists.
-- WinRM protocol frontend backed by Topo Lab personas and sanitized Linux/Windows real-system fixtures.
 - Linux systemd and Windows service agents with encrypted offline buffering.
-- Scheduler, credential references, Vault/Kubernetes Secret adapters, audit log, and ServiceNow IRE query validation.
+- Persistent observation/audit storage and scheduling; evaluate PostgreSQL after the discovery and CMDB validation gates rather than treating it as the immediate next dependency.
+
+The detailed scope, decisions, acceptance gates, and current handoff are maintained in [docs/project-plan.md](docs/project-plan.md).
 
 ## M2 — network and virtualization beta
 
