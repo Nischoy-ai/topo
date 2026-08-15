@@ -1,6 +1,6 @@
 # Windows WinRM discovery
 
-Topo's first Windows discovery slice collects stable host and interface identity through fixed WS-Management CIM operations. It is an in-progress part of the Windows WinRM alpha, not yet an enterprise-ready WinRM implementation.
+Topo's current Windows discovery slices collect stable host and interface identity plus bounded volume, service, and patch inventory through fixed WS-Management CIM operations. This remains an in-progress part of the Windows WinRM alpha, not yet an enterprise-ready WinRM implementation.
 
 ## Audited operation contract
 
@@ -13,8 +13,13 @@ The plugin compiles each SOAP action, CIM resource URI, and WQL filter into the 
 | `bios` | `Win32_BIOS` | Yes | BIOS serial |
 | `operating_system` | `Win32_OperatingSystem` | Yes | edition/caption, version, build, architecture |
 | `network` | `Win32_NetworkAdapterConfiguration` | No | interface index, description, MAC, addresses, prefixes |
+| `volumes` | `Win32_LogicalDisk` | No | fixed disks, label, file system, size, free bytes |
+| `services` | `Win32_Service` | No | name, display name, state, start mode, service account |
+| `patches` | `Win32_QuickFixEngineering` | No | hotfix ID, description, raw installed-on value |
 
-The network query is a fixed exact WQL string limited to IP-enabled adapters. Topo Lab matches the exact contract again at the server boundary. Required-operation failure discards the affected target's inventory; optional network failure emits `winrm_partial` and retains the host.
+The network query is a fixed exact WQL string limited to IP-enabled adapters, and the volume query is limited to fixed disks. Service and patch projections are also fixed in code. Topo Lab matches every exact contract tuple again at the server boundary. Required-operation failure discards the affected target's inventory; an optional operation permission or parse failure emits `winrm_partial`, omits that category, and retains the rest of the host.
+
+Volumes, services, and patches are currently normalized as structured host attributes. Collections are sorted by device ID, service name, or hotfix ID so repeated observations remain deterministic. `InstalledOn` is retained as source text because Windows formatting can be locale-dependent; compatibility fixtures remain required before relying on that field for date comparisons.
 
 ## Topo Lab usage
 
@@ -49,7 +54,8 @@ The target file contains one endpoint URL per line. Blank lines and lines beginn
 - URLs containing user information, queries, or fragments are rejected so credentials and operation text cannot enter targets.
 - Request options whose names indicate passwords, credentials, tokens, or secrets are rejected.
 - Structured errors include the target and audited operation name, never credentials or arbitrary remote text.
+- The fixed CIM operations do not use `Win32_Product` and cannot invoke methods or modify remote state.
 
 ## Current limitations and next slice
 
-This slice does not yet collect volumes, installed software, patches, or services. Software inventory will read the supported uninstall registry locations and will not use `Win32_Product`, which can trigger MSI consistency checks. Built-in NTLM/Negotiate, Kerberos/certificate follow-up decisions, sanitized Windows Server fixtures, the mixed 500-Linux/500-Windows acceptance test, and real-host compatibility validation also remain open. Do not use this slice for an enterprise pilot until those gates are complete.
+This slice does not yet collect installed software. Software inventory will read the supported uninstall registry locations and will not use `Win32_Product`, which can trigger MSI consistency checks. Built-in NTLM/Negotiate, Kerberos/certificate follow-up decisions, sanitized Windows Server fixtures, the mixed 500-Linux/500-Windows acceptance test, and real-host compatibility validation also remain open. Do not use this slice for an enterprise pilot until those gates are complete.

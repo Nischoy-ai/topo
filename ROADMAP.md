@@ -13,8 +13,8 @@
 
 - **Implemented alpha:** Linux SSH discovery with password/private-key authentication, mandatory host-key policy, fixed command allowlist, bounded output, concurrency and deadlines.
 - **Implemented alpha:** Topo Lab SSH frontend and a two-scan, 500-host acceptance test using real SSH handshakes and sessions entirely in memory.
-- **Implemented milestone slice:** fixed WS-Management CIM identity, BIOS, OS, compute, and network operations; loopback Topo Lab WinRM frontend; fault isolation; and a two-scan, 500-Windows identity test.
-- **Current milestone:** complete WinRM/Windows discovery with enterprise authentication, optional inventory, compatibility fixtures, and a repeatable 500-Linux/500-Windows mixed-estate acceptance test.
+- **Implemented milestone slices:** fixed WS-Management CIM identity, BIOS, OS, compute, network, volume, service, and patch operations; loopback Topo Lab WinRM frontend; fault isolation; and a two-scan, 500-Windows identity and optional-inventory test.
+- **Current milestone:** complete WinRM/Windows discovery with enterprise authentication, registry software inventory, compatibility fixtures, and a repeatable 500-Linux/500-Windows mixed-estate acceptance test.
 - Credential references, Vault/Kubernetes Secret adapters, and ServiceNow IRE duplicate-CI validation.
 - Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and jobs.
 - Isolated gRPC plugin supervisor with signed manifests and resource limits.

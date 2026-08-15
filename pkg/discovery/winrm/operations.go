@@ -11,6 +11,9 @@ const (
 	OperationBIOS                  = "bios"
 	OperationOperatingSystem       = "operating_system"
 	OperationNetwork               = "network"
+	OperationVolumes               = "volumes"
+	OperationServices              = "services"
+	OperationPatches               = "patches"
 )
 
 // Operation is one compiled-in WS-Management operation. Jobs can select
@@ -28,6 +31,9 @@ var auditedOperations = []Operation{
 	{Name: OperationBIOS, ResourceURI: "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_BIOS", Required: true},
 	{Name: OperationOperatingSystem, ResourceURI: "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_OperatingSystem", Required: true},
 	{Name: OperationNetwork, ResourceURI: "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_NetworkAdapterConfiguration", Query: "SELECT Description, InterfaceIndex, MACAddress, IPAddress, IPSubnet FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE", Required: false},
+	{Name: OperationVolumes, ResourceURI: "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_LogicalDisk", Query: "SELECT DeviceID, VolumeName, FileSystem, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType = 3", Required: false},
+	{Name: OperationServices, ResourceURI: "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_Service", Query: "SELECT Name, DisplayName, State, StartMode, StartName FROM Win32_Service", Required: false},
+	{Name: OperationPatches, ResourceURI: "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/Win32_QuickFixEngineering", Query: "SELECT HotFixID, Description, InstalledOn FROM Win32_QuickFixEngineering", Required: false},
 }
 
 // AuditedOperations returns a copy so callers cannot mutate the contract.

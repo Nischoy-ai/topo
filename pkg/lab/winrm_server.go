@@ -169,36 +169,75 @@ func enumerateResponse(context string) string {
 
 func pullResponse(operation winrm.Operation, host Host) string {
 	resource := operation.ResourceURI
-	var object strings.Builder
-	object.WriteString(`<p:` + resourceClass(resource) + ` xmlns:p="` + resource + `">`)
+	objects := []string{}
+	appendObject := func(write func(*strings.Builder)) {
+		var object strings.Builder
+		object.WriteString(`<p:` + resourceClass(resource) + ` xmlns:p="` + resource + `">`)
+		write(&object)
+		object.WriteString(`</p:` + resourceClass(resource) + `>`)
+		objects = append(objects, object.String())
+	}
 	switch operation.Name {
 	case winrm.OperationComputerSystem:
-		writeProperty(&object, "Name", host.Name)
-		writeProperty(&object, "Domain", "WORKGROUP")
-		writeProperty(&object, "PartOfDomain", "false")
-		writeProperty(&object, "Manufacturer", "Topo Lab")
-		writeProperty(&object, "Model", host.Persona)
-		writeProperty(&object, "NumberOfLogicalProcessors", strconv.Itoa(host.CPUCount))
-		writeProperty(&object, "TotalPhysicalMemory", strconv.Itoa(host.MemoryMB*1024*1024))
+		appendObject(func(object *strings.Builder) {
+			writeProperty(object, "Name", host.Name)
+			writeProperty(object, "Domain", "WORKGROUP")
+			writeProperty(object, "PartOfDomain", "false")
+			writeProperty(object, "Manufacturer", "Topo Lab")
+			writeProperty(object, "Model", host.Persona)
+			writeProperty(object, "NumberOfLogicalProcessors", strconv.Itoa(host.CPUCount))
+			writeProperty(object, "TotalPhysicalMemory", strconv.Itoa(host.MemoryMB*1024*1024))
+		})
 	case winrm.OperationComputerSystemProduct:
-		writeProperty(&object, "UUID", host.MachineID)
+		appendObject(func(object *strings.Builder) { writeProperty(object, "UUID", host.MachineID) })
 	case winrm.OperationBIOS:
-		writeProperty(&object, "SerialNumber", host.Serial)
+		appendObject(func(object *strings.Builder) { writeProperty(object, "SerialNumber", host.Serial) })
 	case winrm.OperationOperatingSystem:
-		writeProperty(&object, "Caption", host.OSVersion)
-		version, build := windowsVersion(host.Persona)
-		writeProperty(&object, "Version", version)
-		writeProperty(&object, "BuildNumber", build)
-		writeProperty(&object, "OSArchitecture", "64-bit")
+		appendObject(func(object *strings.Builder) {
+			writeProperty(object, "Caption", host.OSVersion)
+			version, build := windowsVersion(host.Persona)
+			writeProperty(object, "Version", version)
+			writeProperty(object, "BuildNumber", build)
+			writeProperty(object, "OSArchitecture", "64-bit")
+		})
 	case winrm.OperationNetwork:
-		writeProperty(&object, "Description", "primary")
-		writeProperty(&object, "InterfaceIndex", "1")
-		writeProperty(&object, "MACAddress", host.MACAddress)
-		writeArrayProperty(&object, "IPAddress", []string{host.IPAddress})
-		writeArrayProperty(&object, "IPSubnet", []string{"24"})
+		appendObject(func(object *strings.Builder) {
+			writeProperty(object, "Description", "primary")
+			writeProperty(object, "InterfaceIndex", "1")
+			writeProperty(object, "MACAddress", host.MACAddress)
+			writeArrayProperty(object, "IPAddress", []string{host.IPAddress})
+			writeArrayProperty(object, "IPSubnet", []string{"24"})
+		})
+	case winrm.OperationVolumes:
+		appendObject(func(object *strings.Builder) {
+			writeProperty(object, "DeviceID", "C:")
+			writeProperty(object, "VolumeName", "System")
+			writeProperty(object, "FileSystem", "NTFS")
+			writeProperty(object, "Size", "137438953472")
+			writeProperty(object, "FreeSpace", "68719476736")
+		})
+	case winrm.OperationServices:
+		for _, service := range host.Services {
+			service := service
+			appendObject(func(object *strings.Builder) {
+				writeProperty(object, "Name", service)
+				writeProperty(object, "DisplayName", service)
+				writeProperty(object, "State", "Running")
+				writeProperty(object, "StartMode", "Auto")
+				writeProperty(object, "StartName", "LocalSystem")
+			})
+		}
+	case winrm.OperationPatches:
+		for _, patch := range windowsPatches(host.Persona) {
+			patch := patch
+			appendObject(func(object *strings.Builder) {
+				writeProperty(object, "HotFixID", patch)
+				writeProperty(object, "Description", "Security Update")
+				writeProperty(object, "InstalledOn", "8/1/2026")
+			})
+		}
 	}
-	object.WriteString(`</p:` + resourceClass(resource) + `>`)
-	body := `<n:PullResponse><n:Items>` + object.String() + `</n:Items><n:EndOfSequence/></n:PullResponse>`
+	body := `<n:PullResponse><n:Items>` + strings.Join(objects, "") + `</n:Items><n:EndOfSequence/></n:PullResponse>`
 	return soapResponse(winrm.ActionPull+"Response", body)
 }
 
@@ -273,6 +312,19 @@ func windowsVersion(persona string) (string, string) {
 		return "10.0.26100", "26100"
 	default:
 		return "10.0.0", "0"
+	}
+}
+
+func windowsPatches(persona string) []string {
+	switch persona {
+	case "windows-2019":
+		return []string{"KB9000001", "KB9000002"}
+	case "windows-2022":
+		return []string{"KB9000003", "KB9000004"}
+	case "windows-2025":
+		return []string{"KB9000005", "KB9000006"}
+	default:
+		return nil
 	}
 }
 

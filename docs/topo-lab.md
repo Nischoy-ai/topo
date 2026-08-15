@@ -81,4 +81,4 @@ The automated test suite performs two scans of 500 mixed hosts, saves both obser
 
 ## Boundaries
 
-Simulation is the primary scale and failure-testing mechanism, but it cannot prove compatibility with real shell quoting, PowerShell/CIM behavior, locales, authentication policies, permissions, or OS updates. Each production discovery plugin will therefore retain a small real-system compatibility matrix alongside large simulated tests. The current WinRM slice does not yet include sanitized real-system fixtures, NTLM/Negotiate, or PowerShell-based registry inventory.
+Simulation is the primary scale and failure-testing mechanism, but it cannot prove compatibility with real shell quoting, PowerShell/CIM behavior, locales, authentication policies, permissions, or OS updates. Each production discovery plugin will therefore retain a small real-system compatibility matrix alongside large simulated tests. The current WinRM Lab frontend emits multi-object volume, service, and patch CIM responses, but it does not yet include sanitized real-system fixtures, NTLM/Negotiate, or PowerShell-based registry inventory.

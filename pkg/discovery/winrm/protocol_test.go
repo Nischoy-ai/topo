@@ -14,8 +14,8 @@ import (
 
 func TestOnlyExactAuditedOperationsAreAllowed(t *testing.T) {
 	operations := AuditedOperations()
-	if len(operations) != 5 {
-		t.Fatalf("got %d audited operations, want 5", len(operations))
+	if len(operations) != 8 {
+		t.Fatalf("got %d audited operations, want 8", len(operations))
 	}
 	for _, operation := range operations {
 		matched, ok := MatchOperation(ActionEnumerate, operation.ResourceURI, operation.Query)
@@ -103,6 +103,57 @@ func TestParseRequiredWindowsInventory(t *testing.T) {
 	}
 	if inventory.MachineID != "aabbccdd-0000-1111-2222-334455667788" || inventory.MemoryMB != 16384 || inventory.Architecture != "x86_64" || !inventory.DomainJoined {
 		t.Fatalf("unexpected inventory: %#v", inventory)
+	}
+}
+
+func TestParseOptionalWindowsInventory(t *testing.T) {
+	volumes, err := parseVolumes([]object{
+		{"DeviceID": {"D:"}, "VolumeName": {"Data"}, "FileSystem": {"NTFS"}, "Size": {"200"}, "FreeSpace": {"0"}},
+		{"DeviceID": {"C:"}, "VolumeName": {"System"}, "FileSystem": {"NTFS"}, "Size": {"100"}, "FreeSpace": {"40"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantVolumes := []Volume{
+		{DeviceID: "C:", Label: "System", FileSystem: "NTFS", SizeBytes: 100, FreeBytes: 40},
+		{DeviceID: "D:", Label: "Data", FileSystem: "NTFS", SizeBytes: 200, FreeBytes: 0},
+	}
+	if !reflect.DeepEqual(volumes, wantVolumes) {
+		t.Fatalf("got volumes %#v, want %#v", volumes, wantVolumes)
+	}
+
+	services, err := parseServices([]object{
+		{"Name": {"W32Time"}, "DisplayName": {"Windows Time"}, "State": {"Running"}, "StartMode": {"Auto"}, "StartName": {"LocalSystem"}},
+		{"Name": {"WinRM"}, "DisplayName": {"Windows Remote Management"}, "State": {"Running"}, "StartMode": {"Auto"}, "StartName": {"NetworkService"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(services) != 2 || services[0].Name != "W32Time" || services[1].Name != "WinRM" {
+		t.Fatalf("unexpected sorted services: %#v", services)
+	}
+
+	patches, err := parsePatches([]object{
+		{"HotFixID": {"KB9000002"}, "Description": {"Update"}, "InstalledOn": {"8/2/2026"}},
+		{"HotFixID": {"KB9000001"}, "Description": {"Security Update"}, "InstalledOn": {"8/1/2026"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(patches) != 2 || patches[0].HotFixID != "KB9000001" || patches[1].HotFixID != "KB9000002" {
+		t.Fatalf("unexpected sorted patches: %#v", patches)
+	}
+}
+
+func TestOptionalInventoryRejectsMalformedValues(t *testing.T) {
+	if _, err := parseVolumes([]object{{"DeviceID": {"C:"}, "Size": {"100"}, "FreeSpace": {"101"}}}); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("volume accepted impossible free space: %v", err)
+	}
+	if _, err := parseServices([]object{{"DisplayName": {"missing name"}}}); err == nil {
+		t.Fatal("service accepted an empty stable name")
+	}
+	if _, err := parsePatches([]object{{"Description": {"missing ID"}}}); err == nil {
+		t.Fatal("patch accepted an empty hotfix ID")
 	}
 }
 

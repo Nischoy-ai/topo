@@ -3,6 +3,7 @@ package winrm
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,12 +17,37 @@ type Inventory struct {
 	DomainJoined                                     bool
 	CPUCount, MemoryMB                               int
 	Interfaces                                       []Interface
+	Volumes                                          []Volume
+	Services                                         []Service
+	Patches                                          []Patch
 }
 
 type Interface struct {
 	Index     int
 	Name, MAC string
 	Addresses []string
+}
+
+type Volume struct {
+	DeviceID   string `json:"device_id"`
+	Label      string `json:"label,omitempty"`
+	FileSystem string `json:"file_system,omitempty"`
+	SizeBytes  uint64 `json:"size_bytes"`
+	FreeBytes  uint64 `json:"free_bytes"`
+}
+
+type Service struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name,omitempty"`
+	State       string `json:"state,omitempty"`
+	StartMode   string `json:"start_mode,omitempty"`
+	StartName   string `json:"start_name,omitempty"`
+}
+
+type Patch struct {
+	HotFixID    string `json:"hotfix_id"`
+	Description string `json:"description,omitempty"`
+	InstalledOn string `json:"installed_on,omitempty"`
 }
 
 func parseInventory(results map[string][]object) (Inventory, error) {
@@ -101,6 +127,56 @@ func parseInterfaces(objects []object) ([]Interface, error) {
 	return interfaces, nil
 }
 
+func parseVolumes(objects []object) ([]Volume, error) {
+	volumes := make([]Volume, 0, len(objects))
+	for _, value := range objects {
+		deviceID := first(value, "DeviceID")
+		if deviceID == "" {
+			return nil, errorsForField("DeviceID")
+		}
+		size, err := positiveUint("Size", first(value, "Size"))
+		if err != nil {
+			return nil, err
+		}
+		free, err := nonNegativeUint("FreeSpace", first(value, "FreeSpace"))
+		if err != nil {
+			return nil, err
+		}
+		if free > size {
+			return nil, fmt.Errorf("FreeSpace %d exceeds Size %d for volume %q", free, size, deviceID)
+		}
+		volumes = append(volumes, Volume{DeviceID: deviceID, Label: first(value, "VolumeName"), FileSystem: first(value, "FileSystem"), SizeBytes: size, FreeBytes: free})
+	}
+	sort.Slice(volumes, func(i, j int) bool { return volumes[i].DeviceID < volumes[j].DeviceID })
+	return volumes, nil
+}
+
+func parseServices(objects []object) ([]Service, error) {
+	services := make([]Service, 0, len(objects))
+	for _, value := range objects {
+		name := first(value, "Name")
+		if name == "" {
+			return nil, errorsForField("Name")
+		}
+		services = append(services, Service{Name: name, DisplayName: first(value, "DisplayName"), State: first(value, "State"), StartMode: first(value, "StartMode"), StartName: first(value, "StartName")})
+	}
+	sort.Slice(services, func(i, j int) bool { return services[i].Name < services[j].Name })
+	return services, nil
+}
+
+func parsePatches(objects []object) ([]Patch, error) {
+	patches := make([]Patch, 0, len(objects))
+	for _, value := range objects {
+		hotFixID := first(value, "HotFixID")
+		if hotFixID == "" {
+			return nil, errorsForField("HotFixID")
+		}
+		patches = append(patches, Patch{HotFixID: hotFixID, Description: first(value, "Description"), InstalledOn: first(value, "InstalledOn")})
+	}
+	sort.Slice(patches, func(i, j int) bool { return patches[i].HotFixID < patches[j].HotFixID })
+	return patches, nil
+}
+
 func (inventory Inventory) Assets(now time.Time) ([]model.Asset, []model.Relationship) {
 	evidence := []model.Evidence{{Source: "winrm-windows", Collected: now, Confidence: 1}}
 	attributes := map[string]any{
@@ -115,6 +191,15 @@ func (inventory Inventory) Assets(now time.Time) ([]model.Asset, []model.Relatio
 		"domain_joined":     inventory.DomainJoined,
 		"manufacturer":      inventory.Manufacturer,
 		"model":             inventory.Model,
+	}
+	if inventory.Volumes != nil {
+		attributes["volumes"] = inventory.Volumes
+	}
+	if inventory.Services != nil {
+		attributes["services"] = inventory.Services
+	}
+	if inventory.Patches != nil {
+		attributes["patches"] = inventory.Patches
 	}
 	host := model.Asset{
 		Type:     model.AssetHost,
@@ -173,6 +258,14 @@ func positiveInt(name, raw string) (int, error) {
 func positiveUint(name, raw string) (uint64, error) {
 	value, err := strconv.ParseUint(strings.TrimSpace(raw), 10, 64)
 	if err != nil || value < 1 {
+		return 0, fmt.Errorf("invalid %s %q", name, strings.TrimSpace(raw))
+	}
+	return value, nil
+}
+
+func nonNegativeUint(name, raw string) (uint64, error) {
+	value, err := strconv.ParseUint(strings.TrimSpace(raw), 10, 64)
+	if err != nil {
 		return 0, fmt.Errorf("invalid %s %q", name, strings.TrimSpace(raw))
 	}
 	return value, nil
