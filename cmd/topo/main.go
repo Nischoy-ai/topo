@@ -21,6 +21,7 @@ import (
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
+	"github.com/Nischoy-ai/topo/pkg/discovery/winrm"
 	"github.com/Nischoy-ai/topo/pkg/lab"
 	"github.com/Nischoy-ai/topo/pkg/model"
 	"github.com/Nischoy-ai/topo/pkg/publisher/jsonlines"
@@ -62,7 +63,7 @@ func usage() error {
 
 func runLab(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets>")
+		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets>")
 	}
 	switch args[0] {
 	case "generate":
@@ -77,9 +78,89 @@ func runLab(args []string) error {
 		return labSSHServe(args[1:])
 	case "ssh-targets":
 		return labSSHTargets(args[1:])
+	case "winrm-serve":
+		return labWinRMServe(args[1:])
+	case "winrm-targets":
+		return labWinRMTargets(args[1:])
 	default:
 		return fmt.Errorf("unknown lab command %q", args[0])
 	}
+}
+
+func labWinRMServe(args []string) error {
+	fs := flag.NewFlagSet("lab winrm-serve", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:5985", "loopback listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	host, _, err := net.SplitHostPort(*addr)
+	if err != nil {
+		return fmt.Errorf("invalid WinRM Lab listen address: %w", err)
+	}
+	if ip := net.ParseIP(host); !strings.EqualFold(host, "localhost") && (ip == nil || !ip.IsLoopback()) {
+		return errors.New("Topo Lab WinRM must listen on loopback")
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	server := &http.Server{
+		Addr:              *addr,
+		Handler:           lab.NewWinRMServer(estate).Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
+	slog.Info("Topo Lab WinRM listening", "address", *addr, "windows_hosts", countWindowsHosts(estate), "username", lab.LabWinRMUsername)
+	err = server.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
+func labWinRMTargets(args []string) error {
+	fs := flag.NewFlagSet("lab winrm-targets", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:5985", "WinRM Lab server address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	host, _, err := net.SplitHostPort(*addr)
+	if err != nil {
+		return fmt.Errorf("invalid WinRM Lab server address: %w", err)
+	}
+	if ip := net.ParseIP(host); !strings.EqualFold(host, "localhost") && (ip == nil || !ip.IsLoopback()) {
+		return errors.New("Topo Lab WinRM server address must be loopback")
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	for _, host := range estate.Hosts {
+		if host.OS == "windows" {
+			fmt.Println(lab.WinRMTargetURL(*addr, host.ID))
+		}
+	}
+	return nil
 }
 
 func labSSHServe(args []string) error {
@@ -143,6 +224,16 @@ func countLinuxHosts(estate lab.Estate) int {
 	count := 0
 	for _, host := range estate.Hosts {
 		if host.OS == "linux" {
+			count++
+		}
+	}
+	return count
+}
+
+func countWindowsHosts(estate lab.Estate) int {
+	count := 0
+	for _, host := range estate.Hosts {
+		if host.OS == "windows" {
 			count++
 		}
 	}
@@ -302,6 +393,9 @@ func discover(args []string) error {
 	if len(args) > 0 && args[0] == "ssh" {
 		return discoverSSH(args[1:])
 	}
+	if len(args) > 0 && args[0] == "winrm" {
+		return discoverWinRM(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -338,6 +432,57 @@ func discover(args []string) error {
 	default:
 		return fmt.Errorf("unsupported format %q", *format)
 	}
+}
+
+func discoverWinRM(args []string) error {
+	fs := flag.NewFlagSet("discover winrm", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one WinRM endpoint URL per line")
+	username := fs.String("username", env("TOPO_WINRM_USERNAME", lab.LabWinRMUsername), "Topo Lab Basic username")
+	passwordEnv := fs.String("password-env", "TOPO_WINRM_PASSWORD", "environment variable containing the Topo Lab WinRM password")
+	labBasic := fs.Bool("lab-basic", false, "enable Basic authentication to loopback Topo Lab endpoints")
+	concurrency := fs.Int("concurrency", 32, "maximum concurrent WinRM targets")
+	connectTimeout := fs.Duration("connect-timeout", 10*time.Second, "WinRM connection timeout")
+	operationTimeout := fs.Duration("operation-timeout", 10*time.Second, "per-operation timeout")
+	maxResponseBytes := fs.Int64("max-response-bytes", 4<<20, "maximum response retained per WS-Management request")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "winrm-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	if !*labBasic {
+		return errors.New("this WinRM slice supports built-in authentication only with -lab-basic against loopback Topo Lab; NTLM/Negotiate is not implemented yet")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+	password := os.Getenv(*passwordEnv)
+	if password == "" {
+		return fmt.Errorf("no WinRM Lab credential: set %s", *passwordEnv)
+	}
+	plugin := winrm.Plugin{Config: winrm.Config{
+		Username:         *username,
+		Password:         password,
+		LabMode:          true,
+		Concurrency:      *concurrency,
+		ConnectTimeout:   *connectTimeout,
+		OperationTimeout: *operationTimeout,
+		MaxResponseBytes: *maxResponseBytes,
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
 }
 
 func discoverSSH(args []string) error {
