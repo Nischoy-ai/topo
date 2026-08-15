@@ -142,7 +142,7 @@ func pluginForEstate(estate lab.Estate) winrm.Plugin {
 		Password:         lab.LabWinRMPassword,
 		LabMode:          true,
 		Concurrency:      64,
-		OperationTimeout: 2 * time.Second,
+		OperationTimeout: 10 * time.Second,
 		HTTPClient:       &http.Client{Transport: handlerTransport{handler: lab.NewWinRMServer(estate).Handler()}},
 	}}
 }
