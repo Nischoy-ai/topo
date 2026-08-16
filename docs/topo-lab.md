@@ -4,7 +4,7 @@ For protocol-specific behavior, see [Linux SSH discovery](ssh-discovery.md) and 
 
 Topo Lab simulates large IT estates without creating hundreds of virtual machines. It is deterministic: the same scenario and seed produce the same host identities, attributes, relationships, and injected faults.
 
-Topo Lab offers an explicit HTTP lab protocol for fast generic estate tests, an SSH frontend that performs genuine SSH handshakes and session-channel execution, and a WinRM frontend that performs WS-Management SOAP Enumerate/Pull exchanges against the same persona engine. The protocol acceptance suites validate Topo's client and operation routing while deterministic responses avoid provisioning VMs.
+Topo Lab offers an explicit HTTP lab protocol for fast generic estate tests, an SSH frontend that performs genuine SSH handshakes and session-channel execution, and a WinRM frontend that performs WS-Management SOAP Enumerate/Pull and bounded WinRS command exchanges against the same persona engine. The protocol acceptance suites validate Topo's client and operation routing while deterministic responses avoid provisioning VMs.
 
 ## Quick start
 
@@ -77,8 +77,14 @@ Fault percentages are mutually exclusive and may total at most 100%. `permission
 
 Every scenario produces a canonical `ObservationEnvelope` containing two assets per host—a host and its primary interface—and one relationship. `topo lab run` compares discovered stable asset identities with that graph and reports coverage, missing assets, and unexpected assets.
 
-The automated test suite performs two scans of 500 mixed hosts, saves both observations through the controller repository, and asserts that the resolved asset count remains 1,000. This catches duplicate creation across repeat scans.
+The generic Lab suite performs two scans of 500 mixed hosts, saves both observations through the controller repository, and asserts that the resolved asset count remains 1,000. The protocol gate additionally runs 500 Linux targets through SSH and 500 Windows targets through WinRM concurrently, repeats both scans, requires 100% coverage of 2,000 assets and 1,000 relationships, and verifies that four source observations still resolve to 2,000 unique assets. Run that gate directly with:
+
+```sh
+go test -race ./pkg/discovery/sshlinux \
+  -run TestDiscoverMixedFiveHundredLinuxAndWindowsHostsTwice \
+  -count=1
+```
 
 ## Boundaries
 
-Simulation is the primary scale and failure-testing mechanism, but it cannot prove compatibility with real shell quoting, PowerShell/CIM behavior, locales, authentication policies, permissions, or OS updates. Each production discovery plugin will therefore retain a small real-system compatibility matrix alongside large simulated tests. The current WinRM Lab frontend emits multi-object volume, service, and patch CIM responses, but it does not yet include sanitized real-system fixtures, NTLM/Negotiate, or PowerShell-based registry inventory.
+Simulation is the primary scale and failure-testing mechanism, but it cannot prove compatibility with real shell quoting, PowerShell/CIM behavior, locales, authentication policies, permissions, or OS updates. Each production discovery plugin will therefore retain a small real-system compatibility matrix alongside large simulated tests. The current WinRM Lab frontend emits multi-object volume, service, patch, and synthetic uninstall-registry software responses through the production protocol lifecycle, but it does not execute a real PowerShell runtime, perform an NTLM/Negotiate handshake, or include sanitized real-system fixtures.
