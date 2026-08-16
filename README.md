@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection; an authenticated controller ingestion API; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. WinRM registry software inventory and enterprise authentication, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection; HTTPS-only NTLMv2 authentication for Windows pilots; an authenticated controller ingestion API; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. WinRM registry software inventory, Kerberos and certificate authentication, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -51,7 +51,7 @@ TOPO_WINRM_PASSWORD=topo-lab ./bin/topo discover winrm \
   -targets winrm-targets.txt -site lab -lab-basic > windows-observation.jsonl
 ```
 
-Basic authentication and HTTP are accepted only with the explicit Lab flag and loopback targets. Production targets require HTTPS and an authenticated client; built-in NTLM/Negotiate remains pending. See [Windows WinRM discovery](docs/winrm-discovery.md).
+Basic authentication and HTTP are accepted only with the explicit Lab flag and loopback targets. Production NTLMv2 targets require HTTPS, verified certificates, and `-auth ntlm`; Kerberos is not yet implemented. See [Windows WinRM discovery](docs/winrm-discovery.md).
 
 Start the controller with authentication enabled:
 
@@ -99,7 +99,7 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - Destination URLs must use HTTPS; client timeouts and bounded response reads are mandatory.
 - The local plugin needs no privileged account and executes no shell commands.
 - The SSH plugin executes a fixed audited command set, requires host-key verification by default, bounds command output, and applies connection and command deadlines.
-- The WinRM plugin executes fixed CIM resource/query pairs for required host identity and optional network, volume, service, and patch inventory; it requires HTTPS outside loopback-only Lab mode, bounds SOAP responses, and applies operation deadlines and concurrency limits.
+- The WinRM plugin executes fixed CIM resource/query pairs for required host identity and optional network, volume, service, and patch inventory; it requires HTTPS outside loopback-only Lab mode, verifies server certificates, performs NTLMv2 without Basic fallback, bounds SOAP responses, and applies operation deadlines and concurrency limits.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are read from the environment and never serialized into observations.
 

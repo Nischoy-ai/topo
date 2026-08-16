@@ -23,9 +23,9 @@ const maxEnumerationPages = 16
 
 type Config struct {
 	// Basic authentication is restricted to explicit loopback-only LabMode.
-	// Production callers must supply an authenticated HTTPClient and HTTPS
-	// targets; built-in NTLM/Negotiate is a follow-on slice.
+	// Production NTLM uses HTTPS and never falls back to Basic authentication.
 	Username, Password               string
+	AuthMode                         string
 	LabMode                          bool
 	Concurrency                      int
 	ConnectTimeout, OperationTimeout time.Duration
@@ -66,12 +66,35 @@ func (p Plugin) ValidateConfiguration(_ context.Context, request discovery.Reque
 			return fmt.Errorf("WinRM secrets are not accepted in request option %q", key)
 		}
 	}
+	if len(p.Config.Username) > 512 {
+		return errors.New("WinRM username exceeds 512 bytes")
+	}
+	if len(p.Config.Password) > 4096 {
+		return errors.New("WinRM password exceeds 4096 bytes")
+	}
+	if strings.ContainsAny(p.Config.Username, "\x00\r\n") {
+		return errors.New("WinRM username contains a control character")
+	}
 	if p.Config.LabMode {
+		if p.Config.AuthMode != "" {
+			return errors.New("Topo Lab Basic authentication cannot be combined with another WinRM authentication mode")
+		}
 		if p.Config.Username == "" || p.Config.Password == "" {
 			return errors.New("Topo Lab WinRM username and password are required")
 		}
-	} else if p.Config.Username != "" || p.Config.Password != "" {
-		return errors.New("built-in Basic authentication is restricted to Topo Lab")
+	} else {
+		switch p.Config.AuthMode {
+		case "":
+			if p.Config.Username != "" || p.Config.Password != "" {
+				return errors.New("WinRM credentials require an explicit authentication mode")
+			}
+		case AuthModeNTLM:
+			if p.Config.Username == "" || p.Config.Password == "" {
+				return errors.New("WinRM NTLM username and password are required")
+			}
+		default:
+			return fmt.Errorf("unsupported WinRM authentication mode %q", p.Config.AuthMode)
+		}
 	}
 	for _, target := range request.Targets {
 		if err := validateTarget(target, p.Config.LabMode); err != nil {
@@ -288,6 +311,9 @@ func (p Plugin) withHTTPClient() Plugin {
 	if p.Config.HTTPClient != nil {
 		client := *p.Config.HTTPClient
 		client.CheckRedirect = rejectRedirect
+		if p.Config.AuthMode == AuthModeNTLM {
+			client.Transport = ntlmRoundTripper{base: ntlmBaseTransport(client.Transport), username: p.Config.Username, password: p.Config.Password}
+		}
 		p.Config.HTTPClient = &client
 		return p
 	}
@@ -298,7 +324,11 @@ func (p Plugin) withHTTPClient() Plugin {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.DialContext = (&net.Dialer{Timeout: connectTimeout, KeepAlive: 30 * time.Second}).DialContext
 	transport.TLSHandshakeTimeout = connectTimeout
-	p.Config.HTTPClient = &http.Client{Transport: transport, CheckRedirect: rejectRedirect}
+	var roundTripper http.RoundTripper = transport
+	if p.Config.AuthMode == AuthModeNTLM {
+		roundTripper = ntlmRoundTripper{base: ntlmBaseTransport(transport), username: p.Config.Username, password: p.Config.Password}
+	}
+	p.Config.HTTPClient = &http.Client{Transport: roundTripper, CheckRedirect: rejectRedirect}
 	return p
 }
 
