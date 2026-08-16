@@ -437,8 +437,9 @@ func discover(args []string) error {
 func discoverWinRM(args []string) error {
 	fs := flag.NewFlagSet("discover winrm", flag.ContinueOnError)
 	targetsPath := fs.String("targets", "", "file containing one WinRM endpoint URL per line")
-	username := fs.String("username", env("TOPO_WINRM_USERNAME", lab.LabWinRMUsername), "Topo Lab Basic username")
-	passwordEnv := fs.String("password-env", "TOPO_WINRM_PASSWORD", "environment variable containing the Topo Lab WinRM password")
+	username := fs.String("username", env("TOPO_WINRM_USERNAME", ""), "WinRM username (DOMAIN\\user, SERVER\\user, or user@domain)")
+	passwordEnv := fs.String("password-env", "TOPO_WINRM_PASSWORD", "environment variable containing the WinRM password")
+	authMode := fs.String("auth", "", "production authentication mode (ntlm)")
 	labBasic := fs.Bool("lab-basic", false, "enable Basic authentication to loopback Topo Lab endpoints")
 	concurrency := fs.Int("concurrency", 32, "maximum concurrent WinRM targets")
 	connectTimeout := fs.Duration("connect-timeout", 10*time.Second, "WinRM connection timeout")
@@ -452,8 +453,11 @@ func discoverWinRM(args []string) error {
 	if *targetsPath == "" {
 		return errors.New("-targets is required")
 	}
-	if !*labBasic {
-		return errors.New("this WinRM slice supports built-in authentication only with -lab-basic against loopback Topo Lab; NTLM/Negotiate is not implemented yet")
+	if *labBasic && *authMode != "" {
+		return errors.New("-lab-basic and -auth cannot be combined")
+	}
+	if !*labBasic && *authMode != winrm.AuthModeNTLM {
+		return errors.New("select -auth ntlm for production HTTPS targets or -lab-basic for loopback Topo Lab")
 	}
 	targets, err := readTargets(*targetsPath)
 	if err != nil {
@@ -462,14 +466,22 @@ func discoverWinRM(args []string) error {
 	if len(targets) == 0 {
 		return errors.New("targets file contains no targets")
 	}
+	selectedUsername := *username
+	if *labBasic && selectedUsername == "" {
+		selectedUsername = lab.LabWinRMUsername
+	}
+	if selectedUsername == "" {
+		return errors.New("WinRM username is required; set -username or TOPO_WINRM_USERNAME")
+	}
 	password := os.Getenv(*passwordEnv)
 	if password == "" {
-		return fmt.Errorf("no WinRM Lab credential: set %s", *passwordEnv)
+		return fmt.Errorf("no WinRM credential: set %s", *passwordEnv)
 	}
 	plugin := winrm.Plugin{Config: winrm.Config{
-		Username:         *username,
+		Username:         selectedUsername,
 		Password:         password,
-		LabMode:          true,
+		AuthMode:         *authMode,
+		LabMode:          *labBasic,
 		Concurrency:      *concurrency,
 		ConnectTimeout:   *connectTimeout,
 		OperationTimeout: *operationTimeout,

@@ -6,15 +6,15 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-15
+- **Updated:** 2026-08-16
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Latest completed milestone:** Linux SSH discovery alpha
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/3>
-- **Merged commit:** `0c44a55cb1162e8a09e023a07c3903235d97075f`
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/4>
+- **Merged commit:** `2fa8e992a2f4792e960fc3cc6cb186ae1f97b165`
 - **Current milestone:** Windows WinRM discovery alpha
-- **Current slice:** Optional fixed CIM volume, service, and patch inventory implemented on `agent/windows-winrm-inventory`; PR pending.
-- **Verified in this slice:** Exact operation matching, multi-object parsing and deterministic normalization, optional permission/parse isolation, and two scans of 500 Windows personas with complete optional inventory, 100% expected identity coverage, and no duplicates.
-- **Next slice:** NTLM/Negotiate and uninstall-registry software inventory, followed by sanitized fixtures and the mixed 500-Linux/500-Windows gate.
+- **Current slice:** HTTPS-only NTLMv2 over HTTP `NTLM`/`Negotiate` challenges implemented on `agent/windows-winrm-ntlm`; PR pending.
+- **Verified in this slice:** No Basic fallback, TLS enforcement, bounded challenge parsing, HTTP/1.1 connection affinity, replayable SOAP bodies, authentication-mode validation, and compatibility with the existing WinRM fault and 500-host suites.
+- **Next slice:** Supported uninstall-registry software inventory without `Win32_Product`, followed by sanitized fixtures and the mixed 500-Linux/500-Windows gate. Kerberos/SPNEGO and certificate authentication remain explicit follow-ups.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature

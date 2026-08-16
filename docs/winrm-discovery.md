@@ -45,10 +45,30 @@ The target file contains one endpoint URL per line. Blank lines and lines beginn
 
 `-lab-basic` is deliberately required. In this mode every target must resolve syntactically to `localhost` or a loopback IP, and the Lab server itself refuses a non-loopback listen address. Do not proxy this endpoint to another network.
 
+## NTLMv2 pilot usage
+
+Production targets must expose WinRM over HTTPS with a certificate trusted by the relay. Put one `https://host:5986/wsman` endpoint on each line of the target file, then provide the username and password through environment-backed inputs:
+
+```sh
+TOPO_WINRM_USERNAME='EXAMPLE\topo-reader' \
+TOPO_WINRM_PASSWORD='replace-with-secret-input' \
+./bin/topo discover winrm \
+  -targets winrm-targets.txt \
+  -site pilot \
+  -auth ntlm
+```
+
+For a local Windows account, use `SERVERNAME\username`; UPN form such as `username@example.test` is also accepted. The password has no CLI value flag. `-password-env` can name a different environment variable supplied by the deployment secret mechanism.
+
+This mode implements NTLMv2 when the server advertises either the `NTLM` HTTP challenge or a `Negotiate` challenge containing NTLM. It is not a Kerberos/SPNEGO client. Domain environments that disable NTLM must wait for the Kerberos follow-up rather than weakening server policy.
+
+Topo uses the narrowly scoped [Azure NTLMSSP implementation](https://github.com/Azure/go-ntlmssp) for NTLMv2 message construction and owns the HTTP handshake so a Basic-only challenge is never answered. The dependency does not provide transport encryption. [Microsoft's WinRM security guidance](https://learn.microsoft.com/en-us/powershell/scripting/security/remoting/winrm-security) notes that NTLM cannot establish the target server's identity, so Topo requires verified TLS and provides no TrustedHosts-style bypass.
+
 ## Security and transport behavior
 
 - Non-Lab targets must use `https://`; the default client retains normal certificate-chain and hostname verification.
-- Basic authentication is built in only for explicit loopback Lab mode. Production callers can inject an authenticated HTTP client, but the CLI does not yet provide NTLM/Negotiate.
+- Basic authentication is built in only for explicit loopback Lab mode. Production `-auth ntlm` never sends Basic credentials or falls back when a server offers only Basic.
+- NTLM authentication is connection-oriented. The built-in transport disables HTTP/2, keeps each challenge exchange on one TLS connection, and caps authentication response headers and decoded challenge tokens at 64 KiB.
 - Per-operation contexts bound the entire Enumerate/Pull sequence. Enumeration pages, object counts, and response bytes are capped.
 - Target concurrency is bounded and cancellation propagates through HTTP requests.
 - URLs containing user information, queries, or fragments are rejected so credentials and operation text cannot enter targets.
@@ -58,4 +78,4 @@ The target file contains one endpoint URL per line. Blank lines and lines beginn
 
 ## Current limitations and next slice
 
-This slice does not yet collect installed software. Software inventory will read the supported uninstall registry locations and will not use `Win32_Product`, which can trigger MSI consistency checks. Built-in NTLM/Negotiate, Kerberos/certificate follow-up decisions, sanitized Windows Server fixtures, the mixed 500-Linux/500-Windows acceptance test, and real-host compatibility validation also remain open. Do not use this slice for an enterprise pilot until those gates are complete.
+This slice does not yet collect installed software. Software inventory will read the supported uninstall registry locations and will not use `Win32_Product`, which can trigger MSI consistency checks. Kerberos and certificate authentication, sanitized Windows Server fixtures, the mixed 500-Linux/500-Windows acceptance test, and broader real-host compatibility validation also remain open. Treat NTLMv2 as a narrowly scoped pilot transport, not completion of the Windows milestone.

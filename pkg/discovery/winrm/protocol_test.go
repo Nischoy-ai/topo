@@ -169,8 +169,28 @@ func TestConfigurationEnforcesTLSLabIsolationAndSecretReferences(t *testing.T) {
 	if err := labPlugin.ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"http://127.0.0.1/wsman/host"}, Options: map[string]string{"password": "secret"}}); err == nil || !strings.Contains(err.Error(), "not accepted") {
 		t.Fatalf("request secret was not rejected: %v", err)
 	}
-	if err := (Plugin{Config: Config{Username: "user", Password: "secret"}}).ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err == nil || !strings.Contains(err.Error(), "restricted") {
-		t.Fatalf("production Basic auth was not rejected: %v", err)
+	if err := (Plugin{Config: Config{Username: "user", Password: "secret"}}).ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err == nil || !strings.Contains(err.Error(), "explicit authentication mode") {
+		t.Fatalf("implicit production credentials were not rejected: %v", err)
+	}
+	ntlmPlugin := Plugin{Config: Config{AuthMode: AuthModeNTLM, Username: `EXAMPLE\topo-reader`, Password: "secret"}}
+	if err := ntlmPlugin.ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err != nil {
+		t.Fatalf("valid NTLM configuration was rejected: %v", err)
+	}
+	ntlmPlugin.Config.Password = ""
+	if err := ntlmPlugin.ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err == nil || !strings.Contains(err.Error(), "username and password") {
+		t.Fatalf("incomplete NTLM credentials were accepted: %v", err)
+	}
+	if err := (Plugin{Config: Config{AuthMode: "kerberos", Username: "user", Password: "secret"}}).ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err == nil || !strings.Contains(err.Error(), "unsupported") {
+		t.Fatalf("unsupported authentication mode was accepted: %v", err)
+	}
+	if err := (Plugin{Config: Config{LabMode: true, AuthMode: AuthModeNTLM, Username: "user", Password: "secret"}}).ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"http://127.0.0.1/wsman/host"}}); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("Lab Basic and NTLM were combined: %v", err)
+	}
+	if err := (Plugin{Config: Config{AuthMode: AuthModeNTLM, Username: "bad\nuser", Password: "secret"}}).ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err == nil || !strings.Contains(err.Error(), "control character") {
+		t.Fatalf("control character in username was accepted: %v", err)
+	}
+	if err := (Plugin{Config: Config{AuthMode: AuthModeNTLM, Username: "user", Password: strings.Repeat("x", 4097)}}).ValidateConfiguration(context.Background(), discovery.Request{Targets: []string{"https://windows.example/wsman"}}); err == nil || !strings.Contains(err.Error(), "4096") {
+		t.Fatalf("oversized password was accepted: %v", err)
 	}
 }
 
