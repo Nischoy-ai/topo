@@ -6,15 +6,15 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-14
+- **Updated:** 2026-08-15
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Latest completed milestone:** Linux SSH discovery alpha
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/1>
-- **Merged commit:** `1622d676088c0a25bf1127b897621d28ffecdcd6`
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/3>
+- **Merged commit:** `0c44a55cb1162e8a09e023a07c3903235d97075f`
 - **Current milestone:** Windows WinRM discovery alpha
-- **Current slice:** Audited CIM identity/hardware/network discovery and Topo Lab WS-Management frontend implemented on `agent/windows-winrm-core`.
-- **Verified in this slice:** Exact operation rejection, TLS/Lab configuration validation, fault isolation, and two scans of 500 Windows personas with 100% expected identity coverage and no duplicates.
-- **Next slice:** NTLM/Negotiate, volumes, registry software, patches, services, sanitized fixtures, and the mixed 500-Linux/500-Windows gate.
+- **Current slice:** Optional fixed CIM volume, service, and patch inventory implemented on `agent/windows-winrm-inventory`; PR pending.
+- **Verified in this slice:** Exact operation matching, multi-object parsing and deterministic normalization, optional permission/parse isolation, and two scans of 500 Windows personas with complete optional inventory, 100% expected identity coverage, and no duplicates.
+- **Next slice:** NTLM/Negotiate and uninstall-registry software inventory, followed by sanitized fixtures and the mixed 500-Linux/500-Windows gate.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature

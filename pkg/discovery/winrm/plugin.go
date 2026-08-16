@@ -42,7 +42,7 @@ func (p Plugin) DescribeCapabilities(context.Context) discovery.Capability {
 		AssetTypes: []model.AssetType{model.AssetHost, model.AssetNetworkInterface},
 		RequiredPermissions: []string{
 			"WS-Management access to Win32_ComputerSystem, Win32_ComputerSystemProduct, Win32_BIOS, and Win32_OperatingSystem",
-			"optional WS-Management access to Win32_NetworkAdapterConfiguration",
+			"optional WS-Management access to Win32_NetworkAdapterConfiguration, Win32_LogicalDisk, Win32_Service, and Win32_QuickFixEngineering",
 		},
 	}
 }
@@ -172,7 +172,35 @@ func (p Plugin) discoverTarget(ctx context.Context, target string) (*Inventory, 
 			inventory.Interfaces = interfaces
 		}
 	}
+	if volumeObjects, ok := results[OperationVolumes]; ok {
+		volumes, err := parseVolumes(volumeObjects)
+		if err != nil {
+			collectionErrors = append(collectionErrors, partialParseError(target, OperationVolumes, err))
+		} else {
+			inventory.Volumes = volumes
+		}
+	}
+	if serviceObjects, ok := results[OperationServices]; ok {
+		services, err := parseServices(serviceObjects)
+		if err != nil {
+			collectionErrors = append(collectionErrors, partialParseError(target, OperationServices, err))
+		} else {
+			inventory.Services = services
+		}
+	}
+	if patchObjects, ok := results[OperationPatches]; ok {
+		patches, err := parsePatches(patchObjects)
+		if err != nil {
+			collectionErrors = append(collectionErrors, partialParseError(target, OperationPatches, err))
+		} else {
+			inventory.Patches = patches
+		}
+	}
 	return &inventory, collectionErrors
+}
+
+func partialParseError(target, operation string, err error) model.CollectionError {
+	return model.CollectionError{Code: "winrm_partial", Message: target + ": " + operation + ": " + err.Error()}
 }
 
 func (p Plugin) enumerate(ctx context.Context, target string, operation Operation) ([]object, error) {

@@ -30,6 +30,7 @@ func TestDiscoverFiveHundredWindowsHostsThroughWSManagement(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertCompleteWindowsEstate(t, estate, first)
+	assertOptionalWindowsInventory(t, first)
 	repository := store.NewMemory()
 	if err := repository.SaveObservation(ctx, first); err != nil {
 		t.Fatal(err)
@@ -55,11 +56,16 @@ func TestWinRMPermissionFailureReturnsPartialHost(t *testing.T) {
 	scenario := lab.DefaultScenario(1, 100, 7)
 	scenario.Faults.PermissionDeniedPercent = 100
 	observation := discoverOne(t, makeWindowsEstate(t, scenario), lab.LabWinRMPassword, 2*time.Second, 4<<20)
-	if len(observation.Assets) != 1 || len(observation.Errors) != 1 {
-		t.Fatalf("got assets=%d errors=%d, want partial host and one error", len(observation.Assets), len(observation.Errors))
+	if len(observation.Assets) != 1 || len(observation.Errors) != 4 {
+		t.Fatalf("got assets=%d errors=%d, want partial host and four optional-operation errors", len(observation.Assets), len(observation.Errors))
 	}
-	if observation.Errors[0].Code != "winrm_partial" || observation.Errors[0].Retryable {
-		t.Fatalf("unexpected partial error: %#v", observation.Errors[0])
+	for _, collectionError := range observation.Errors {
+		if collectionError.Code != "winrm_partial" || collectionError.Retryable {
+			t.Fatalf("unexpected partial error: %#v", collectionError)
+		}
+	}
+	if _, ok := observation.Assets[0].Attributes["volumes"]; ok {
+		t.Fatal("permission-denied volume inventory was represented as an empty successful result")
 	}
 }
 
@@ -187,6 +193,27 @@ func assertCompleteWindowsEstate(t *testing.T, estate lab.Estate, observation mo
 	evaluation := lab.Evaluate(estate.Expected, observation)
 	if evaluation.CoveragePercent != 100 || evaluation.MissingAssets != 0 || evaluation.UnexpectedAssets != 0 {
 		t.Fatalf("unexpected evaluation: %#v", evaluation)
+	}
+}
+
+func assertOptionalWindowsInventory(t *testing.T, observation model.ObservationEnvelope) {
+	t.Helper()
+	for _, asset := range observation.Assets {
+		if asset.Type != model.AssetHost {
+			continue
+		}
+		volumes, ok := asset.Attributes["volumes"].([]winrm.Volume)
+		if !ok || len(volumes) != 1 || volumes[0].DeviceID != "C:" || volumes[0].FreeBytes > volumes[0].SizeBytes {
+			t.Fatalf("unexpected volume inventory for %s: %#v", asset.Name, asset.Attributes["volumes"])
+		}
+		services, ok := asset.Attributes["services"].([]winrm.Service)
+		if !ok || len(services) < 2 || services[0].Name == "" {
+			t.Fatalf("unexpected service inventory for %s: %#v", asset.Name, asset.Attributes["services"])
+		}
+		patches, ok := asset.Attributes["patches"].([]winrm.Patch)
+		if !ok || len(patches) != 2 || patches[0].HotFixID == "" {
+			t.Fatalf("unexpected patch inventory for %s: %#v", asset.Name, asset.Attributes["patches"])
+		}
 	}
 }
 
