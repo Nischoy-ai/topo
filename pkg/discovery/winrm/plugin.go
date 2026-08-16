@@ -43,6 +43,7 @@ func (p Plugin) DescribeCapabilities(context.Context) discovery.Capability {
 		RequiredPermissions: []string{
 			"WS-Management access to Win32_ComputerSystem, Win32_ComputerSystemProduct, Win32_BIOS, and Win32_OperatingSystem",
 			"optional WS-Management access to Win32_NetworkAdapterConfiguration, Win32_LogicalDisk, Win32_Service, and Win32_QuickFixEngineering",
+			"optional WinRS access to run the compiled-in PowerShell uninstall-registry inventory command with read access to both machine-wide uninstall registry views",
 		},
 	}
 }
@@ -219,6 +220,14 @@ func (p Plugin) discoverTarget(ctx context.Context, target string) (*Inventory, 
 			inventory.Patches = patches
 		}
 	}
+	softwareOutput, err := p.runCommand(ctx, target, AuditedSoftwareCommand())
+	if err != nil {
+		collectionErrors = append(collectionErrors, model.CollectionError{Code: "winrm_partial", Message: target + ": " + OperationSoftware + ": " + err.Error(), Retryable: retryable(err)})
+	} else if software, parseErr := parseSoftware(softwareOutput); parseErr != nil {
+		collectionErrors = append(collectionErrors, partialParseError(target, OperationSoftware, parseErr))
+	} else {
+		inventory.Software = software
+	}
 	return &inventory, collectionErrors
 }
 
@@ -230,7 +239,7 @@ func (p Plugin) enumerate(ctx context.Context, target string, operation Operatio
 	timeout := p.operationTimeout()
 	operationCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	page, err := p.request(operationCtx, target, enumerateEnvelope(target, operation, timeout))
+	page, err := p.requestEnumeration(operationCtx, target, enumerateEnvelope(target, operation, timeout))
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +258,7 @@ func (p Plugin) enumerate(ctx context.Context, target string, operation Operatio
 		if pages >= maxEnumerationPages {
 			return nil, fmt.Errorf("enumeration exceeded %d pages", maxEnumerationPages)
 		}
-		page, err = p.request(operationCtx, target, pullEnvelope(target, operation, page.Context, timeout))
+		page, err = p.requestEnumeration(operationCtx, target, pullEnvelope(target, operation, page.Context, timeout))
 		if err != nil {
 			return nil, err
 		}
@@ -268,10 +277,18 @@ func (p Plugin) enumerate(ctx context.Context, target string, operation Operatio
 	return items, nil
 }
 
-func (p Plugin) request(ctx context.Context, target string, envelope []byte) (enumerationPage, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(envelope))
+func (p Plugin) requestEnumeration(ctx context.Context, target string, envelope []byte) (enumerationPage, error) {
+	body, err := p.doSOAP(ctx, target, envelope)
 	if err != nil {
 		return enumerationPage{}, err
+	}
+	return parseEnumerationPage(body)
+}
+
+func (p Plugin) doSOAP(ctx context.Context, target string, envelope []byte) ([]byte, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(envelope))
+	if err != nil {
+		return nil, err
 	}
 	request.Header.Set("Content-Type", "application/soap+xml;charset=UTF-8")
 	request.Header.Set("User-Agent", "Nischoy-Topo/0.1")
@@ -280,11 +297,11 @@ func (p Plugin) request(ctx context.Context, target string, envelope []byte) (en
 	}
 	response, err := p.Config.HTTPClient.Do(request)
 	if err != nil {
-		return enumerationPage{}, err
+		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		_ = response.Body.Close()
-		return enumerationPage{}, err
+		return nil, err
 	}
 	defer response.Body.Close()
 	maximum := p.Config.MaxResponseBytes
@@ -293,18 +310,89 @@ func (p Plugin) request(ctx context.Context, target string, envelope []byte) (en
 	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, maximum+1))
 	if err != nil {
-		return enumerationPage{}, fmt.Errorf("read WS-Management response: %w", err)
+		return nil, fmt.Errorf("read WS-Management response: %w", err)
 	}
 	if int64(len(body)) > maximum {
-		return enumerationPage{}, fmt.Errorf("WS-Management response exceeded %d bytes", maximum)
+		return nil, fmt.Errorf("WS-Management response exceeded %d bytes", maximum)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if _, parseErr := parseEnumerationPage(body); parseErr != nil {
-			return enumerationPage{}, fmt.Errorf("HTTP %s: %w", response.Status, parseErr)
-		}
-		return enumerationPage{}, fmt.Errorf("HTTP %s", response.Status)
+		return nil, fmt.Errorf("HTTP %s: %w", response.Status, parseSOAPFault(body))
 	}
-	return parseEnumerationPage(body)
+	return body, nil
+}
+
+func (p Plugin) runCommand(ctx context.Context, target string, command Command) (stdout []byte, err error) {
+	timeout := p.operationTimeout()
+	operationCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	body, err := p.doSOAP(operationCtx, target, createShellEnvelope(target, timeout))
+	if err != nil {
+		return nil, fmt.Errorf("create shell: %w", err)
+	}
+	shellID, err := parseCreateShellResponse(body)
+	if err != nil {
+		return nil, fmt.Errorf("create shell: %w", err)
+	}
+	defer func() {
+		deleteBody, deleteErr := p.doSOAP(operationCtx, target, deleteShellEnvelope(target, shellID, timeout))
+		if deleteErr == nil {
+			deleteErr = parseEmptySOAPResponse(deleteBody)
+		}
+		if err == nil && deleteErr != nil {
+			err = fmt.Errorf("delete shell: %w", deleteErr)
+		}
+	}()
+
+	body, err = p.doSOAP(operationCtx, target, commandEnvelope(target, shellID, command, timeout))
+	if err != nil {
+		return nil, fmt.Errorf("start command: %w", err)
+	}
+	commandID, err := parseCommandResponse(body)
+	if err != nil {
+		return nil, fmt.Errorf("start command: %w", err)
+	}
+
+	maximum := p.Config.MaxResponseBytes
+	if maximum == 0 {
+		maximum = 4 << 20
+	}
+	var stderr []byte
+	for receiveCount := 0; receiveCount < maxReceiveMessages; receiveCount++ {
+		body, err = p.doSOAP(operationCtx, target, receiveEnvelope(target, shellID, commandID, timeout))
+		if err != nil {
+			return nil, fmt.Errorf("receive command output: %w", err)
+		}
+		result, parseErr := parseReceiveResponse(body, commandID)
+		if parseErr != nil {
+			return nil, fmt.Errorf("receive command output: %w", parseErr)
+		}
+		stdout = append(stdout, result.Stdout...)
+		stderr = append(stderr, result.Stderr...)
+		if int64(len(stdout)+len(stderr)) > maximum {
+			return nil, fmt.Errorf("remote command output exceeded %d bytes", maximum)
+		}
+		if !result.Done {
+			continue
+		}
+		if result.ExitCode != 0 {
+			return nil, fmt.Errorf("remote command exited with code %d: %s", result.ExitCode, boundedOutput(stderr))
+		}
+		if len(bytes.TrimSpace(stderr)) != 0 {
+			return nil, fmt.Errorf("remote command wrote to stderr: %s", boundedOutput(stderr))
+		}
+		return stdout, nil
+	}
+	return nil, fmt.Errorf("receive command output exceeded %d messages", maxReceiveMessages)
+}
+
+func boundedOutput(value []byte) string {
+	text := strings.Join(strings.Fields(string(value)), " ")
+	const maximum = 512
+	if len(text) > maximum {
+		return text[:maximum] + "..."
+	}
+	return text
 }
 
 func (p Plugin) withHTTPClient() Plugin {

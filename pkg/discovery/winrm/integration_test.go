@@ -56,8 +56,8 @@ func TestWinRMPermissionFailureReturnsPartialHost(t *testing.T) {
 	scenario := lab.DefaultScenario(1, 100, 7)
 	scenario.Faults.PermissionDeniedPercent = 100
 	observation := discoverOne(t, makeWindowsEstate(t, scenario), lab.LabWinRMPassword, 2*time.Second, 4<<20)
-	if len(observation.Assets) != 1 || len(observation.Errors) != 4 {
-		t.Fatalf("got assets=%d errors=%d, want partial host and four optional-operation errors", len(observation.Assets), len(observation.Errors))
+	if len(observation.Assets) != 1 || len(observation.Errors) != 5 {
+		t.Fatalf("got assets=%d errors=%d, want partial host and five optional-operation errors", len(observation.Assets), len(observation.Errors))
 	}
 	for _, collectionError := range observation.Errors {
 		if collectionError.Code != "winrm_partial" || collectionError.Retryable {
@@ -66,6 +66,9 @@ func TestWinRMPermissionFailureReturnsPartialHost(t *testing.T) {
 	}
 	if _, ok := observation.Assets[0].Attributes["volumes"]; ok {
 		t.Fatal("permission-denied volume inventory was represented as an empty successful result")
+	}
+	if _, ok := observation.Assets[0].Attributes["software"]; ok {
+		t.Fatal("permission-denied software inventory was represented as an empty successful result")
 	}
 }
 
@@ -104,6 +107,29 @@ func TestLabWinRMRejectsArbitrarySOAPOperations(t *testing.T) {
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "invalid audited") {
 		t.Fatalf("arbitrary operation was not rejected: status=%d body=%q", response.Code, response.Body.String())
+	}
+}
+
+func TestLabWinRMRejectsArbitraryRemoteCommands(t *testing.T) {
+	estate := makeWindowsEstate(t, lab.DefaultScenario(1, 100, 12))
+	handler := lab.NewWinRMServer(estate).Handler()
+	target := "http://127.0.0.1/wsman/" + estate.Hosts[0].ID
+	create := `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd" xmlns:r="http://schemas.microsoft.com/wbem/wsman/1/windows/shell"><s:Header><a:Action>` + winrm.ActionCreate + `</a:Action><w:ResourceURI>` + winrm.ShellResourceURI + `</w:ResourceURI><w:OptionSet><w:Option Name="WINRS_NOPROFILE">TRUE</w:Option><w:Option Name="WINRS_CODEPAGE">65001</w:Option></w:OptionSet></s:Header><s:Body><r:Shell><r:InputStreams>stdin</r:InputStreams><r:OutputStreams>stdout stderr</r:OutputStreams></r:Shell></s:Body></s:Envelope>`
+	request := httptest.NewRequest(http.MethodPost, target, strings.NewReader(create))
+	request.SetBasicAuth(lab.LabWinRMUsername, lab.LabWinRMPassword)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "uuid:topo-lab-shell-1") {
+		t.Fatalf("failed to create audited Lab shell: status=%d body=%q", response.Code, response.Body.String())
+	}
+
+	command := `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd" xmlns:r="http://schemas.microsoft.com/wbem/wsman/1/windows/shell"><s:Header><a:Action>` + winrm.ActionCommand + `</a:Action><w:ResourceURI>` + winrm.ShellResourceURI + `</w:ResourceURI><w:SelectorSet><w:Selector Name="ShellId">uuid:topo-lab-shell-1</w:Selector></w:SelectorSet><w:OptionSet><w:Option Name="WINRS_CONSOLEMODE_STDIN">FALSE</w:Option><w:Option Name="WINRS_SKIP_CMD_SHELL">TRUE</w:Option></w:OptionSet></s:Header><s:Body><r:CommandLine><r:Command>whoami.exe</r:Command></r:CommandLine></s:Body></s:Envelope>`
+	request = httptest.NewRequest(http.MethodPost, target, strings.NewReader(command))
+	request.SetBasicAuth(lab.LabWinRMUsername, lab.LabWinRMPassword)
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "allowlist") {
+		t.Fatalf("arbitrary remote command was not rejected: status=%d body=%q", response.Code, response.Body.String())
 	}
 }
 
@@ -213,6 +239,10 @@ func assertOptionalWindowsInventory(t *testing.T, observation model.ObservationE
 		patches, ok := asset.Attributes["patches"].([]winrm.Patch)
 		if !ok || len(patches) != 2 || patches[0].HotFixID == "" {
 			t.Fatalf("unexpected patch inventory for %s: %#v", asset.Name, asset.Attributes["patches"])
+		}
+		software, ok := asset.Attributes["software"].([]winrm.Software)
+		if !ok || len(software) != 2 || software[0].Name == "" || software[0].RegistryKey == "" || (software[0].Architecture != "x86" && software[0].Architecture != "x86_64") {
+			t.Fatalf("unexpected software inventory for %s: %#v", asset.Name, asset.Attributes["software"])
 		}
 	}
 }

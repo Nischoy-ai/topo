@@ -9,12 +9,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Updated:** 2026-08-16
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Latest completed milestone:** Linux SSH discovery alpha
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/4>
-- **Merged commit:** `2fa8e992a2f4792e960fc3cc6cb186ae1f97b165`
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/5>
+- **Merged commit:** `eba0c91f811c6bba6801987c356b45b53fbcb8c0`
 - **Current milestone:** Windows WinRM discovery alpha
-- **Current slice:** HTTPS-only NTLMv2 over HTTP `NTLM`/`Negotiate` challenges implemented on `agent/windows-winrm-ntlm`; PR pending.
-- **Verified in this slice:** No Basic fallback, TLS enforcement, bounded challenge parsing, HTTP/1.1 connection affinity, replayable SOAP bodies, authentication-mode validation, and compatibility with the existing WinRM fault and 500-host suites.
-- **Next slice:** Supported uninstall-registry software inventory without `Win32_Product`, followed by sanitized fixtures and the mixed 500-Linux/500-Windows gate. Kerberos/SPNEGO and certificate authentication remain explicit follow-ups.
+- **Current slice:** Machine-wide uninstall-registry software inventory implemented on `agent/windows-winrm-software`; PR pending.
+- **Verified in this slice:** A compiled-in PowerShell command reads only the 64-bit and 32-bit HKLM uninstall views; WinRS shell, command, receive, and deletion exchanges are bounded and allowlisted; unknown fields and duplicate registry identities are rejected; permission failures remain partial; arbitrary remote commands are rejected; and the repeated 500-Windows scan includes deterministic software inventory without identity duplicates.
+- **Next slice:** Add sanitized Windows Server 2022 and one other supported-release compatibility fixtures, then implement the mixed 500-Linux/500-Windows gate. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication remain explicit follow-ups.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature

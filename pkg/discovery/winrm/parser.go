@@ -1,7 +1,11 @@
 package winrm
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sort"
 	"strconv"
@@ -20,6 +24,7 @@ type Inventory struct {
 	Volumes                                          []Volume
 	Services                                         []Service
 	Patches                                          []Patch
+	Software                                         []Software
 }
 
 type Interface struct {
@@ -48,6 +53,15 @@ type Patch struct {
 	HotFixID    string `json:"hotfix_id"`
 	Description string `json:"description,omitempty"`
 	InstalledOn string `json:"installed_on,omitempty"`
+}
+
+type Software struct {
+	Name         string `json:"name"`
+	Version      string `json:"version,omitempty"`
+	Publisher    string `json:"publisher,omitempty"`
+	InstallDate  string `json:"install_date,omitempty"`
+	Architecture string `json:"architecture"`
+	RegistryKey  string `json:"registry_key"`
 }
 
 func parseInventory(results map[string][]object) (Inventory, error) {
@@ -177,6 +191,60 @@ func parsePatches(objects []object) ([]Patch, error) {
 	return patches, nil
 }
 
+func parseSoftware(output []byte) ([]Software, error) {
+	decoder := json.NewDecoder(bytes.NewReader(output))
+	decoder.DisallowUnknownFields()
+	software := []Software{}
+	seen := map[string]struct{}{}
+	for {
+		var item Software
+		if err := decoder.Decode(&item); errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("decode software JSON: %w", err)
+		}
+		if len(software) >= 65536 {
+			return nil, errors.New("software inventory exceeded 65536 records")
+		}
+		item.Name = strings.TrimSpace(item.Name)
+		item.Version = strings.TrimSpace(item.Version)
+		item.Publisher = strings.TrimSpace(item.Publisher)
+		item.InstallDate = strings.TrimSpace(item.InstallDate)
+		item.RegistryKey = strings.TrimSpace(item.RegistryKey)
+		item.Architecture = normalizeArchitecture(item.Architecture)
+		if item.Name == "" || item.RegistryKey == "" {
+			return nil, errors.New("software record has an empty name or registry key")
+		}
+		for field, value := range map[string]string{
+			"name": item.Name, "version": item.Version, "publisher": item.Publisher,
+			"install_date": item.InstallDate, "registry_key": item.RegistryKey,
+		} {
+			maximum := 4096
+			if field == "install_date" {
+				maximum = 128
+			}
+			if len(value) > maximum {
+				return nil, fmt.Errorf("software %s exceeds %d bytes", field, maximum)
+			}
+		}
+		if item.Architecture != "x86_64" && item.Architecture != "x86" {
+			return nil, fmt.Errorf("software record has unsupported architecture %q", item.Architecture)
+		}
+		identity := item.Architecture + "\x00" + strings.ToLower(item.RegistryKey)
+		if _, exists := seen[identity]; exists {
+			return nil, fmt.Errorf("software inventory repeated registry key %q for %s", item.RegistryKey, item.Architecture)
+		}
+		seen[identity] = struct{}{}
+		software = append(software, item)
+	}
+	sort.Slice(software, func(i, j int) bool {
+		left := strings.ToLower(software[i].Name + "\x00" + software[i].Version + "\x00" + software[i].Architecture + "\x00" + software[i].RegistryKey)
+		right := strings.ToLower(software[j].Name + "\x00" + software[j].Version + "\x00" + software[j].Architecture + "\x00" + software[j].RegistryKey)
+		return left < right
+	})
+	return software, nil
+}
+
 func (inventory Inventory) Assets(now time.Time) ([]model.Asset, []model.Relationship) {
 	evidence := []model.Evidence{{Source: "winrm-windows", Collected: now, Confidence: 1}}
 	attributes := map[string]any{
@@ -200,6 +268,9 @@ func (inventory Inventory) Assets(now time.Time) ([]model.Asset, []model.Relatio
 	}
 	if inventory.Patches != nil {
 		attributes["patches"] = inventory.Patches
+	}
+	if inventory.Software != nil {
+		attributes["software"] = inventory.Software
 	}
 	host := model.Asset{
 		Type:     model.AssetHost,
