@@ -2,12 +2,15 @@ package winrm
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf16"
 
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 )
@@ -60,6 +63,97 @@ func TestSOAPEnvelopeContainsOnlyAuditedRouting(t *testing.T) {
 	}
 	if request.BodyOperation != "Command" {
 		t.Fatalf("arbitrary body operation was not exposed for rejection: %#v", request)
+	}
+}
+
+func TestAuditedSoftwareCommandIsFixedAndReadOnly(t *testing.T) {
+	command := AuditedSoftwareCommand()
+	if command.Name != OperationSoftware || command.Executable != "powershell.exe" || command.Required || len(command.Arguments) != 5 {
+		t.Fatalf("unexpected audited software command: %#v", command)
+	}
+	encoded, err := base64.StdEncoding.DecodeString(command.Arguments[4])
+	if err != nil || len(encoded)%2 != 0 {
+		t.Fatalf("invalid encoded PowerShell: bytes=%d err=%v", len(encoded), err)
+	}
+	codeUnits := make([]uint16, len(encoded)/2)
+	for index := range codeUnits {
+		codeUnits[index] = binary.LittleEndian.Uint16(encoded[index*2:])
+	}
+	script := string(utf16.Decode(codeUnits))
+	if script != softwareInventoryScript {
+		t.Fatal("encoded PowerShell does not match the reviewed source")
+	}
+	if strings.Contains(strings.ToLower(script), "win32_product") || strings.Contains(strings.ToLower(script), "uninstallstring") {
+		t.Fatal("software command uses a prohibited inventory source or collects uninstall command text")
+	}
+	if !strings.Contains(script, `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`) || !strings.Contains(script, `HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall`) {
+		t.Fatal("software command omitted a machine-wide uninstall registry view")
+	}
+	if !MatchSoftwareCommand(command.Executable, command.Arguments) {
+		t.Fatal("audited software command rejected")
+	}
+	command.Arguments[4] += "tampered"
+	if MatchSoftwareCommand(command.Executable, command.Arguments) {
+		t.Fatal("altered PowerShell was accepted")
+	}
+	if AuditedSoftwareCommand().Arguments[4] == command.Arguments[4] {
+		t.Fatal("caller mutated the audited command contract")
+	}
+}
+
+func TestShellEnvelopesExposeExactAuditedRouting(t *testing.T) {
+	endpoint := "https://windows.example/wsman"
+	timeout := time.Second
+	create, err := ParseSOAPRequest(createShellEnvelope(endpoint, timeout))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Action != ActionCreate || create.ResourceURI != ShellResourceURI || create.BodyOperation != "Shell" || create.InputStreams != "stdin" || create.OutputStreams != "stdout stderr" || create.Options["WINRS_CODEPAGE"] != "65001" {
+		t.Fatalf("unexpected create routing: %#v", create)
+	}
+	duplicateOption := strings.Replace(string(createShellEnvelope(endpoint, timeout)), `</w:OptionSet>`, `<w:Option Name="WINRS_CODEPAGE">65001</w:Option></w:OptionSet>`, 1)
+	if _, err := ParseSOAPRequest([]byte(duplicateOption)); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("duplicate shell option was accepted: %v", err)
+	}
+	command, err := ParseSOAPRequest(commandEnvelope(endpoint, "uuid:shell-1", AuditedSoftwareCommand(), timeout))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if command.Action != ActionCommand || command.ShellID != "uuid:shell-1" || !MatchSoftwareCommand(command.Command, command.Arguments) || command.Options["WINRS_SKIP_CMD_SHELL"] != "TRUE" {
+		t.Fatalf("unexpected command routing: %#v", command)
+	}
+	receive, err := ParseSOAPRequest(receiveEnvelope(endpoint, "uuid:shell-1", "uuid:command-1", timeout))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receive.Action != ActionReceive || receive.ShellID != "uuid:shell-1" || receive.CommandID != "uuid:command-1" || receive.DesiredStream != "stdout stderr" {
+		t.Fatalf("unexpected receive routing: %#v", receive)
+	}
+	deleteRequest, err := ParseSOAPRequest(deleteShellEnvelope(endpoint, "uuid:shell-1", timeout))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleteRequest.Action != ActionDelete || deleteRequest.ShellID != "uuid:shell-1" || deleteRequest.BodyOperation != "" {
+		t.Fatalf("unexpected delete routing: %#v", deleteRequest)
+	}
+}
+
+func TestParseShellResponses(t *testing.T) {
+	create := `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:t="http://schemas.xmlsoap.org/ws/2004/09/transfer" xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd"><s:Body><t:ResourceCreated><w:SelectorSet><w:Selector Name="ShellId">uuid:shell-1</w:Selector></w:SelectorSet></t:ResourceCreated></s:Body></s:Envelope>`
+	shellID, err := parseCreateShellResponse([]byte(create))
+	if err != nil || shellID != "uuid:shell-1" {
+		t.Fatalf("shell ID=%q err=%v", shellID, err)
+	}
+	command := `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:r="http://schemas.microsoft.com/wbem/wsman/1/windows/shell"><s:Body><r:CommandResponse><r:CommandId>uuid:command-1</r:CommandId></r:CommandResponse></s:Body></s:Envelope>`
+	commandID, err := parseCommandResponse([]byte(command))
+	if err != nil || commandID != "uuid:command-1" {
+		t.Fatalf("command ID=%q err=%v", commandID, err)
+	}
+	stdout := base64.StdEncoding.EncodeToString([]byte("output"))
+	receive := `<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:r="http://schemas.microsoft.com/wbem/wsman/1/windows/shell"><s:Body><r:ReceiveResponse><r:Stream Name="stdout" CommandId="uuid:command-1">` + stdout + `</r:Stream><r:CommandState CommandId="uuid:command-1" State="` + commandStateDone + `"><r:ExitCode>0</r:ExitCode></r:CommandState></r:ReceiveResponse></s:Body></s:Envelope>`
+	result, err := parseReceiveResponse([]byte(receive), commandID)
+	if err != nil || !result.Done || result.ExitCode != 0 || string(result.Stdout) != "output" {
+		t.Fatalf("unexpected receive result %#v err=%v", result, err)
 	}
 }
 
@@ -143,6 +237,14 @@ func TestParseOptionalWindowsInventory(t *testing.T) {
 	if len(patches) != 2 || patches[0].HotFixID != "KB9000001" || patches[1].HotFixID != "KB9000002" {
 		t.Fatalf("unexpected sorted patches: %#v", patches)
 	}
+
+	software, err := parseSoftware([]byte("{\"name\":\"Tool B\",\"version\":\"2\",\"publisher\":\"Example\",\"install_date\":\"20260802\",\"architecture\":\"32-bit\",\"registry_key\":\"tool-b\"}\n{\"name\":\"Tool A\",\"version\":\"1\",\"publisher\":\"Example\",\"install_date\":\"20260801\",\"architecture\":\"64-bit\",\"registry_key\":\"tool-a\"}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(software) != 2 || software[0].Name != "Tool A" || software[0].Architecture != "x86_64" || software[1].Architecture != "x86" {
+		t.Fatalf("unexpected software inventory: %#v", software)
+	}
 }
 
 func TestOptionalInventoryRejectsMalformedValues(t *testing.T) {
@@ -154,6 +256,12 @@ func TestOptionalInventoryRejectsMalformedValues(t *testing.T) {
 	}
 	if _, err := parsePatches([]object{{"Description": {"missing ID"}}}); err == nil {
 		t.Fatal("patch accepted an empty hotfix ID")
+	}
+	if _, err := parseSoftware([]byte(`{"name":"Tool","architecture":"64-bit","registry_key":"tool","unexpected":true}`)); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatal("software accepted an unknown field")
+	}
+	if _, err := parseSoftware([]byte("{\"name\":\"Tool\",\"architecture\":\"64-bit\",\"registry_key\":\"tool\"}\n{\"name\":\"Tool duplicate\",\"architecture\":\"64-bit\",\"registry_key\":\"TOOL\"}\n")); err == nil {
+		t.Fatal("software accepted a duplicate registry identity")
 	}
 }
 

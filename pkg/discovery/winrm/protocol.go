@@ -17,6 +17,8 @@ const (
 	namespaceAddress  = "http://schemas.xmlsoap.org/ws/2004/08/addressing"
 	namespaceWSMan    = "http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd"
 	namespaceEnum     = "http://schemas.xmlsoap.org/ws/2004/09/enumeration"
+	namespaceTransfer = "http://schemas.xmlsoap.org/ws/2004/09/transfer"
+	namespaceShell    = "http://schemas.microsoft.com/wbem/wsman/1/windows/shell"
 	anonymousReplyURI = namespaceAddress + "/role/anonymous"
 )
 
@@ -29,13 +31,25 @@ type SOAPRequest struct {
 	FilterDialect      string
 	EnumerationContext string
 	BodyOperation      string
+	BodyNamespace      string
+	ShellID            string
+	Command            string
+	Arguments          []string
+	DesiredStream      string
+	CommandID          string
+	InputStreams       string
+	OutputStreams      string
+	Options            map[string]string
 }
 
 // ParseSOAPRequest extracts the fixed routing fields without interpreting
 // arbitrary commands or scripts.
 func ParseSOAPRequest(data []byte) (SOAPRequest, error) {
 	decoder := xml.NewDecoder(bytes.NewReader(data))
-	var request SOAPRequest
+	request := SOAPRequest{Options: map[string]string{}}
+	seenFields := map[string]bool{}
+	depth := 0
+	bodyDepth := 0
 	for {
 		token, err := decoder.Token()
 		if errors.Is(err, io.EOF) {
@@ -44,25 +58,31 @@ func ParseSOAPRequest(data []byte) (SOAPRequest, error) {
 		if err != nil {
 			return SOAPRequest{}, fmt.Errorf("decode SOAP request: %w", err)
 		}
+		if end, ok := token.(xml.EndElement); ok {
+			if bodyDepth == depth && end.Name.Space == namespaceSOAP && end.Name.Local == "Body" {
+				bodyDepth = 0
+			}
+			depth--
+			continue
+		}
 		start, ok := token.(xml.StartElement)
 		if !ok {
 			continue
 		}
+		depth++
+		if start.Name.Space == namespaceSOAP && start.Name.Local == "Body" {
+			bodyDepth = depth
+			continue
+		}
+		if bodyDepth > 0 && depth == bodyDepth+1 {
+			if request.BodyOperation != "" {
+				return SOAPRequest{}, errors.New("duplicate SOAP body operation")
+			}
+			request.BodyOperation = start.Name.Local
+			request.BodyNamespace = start.Name.Space
+		}
 		var destination *string
 		switch start.Name.Local {
-		case "Enumerate", "Pull":
-			if request.BodyOperation != "" {
-				return SOAPRequest{}, errors.New("duplicate SOAP body operation")
-			}
-			if start.Name.Space != namespaceEnum {
-				return SOAPRequest{}, fmt.Errorf("invalid namespace for SOAP body operation %s", start.Name.Local)
-			}
-			request.BodyOperation = start.Name.Local
-		case "Command", "Create", "Invoke":
-			if request.BodyOperation != "" {
-				return SOAPRequest{}, errors.New("duplicate SOAP body operation")
-			}
-			request.BodyOperation = start.Name.Local
 		case "Action":
 			if start.Name.Space != namespaceAddress {
 				return SOAPRequest{}, errors.New("invalid namespace for SOAP action")
@@ -88,21 +108,85 @@ func ParseSOAPRequest(data []byte) (SOAPRequest, error) {
 				return SOAPRequest{}, errors.New("invalid namespace for enumeration context")
 			}
 			destination = &request.EnumerationContext
+		case "Selector":
+			if start.Name.Space != namespaceWSMan {
+				return SOAPRequest{}, errors.New("invalid namespace for SOAP selector")
+			}
+			name := attribute(start, "Name")
+			if !strings.EqualFold(name, "ShellId") {
+				return SOAPRequest{}, fmt.Errorf("unsupported SOAP selector %q", name)
+			}
+			destination = &request.ShellID
+		case "Option":
+			if start.Name.Space != namespaceWSMan {
+				return SOAPRequest{}, errors.New("invalid namespace for SOAP option")
+			}
+			name := strings.TrimSpace(attribute(start, "Name"))
+			_, duplicate := request.Options[name]
+			if name == "" || duplicate {
+				return SOAPRequest{}, fmt.Errorf("invalid or duplicate SOAP option %q", name)
+			}
+			var value string
+			if err := decoder.DecodeElement(&value, &start); err != nil {
+				return SOAPRequest{}, fmt.Errorf("decode SOAP option: %w", err)
+			}
+			depth--
+			request.Options[name] = strings.TrimSpace(value)
+			continue
+		case "Command":
+			if start.Name.Space == namespaceShell {
+				destination = &request.Command
+			}
+		case "Arguments":
+			if start.Name.Space == namespaceShell {
+				var value string
+				if err := decoder.DecodeElement(&value, &start); err != nil {
+					return SOAPRequest{}, fmt.Errorf("decode SOAP argument: %w", err)
+				}
+				depth--
+				request.Arguments = append(request.Arguments, strings.TrimSpace(value))
+				continue
+			}
+		case "DesiredStream":
+			if start.Name.Space == namespaceShell {
+				request.CommandID = strings.TrimSpace(attribute(start, "CommandId"))
+				destination = &request.DesiredStream
+			}
+		case "InputStreams":
+			if start.Name.Space == namespaceShell {
+				destination = &request.InputStreams
+			}
+		case "OutputStreams":
+			if start.Name.Space == namespaceShell {
+				destination = &request.OutputStreams
+			}
 		}
 		if destination != nil {
-			if *destination != "" {
+			fieldKey := start.Name.Space + "\x00" + start.Name.Local
+			if seenFields[fieldKey] {
 				return SOAPRequest{}, fmt.Errorf("duplicate SOAP field %s", start.Name.Local)
 			}
+			seenFields[fieldKey] = true
 			if err := decoder.DecodeElement(destination, &start); err != nil {
 				return SOAPRequest{}, fmt.Errorf("decode SOAP %s: %w", start.Name.Local, err)
 			}
+			depth--
 			*destination = strings.TrimSpace(*destination)
 		}
 	}
-	if request.Action == "" || request.ResourceURI == "" || request.BodyOperation == "" {
-		return SOAPRequest{}, errors.New("SOAP action, resource URI, and body operation are required")
+	if request.Action == "" || request.ResourceURI == "" {
+		return SOAPRequest{}, errors.New("SOAP action and resource URI are required")
 	}
 	return request, nil
+}
+
+func attribute(start xml.StartElement, name string) string {
+	for _, value := range start.Attr {
+		if value.Name.Local == name {
+			return value.Value
+		}
+	}
+	return ""
 }
 
 type enumerationPage struct {
@@ -126,7 +210,7 @@ func enumerateEnvelope(endpoint string, operation Operation, timeout time.Durati
 		body.WriteString(`</w:Filter>`)
 	}
 	body.WriteString(`</n:Enumerate>`)
-	return soapEnvelope(endpoint, ActionEnumerate, operation.ResourceURI, timeout, body.String())
+	return soapEnvelope(endpoint, ActionEnumerate, operation.ResourceURI, timeout, "", body.String())
 }
 
 func pullEnvelope(endpoint string, operation Operation, context string, timeout time.Duration) []byte {
@@ -134,17 +218,17 @@ func pullEnvelope(endpoint string, operation Operation, context string, timeout 
 	body.WriteString(`<n:Pull><n:EnumerationContext>`)
 	writeEscaped(&body, context)
 	body.WriteString(`</n:EnumerationContext><n:MaxElements>128</n:MaxElements></n:Pull>`)
-	return soapEnvelope(endpoint, ActionPull, operation.ResourceURI, timeout, body.String())
+	return soapEnvelope(endpoint, ActionPull, operation.ResourceURI, timeout, "", body.String())
 }
 
-func soapEnvelope(endpoint, action, resourceURI string, timeout time.Duration, body string) []byte {
+func soapEnvelope(endpoint, action, resourceURI string, timeout time.Duration, header, body string) []byte {
 	seconds := int64((timeout + time.Second - 1) / time.Second)
 	if seconds < 1 {
 		seconds = 1
 	}
 	var envelope strings.Builder
 	envelope.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`)
-	envelope.WriteString(`<s:Envelope xmlns:s="` + namespaceSOAP + `" xmlns:a="` + namespaceAddress + `" xmlns:w="` + namespaceWSMan + `" xmlns:n="` + namespaceEnum + `"><s:Header>`)
+	envelope.WriteString(`<s:Envelope xmlns:s="` + namespaceSOAP + `" xmlns:a="` + namespaceAddress + `" xmlns:w="` + namespaceWSMan + `" xmlns:n="` + namespaceEnum + `" xmlns:t="` + namespaceTransfer + `" xmlns:r="` + namespaceShell + `"><s:Header>`)
 	envelope.WriteString(`<a:To s:mustUnderstand="true">`)
 	writeEscaped(&envelope, endpoint)
 	envelope.WriteString(`</a:To><w:ResourceURI s:mustUnderstand="true">`)
@@ -153,7 +237,9 @@ func soapEnvelope(endpoint, action, resourceURI string, timeout time.Duration, b
 	writeEscaped(&envelope, action)
 	envelope.WriteString(`</a:Action><w:MaxEnvelopeSize s:mustUnderstand="true">4194304</w:MaxEnvelopeSize><a:MessageID>uuid:` + messageID() + `</a:MessageID><w:OperationTimeout>PT`)
 	envelope.WriteString(fmt.Sprintf("%dS", seconds))
-	envelope.WriteString(`</w:OperationTimeout></s:Header><s:Body>`)
+	envelope.WriteString(`</w:OperationTimeout>`)
+	envelope.WriteString(header)
+	envelope.WriteString(`</s:Header><s:Body>`)
 	envelope.WriteString(body)
 	envelope.WriteString(`</s:Body></s:Envelope>`)
 	return []byte(envelope.String())
