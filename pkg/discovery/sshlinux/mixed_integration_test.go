@@ -22,6 +22,10 @@ func TestDiscoverMixedFiveHundredLinuxAndWindowsHostsTwice(t *testing.T) {
 	estate := makeEstate(t, lab.DefaultScenario(1000, 50, 84))
 	sshServer := makeServer(t, estate)
 	sshPlugin := pluginForServer(sshServer)
+	// Race instrumentation plus coverage substantially slows 1,000 concurrent
+	// protocol targets on shared CI runners. Keep the gate bounded while giving
+	// each fixed SSH inventory command the same budget as a WinRM operation.
+	sshPlugin.Config.CommandTimeout = 10 * time.Second
 	winrmPlugin := winrm.Plugin{Config: winrm.Config{
 		Username:         lab.LabWinRMUsername,
 		Password:         lab.LabWinRMPassword,
