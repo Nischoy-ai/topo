@@ -82,4 +82,4 @@ Topo uses the narrowly scoped [Azure NTLMSSP implementation](https://github.com/
 
 ## Current limitations and next slice
 
-This slice collects only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. Kerberos and certificate authentication, sanitized Windows Server fixtures, the mixed 500-Linux/500-Windows acceptance test, and broader real-host compatibility validation remain open. Treat NTLMv2 as a narrowly scoped pilot transport, not completion of the Windows milestone.
+This slice collects only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, sanitized Windows Server 2022 plus one other supported-release fixture set, and broader real-host compatibility validation remain open. Treat NTLMv2 as a narrowly scoped pilot transport, not completion of the Windows milestone.

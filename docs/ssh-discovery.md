@@ -65,7 +65,7 @@ The automated acceptance suite scans 500 Linux personas twice through 1,000 SSH 
 
 ## Alpha limitations
 
-- Linux only; Windows WinRM discovery is the next host-protocol milestone.
+- Linux collection remains a separate plugin, but the repeated mixed-estate gate now runs it concurrently with Windows WinRM discovery and verifies shared identity resolution without duplicates.
 - No bastion/proxy-jump support yet.
 - No encrypted private-key passphrases, SSH certificates, or external secret-provider adapter yet.
 - No target CIDR expansion; inventory targets must be explicitly supplied.
