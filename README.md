@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded `env:`/`file:`/`vault:`/`k8s:` credential references; an authenticated controller ingestion API; an outbound-only Topo Agent MVP with encrypted offline buffering, a hardened Linux systemd unit, and Windows Service Control Manager integration; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and a ServiceNow IRE publisher whose outbound payload is validated duplicate-free and idempotent across repeated Topo Lab scans. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, real-Windows verification of the agent's service wrapper, validation of ServiceNow's own reconciliation behavior against a real instance, SNMP, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded `env:`/`file:`/`vault:`/`k8s:` credential references; an authenticated controller ingestion API with an opt-in certificate authority for collector enrollment; an outbound-only Topo Agent MVP with encrypted offline buffering, a hardened Linux systemd unit, and Windows Service Control Manager integration; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and a ServiceNow IRE publisher whose outbound payload is validated duplicate-free and idempotent across repeated Topo Lab scans. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, real-Windows verification of the agent's service wrapper, validation of ServiceNow's own reconciliation behavior against a real instance, outbound mTLS/certificate rotation/heartbeats/job delivery, SNMP, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, and fleet scheduling remain subsequent work rather than being represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -81,6 +81,19 @@ TOPO_AGENT_API_KEY='replace-with-a-long-random-value' \
 See [Topo Agent](docs/topo-agent.md) for the spool encryption, delivery
 retry semantics, and current limitations.
 
+Enroll a collector with its own certificate instead of sharing the
+controller's bearer API key:
+
+```sh
+./bin/topo serve -api-key-ref env:TOPO_API_KEY -ca-dir /var/lib/topo-hub/ca
+curl -s -X POST -H "Authorization: Bearer $TOPO_API_KEY" http://localhost:8080/v1/enrollment-tokens
+TOPO_AGENT_ENROLLMENT_TOKEN='<token from above>' ./bin/topo agent enroll \
+  -controller-url http://localhost:8080 -cert-dir /etc/topo-agent/enrollment
+```
+
+See [Collector enrollment](docs/enrollment.md); the issued certificate is
+not yet used for live traffic — that is the next slice of that milestone.
+
 Submit an observation produced by the CLI:
 
 ```sh
@@ -124,8 +137,9 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are resolved through bounded `env:`, `file:`, `vault:`, or `k8s:` references and never serialized into observations, CLI arguments, or logs.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
+- Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 
-The current API-key transport is suitable for local evaluation only. Do not expose the controller to an untrusted network until collector enrollment, mTLS, certificate rotation, audit logging, and a persistent secret provider are implemented; the controller does not yet terminate TLS natively, so production deployments need a TLS-terminating reverse proxy in front of it. See [SECURITY.md](SECURITY.md).
+The current API-key transport is suitable for local evaluation only. Do not expose the controller to an untrusted network until outbound mTLS (wiring the enrolled certificate into live traffic), certificate rotation, audit logging, and a persistent secret provider are implemented; the controller does not yet terminate TLS natively, so production deployments need a TLS-terminating reverse proxy in front of it. See [SECURITY.md](SECURITY.md).
 
 ## Project status
 

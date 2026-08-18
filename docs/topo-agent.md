@@ -147,10 +147,12 @@ the same posture this project already takes with WinRM real-host fixtures.
 
 ## Current limitations
 
-- **No collector enrollment or mTLS.** The agent authenticates with the same
-  static bearer API key `topo serve` accepts today; per-device enrollment,
-  short-lived certificates, and rotation/revocation are a later, separately
-  scoped roadmap item.
+- **No outbound mTLS yet.** The agent still authenticates with the same
+  static bearer API key `topo serve` accepts. Collector enrollment now
+  exists (`topo agent enroll`, see [Collector enrollment](enrollment.md))
+  and issues a per-collector certificate, but wiring that certificate into
+  `agent run`'s live traffic, plus certificate rotation, are later slices
+  of the same milestone.
 - **No native controller TLS termination.** The controller does not
   terminate TLS itself yet; place a TLS-terminating reverse proxy in front
   of it for any deployment beyond local evaluation, the same guidance that

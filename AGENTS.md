@@ -78,9 +78,28 @@ behavior and IRE response schema remain unverified: there is no ServiceNow
 instance available to this project, so do not represent that half as
 validated.
 
-The current follow-on milestone is collector enrollment, outbound mTLS,
-certificate rotation, heartbeats, and job delivery, per the follow-on order
-in `docs/project-plan.md`.
+The current milestone is collector enrollment, outbound mTLS, certificate
+rotation, heartbeats, and job delivery — five distinct capabilities,
+deliberately staged as separate slices:
+
+1. **Done.** Collector enrollment: the controller is its own certificate
+   authority (`internal/enrollment`, `-ca-dir`), issuing short-lived
+   client certificates through a single-use, time-bounded token
+   (`POST /v1/enrollment-tokens`, `POST /v1/enroll`, `topo agent enroll`).
+   The collector's private key is generated locally and never transmitted.
+   Opt-in and additive: `topo serve` without `-ca-dir` is unchanged. See
+   `docs/enrollment.md`.
+2. Outbound mTLS: give `topo serve` a native TLS listener that verifies
+   enrolled client certificates, and give the agent a way to present its
+   enrolled certificate on outbound requests. This is the next slice.
+3. Certificate rotation (renew before expiry, authenticated by the current
+   certificate rather than a new enrollment token).
+4. Heartbeats (liveness/status distinct from observation delivery).
+5. Job delivery, necessarily collector-initiated polling since the agent
+   remains outbound-only.
+
+The complete scope and acceptance gates for slice 1, and the plan for
+slices 2-5, are in `docs/project-plan.md`.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

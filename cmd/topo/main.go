@@ -22,6 +22,7 @@ import (
 
 	"github.com/Nischoy-ai/topo/internal/agent"
 	"github.com/Nischoy-ai/topo/internal/controller"
+	"github.com/Nischoy-ai/topo/internal/enrollment"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
@@ -383,6 +384,7 @@ func serve(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	addr := fs.String("addr", env("TOPO_ADDR", ":8080"), "listen address")
 	apiKeyRef := fs.String("api-key-ref", "", "credential reference for the controller API key (env: or file:)")
+	caDir := fs.String("ca-dir", "", "absolute path to persist the collector enrollment CA; enables POST /v1/enrollment-tokens and POST /v1/enroll when set")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -394,7 +396,16 @@ func serve(args []string) error {
 		return errors.New("controller API key exceeds 4096 bytes")
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	srv := &http.Server{Addr: *addr, Handler: controller.New(store.NewMemory(), logger, string(apiKey)).Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
+	controllerServer := controller.New(store.NewMemory(), logger, string(apiKey))
+	if *caDir != "" {
+		ca, caErr := enrollment.LoadOrCreateCA(*caDir)
+		if caErr != nil {
+			return fmt.Errorf("load or create enrollment CA: %w", caErr)
+		}
+		controllerServer.CA = ca
+		controllerServer.Tokens = enrollment.NewTokenStore()
+	}
+	srv := &http.Server{Addr: *addr, Handler: controllerServer.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go func() {
@@ -403,7 +414,7 @@ func serve(args []string) error {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	logger.Info("controller listening", "address", *addr, "auth_enabled", len(apiKey) != 0)
+	logger.Info("controller listening", "address", *addr, "auth_enabled", len(apiKey) != 0, "enrollment_enabled", controllerServer.CA != nil)
 	err = srv.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -413,7 +424,7 @@ func serve(args []string) error {
 
 func runAgent(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo agent <run|install|uninstall>")
+		return errors.New("usage: topo agent <run|install|uninstall|enroll>")
 	}
 	switch args[0] {
 	case "run":
@@ -422,8 +433,10 @@ func runAgent(args []string) error {
 		return agentInstall(args[1:])
 	case "uninstall":
 		return agentUninstall(args[1:])
+	case "enroll":
+		return agentEnroll(args[1:])
 	default:
-		return errors.New("usage: topo agent <run|install|uninstall>")
+		return errors.New("usage: topo agent <run|install|uninstall|enroll>")
 	}
 }
 
@@ -556,6 +569,66 @@ func agentUninstall(args []string) error {
 		return err
 	}
 	fmt.Printf("Topo Agent service %q uninstalled.\n", windowsServiceName)
+	return nil
+}
+
+func agentEnroll(args []string) error {
+	fs := flag.NewFlagSet("agent enroll", flag.ContinueOnError)
+	controllerURL := fs.String("controller-url", env("TOPO_AGENT_CONTROLLER_URL", ""), "Topo Hub controller base URL (http:// or https://)")
+	tokenRef := fs.String("token-ref", "", "credential reference for the one-time enrollment token (env:, file:, vault:, or k8s:)")
+	certDir := fs.String("cert-dir", "", "absolute path to store the issued certificate, private key, and CA certificate")
+	collector := fs.String("collector-id", "", "collector ID to request in the certificate; defaults to the local hostname")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *controllerURL == "" {
+		return errors.New("-controller-url is required")
+	}
+	if *certDir == "" {
+		return errors.New("-cert-dir is required")
+	}
+	if !filepath.IsAbs(*certDir) {
+		return errors.New("-cert-dir must be an absolute path")
+	}
+
+	token, err := resolveCredential(*tokenRef, "", "TOPO_AGENT_ENROLLMENT_TOKEN", false)
+	if err != nil {
+		return fmt.Errorf("resolve enrollment token: %w", err)
+	}
+
+	collectorID := *collector
+	if collectorID == "" {
+		if hostname, hostErr := os.Hostname(); hostErr == nil {
+			collectorID = hostname
+		} else {
+			collectorID = "topo-agent"
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	result, err := enrollment.Enroll(ctx, *controllerURL, string(token), collectorID)
+	if err != nil {
+		return fmt.Errorf("enroll: %w", err)
+	}
+
+	if err := os.MkdirAll(*certDir, 0o700); err != nil {
+		return fmt.Errorf("create cert directory: %w", err)
+	}
+	if err := os.Chmod(*certDir, 0o700); err != nil {
+		return fmt.Errorf("restrict cert directory permissions: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(*certDir, "client-cert.pem"), result.CertificatePEM, 0o644); err != nil {
+		return fmt.Errorf("write client certificate: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(*certDir, "client-key.pem"), result.PrivateKeyPEM, 0o600); err != nil {
+		return fmt.Errorf("write client private key: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(*certDir, "ca-cert.pem"), result.CACertificatePEM, 0o644); err != nil {
+		return fmt.Errorf("write CA certificate: %w", err)
+	}
+
+	fmt.Printf("Enrolled collector %q; certificate expires %s. Certificate, key, and CA certificate written to %s\n", collectorID, result.ExpiresAt.Format(time.RFC3339), *certDir)
 	return nil
 }
 

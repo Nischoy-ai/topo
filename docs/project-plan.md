@@ -8,13 +8,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-18
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** ServiceNow IRE duplicate-CI validation, for the half of it Topo controls. `mapPayload` (`pkg/publisher/servicenow/servicenow.go`) now deduplicates by `source_native_key` (last observation wins) and by relationship `(type, from, to)` even across multiple input envelopes in one batch — previously, an asset appearing twice in the input produced two IRE items with the same `source_native_key`. `TestMapPayloadIsIdempotentAcrossRepeatedLabScans` runs a Topo Lab estate through discovery twice (the same two-scan pattern the SSH/WinRM acceptance gates use) and asserts the mapped `(source_native_key, className)` set is identical both times; `TestPublishBatchSendsIdempotentRequestsAcrossRepeatedLabScans` asserts the same at the wire level against a fake IRE endpoint. `PublishBatch` also now captures the (bounded) response body in `Diagnostics` for operator review. **This is deliberately scoped to what Topo itself controls**: there is no ServiceNow instance available to this project, so ServiceNow's own identification/reconciliation behavior and its IRE response schema are neither exercised nor assumed — see `docs/servicenow.md` for the explicit boundary. This closes the ServiceNow IRE duplicate-CI validation milestone within that scope.
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/12> (systemd/Windows-service wrapping, the prior slice); this ServiceNow slice is <https://github.com/Nischoy-ai/topo/pull/13>
-- **Merged commit:** `a628a8a` (merge of the systemd/Windows-service wrapping into `main`; update after this slice merges)
-- **Current milestone (next):** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery, per the follow-on order below.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. `pkg/publisher/servicenow` coverage rose from 39.7% to 78.4%. New tests cover: within-batch dedup for both items (last-observation-wins) and relationships; response-body diagnostics capture; cross-scan idempotency of `mapPayload` output against a real two-scan Topo Lab estate; and cross-scan idempotency of the actual `PublishBatch` HTTP requests (method, path, auth header, and source keys) against a fake IRE endpoint (`httptest.NewTLSServer`, since `Validate` requires HTTPS).
-- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and now also validation of ServiceNow's own IRE identification/reconciliation behavior and response schema against a real or sandboxed instance. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system. These gates remain open before claiming real-host Windows compatibility, ServiceNow production readiness, or general production readiness.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against.
+- **Latest completed slice:** Collector enrollment (slice 1 of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). New `internal/enrollment` package: the controller is its own certificate authority (ECDSA P-256, self-signed, persisted to `-ca-dir` with the private key protected by filesystem permissions, not a second application-level encryption layer — matching how every other private key in this project, SSH/TLS, is handled). `POST /v1/enrollment-tokens` (existing bearer-key auth) mints a single-use, one-hour token; `POST /v1/enroll` validates a submitted CSR's self-signature *before* redeeming the token (so a malformed request never burns a valid token), then issues a 90-day client-auth certificate plus the CA certificate. The collector's private key is generated locally by `topo agent enroll` and never transmitted. Enrollment is fully opt-in: `topo serve` without `-ca-dir` is unchanged, and the two new endpoints return 501 when not configured. Verified with unit tests, a controller-side end-to-end test using the real `enrollment.Enroll` HTTP client (not just hand-built requests), and a manual run against a live `topo serve` cross-checked with `openssl x509`/`openssl verify` (independent of Go's own `crypto/x509`).
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/13> (ServiceNow IRE duplicate-CI validation, the prior milestone); this enrollment slice is <https://github.com/Nischoy-ai/topo/pull/14>
+- **Merged commit:** `7e84661` (merge of the ServiceNow duplicate-CI validation into `main`; update after this slice merges)
+- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery (see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below). Slice 1 (enrollment) is implemented; slice 2 (wiring the enrolled certificate into live mTLS transport) is next.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: CA generate/persist/reload round-trip, CSR signature verification (including tampered-signature rejection), issued-certificate verification against the CA with the correct subject/EKU, token single-use/expiry/concurrency semantics, the full `POST /v1/enrollment-tokens` → `POST /v1/enroll` HTTP flow including that a malformed CSR does not burn the token, enrollment-disabled-by-default (501), and an end-to-end test driving the real `enrollment.Enroll` client against a real controller handler. Also manually verified the full CLI flow (`topo serve -ca-dir`, mint token via curl, `topo agent enroll`) with `openssl x509 -noout -subject -issuer -dates -ext extendedKeyUsage` and `openssl verify -CAfile`.
+- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and validation of ServiceNow's own IRE identification/reconciliation behavior and response schema against a real or sandboxed instance. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system. These gates remain open before claiming real-host Windows compatibility, ServiceNow production readiness, or general production readiness.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment slice; a compromised collector key is contained by the bounded 90-day certificate TTL only.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -322,6 +322,85 @@ correct, not ServiceNow's.
   are identical in method, path, auth header, and source keys.
 - `gofmt`, `go vet ./...`, `go test -race ./...`, and the production build
   pass, matching every other milestone in this project.
+
+## Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs
+
+### Objective
+
+Move the controller from a single shared bearer API key toward per-collector
+identity: each collector proves itself once via a short-lived enrollment
+token and receives its own client certificate, which becomes the basis for
+mutually authenticated transport, liveness tracking, and eventually
+controller-assigned work. This roadmap line names five distinct
+capabilities; it is deliberately staged as multiple slices rather than one
+PR, matching every other multi-part milestone in this project.
+
+### Slices
+
+1. **Done.** Collector enrollment: the controller becomes its own
+   certificate authority (`internal/enrollment`, ECDSA P-256, self-signed,
+   persisted to `-ca-dir` with the private key protected by filesystem
+   permissions like every other private key in this project, not a second
+   application-level encryption layer). An admin mints a single-use,
+   time-bounded enrollment token via `POST /v1/enrollment-tokens` (existing
+   bearer-key auth). A collector generates its own key pair locally — the
+   private key is never transmitted, only the certificate signing request
+   (CSR) — and submits it with the token to `POST /v1/enroll`, which
+   validates the CSR's self-signature before redeeming the token (so a
+   malformed request never burns a valid token), then issues a
+   short-lived (90-day) client-auth certificate plus the CA certificate.
+   `topo agent enroll` is the collector-side CLI command. Enrollment is
+   opt-in: `topo serve` without `-ca-dir` behaves exactly as before, and
+   `/v1/enrollment-tokens`/`/v1/enroll` return 501 when not configured.
+2. Outbound mTLS: wire the enrolled certificate into live traffic. The
+   controller gains a native TLS listener (today `topo serve` is plain HTTP
+   behind an operator-provided reverse proxy) that verifies client
+   certificates against its CA, and `topo agent run`/`internal/agent.Sender`
+   gains a way to present the enrolled certificate instead of, or alongside,
+   the bearer API key.
+3. Certificate rotation: renew a collector's certificate before it expires,
+   authenticated by the current still-valid certificate rather than a new
+   enrollment token.
+4. Heartbeats: a lightweight liveness/status endpoint distinct from
+   observation delivery, so the Hub can tell a collector is alive between
+   scans.
+5. Job delivery: since Topo Agent is deliberately outbound-only (it never
+   accepts inbound connections), this must be collector-initiated polling
+   (for example, `GET /v1/jobs`) rather than a server push.
+
+### Deliberate non-goals for slice 1
+
+- No certificate revocation. A compromised collector key is contained by
+  the bounded 90-day certificate TTL, not by a revocation list; rotation
+  (slice 3) will need to consider revocation on renewal if that turns out
+  to be insufficient.
+- No persistent CA/token storage beyond the CA key/cert files themselves:
+  the token store is in-memory, matching every other piece of controller
+  state today, so an in-flight enrollment must be retried with a freshly
+  minted token after a controller restart.
+- No change to existing bearer-key authenticated behavior; enrollment is
+  purely additive and opt-in via `-ca-dir`.
+- No live mTLS transport yet (slice 2) — this slice proves the enrollment
+  primitive (token → CSR → signed, CA-verifiable certificate) independent
+  of how it will later be used for live authentication.
+
+### Acceptance gates (slice 1)
+
+- A minted enrollment token can be redeemed exactly once; a second
+  redemption attempt fails with the same error as an unknown or expired
+  token.
+- A structurally invalid CSR is rejected without consuming the token, so a
+  malformed request can be retried with the same token.
+- An issued certificate verifies against the CA certificate returned in the
+  same response, has the requested collector ID as its subject common name,
+  and carries the TLS client-authentication extended key usage.
+- An end-to-end test exercises the real HTTP client
+  (`enrollment.Enroll`) against a real controller handler, not just
+  hand-built requests, and was additionally verified manually with
+  `openssl x509`/`openssl verify` against a running `topo serve` and
+  `topo agent enroll`, independent of Go's own `crypto/x509` implementation.
+- `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
+  ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
 
 ## Follow-on order
 
