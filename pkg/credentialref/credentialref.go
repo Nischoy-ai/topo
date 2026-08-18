@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/Nischoy-ai/topo/pkg/credentialref/kubernetes"
 	"github.com/Nischoy-ai/topo/pkg/credentialref/vault"
 )
 
@@ -24,6 +25,11 @@ const (
 	// connection and read time. It is a hard backstop outside the Vault
 	// client's own per-request timeout.
 	vaultResolveTimeout = 20 * time.Second
+
+	// kubernetesResolveTimeout bounds a k8s: reference resolution, including
+	// connection and read time. It is a hard backstop outside the
+	// Kubernetes client's own per-request timeout.
+	kubernetesResolveTimeout = 20 * time.Second
 )
 
 // ErrUnavailable indicates that a referenced credential is not present.
@@ -51,6 +57,8 @@ func Resolve(reference string) ([]byte, error) {
 		return resolveFile(location)
 	case "vault":
 		return resolveVault(location)
+	case "k8s":
+		return resolveKubernetes(location)
 	default:
 		return nil, fmt.Errorf("unsupported credential reference provider %q", kind)
 	}
@@ -141,6 +149,49 @@ func resolveVault(location string) ([]byte, error) {
 	}
 	if len(value) > maxCredentialBytes {
 		return nil, fmt.Errorf("credential from vault secret %q field %q exceeds 1048576 bytes", path, field)
+	}
+	return value, nil
+}
+
+// resolveKubernetes reads a k8s:[<namespace>/]<secret-name>#<field>
+// reference from the Kubernetes API server. Connection settings, including
+// the bearer token, come from the pod's own service account so a token is
+// never accepted as part of the reference or as a CLI argument; RBAC on
+// that service account, not this function, decides which secrets it may
+// read.
+func resolveKubernetes(location string) ([]byte, error) {
+	pathPart, field, ok := strings.Cut(location, "#")
+	if !ok || pathPart == "" || field == "" {
+		return nil, errors.New("kubernetes credential reference must use k8s:[<namespace>/]<secret-name>#<field>")
+	}
+	namespace, name := "", pathPart
+	if ns, rest, found := strings.Cut(pathPart, "/"); found {
+		namespace, name = ns, rest
+	}
+	if name == "" {
+		return nil, errors.New("kubernetes credential reference must use k8s:[<namespace>/]<secret-name>#<field>")
+	}
+
+	config, err := kubernetes.ConfigFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("kubernetes credential reference: %w", err)
+	}
+	client, err := kubernetes.NewClient(config)
+	if err != nil {
+		return nil, fmt.Errorf("kubernetes credential reference: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), kubernetesResolveTimeout)
+	defer cancel()
+	value, err := client.Resolve(ctx, namespace, name, field)
+	if err != nil {
+		if errors.Is(err, kubernetes.ErrUnavailable) {
+			return nil, fmt.Errorf("%w: %s", ErrUnavailable, err.Error())
+		}
+		return nil, err
+	}
+	if len(value) > maxCredentialBytes {
+		return nil, fmt.Errorf("credential from kubernetes secret %q field %q exceeds 1048576 bytes", name, field)
 	}
 	return value, nil
 }

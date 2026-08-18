@@ -44,7 +44,7 @@ TOPO_WINRM_PASSWORD=topo-lab ./bin/topo discover winrm \
   -lab-basic
 ```
 
-The target file contains one endpoint URL per line. Blank lines and lines beginning with `#` are ignored. The password resolves from `env:TOPO_WINRM_PASSWORD` by default. `-password-ref env:NAME`, `-password-ref file:/absolute/path`, or `-password-ref vault:<path>#<field>` selects another source; there is no password value flag. See [credential references](credential-references.md) for the full provider list. The older `-password-env` flag remains a deprecated compatibility alias and cannot be combined with `-password-ref`.
+The target file contains one endpoint URL per line. Blank lines and lines beginning with `#` are ignored. The password resolves from `env:TOPO_WINRM_PASSWORD` by default. `-password-ref env:NAME`, `-password-ref file:/absolute/path`, `-password-ref vault:<path>#<field>`, or `-password-ref k8s:[<namespace>/]<secret-name>#<field>` selects another source; there is no password value flag. See [credential references](credential-references.md) for the full provider list. The older `-password-env` flag remains a deprecated compatibility alias and cannot be combined with `-password-ref`.
 
 `-lab-basic` is deliberately required. In this mode every target must resolve syntactically to `localhost` or a loopback IP, and the Lab server itself refuses a non-loopback listen address. Do not proxy this endpoint to another network.
 

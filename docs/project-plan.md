@@ -8,14 +8,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-18
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** `vault:<path>#<field>` credential-reference provider backed by a HashiCorp Vault KV version 2 client (`pkg/credentialref/vault`), wired into the existing resolver so it is usable anywhere `env:`/`file:` already work (controller API key, SSH password/private key, WinRM password). Connection settings come from standard `VAULT_ADDR`/`VAULT_TOKEN`/`VAULT_TOKEN_FILE`/`VAULT_NAMESPACE`/`VAULT_MOUNT`/`VAULT_CACERT` environment variables, never a CLI argument. The client verifies Vault's TLS identity by default and exposes `LookupSelf`/`RenewSelf` for token lease renewal, though Topo does not call these automatically yet because credentials are resolved once at process startup.
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/9>
-- **Merged commit:** `5b23c210` (merge of `claude/next-repo-work-g2ihni` into `main`)
-- **Current milestone:** Credential references and external secret providers
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass. Vault client tests (`pkg/credentialref/vault`) use `httptest` to cover successful KV v2 reads, missing secret/field/destroyed-version handling as `ErrUnavailable`, permission-denied errors that do not leak secret bytes, response-size bounds, context cancellation, token lookup/renewal, and environment-driven configuration including conflicting/invalid inputs. `credentialref` tests cover the new `vault:` reference end-to-end via a mock server and confirm missing `VAULT_ADDR` fails clearly. CI (`test` check) passed on PR #9 before merge.
-- **Next slice:** Implement an explicit Kubernetes Secret provider adapter (namespace/service-account scoping, bounded reads, cancellation, redacted API errors). A Kubernetes Secret mounted as a file can use the existing `file:` provider, but that is not a native Kubernetes API adapter. This completes the credential-provider milestone.
+- **Latest completed slice:** `k8s:[<namespace>/]<secret-name>#<field>` credential-reference provider backed by a Kubernetes API client (`pkg/credentialref/kubernetes`), wired into the existing resolver alongside `env:`/`file:`/`vault:`. Authenticates in-cluster using the pod's own projected service account token (re-read on every request, so kubelet-rotated tokens need no renewal logic) and the cluster CA; `TOPO_KUBERNETES_API_SERVER`/`TOPO_KUBERNETES_TOKEN_FILE`/`TOPO_KUBERNETES_CA_FILE`/`TOPO_KUBERNETES_NAMESPACE` override the defaults for out-of-cluster or non-default deployments. Least-privilege scoping is delegated entirely to Kubernetes RBAC on the calling service account (documented `Role`/`RoleBinding` example scoped to named Secrets, `get` only). **This completes the credential-references milestone**: `env:`, `file:`, `vault:`, and `k8s:` are all implemented and adopted by the controller API key, SSH password/private key, and WinRM password paths, with no CLI changes required per provider.
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/9> (Vault adapter; this Kubernetes slice pushed to `claude/next-repo-work-g2ihni`, PR pending)
+- **Merged commit:** `5b23c210` (merge of the Vault adapter into `main`; update after this slice merges)
+- **Current milestone (next):** Outbound-only Topo Agent MVP for Linux and Windows with encrypted offline buffering, per the follow-on order below.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass. Kubernetes client tests (`pkg/credentialref/kubernetes`) use `httptest` to cover successful reads (default and explicit namespace), missing secret/field as `ErrUnavailable`, permission-denied errors that do not leak secret bytes, invalid base64 rejection, response-size bounds, context cancellation, token re-read/rotation, and environment-driven configuration (in-cluster defaults vs. explicit overrides, including the CA-file default only applying in true in-cluster mode). `credentialref` tests cover the new `k8s:` reference end-to-end via a mock server, both default and explicit namespace forms, and confirm missing `KUBERNETES_SERVICE_HOST` fails clearly.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release. Do not fabricate this evidence from Topo Lab; obtain it from controlled real hosts and review it for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. This gate remains open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups rather than part of this milestone.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups rather than part of any current milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -160,7 +159,7 @@ The implementation, fault coverage, and simulated scale/identity gates above
 are complete. The real-host fixture gate is explicitly deferred and remains
 open; therefore Topo does not yet claim real-host Windows compatibility.
 
-## Current milestone: credential references and external secret providers
+## Completed milestone: credential references and external secret providers
 
 ### Objective
 
@@ -177,29 +176,34 @@ giving every credential consumer one provider-neutral, bounded input contract.
    lease lookup/renewal support, cancellation, and redacted provider errors.
    Automatic background renewal for long-running processes and leased
    dynamic-secrets engines beyond token renewal remain deferred.
-3. Kubernetes Secret provider adapter with namespace/service-account scoping,
-   bounded reads, cancellation, and redacted API errors.
+3. **Done.** Kubernetes Secret provider adapter
+   (`k8s:[<namespace>/]<secret-name>#<field>`) authenticating with the pod's
+   own service account, with namespace scoping (defaulting to the pod's own
+   namespace, overridable per reference), bounded reads, cancellation, and
+   redacted API errors. Least-privilege scoping is enforced by Kubernetes
+   RBAC on that service account, not by Topo itself; the documentation
+   includes a least-privilege `Role`/`RoleBinding` example.
 
-The first slice does not claim native Vault or Kubernetes API integration.
+All three slices are implemented; none of them claims a full-featured native
+Vault or Kubernetes client (for example, KV version 1, dynamic Vault secrets
+engines beyond token renewal, and Kubernetes Secret watch/list are all out of
+scope), only the bounded read-one-field contract this milestone needs.
 
 ## Follow-on order
 
-Following the implemented Windows slices, pursue these slices in order unless
-evidence from an enterprise pilot changes the priority:
+With the credential-provider milestone complete, pursue these slices in
+order unless evidence from an enterprise pilot changes the priority:
 
-1. Complete the credential-provider milestone: shared `env:`/`file:`
-   references and the Vault adapter are merged/implemented; add the
-   Kubernetes Secret adapter next.
-2. Outbound-only Topo Agent MVP for Linux and Windows with encrypted buffering.
-3. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
-4. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
+1. Outbound-only Topo Agent MVP for Linux and Windows with encrypted buffering.
+2. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
+3. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
    job delivery.
-5. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
+4. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
    this point rather than assuming it is mandatory.
-6. SNMPv3/network topology and VMware vCenter discovery.
-7. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
+5. SNMPv3/network topology and VMware vCenter discovery.
+6. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
    security testing.
-8. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
+7. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
    gates leading toward Topo Graph.
 
 ## Definition of milestone completion

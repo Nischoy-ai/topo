@@ -1,6 +1,7 @@
 package credentialref
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -33,6 +34,92 @@ func TestResolveFile(t *testing.T) {
 	}
 	if string(value) != "file-secret\n" {
 		t.Fatalf("credential bytes changed: %q", value)
+	}
+}
+
+func TestResolveKubernetes(t *testing.T) {
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenPath, []byte("test-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/namespaces/topo/secrets/ssh-credentials" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
+			t.Fatalf("authorization header = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]string{"password": base64.StdEncoding.EncodeToString([]byte("k8s-secret"))},
+		})
+	}))
+	defer server.Close()
+	t.Setenv("TOPO_KUBERNETES_API_SERVER", server.URL)
+	t.Setenv("TOPO_KUBERNETES_TOKEN_FILE", tokenPath)
+	t.Setenv("TOPO_KUBERNETES_NAMESPACE", "topo")
+
+	value, err := Resolve("k8s:ssh-credentials#password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(value) != "k8s-secret" {
+		t.Fatalf("credential bytes changed: %q", value)
+	}
+}
+
+func TestResolveKubernetesExplicitNamespace(t *testing.T) {
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenPath, []byte("test-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]string{"password": base64.StdEncoding.EncodeToString([]byte("value"))},
+		})
+	}))
+	defer server.Close()
+	t.Setenv("TOPO_KUBERNETES_API_SERVER", server.URL)
+	t.Setenv("TOPO_KUBERNETES_TOKEN_FILE", tokenPath)
+
+	if _, err := Resolve("k8s:other-namespace/ssh-credentials#password"); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/api/v1/namespaces/other-namespace/secrets/ssh-credentials" {
+		t.Fatalf("path = %q", gotPath)
+	}
+}
+
+func TestResolveKubernetesUnavailableDoesNotExposeCredential(t *testing.T) {
+	tokenPath := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenPath, []byte("test-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	t.Setenv("TOPO_KUBERNETES_API_SERVER", server.URL)
+	t.Setenv("TOPO_KUBERNETES_TOKEN_FILE", tokenPath)
+	t.Setenv("TOPO_KUBERNETES_NAMESPACE", "topo")
+
+	_, err := Resolve("k8s:missing#password")
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("error = %v, want ErrUnavailable", err)
+	}
+}
+
+func TestResolveKubernetesMissingConfiguration(t *testing.T) {
+	t.Setenv("TOPO_KUBERNETES_API_SERVER", "")
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+
+	_, err := Resolve("k8s:ssh-credentials#password")
+	if err == nil || !strings.Contains(err.Error(), "KUBERNETES_SERVICE_HOST") {
+		t.Fatalf("error = %v", err)
 	}
 }
 
@@ -94,6 +181,7 @@ func TestResolveRejectsInvalidReferences(t *testing.T) {
 		{name: "value", reference: "secret", contains: "must use"},
 		{name: "provider", reference: "azure:path", contains: "unsupported"},
 		{name: "vault missing field", reference: "vault:secret/topo", contains: "vault:<path>#<field>"},
+		{name: "kubernetes missing field", reference: "k8s:ssh-credentials", contains: "k8s:[<namespace>/]<secret-name>#<field>"},
 		{name: "environment name", reference: "env:BAD-NAME", contains: "invalid"},
 		{name: "relative file", reference: "file:relative", contains: "absolute"},
 		{name: "directory", reference: "file:" + t.TempDir(), contains: "regular file"},
