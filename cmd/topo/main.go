@@ -12,12 +12,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Nischoy-ai/topo/internal/controller"
 	"github.com/Nischoy-ai/topo/internal/store"
+	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
@@ -369,11 +371,19 @@ func labRun(args []string) error {
 func serve(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	addr := fs.String("addr", env("TOPO_ADDR", ":8080"), "listen address")
+	apiKeyRef := fs.String("api-key-ref", "", "credential reference for the controller API key (env: or file:)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	apiKey, err := resolveCredential(*apiKeyRef, "", "TOPO_API_KEY", true)
+	if err != nil {
+		return fmt.Errorf("resolve controller API key: %w", err)
+	}
+	if len(apiKey) > 4096 {
+		return errors.New("controller API key exceeds 4096 bytes")
+	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	srv := &http.Server{Addr: *addr, Handler: controller.New(store.NewMemory(), logger, os.Getenv("TOPO_API_KEY")).Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
+	srv := &http.Server{Addr: *addr, Handler: controller.New(store.NewMemory(), logger, string(apiKey)).Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go func() {
@@ -382,8 +392,8 @@ func serve(args []string) error {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	logger.Info("controller listening", "address", *addr, "auth_enabled", os.Getenv("TOPO_API_KEY") != "")
-	err := srv.ListenAndServe()
+	logger.Info("controller listening", "address", *addr, "auth_enabled", len(apiKey) != 0)
+	err = srv.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -438,7 +448,8 @@ func discoverWinRM(args []string) error {
 	fs := flag.NewFlagSet("discover winrm", flag.ContinueOnError)
 	targetsPath := fs.String("targets", "", "file containing one WinRM endpoint URL per line")
 	username := fs.String("username", env("TOPO_WINRM_USERNAME", ""), "WinRM username (DOMAIN\\user, SERVER\\user, or user@domain)")
-	passwordEnv := fs.String("password-env", "TOPO_WINRM_PASSWORD", "environment variable containing the WinRM password")
+	passwordRef := fs.String("password-ref", "", "credential reference for the WinRM password (env: or file:)")
+	passwordEnv := fs.String("password-env", "", "deprecated: environment variable containing the WinRM password")
 	authMode := fs.String("auth", "", "production authentication mode (ntlm)")
 	labBasic := fs.Bool("lab-basic", false, "enable Basic authentication to loopback Topo Lab endpoints")
 	concurrency := fs.Int("concurrency", 32, "maximum concurrent WinRM targets")
@@ -473,13 +484,13 @@ func discoverWinRM(args []string) error {
 	if selectedUsername == "" {
 		return errors.New("WinRM username is required; set -username or TOPO_WINRM_USERNAME")
 	}
-	password := os.Getenv(*passwordEnv)
-	if password == "" {
-		return fmt.Errorf("no WinRM credential: set %s", *passwordEnv)
+	password, err := resolveCredential(*passwordRef, *passwordEnv, "TOPO_WINRM_PASSWORD", false)
+	if err != nil {
+		return fmt.Errorf("resolve WinRM password: %w", err)
 	}
 	plugin := winrm.Plugin{Config: winrm.Config{
 		Username:         selectedUsername,
-		Password:         password,
+		Password:         string(password),
 		AuthMode:         *authMode,
 		LabMode:          *labBasic,
 		Concurrency:      *concurrency,
@@ -500,8 +511,10 @@ func discoverWinRM(args []string) error {
 func discoverSSH(args []string) error {
 	fs := flag.NewFlagSet("discover ssh", flag.ContinueOnError)
 	targetsPath := fs.String("targets", "", "file containing one username@host:port target per line")
-	passwordEnv := fs.String("password-env", "TOPO_SSH_PASSWORD", "environment variable containing the SSH password")
-	privateKeyPath := fs.String("private-key", "", "PEM private key path")
+	passwordRef := fs.String("password-ref", "", "credential reference for the SSH password (env: or file:)")
+	passwordEnv := fs.String("password-env", "", "deprecated: environment variable containing the SSH password")
+	privateKeyRef := fs.String("private-key-ref", "", "credential reference for the PEM private key (env: or file:)")
+	privateKeyPath := fs.String("private-key", "", "deprecated: PEM private key path")
 	knownHostsPath := fs.String("known-hosts", "", "known_hosts path")
 	insecureHostKey := fs.Bool("insecure-host-key", false, "skip host key verification (Topo Lab only)")
 	concurrency := fs.Int("concurrency", 32, "maximum concurrent SSH connections")
@@ -539,22 +552,29 @@ func discoverSSH(args []string) error {
 	}
 
 	var signer ssh.Signer
-	if *privateKeyPath != "" {
-		key, err := os.ReadFile(*privateKeyPath)
+	keyReference, err := resolvePrivateKeyReference(*privateKeyRef, *privateKeyPath)
+	if err != nil {
+		return err
+	}
+	if keyReference != "" {
+		key, err := credentialref.Resolve(keyReference)
 		if err != nil {
-			return fmt.Errorf("read private key: %w", err)
+			return fmt.Errorf("resolve SSH private key: %w", err)
 		}
 		signer, err = ssh.ParsePrivateKey(key)
 		if err != nil {
 			return fmt.Errorf("parse private key: %w", err)
 		}
 	}
-	password := os.Getenv(*passwordEnv)
-	if password == "" && signer == nil {
-		return fmt.Errorf("no SSH credential: set %s or provide -private-key", *passwordEnv)
+	password, err := resolveCredential(*passwordRef, *passwordEnv, "TOPO_SSH_PASSWORD", true)
+	if err != nil {
+		return fmt.Errorf("resolve SSH password: %w", err)
+	}
+	if len(password) == 0 && signer == nil {
+		return errors.New("no SSH credential: set -password-ref or -private-key-ref")
 	}
 
-	plugin := sshlinux.Plugin{Config: sshlinux.Config{Password: password, Signer: signer, HostKeyCallback: callback, Concurrency: *concurrency, ConnectTimeout: *connectTimeout, CommandTimeout: *commandTimeout, MaxOutputBytes: *maxOutputBytes}}
+	plugin := sshlinux.Plugin{Config: sshlinux.Config{Password: string(password), Signer: signer, HostKeyCallback: callback, Concurrency: *concurrency, ConnectTimeout: *connectTimeout, CommandTimeout: *commandTimeout, MaxOutputBytes: *maxOutputBytes}}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
@@ -589,4 +609,38 @@ func env(k, d string) string {
 		return v
 	}
 	return d
+}
+
+func resolveCredential(reference, legacyEnvironment, defaultEnvironment string, optionalDefault bool) ([]byte, error) {
+	if reference != "" && legacyEnvironment != "" {
+		return nil, errors.New("credential reference and deprecated environment flag cannot be combined")
+	}
+	implicit := false
+	switch {
+	case reference != "":
+	case legacyEnvironment != "":
+		reference = "env:" + legacyEnvironment
+	default:
+		reference = "env:" + defaultEnvironment
+		implicit = true
+	}
+	value, err := credentialref.Resolve(reference)
+	if err != nil && implicit && optionalDefault && errors.Is(err, credentialref.ErrUnavailable) {
+		return nil, nil
+	}
+	return value, err
+}
+
+func resolvePrivateKeyReference(reference, legacyPath string) (string, error) {
+	if reference != "" && legacyPath != "" {
+		return "", errors.New("-private-key-ref and deprecated -private-key cannot be combined")
+	}
+	if legacyPath == "" {
+		return reference, nil
+	}
+	absolutePath, err := filepath.Abs(legacyPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve private key path: %w", err)
+	}
+	return "file:" + absolutePath, nil
 }
