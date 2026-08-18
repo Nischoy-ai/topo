@@ -6,17 +6,17 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-17
+- **Updated:** 2026-08-18
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** Concurrent mixed Linux/Windows protocol acceptance
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/7>
-- **Merged commit:** `52e85c3758b6c5c161f128e970712d642e39f4df`
+- **Latest completed slice:** Shared bounded `env:`/`file:` credential-reference resolver adopted by the controller API key, SSH password/private key, and WinRM password paths
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/8>
+- **Merged commit:** `e70fd47b524998f61c35603e44bdb760cba67c49`
 - **Current milestone:** Credential references and external secret providers
-- **Current slice:** A shared bounded `env:`/`file:` credential-reference resolver adopted by the controller API key, SSH password/private key, and WinRM password paths on `agent/credential-references`; PR pending.
-- **Verified in this slice:** Under Go 1.23.12, `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` pass. Resolver tests cover exact-byte preservation, invalid references, unavailable inputs, regular-file enforcement, size bounds, and non-disclosure in errors; CLI tests cover defaults, deprecated aliases, and conflict rejection.
-- **Next slice:** Implement explicit Vault and Kubernetes Secret provider adapters. A Kubernetes Secret mounted as a file can use the current `file:` provider, but that is not represented as a Kubernetes API adapter.
+- **Current slice:** A `vault:<path>#<field>` credential-reference provider backed by a HashiCorp Vault KV version 2 client (`pkg/credentialref/vault`), wired into the existing resolver so it is usable anywhere `env:`/`file:` already work (controller API key, SSH password/private key, WinRM password). Connection settings come from standard `VAULT_ADDR`/`VAULT_TOKEN`/`VAULT_TOKEN_FILE`/`VAULT_NAMESPACE`/`VAULT_MOUNT`/`VAULT_CACERT` environment variables, never a CLI argument. The client verifies Vault's TLS identity by default and exposes `LookupSelf`/`RenewSelf` for token lease renewal, though Topo does not call these automatically yet because credentials are resolved once at process startup. Pushed to `claude/next-repo-work-g2ihni`; PR pending.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass. Vault client tests (`pkg/credentialref/vault`) use `httptest` to cover successful KV v2 reads, missing secret/field/destroyed-version handling as `ErrUnavailable`, permission-denied errors that do not leak secret bytes, response-size bounds, context cancellation, token lookup/renewal, and environment-driven configuration including conflicting/invalid inputs. `credentialref` tests cover the new `vault:` reference end-to-end via a mock server and confirm missing `VAULT_ADDR` fails clearly.
+- **Next slice:** Implement an explicit Kubernetes Secret provider adapter (namespace/service-account scoping, bounded reads, cancellation, redacted API errors). A Kubernetes Secret mounted as a file can use the existing `file:` provider, but that is not a native Kubernetes API adapter.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release. Do not fabricate this evidence from Topo Lab; obtain it from controlled real hosts and review it for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. This gate remains open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups rather than part of this milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -170,10 +170,14 @@ giving every credential consumer one provider-neutral, bounded input contract.
 
 ### Slices
 
-1. Shared `env:` and absolute-path `file:` references for evaluation and
-   mounted secret files, adopted by controller, SSH, and WinRM CLI paths.
-2. Vault provider adapter with bounded reads, authentication guidance, lease
-   and renewal behavior, cancellation, and redacted provider errors.
+1. **Done.** Shared `env:` and absolute-path `file:` references for
+   evaluation and mounted secret files, adopted by controller, SSH, and WinRM
+   CLI paths.
+2. **Done.** Vault provider adapter (`vault:<path>#<field>`, KV version 2)
+   with bounded reads, environment-variable authentication guidance, token
+   lease lookup/renewal support, cancellation, and redacted provider errors.
+   Automatic background renewal for long-running processes and leased
+   dynamic-secrets engines beyond token renewal remain deferred.
 3. Kubernetes Secret provider adapter with namespace/service-account scoping,
    bounded reads, cancellation, and redacted API errors.
 
@@ -184,8 +188,9 @@ The first slice does not claim native Vault or Kubernetes API integration.
 Following the implemented Windows slices, pursue these slices in order unless
 evidence from an enterprise pilot changes the priority:
 
-1. Complete the credential-provider milestone: merge shared `env:`/`file:`
-   references, then add Vault and Kubernetes Secret adapters.
+1. Complete the credential-provider milestone: shared `env:`/`file:`
+   references and the Vault adapter are merged/implemented; add the
+   Kubernetes Secret adapter next.
 2. Outbound-only Topo Agent MVP for Linux and Windows with encrypted buffering.
 3. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
 4. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
