@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -36,6 +37,11 @@ import (
 )
 
 var version = "dev"
+
+// windowsServiceName identifies the Topo Agent Windows service. Topo
+// supports one agent instance per host, matching the fixed systemd unit
+// name used on Linux.
+const windowsServiceName = "TopoAgent"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -406,10 +412,19 @@ func serve(args []string) error {
 }
 
 func runAgent(args []string) error {
-	if len(args) == 0 || args[0] != "run" {
-		return errors.New("usage: topo agent run")
+	if len(args) == 0 {
+		return errors.New("usage: topo agent <run|install|uninstall>")
 	}
-	return agentRun(args[1:])
+	switch args[0] {
+	case "run":
+		return agentRun(args[1:])
+	case "install":
+		return agentInstall(args[1:])
+	case "uninstall":
+		return agentUninstall(args[1:])
+	default:
+		return errors.New("usage: topo agent <run|install|uninstall>")
+	}
 }
 
 func agentRun(args []string) error {
@@ -464,10 +479,7 @@ func agentRun(args []string) error {
 	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	logger.Info("topo agent starting", "controller_url", *controllerURL, "interval", interval.String(), "site", *site, "collector", collectorID, "spool_dir", *spoolDir)
-	return agent.Run(ctx, agent.Config{
+	cfg := agent.Config{
 		SiteID:      *site,
 		CollectorID: collectorID,
 		Interval:    *interval,
@@ -475,7 +487,76 @@ func agentRun(args []string) error {
 		Sender:      sender,
 		Spool:       spool,
 		Logger:      logger,
-	})
+	}
+
+	asService, err := isWindowsService()
+	if err != nil {
+		return fmt.Errorf("determine Windows service state: %w", err)
+	}
+	if asService {
+		return runAgentService(cfg)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	logger.Info("topo agent starting", "controller_url", *controllerURL, "interval", interval.String(), "site", *site, "collector", collectorID, "spool_dir", *spoolDir)
+	return agent.Run(ctx, cfg)
+}
+
+func agentInstall(args []string) error {
+	fs := flag.NewFlagSet("agent install", flag.ContinueOnError)
+	controllerURL := fs.String("controller-url", env("TOPO_AGENT_CONTROLLER_URL", ""), "Topo Hub controller base URL (http:// or https://)")
+	apiKeyRef := fs.String("api-key-ref", "", "credential reference for the controller API key (env:, file:, vault:, or k8s:)")
+	spoolDir := fs.String("spool-dir", "", "absolute path to the encrypted offline-buffer directory")
+	spoolKeyRef := fs.String("spool-key-ref", "", "credential reference for the 64-hex-character (32-byte) spool encryption key")
+	spoolMaxBytes := fs.Int64("spool-max-bytes", 64<<20, "maximum total bytes retained in the offline buffer")
+	interval := fs.Duration("interval", 15*time.Minute, "discovery and delivery interval")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "", "collector ID; defaults to the local hostname at each service start")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *controllerURL == "" {
+		return errors.New("-controller-url is required")
+	}
+	if *spoolDir == "" {
+		return errors.New("-spool-dir is required")
+	}
+
+	// Credential references are stored as-is, never resolved: the Windows
+	// Service Control Manager persists this argument list, so a resolved
+	// secret value here would be written permanently to the registry.
+	serviceArgs := []string{
+		"agent", "run",
+		"-controller-url", *controllerURL,
+		"-api-key-ref", *apiKeyRef,
+		"-spool-dir", *spoolDir,
+		"-spool-key-ref", *spoolKeyRef,
+		"-spool-max-bytes", strconv.FormatInt(*spoolMaxBytes, 10),
+		"-interval", interval.String(),
+		"-site", *site,
+	}
+	if *collector != "" {
+		serviceArgs = append(serviceArgs, "-collector", *collector)
+	}
+
+	if err := installAgentService(windowsServiceName, serviceArgs); err != nil {
+		return err
+	}
+	fmt.Printf("Topo Agent service %q installed. Start it with: sc.exe start %s\n", windowsServiceName, windowsServiceName)
+	return nil
+}
+
+func agentUninstall(args []string) error {
+	fs := flag.NewFlagSet("agent uninstall", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if err := uninstallAgentService(windowsServiceName); err != nil {
+		return err
+	}
+	fmt.Printf("Topo Agent service %q uninstalled.\n", windowsServiceName)
+	return nil
 }
 
 func decodeSpoolKey(hexKey []byte) ([]byte, error) {

@@ -51,16 +51,25 @@ The credential-references milestone is complete:
 4. **Done.** Security tests that prove secret values do not enter errors or
    logs, across all four providers.
 
-The current milestone is the outbound-only Topo Agent MVP:
+The outbound-only Topo Agent MVP milestone is complete:
 
 1. **Done.** Agent core loop (`topo agent run`): periodic local discovery
    delivered to the controller's existing ingestion API over the existing
    bearer-key contract, with an AES-256-GCM-encrypted, bounded,
    tamper-detecting offline spool keyed by the same credential-reference
    contract as everything else. See `docs/topo-agent.md`.
-2. Linux systemd unit and Windows service wrapping so `topo agent run`
-   survives reboots and restarts on failure, plus install/uninstall
-   documentation. This is the remaining slice.
+2. **Done.** Linux systemd unit (`packaging/systemd`, verified with
+   `systemd-analyze verify`) and Windows service wrapping
+   (`topo agent install`/`uninstall`, `cmd/topo/service_windows.go`) so
+   `topo agent run` survives reboots and restarts on failure, plus
+   install/uninstall documentation in `docs/topo-agent.md`. Windows service
+   registration is verified by cross-compilation and code review, not yet
+   against a real Windows Service Control Manager; treat it as unverified
+   on real Windows, matching the WinRM real-host fixture posture below.
+
+The current follow-on milestone is end-to-end ServiceNow IRE duplicate-CI
+and reconciliation validation, per the follow-on order in
+`docs/project-plan.md`.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are
@@ -75,7 +84,10 @@ The complete scope, acceptance gates, and follow-on order are in
 - Use Go 1.23 compatibility until the roadmap explicitly changes it.
 - Prefer standard-library components and narrowly scoped dependencies.
 - Run `gofmt -w` on changed Go files, `go vet ./...`, `go test -race ./...`,
-  and `go build -trimpath ./cmd/topo` before publishing.
+  and `go build -trimpath ./cmd/topo` before publishing. Files behind a
+  `windows` build tag (Windows service integration) also need
+  `GOOS=windows GOARCH=amd64 go vet ./...` and `go build`, matching the CI
+  cross-compile check; there is no way to execute them on Linux CI.
 - New protocol plugins need parser tests, configuration validation, connection
   and timeout tests, arbitrary-operation rejection tests, fault isolation, and
   repeat-scan identity tests.

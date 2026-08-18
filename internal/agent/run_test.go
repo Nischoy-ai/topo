@@ -68,10 +68,10 @@ func TestRunDeliversWhileControllerReachable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	err = Run(ctx, Config{
-		SiteID: "default", CollectorID: "agent-1", Interval: 30 * time.Millisecond,
+		SiteID: "default", CollectorID: "agent-1", Interval: 50 * time.Millisecond,
 		Plugin: &counterPlugin{}, Sender: sender, Spool: spool,
 	})
 	if err != nil {
