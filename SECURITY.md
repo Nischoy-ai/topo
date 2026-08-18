@@ -63,6 +63,18 @@ rather than silently returning corrupted data, and total spool size is
 bounded so an extended outage cannot grow it without limit. The agent does
 not yet support collector enrollment, mTLS, or certificate rotation; it
 relies on the same evaluation-grade bearer-key trust model as the rest of
-the controller until that later milestone lands. Native OS service wrapping
-(systemd, Windows service) is not yet implemented; operators must supervise
-`topo agent run` themselves for now.
+the controller until that later milestone lands.
+
+The packaged Linux systemd unit (`packaging/systemd/topo-agent.service`)
+runs as a dedicated non-root system user with an empty capability set,
+`NoNewPrivileges=yes`, `ProtectSystem=strict`, and the other hardening
+directives verified with `systemd-analyze verify`; only its `StateDirectory`
+is writable. `topo agent install`/`uninstall` on Windows register the
+service with automatic start and restart-on-failure and never write a
+resolved secret value into the service's persisted command line — only the
+credential *reference* (`env:`/`file:`/`vault:`/`k8s:`) is stored, matching
+every other Topo credential consumer. Windows service registration is
+verified by cross-compilation and code review only; it has not yet been
+exercised against a real Windows Service Control Manager, so treat it as
+unverified on real Windows until that gate closes, the same posture already
+applied to WinRM real-host compatibility.

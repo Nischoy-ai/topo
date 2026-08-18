@@ -8,14 +8,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-18
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** Topo Agent core loop (`topo agent run`, `internal/agent`). Reuses the existing non-privileged local-host discovery plugin on a configurable interval and delivers each observation to the controller's existing `POST /v1/observations` endpoint using the existing bearer-key credential-reference contract — no new transport or authentication protocol. On delivery failure it spills to a bounded, AES-256-GCM-encrypted on-disk spool (`internal/agent/spool.go`) keyed by a credential reference, so the spool key can itself live in `env:`, `file:`, `vault:`, or `k8s:`. Each tick retries anything already spooled, oldest first, before discovering again; a retryable failure (network error or 5xx) stops draining and preserves order for the next tick, while a non-retryable failure (4xx) drops that entry rather than retrying forever. Graceful shutdown on SIGINT/SIGTERM matches `serve`/`lab serve`. See `docs/topo-agent.md`.
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/10> (Kubernetes credential adapter, the prior slice); this Agent core loop slice is <https://github.com/Nischoy-ai/topo/pull/11>
-- **Merged commit:** `bc6e4aa` (merge of the Kubernetes adapter into `main`; update after this slice merges)
-- **Current milestone:** Outbound-only Topo Agent MVP (see "Current milestone: outbound-only Topo Agent MVP" below). Slice 1 (agent core loop) is implemented; slice 2 (Linux systemd unit and Windows service wrapping) is the remaining work.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass. `internal/agent` tests cover: spool encrypt/decrypt round-trip, FIFO ordering, AEAD tamper detection, byte-bound enforcement, path-traversal rejection on entry names, and invalid-input rejection (`spool_test.go`); sender wire format against the controller's exact single-object contract, retryable-vs-non-retryable status handling, response bounding, and context cancellation (`sender_test.go`); and a full integration test running the loop against a real in-process `internal/controller` behind `httptest` — delivering while reachable, buffering while unreachable, and draining on recovery with no duplication (`run_test.go`). Also manually smoke-tested the built binary end-to-end against a locally running `topo serve`, including the offline-buffering path with the controller down.
-- **Next slice:** Linux systemd unit and Windows service wrapping for `topo agent run`, plus install/uninstall documentation. This completes the Topo Agent MVP milestone.
-- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release. Do not fabricate this evidence from Topo Lab; obtain it from controlled real hosts and review it for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. This gate remains open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. Collector enrollment, outbound mTLS, certificate rotation, and heartbeats/jobs are a separate, later roadmap item, not part of the Agent MVP.
+- **Latest completed slice:** Linux systemd unit and Windows service wrapping for the Topo Agent. `packaging/systemd/topo-agent.service` is a hardened unit (dedicated non-root user, empty capability set, `NoNewPrivileges`, `ProtectSystem=strict`, `StateDirectory` for the spool) verified with `systemd-analyze verify` and, in this slice, actually installed end-to-end in a scratch container (system user, `/etc/topo-agent` secret files, real `topo serve`/`topo agent run` as that unprivileged user) before being torn back down — not just syntax-checked. `cmd/topo/service_windows.go` (`//go:build windows`) implements the `svc.Handler` interface so `topo agent run` auto-detects `svc.IsWindowsService()` and runs identically either interactively or under the Service Control Manager, plus `topo agent install`/`uninstall` subcommands that register/remove the service (automatic start, three restart-on-failure attempts, an Event Log source) via `golang.org/x/sys/windows/svc/mgr` and `eventlog`; credential references are stored as-is in the service's persisted command line, never resolved, so a secret value is never written to the registry. **This completes the Topo Agent MVP milestone.**
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/11> (Agent core loop, the prior slice); this systemd/Windows-service slice is <https://github.com/Nischoy-ai/topo/pull/12>
+- **Merged commit:** `e12b609` (merge of the Agent core loop into `main`; update after this slice merges)
+- **Current milestone (next):** End-to-end ServiceNow IRE duplicate-CI and reconciliation validation, per the follow-on order below.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass (added as a CI step). New `cmd/topo` tests cover `decodeSpoolKey` bounds/encoding errors and `agent install`/`uninstall` flag validation plus their non-Windows-stub error path. The systemd unit was verified with `systemd-analyze verify` against both a synthetic and the real installed path, and manually installed/exercised end-to-end (system user creation, `/etc/topo-agent` secret files with `file:` references, `topo serve` + `topo agent run` running as that unprivileged user against each other, full teardown afterward — no residue left in the environment). Windows service registration (`mgr.CreateService`, `eventlog.InstallAsEventCreate`, the `svc.Handler` loop) is verified by cross-compilation and code review only; there is no Windows environment available to exercise it against a real Service Control Manager, so it remains an explicit real-Windows verification gate, the same posture already applied to WinRM real-host fixtures. Also fixed a pre-existing timing-sensitive flake in `TestRunDeliversWhileControllerReachable` (too-tight deadline under parallel test load) discovered while re-running the full suite.
+- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; and now also real-Windows verification of the Windows service wrapper described above. Do not fabricate either from Topo Lab; obtain them from controlled real hosts/Windows systems and review sanitized fixtures for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. These gates remain open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. Collector enrollment, outbound mTLS, certificate rotation, and heartbeats/jobs are a separate, later roadmap item, not part of the Agent MVP. One agent instance per host (fixed systemd unit / Windows service name) is an intentional MVP limitation, not tracked as a gap.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -190,7 +189,7 @@ Vault or Kubernetes client (for example, KV version 1, dynamic Vault secrets
 engines beyond token renewal, and Kubernetes Secret watch/list are all out of
 scope), only the bounded read-one-field contract this milestone needs.
 
-## Current milestone: outbound-only Topo Agent MVP
+## Completed milestone: outbound-only Topo Agent MVP
 
 ### Objective
 
@@ -214,11 +213,17 @@ of dropping data when the controller is unreachable.
    shutdown on SIGINT/SIGTERM matches the existing `serve` and `lab serve`
    commands. No new transport, authentication, or discovery protocol: this
    slice is existing building blocks wired into a loop.
-2. Linux systemd unit and Windows service wrapping so `topo agent run`
-   survives reboots and restarts on failure, plus install/uninstall
-   documentation. Deferred from slice 1 because the run loop itself is
-   independently testable and useful (for example, under a process
-   supervisor or a container) before OS service integration exists.
+2. **Done.** Linux systemd unit (`packaging/systemd`) and Windows service
+   wrapping (`cmd/topo/service_windows.go`, `topo agent install`/
+   `uninstall`) so `topo agent run` survives reboots and restarts on
+   failure, plus install/uninstall documentation in `docs/topo-agent.md`.
+   The systemd unit was verified with `systemd-analyze verify` and a real
+   install/run/teardown cycle in a scratch environment; the Windows service
+   code is verified only by cross-compilation and code review, not against
+   a real Windows Service Control Manager — that remains an explicit
+   deferred verification gate alongside the WinRM real-host fixtures.
+
+Both slices are implemented; this milestone is complete.
 
 ### Deliberate non-goals for this milestone
 
@@ -248,19 +253,19 @@ of dropping data when the controller is unreachable.
 
 ## Follow-on order
 
-With the credential-provider milestone complete, pursue these slices in
-order unless evidence from an enterprise pilot changes the priority:
+With the credential-provider and Topo Agent MVP milestones complete, pursue
+these slices in order unless evidence from an enterprise pilot changes the
+priority:
 
-1. Outbound-only Topo Agent MVP for Linux and Windows with encrypted buffering.
-2. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
-3. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
+1. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
+2. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
    job delivery.
-4. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
+3. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
    this point rather than assuming it is mandatory.
-5. SNMPv3/network topology and VMware vCenter discovery.
-6. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
+4. SNMPv3/network topology and VMware vCenter discovery.
+5. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
    security testing.
-7. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
+6. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
    gates leading toward Topo Graph.
 
 ## Definition of milestone completion
