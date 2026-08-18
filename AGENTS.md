@@ -51,9 +51,16 @@ The credential-references milestone is complete:
 4. **Done.** Security tests that prove secret values do not enter errors or
    logs, across all four providers.
 
-The current follow-on milestone is the outbound-only Topo Agent MVP for
-Linux and Windows with encrypted offline buffering, per the follow-on order
-in `docs/project-plan.md`.
+The current milestone is the outbound-only Topo Agent MVP:
+
+1. **Done.** Agent core loop (`topo agent run`): periodic local discovery
+   delivered to the controller's existing ingestion API over the existing
+   bearer-key contract, with an AES-256-GCM-encrypted, bounded,
+   tamper-detecting offline spool keyed by the same credential-reference
+   contract as everything else. See `docs/topo-agent.md`.
+2. Linux systemd unit and Windows service wrapping so `topo agent run`
+   survives reboots and restarts on failure, plus install/uninstall
+   documentation. This is the remaining slice.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

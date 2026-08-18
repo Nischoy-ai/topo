@@ -33,11 +33,36 @@ Each CIM or software operation has a deadline, responses and cumulative command 
 
 ## Credential references
 
-The shared resolver accepts only `env:<name>` and `file:<absolute-path>`. It
+The shared resolver accepts `env:<name>`, `file:<absolute-path>`,
+`vault:<path>#<field>`, and `k8s:[<namespace>/]<secret-name>#<field>`. It
 bounds references to 4 KiB and resolved values to 1 MiB, accepts only regular
 files, preserves credential bytes exactly, and never includes a resolved value
 in an error. Consumer-specific validation applies tighter limits where needed.
 Environment variables can be exposed through process inspection or inherited
-by child processes on some systems, so restricted mounted files are preferred
-for managed deployments. A mounted Kubernetes Secret can be read through
-`file:`, but native Kubernetes API and Vault providers are not yet implemented.
+by child processes on some systems, so restricted mounted files, Vault, or
+Kubernetes Secret references are preferred for managed deployments. The Vault
+provider verifies the Vault server's TLS identity and never disables
+certificate verification; connection settings (address, token, mount) come
+from environment variables, never the reference itself. The Kubernetes
+provider authenticates in-cluster with the pod's own service account token
+and relies entirely on that service account's RBAC grants for least-privilege
+scoping — Topo does not enforce which Secrets may be read beyond what
+Kubernetes itself authorizes.
+
+## Topo Agent
+
+The outbound-only agent (`topo agent run`) only makes outbound HTTPS/HTTP
+requests to a configured controller URL; it never listens for inbound
+connections and never accepts jobs or remote commands. It authenticates with
+the same bearer API-key contract as any other controller client. When the
+controller is unreachable, observations are buffered to a local spool
+encrypted with AES-256-GCM using a key from the same credential-reference
+contract (never a CLI argument); spool files and their directory are created
+with owner-only permissions, tampering is detected via AEAD authentication
+rather than silently returning corrupted data, and total spool size is
+bounded so an extended outage cannot grow it without limit. The agent does
+not yet support collector enrollment, mTLS, or certificate rotation; it
+relies on the same evaluation-grade bearer-key trust model as the rest of
+the controller until that later milestone lands. Native OS service wrapping
+(systemd, Windows service) is not yet implemented; operators must supervise
+`topo agent run` themselves for now.

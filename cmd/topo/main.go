@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -17,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Nischoy-ai/topo/internal/agent"
 	"github.com/Nischoy-ai/topo/internal/controller"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
@@ -49,6 +52,8 @@ func run(args []string) error {
 		return serve(args[1:])
 	case "discover":
 		return discover(args[1:])
+	case "agent":
+		return runAgent(args[1:])
 	case "lab":
 		return runLab(args[1:])
 	case "version":
@@ -59,7 +64,7 @@ func run(args []string) error {
 	}
 }
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|lab|version>")
+	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|lab|version>")
 	return errors.New("command required")
 }
 
@@ -398,6 +403,89 @@ func serve(args []string) error {
 		return nil
 	}
 	return err
+}
+
+func runAgent(args []string) error {
+	if len(args) == 0 || args[0] != "run" {
+		return errors.New("usage: topo agent run")
+	}
+	return agentRun(args[1:])
+}
+
+func agentRun(args []string) error {
+	fs := flag.NewFlagSet("agent run", flag.ContinueOnError)
+	controllerURL := fs.String("controller-url", env("TOPO_AGENT_CONTROLLER_URL", ""), "Topo Hub controller base URL (http:// or https://)")
+	apiKeyRef := fs.String("api-key-ref", "", "credential reference for the controller API key (env:, file:, vault:, or k8s:)")
+	spoolDir := fs.String("spool-dir", "", "absolute path to the encrypted offline-buffer directory")
+	spoolKeyRef := fs.String("spool-key-ref", "", "credential reference for the 64-hex-character (32-byte) spool encryption key")
+	spoolMaxBytes := fs.Int64("spool-max-bytes", 64<<20, "maximum total bytes retained in the offline buffer")
+	interval := fs.Duration("interval", 15*time.Minute, "discovery and delivery interval")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "", "collector ID; defaults to the local hostname")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *controllerURL == "" {
+		return errors.New("-controller-url is required")
+	}
+	if *spoolDir == "" {
+		return errors.New("-spool-dir is required")
+	}
+
+	apiKey, err := resolveCredential(*apiKeyRef, "", "TOPO_AGENT_API_KEY", true)
+	if err != nil {
+		return fmt.Errorf("resolve controller API key: %w", err)
+	}
+	spoolKeyHex, err := resolveCredential(*spoolKeyRef, "", "TOPO_AGENT_SPOOL_KEY", false)
+	if err != nil {
+		return fmt.Errorf("resolve spool encryption key: %w", err)
+	}
+	spoolKey, err := decodeSpoolKey(spoolKeyHex)
+	if err != nil {
+		return err
+	}
+
+	collectorID := *collector
+	if collectorID == "" {
+		if hostname, hostErr := os.Hostname(); hostErr == nil {
+			collectorID = hostname
+		} else {
+			collectorID = "topo-agent"
+		}
+	}
+
+	spool, err := agent.NewSpool(*spoolDir, spoolKey, *spoolMaxBytes)
+	if err != nil {
+		return fmt.Errorf("initialize spool: %w", err)
+	}
+	sender, err := agent.NewSender(*controllerURL, string(apiKey))
+	if err != nil {
+		return err
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	logger.Info("topo agent starting", "controller_url", *controllerURL, "interval", interval.String(), "site", *site, "collector", collectorID, "spool_dir", *spoolDir)
+	return agent.Run(ctx, agent.Config{
+		SiteID:      *site,
+		CollectorID: collectorID,
+		Interval:    *interval,
+		Plugin:      localdiscovery.Plugin{},
+		Sender:      sender,
+		Spool:       spool,
+		Logger:      logger,
+	})
+}
+
+func decodeSpoolKey(hexKey []byte) ([]byte, error) {
+	trimmed := bytes.TrimSpace(hexKey)
+	key := make([]byte, hex.DecodedLen(len(trimmed)))
+	n, err := hex.Decode(key, trimmed)
+	if err != nil || n != 32 {
+		return nil, errors.New("spool encryption key must be 64 hex characters (32 bytes); generate one with `openssl rand -hex 32`")
+	}
+	return key[:n], nil
 }
 func discover(args []string) error {
 	if len(args) > 0 && args[0] == "ssh" {

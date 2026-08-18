@@ -8,13 +8,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-18
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** `k8s:[<namespace>/]<secret-name>#<field>` credential-reference provider backed by a Kubernetes API client (`pkg/credentialref/kubernetes`), wired into the existing resolver alongside `env:`/`file:`/`vault:`. Authenticates in-cluster using the pod's own projected service account token (re-read on every request, so kubelet-rotated tokens need no renewal logic) and the cluster CA; `TOPO_KUBERNETES_API_SERVER`/`TOPO_KUBERNETES_TOKEN_FILE`/`TOPO_KUBERNETES_CA_FILE`/`TOPO_KUBERNETES_NAMESPACE` override the defaults for out-of-cluster or non-default deployments. Least-privilege scoping is delegated entirely to Kubernetes RBAC on the calling service account (documented `Role`/`RoleBinding` example scoped to named Secrets, `get` only). **This completes the credential-references milestone**: `env:`, `file:`, `vault:`, and `k8s:` are all implemented and adopted by the controller API key, SSH password/private key, and WinRM password paths, with no CLI changes required per provider.
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/10> (Kubernetes adapter; Vault adapter merged earlier in <https://github.com/Nischoy-ai/topo/pull/9>)
-- **Merged commit:** `bc6e4aa` (merge of `claude/next-repo-work-g2ihni` into `main`)
-- **Current milestone:** Outbound-only Topo Agent MVP for Linux and Windows with encrypted offline buffering, per the follow-on order below. Not yet started.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass. Kubernetes client tests (`pkg/credentialref/kubernetes`) use `httptest` to cover successful reads (default and explicit namespace), missing secret/field as `ErrUnavailable`, permission-denied errors that do not leak secret bytes, invalid base64 rejection, response-size bounds, context cancellation, token re-read/rotation, and environment-driven configuration (in-cluster defaults vs. explicit overrides, including the CA-file default only applying in true in-cluster mode). `credentialref` tests cover the new `k8s:` reference end-to-end via a mock server, both default and explicit namespace forms, and confirm missing `KUBERNETES_SERVICE_HOST` fails clearly.
+- **Latest completed slice:** Topo Agent core loop (`topo agent run`, `internal/agent`). Reuses the existing non-privileged local-host discovery plugin on a configurable interval and delivers each observation to the controller's existing `POST /v1/observations` endpoint using the existing bearer-key credential-reference contract — no new transport or authentication protocol. On delivery failure it spills to a bounded, AES-256-GCM-encrypted on-disk spool (`internal/agent/spool.go`) keyed by a credential reference, so the spool key can itself live in `env:`, `file:`, `vault:`, or `k8s:`. Each tick retries anything already spooled, oldest first, before discovering again; a retryable failure (network error or 5xx) stops draining and preserves order for the next tick, while a non-retryable failure (4xx) drops that entry rather than retrying forever. Graceful shutdown on SIGINT/SIGTERM matches `serve`/`lab serve`. See `docs/topo-agent.md`.
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/10> (Kubernetes credential adapter, the prior slice); this Agent core loop slice pushed to `claude/next-repo-work-g2ihni`, PR pending.
+- **Merged commit:** `bc6e4aa` (merge of the Kubernetes adapter into `main`; update after this slice merges)
+- **Current milestone:** Outbound-only Topo Agent MVP (see "Current milestone: outbound-only Topo Agent MVP" below). Slice 1 (agent core loop) is implemented; slice 2 (Linux systemd unit and Windows service wrapping) is the remaining work.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass. `internal/agent` tests cover: spool encrypt/decrypt round-trip, FIFO ordering, AEAD tamper detection, byte-bound enforcement, path-traversal rejection on entry names, and invalid-input rejection (`spool_test.go`); sender wire format against the controller's exact single-object contract, retryable-vs-non-retryable status handling, response bounding, and context cancellation (`sender_test.go`); and a full integration test running the loop against a real in-process `internal/controller` behind `httptest` — delivering while reachable, buffering while unreachable, and draining on recovery with no duplication (`run_test.go`). Also manually smoke-tested the built binary end-to-end against a locally running `topo serve`, including the offline-buffering path with the controller down.
+- **Next slice:** Linux systemd unit and Windows service wrapping for `topo agent run`, plus install/uninstall documentation. This completes the Topo Agent MVP milestone.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release. Do not fabricate this evidence from Topo Lab; obtain it from controlled real hosts and review it for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. This gate remains open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups rather than part of any current milestone.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. Collector enrollment, outbound mTLS, certificate rotation, and heartbeats/jobs are a separate, later roadmap item, not part of the Agent MVP.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -188,6 +189,62 @@ All three slices are implemented; none of them claims a full-featured native
 Vault or Kubernetes client (for example, KV version 1, dynamic Vault secrets
 engines beyond token renewal, and Kubernetes Secret watch/list are all out of
 scope), only the bounded read-one-field contract this milestone needs.
+
+## Current milestone: outbound-only Topo Agent MVP
+
+### Objective
+
+Give systems that cannot accept inbound remote-management connections or
+distribute remote credentials a way to self-report inventory: an agent that
+runs on the endpoint, discovers itself, and pushes observations outward to a
+Topo Hub controller over HTTPS, buffering to encrypted local storage instead
+of dropping data when the controller is unreachable.
+
+### Slices
+
+1. **Done.** Agent core loop (`topo agent run`): reuses the existing
+   non-privileged local-host discovery plugin on a configurable interval,
+   delivers each observation to the controller's existing
+   `POST /v1/observations` endpoint using the existing bearer API key
+   credential-reference contract, and on delivery failure spills to a
+   bounded, AES-256-GCM-encrypted on-disk spool keyed by a credential
+   reference (so the spool key can live in `env:`, `file:`, `vault:`, or
+   `k8s:`, like every other Topo secret). Each run first retries anything
+   already spooled, oldest first, before discovering again. Graceful
+   shutdown on SIGINT/SIGTERM matches the existing `serve` and `lab serve`
+   commands. No new transport, authentication, or discovery protocol: this
+   slice is existing building blocks wired into a loop.
+2. Linux systemd unit and Windows service wrapping so `topo agent run`
+   survives reboots and restarts on failure, plus install/uninstall
+   documentation. Deferred from slice 1 because the run loop itself is
+   independently testable and useful (for example, under a process
+   supervisor or a container) before OS service integration exists.
+
+### Deliberate non-goals for this milestone
+
+- No collector enrollment, outbound mTLS, certificate rotation, or
+  heartbeats; the agent authenticates with the same static bearer API key
+  `topo serve` already accepts. Enrollment and mTLS are a later, separately
+  scoped roadmap item.
+- No job delivery or remote-controlled behavior; the agent only self-reports
+  on its own schedule.
+- No dynamic secrets-engine leasing for the spool encryption key beyond what
+  the existing credential-reference providers already give it.
+- No macOS agent in this milestone.
+
+### Acceptance gates
+
+- Spool encryption round-trips exactly and detects tampering (AES-GCM
+  authentication failure) rather than silently returning corrupted data.
+- The spool enforces a configurable byte bound and reports a clear error
+  rather than growing without limit when the controller is unreachable for
+  an extended period.
+- An integration test runs the agent loop against a real in-process
+  controller (`internal/controller` behind `httptest`): observations arrive
+  while the controller is reachable, buffer while it is not, and drain once
+  it recovers, with no observation lost or duplicated in the store.
+- `gofmt`, `go vet ./...`, `go test -race ./...`, and the production build
+  pass, matching every other milestone in this project.
 
 ## Follow-on order
 
