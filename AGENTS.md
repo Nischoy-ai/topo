@@ -37,15 +37,20 @@ assume access to an earlier chat.
 
 ## Current priority
 
-The next milestone is Windows WinRM discovery alpha:
+The current follow-on milestone is credential references:
 
-1. Topo Lab WinRM/WS-Management frontend backed by Windows personas.
-2. Production Windows plugin with a fixed audited operation contract.
-3. Windows identity, OS, BIOS, compute, network, volume, software, patch, and
-   service collection without `Win32_Product`.
-4. Fault and security tests, then two-scan 500-Windows and mixed
-   500-Linux/500-Windows acceptance gates.
-5. A small set of sanitized real Windows Server fixtures.
+1. A shared, bounded credential-reference contract with `env:` and `file:`
+   providers for early evaluation.
+2. Adoption by the controller API key, SSH password/private key, and WinRM
+   password CLI paths without accepting secret values as CLI arguments.
+3. Vault and Kubernetes Secret provider adapters with provider-specific tests
+   and least-privilege deployment guidance.
+4. Security tests that prove secret values do not enter errors or logs.
+
+The Windows implementation and simulated scale gates are complete. Sanitized
+fixtures from Windows Server 2022 and one other supported release are
+explicitly deferred, not represented as completed, and remain required before
+claiming real-host compatibility or production readiness.
 
 The complete scope, acceptance gates, and follow-on order are in
 `docs/project-plan.md`.

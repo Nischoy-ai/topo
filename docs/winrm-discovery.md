@@ -44,7 +44,7 @@ TOPO_WINRM_PASSWORD=topo-lab ./bin/topo discover winrm \
   -lab-basic
 ```
 
-The target file contains one endpoint URL per line. Blank lines and lines beginning with `#` are ignored. The password is read only through the environment variable named by `-password-env`; there is no password value flag.
+The target file contains one endpoint URL per line. Blank lines and lines beginning with `#` are ignored. The password resolves from `env:TOPO_WINRM_PASSWORD` by default. `-password-ref env:NAME` or `-password-ref file:/absolute/path` selects another source; there is no password value flag. The older `-password-env` flag remains a deprecated compatibility alias and cannot be combined with `-password-ref`.
 
 `-lab-basic` is deliberately required. In this mode every target must resolve syntactically to `localhost` or a loopback IP, and the Lab server itself refuses a non-loopback listen address. Do not proxy this endpoint to another network.
 
@@ -61,7 +61,7 @@ TOPO_WINRM_PASSWORD='replace-with-secret-input' \
   -auth ntlm
 ```
 
-For a local Windows account, use `SERVERNAME\username`; UPN form such as `username@example.test` is also accepted. The password has no CLI value flag. `-password-env` can name a different environment variable supplied by the deployment secret mechanism.
+For a local Windows account, use `SERVERNAME\username`; UPN form such as `username@example.test` is also accepted. The password has no CLI value flag. Use `-password-ref file:/run/secrets/topo_winrm_password` for a restricted mounted file.
 
 This mode implements NTLMv2 when the server advertises either the `NTLM` HTTP challenge or a `Negotiate` challenge containing NTLM. It is not a Kerberos/SPNEGO client. Domain environments that disable NTLM must wait for the Kerberos follow-up rather than weakening server policy.
 
@@ -82,4 +82,4 @@ Topo uses the narrowly scoped [Azure NTLMSSP implementation](https://github.com/
 
 ## Current limitations and next slice
 
-This slice collects only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, sanitized Windows Server 2022 plus one other supported-release fixture set, and broader real-host compatibility validation remain open. Treat NTLMv2 as a narrowly scoped pilot transport, not completion of the Windows milestone.
+This slice collects only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, sanitized Windows Server 2022 plus one other supported-release fixture set, and broader real-host compatibility validation remain open. The real-host fixture evidence is explicitly deferred, not completed. Treat NTLMv2 as a narrowly scoped pilot transport, not proof of real-host compatibility.

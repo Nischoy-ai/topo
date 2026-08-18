@@ -6,15 +6,16 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-16
+- **Updated:** 2026-08-17
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed milestone:** Linux SSH discovery alpha
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/6>
-- **Merged commit:** `a83298c88699965f850d9f1a6e5cba2b1daac338`
-- **Current milestone:** Windows WinRM discovery alpha
-- **Current slice:** Concurrent mixed-estate protocol acceptance implemented on `agent/mixed-estate-acceptance`; PR pending.
-- **Verified in this slice:** Two concurrent scans of 500 Linux targets through real SSH handshakes/sessions and 500 Windows targets through WS-Management/WinRS reach 100% coverage of 2,000 stable assets and 1,000 relationships, preserve Linux package and Windows software inventory, store four source observations, and create no duplicate resolved assets under the race detector.
-- **Next slice:** Add sanitized captures and regression fixtures from Windows Server 2022 and one other supported release. Do not fabricate this evidence from Topo Lab; obtain it from controlled real hosts and review it for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication remain explicit follow-ups.
+- **Latest completed slice:** Concurrent mixed Linux/Windows protocol acceptance
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/7>
+- **Merged commit:** `52e85c3758b6c5c161f128e970712d642e39f4df`
+- **Current milestone:** Credential references and external secret providers
+- **Current slice:** A shared bounded `env:`/`file:` credential-reference resolver adopted by the controller API key, SSH password/private key, and WinRM password paths on `agent/credential-references`; PR pending.
+- **Verified in this slice:** Under Go 1.23.12, `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` pass. Resolver tests cover exact-byte preservation, invalid references, unavailable inputs, regular-file enforcement, size bounds, and non-disclosure in errors; CLI tests cover defaults, deprecated aliases, and conflict rejection.
+- **Next slice:** Implement explicit Vault and Kubernetes Secret provider adapters. A Kubernetes Secret mounted as a file can use the current `file:` provider, but that is not represented as a Kubernetes API adapter.
+- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release. Do not fabricate this evidence from Topo Lab; obtain it from controlled real hosts and review it for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. This gate remains open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone.
 
 Before beginning new work, synchronize local `main`, create a focused feature
@@ -88,7 +89,7 @@ CMDBs. The longer-term product family is:
 - Two scans of 500 Linux personas through 1,000 SSH connections, 100% expected
   coverage of 1,000 assets, and no duplicate resolved assets.
 
-## Next milestone: Windows WinRM discovery alpha
+## Windows WinRM discovery alpha implementation
 
 ### Objective
 
@@ -156,12 +157,35 @@ prove a single Topo Relay can normalize a mixed Linux/Windows environment.
 - No requirement to provision hundreds of real machines.
 - No PostgreSQL dependency.
 
+The implementation, fault coverage, and simulated scale/identity gates above
+are complete. The real-host fixture gate is explicitly deferred and remains
+open; therefore Topo does not yet claim real-host Windows compatibility.
+
+## Current milestone: credential references and external secret providers
+
+### Objective
+
+Keep credential values out of command lines, jobs, observations, and logs while
+giving every credential consumer one provider-neutral, bounded input contract.
+
+### Slices
+
+1. Shared `env:` and absolute-path `file:` references for evaluation and
+   mounted secret files, adopted by controller, SSH, and WinRM CLI paths.
+2. Vault provider adapter with bounded reads, authentication guidance, lease
+   and renewal behavior, cancellation, and redacted provider errors.
+3. Kubernetes Secret provider adapter with namespace/service-account scoping,
+   bounded reads, cancellation, and redacted API errors.
+
+The first slice does not claim native Vault or Kubernetes API integration.
+
 ## Follow-on order
 
-After Windows WinRM alpha, pursue these slices in order unless evidence from an
-enterprise pilot changes the priority:
+Following the implemented Windows slices, pursue these slices in order unless
+evidence from an enterprise pilot changes the priority:
 
-1. Credential references and Vault/Kubernetes Secret adapters.
+1. Complete the credential-provider milestone: merge shared `env:`/`file:`
+   references, then add Vault and Kubernetes Secret adapters.
 2. Outbound-only Topo Agent MVP for Linux and Windows with encrypted buffering.
 3. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
 4. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and

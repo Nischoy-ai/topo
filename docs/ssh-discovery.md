@@ -25,7 +25,13 @@ The first eight commands are required. Package and service enumeration are optio
 
 Targets use `username@host:port`, one per line. Blank lines and lines beginning with `#` are ignored.
 
-Password authentication reads the password from `TOPO_SSH_PASSWORD` by default. `-password-env` can name a different environment variable. Key authentication uses `-private-key`; passphrases are not yet supported. The secret value is never a CLI argument.
+Password authentication resolves `env:TOPO_SSH_PASSWORD` by default. Use
+`-password-ref env:NAME` or `-password-ref file:/absolute/path` to select a
+different source. Key authentication uses `-private-key-ref` with the same
+reference grammar; passphrases are not yet supported. The secret value is never
+a CLI argument. The older `-password-env` and `-private-key` flags remain
+deprecated compatibility aliases and cannot be combined with their replacement
+flags.
 
 Production scans require `-known-hosts`:
 
@@ -35,6 +41,15 @@ TOPO_SSH_PASSWORD="$MY_DISCOVERY_PASSWORD" ./bin/topo discover ssh \
   -known-hosts /etc/topo/ssh_known_hosts \
   -site datacenter-west \
   -collector relay-west-1
+```
+
+For a mounted private key:
+
+```sh
+./bin/topo discover ssh \
+  -targets targets.txt \
+  -known-hosts /etc/topo/ssh_known_hosts \
+  -private-key-ref file:/run/secrets/topo_ssh_key
 ```
 
 Use a dedicated read-only account. Manage host-key rotation deliberately; Topo fails closed when a key is absent or changes.
@@ -67,6 +82,6 @@ The automated acceptance suite scans 500 Linux personas twice through 1,000 SSH 
 
 - Linux collection remains a separate plugin, but the repeated mixed-estate gate now runs it concurrently with Windows WinRM discovery and verifies shared identity resolution without duplicates.
 - No bastion/proxy-jump support yet.
-- No encrypted private-key passphrases, SSH certificates, or external secret-provider adapter yet.
+- No encrypted private-key passphrases, SSH certificates, or native Vault/Kubernetes API provider yet.
 - No target CIDR expansion; inventory targets must be explicitly supplied.
 - This is pre-alpha software and should be used in a lab or tightly controlled pilot until collector enrollment, mTLS, audit logging, and signed releases are complete.

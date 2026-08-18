@@ -14,8 +14,9 @@
 - **Implemented alpha:** Linux SSH discovery with password/private-key authentication, mandatory host-key policy, fixed command allowlist, bounded output, concurrency and deadlines.
 - **Implemented alpha:** Topo Lab SSH frontend and a two-scan, 500-host acceptance test using real SSH handshakes and sessions entirely in memory.
 - **Implemented milestone slices:** fixed WS-Management CIM identity, BIOS, OS, compute, network, volume, service, and patch operations; fixed machine-wide uninstall-registry software inventory over bounded WinRS; loopback Topo Lab WinRM frontend; HTTPS-only NTLMv2 authentication; fault isolation; a two-scan 500-Windows test; and concurrent two-scan acceptance for 500 Linux plus 500 Windows targets with 2,000 stable assets and no duplicates.
-- **Current milestone:** complete WinRM/Windows discovery with sanitized real-host compatibility fixtures from Windows Server 2022 and one other supported release; per-user software inventory, Kerberos, and certificate authentication remain tracked follow-ups.
-- Credential references, Vault/Kubernetes Secret adapters, and ServiceNow IRE duplicate-CI validation.
+- **Explicitly deferred evidence:** sanitized real-host compatibility fixtures from Windows Server 2022 and one other supported release remain required before a real-host compatibility claim; per-user software inventory, Kerberos, and certificate authentication remain tracked follow-ups.
+- **Current milestone:** shared bounded `env:`/`file:` credential references for controller, SSH, and WinRM inputs, followed by Vault and Kubernetes Secret provider adapters. Secret values remain prohibited as CLI arguments.
+- ServiceNow IRE duplicate-CI validation.
 - Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and jobs.
 - Isolated gRPC plugin supervisor with signed manifests and resource limits.
 - Linux systemd and Windows service agents with encrypted offline buffering.

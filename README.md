@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; an authenticated controller ingestion API; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, SNMP, VMware, cloud, Kubernetes, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded environment/file credential references; an authenticated controller ingestion API; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. WinRM real-host compatibility fixtures, native Vault/Kubernetes Secret adapters, Kerberos and certificate authentication, SNMP, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -57,8 +57,14 @@ Start the controller with authentication enabled:
 
 ```sh
 TOPO_API_KEY='replace-with-a-long-random-value' ./bin/topo serve
+# Equivalent explicit reference:
+./bin/topo serve -api-key-ref env:TOPO_API_KEY
 curl http://localhost:8080/healthz
 ```
+
+Controller, SSH, and WinRM credentials share the same `env:<name>` and
+`file:<absolute-path>` reference contract. Values never appear in CLI
+arguments. See [Credential references](docs/credential-references.md).
 
 Submit an observation produced by the CLI:
 
@@ -101,7 +107,7 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - The SSH plugin executes a fixed audited command set, requires host-key verification by default, bounds command output, and applies connection and command deadlines.
 - The WinRM plugin executes fixed CIM resource/query pairs for required host identity and optional network, volume, service, and patch inventory plus one compiled-in PowerShell command for machine-wide uninstall-registry software inventory; it requires HTTPS outside loopback-only Lab mode, verifies server certificates, performs NTLMv2 without Basic fallback, bounds SOAP and command output, and applies operation deadlines and concurrency limits.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
-- Secrets are read from the environment and never serialized into observations.
+- Secrets are resolved through bounded environment or absolute-file references and never serialized into observations. Native Vault and Kubernetes API providers are not yet implemented.
 
 The current API-key transport is suitable for local evaluation only. Do not expose the controller to an untrusted network until collector enrollment, mTLS, certificate rotation, audit logging, and a persistent secret provider are implemented. See [SECURITY.md](SECURITY.md).
 
