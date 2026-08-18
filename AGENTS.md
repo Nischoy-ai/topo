@@ -39,12 +39,14 @@ assume access to an earlier chat.
 
 The current follow-on milestone is credential references:
 
-1. A shared, bounded credential-reference contract with `env:` and `file:`
-   providers for early evaluation.
-2. Adoption by the controller API key, SSH password/private key, and WinRM
-   password CLI paths without accepting secret values as CLI arguments.
-3. Vault and Kubernetes Secret provider adapters with provider-specific tests
-   and least-privilege deployment guidance.
+1. **Done.** A shared, bounded credential-reference contract with `env:` and
+   `file:` providers for early evaluation.
+2. **Done.** Adoption by the controller API key, SSH password/private key,
+   and WinRM password CLI paths without accepting secret values as CLI
+   arguments.
+3. **Done for Vault.** A `vault:<path>#<field>` provider adapter (KV version
+   2) with provider-specific tests and least-privilege deployment guidance.
+   A Kubernetes Secret provider adapter is the remaining follow-on.
 4. Security tests that prove secret values do not enter errors or logs.
 
 The Windows implementation and simulated scale gates are complete. Sanitized

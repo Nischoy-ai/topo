@@ -1,7 +1,10 @@
 package credentialref
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,6 +36,54 @@ func TestResolveFile(t *testing.T) {
 	}
 }
 
+func TestResolveVault(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/secret/data/topo/ssh" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		if got := r.Header.Get("X-Vault-Token"); got != "test-token" {
+			t.Fatalf("token header = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]any{"data": map[string]any{"password": "vault-secret"}},
+		})
+	}))
+	defer server.Close()
+	t.Setenv("VAULT_ADDR", server.URL)
+	t.Setenv("VAULT_TOKEN", "test-token")
+
+	value, err := Resolve("vault:topo/ssh#password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(value) != "vault-secret" {
+		t.Fatalf("credential bytes changed: %q", value)
+	}
+}
+
+func TestResolveVaultUnavailableDoesNotExposeCredential(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	t.Setenv("VAULT_ADDR", server.URL)
+	t.Setenv("VAULT_TOKEN", "test-token")
+
+	_, err := Resolve("vault:topo/missing#password")
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("error = %v, want ErrUnavailable", err)
+	}
+}
+
+func TestResolveVaultMissingConfiguration(t *testing.T) {
+	t.Setenv("VAULT_ADDR", "")
+	_, err := Resolve("vault:topo/ssh#password")
+	if err == nil || !strings.Contains(err.Error(), "VAULT_ADDR") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestResolveRejectsInvalidReferences(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -41,7 +92,8 @@ func TestResolveRejectsInvalidReferences(t *testing.T) {
 	}{
 		{name: "empty", contains: "empty"},
 		{name: "value", reference: "secret", contains: "must use"},
-		{name: "provider", reference: "vault:path", contains: "unsupported"},
+		{name: "provider", reference: "azure:path", contains: "unsupported"},
+		{name: "vault missing field", reference: "vault:secret/topo", contains: "vault:<path>#<field>"},
 		{name: "environment name", reference: "env:BAD-NAME", contains: "invalid"},
 		{name: "relative file", reference: "file:relative", contains: "absolute"},
 		{name: "directory", reference: "file:" + t.TempDir(), contains: "regular file"},

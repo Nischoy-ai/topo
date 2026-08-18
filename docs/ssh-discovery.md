@@ -26,10 +26,12 @@ The first eight commands are required. Package and service enumeration are optio
 Targets use `username@host:port`, one per line. Blank lines and lines beginning with `#` are ignored.
 
 Password authentication resolves `env:TOPO_SSH_PASSWORD` by default. Use
-`-password-ref env:NAME` or `-password-ref file:/absolute/path` to select a
-different source. Key authentication uses `-private-key-ref` with the same
-reference grammar; passphrases are not yet supported. The secret value is never
-a CLI argument. The older `-password-env` and `-private-key` flags remain
+`-password-ref env:NAME`, `-password-ref file:/absolute/path`, or
+`-password-ref vault:<path>#<field>` to select a different source. Key
+authentication uses `-private-key-ref` with the same reference grammar;
+passphrases are not yet supported. The secret value is never a CLI argument.
+See [credential references](credential-references.md) for the full provider
+list. The older `-password-env` and `-private-key` flags remain
 deprecated compatibility aliases and cannot be combined with their replacement
 flags.
 

@@ -3,18 +3,27 @@
 package credentialref
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"unicode"
+
+	"github.com/Nischoy-ai/topo/pkg/credentialref/vault"
 )
 
 const (
 	maxReferenceBytes  = 4 << 10
 	maxCredentialBytes = 1 << 20
+
+	// vaultResolveTimeout bounds a vault: reference resolution, including
+	// connection and read time. It is a hard backstop outside the Vault
+	// client's own per-request timeout.
+	vaultResolveTimeout = 20 * time.Second
 )
 
 // ErrUnavailable indicates that a referenced credential is not present.
@@ -40,6 +49,8 @@ func Resolve(reference string) ([]byte, error) {
 		return resolveEnvironment(location)
 	case "file":
 		return resolveFile(location)
+	case "vault":
+		return resolveVault(location)
 	default:
 		return nil, fmt.Errorf("unsupported credential reference provider %q", kind)
 	}
@@ -96,6 +107,40 @@ func resolveFile(path string) ([]byte, error) {
 	}
 	if len(value) > maxCredentialBytes {
 		return nil, fmt.Errorf("credential file %q exceeds 1048576 bytes", path)
+	}
+	return value, nil
+}
+
+// resolveVault reads a vault:<path>#<field> reference from a HashiCorp Vault
+// KV version 2 secrets engine. Connection settings, including the token,
+// come from the standard Vault environment variables so a token is never
+// accepted as part of the reference or as a CLI argument.
+func resolveVault(location string) ([]byte, error) {
+	path, field, ok := strings.Cut(location, "#")
+	if !ok || path == "" || field == "" {
+		return nil, errors.New("vault credential reference must use vault:<path>#<field>")
+	}
+
+	config, err := vault.ConfigFromEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("vault credential reference: %w", err)
+	}
+	client, err := vault.NewClient(config)
+	if err != nil {
+		return nil, fmt.Errorf("vault credential reference: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), vaultResolveTimeout)
+	defer cancel()
+	value, err := client.Resolve(ctx, path, field)
+	if err != nil {
+		if errors.Is(err, vault.ErrUnavailable) {
+			return nil, fmt.Errorf("%w: %s", ErrUnavailable, err.Error())
+		}
+		return nil, err
+	}
+	if len(value) > maxCredentialBytes {
+		return nil, fmt.Errorf("credential from vault secret %q field %q exceeds 1048576 bytes", path, field)
 	}
 	return value, nil
 }
