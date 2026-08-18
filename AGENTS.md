@@ -37,17 +37,23 @@ assume access to an earlier chat.
 
 ## Current priority
 
-The current follow-on milestone is credential references:
+The credential-references milestone is complete:
 
 1. **Done.** A shared, bounded credential-reference contract with `env:` and
    `file:` providers for early evaluation.
 2. **Done.** Adoption by the controller API key, SSH password/private key,
    and WinRM password CLI paths without accepting secret values as CLI
    arguments.
-3. **Done for Vault.** A `vault:<path>#<field>` provider adapter (KV version
-   2) with provider-specific tests and least-privilege deployment guidance.
-   A Kubernetes Secret provider adapter is the remaining follow-on.
-4. Security tests that prove secret values do not enter errors or logs.
+3. **Done.** A `vault:<path>#<field>` provider adapter (KV version 2) and a
+   `k8s:[<namespace>/]<secret-name>#<field>` provider adapter using the
+   pod's own service account, both with provider-specific tests and
+   least-privilege deployment guidance.
+4. **Done.** Security tests that prove secret values do not enter errors or
+   logs, across all four providers.
+
+The current follow-on milestone is the outbound-only Topo Agent MVP for
+Linux and Windows with encrypted offline buffering, per the follow-on order
+in `docs/project-plan.md`.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

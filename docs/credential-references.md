@@ -16,6 +16,8 @@ The initial providers are:
   rotation layouts.
 - `vault:<path>#<field>` reads one field from a HashiCorp Vault KV version 2
   secret. See [Vault provider](#vault-provider) below.
+- `k8s:[<namespace>/]<secret-name>#<field>` reads one field from a Kubernetes
+  Secret. See [Kubernetes provider](#kubernetes-provider) below.
 
 References are limited to 4 KiB and resolved values to 1 MiB. Consumers retain
 their tighter validation, such as the WinRM password and controller API-key
@@ -57,10 +59,9 @@ Environment variables are convenient for evaluation but can be inherited by
 child processes and exposed by deployment tooling; restricted mounted files
 are preferred for managed deployments.
 
-A Kubernetes Secret mounted as a file can use `file:` today. This is filesystem
-integration, not a native Kubernetes Secret API adapter. A native Kubernetes
-Secret provider, including its own authentication, authorization, and
-cancellation behavior, remains the next roadmap slice.
+A Kubernetes Secret mounted as a file can also use `file:`; this is filesystem
+integration rather than the native `k8s:` API adapter, and both remain valid
+depending on deployment constraints.
 
 ## Vault provider
 
@@ -116,3 +117,70 @@ long-running consumer can renew the configured token before its lease
 expires. Topo does not call these automatically today; automatic background
 renewal for long-running processes, and support for leased dynamic secrets
 engines beyond token renewal, remain deferred follow-ups.
+
+## Kubernetes provider
+
+`k8s:[<namespace>/]<secret-name>#<field>` reads one field from a Kubernetes
+Secret's `data` map through the Kubernetes API server. `namespace` is
+optional and defaults to the pod's own namespace; `secret-name` is the
+Secret object's name; `field` selects one key, for example `password`.
+Kubernetes always base64-encodes Secret data, and the client decodes it
+before returning the credential bytes.
+
+```sh
+./bin/topo discover ssh \
+  -targets targets.txt \
+  -known-hosts /etc/topo/ssh_known_hosts \
+  -password-ref k8s:ssh-credentials#password
+
+./bin/topo discover winrm \
+  -targets winrm-targets.txt \
+  -username 'EXAMPLE\topo-reader' \
+  -password-ref 'k8s:other-namespace/winrm-credentials#password' \
+  -auth ntlm
+```
+
+### Connection configuration
+
+Inside a pod, no configuration is required: Topo authenticates with the
+pod's own projected service account token and trusts the cluster's own CA,
+both mounted automatically by Kubernetes at the standard in-cluster paths.
+The following environment variables override that default, primarily for
+running outside a cluster (for example, local development or Topo Lab) or
+for a non-default service account layout:
+
+| Variable | Purpose |
+| --- | --- |
+| `TOPO_KUBERNETES_API_SERVER` | Overrides the API server URL normally built from `KUBERNETES_SERVICE_HOST`/`KUBERNETES_SERVICE_PORT`. When set, Topo trusts the system certificate store for TLS instead of the in-cluster CA unless `TOPO_KUBERNETES_CA_FILE` is also set. |
+| `TOPO_KUBERNETES_TOKEN_FILE` | Absolute path to the bearer token file. Defaults to the projected service account token path. Re-read on every request, so kubelet-rotated tokens are picked up without any renewal logic. |
+| `TOPO_KUBERNETES_CA_FILE` | Absolute path to an additional PEM certificate authority to trust for the API server's TLS identity. |
+| `TOPO_KUBERNETES_NAMESPACE` | Default namespace used when a reference omits one. Defaults to the pod's own namespace file. |
+
+Topo verifies the Kubernetes API server's TLS identity and never disables
+certificate verification. Reads are bounded to 1 MiB and cancelled after 20
+seconds. Errors report the secret name, namespace, and the Kubernetes API's
+own error text but never resolved credential bytes.
+
+### Least-privilege scoping
+
+Kubernetes RBAC — not Topo — decides which Secrets a request may read. Grant
+the pod's service account a `Role` with `get` (not `list` or `watch`) on the
+specific named Secrets Topo needs, bound with a `RoleBinding` in that
+namespace, rather than broad Secret read access:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: topo-credential-reader
+  namespace: topo
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["ssh-credentials", "winrm-credentials"]
+    verbs: ["get"]
+```
+
+A cross-namespace reference (`k8s:<namespace>/<secret-name>#<field>`) only
+succeeds if the calling service account's RBAC grants also permit reading
+Secrets in that other namespace.
