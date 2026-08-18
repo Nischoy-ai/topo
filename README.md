@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded environment/file credential references; an authenticated controller ingestion API; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. WinRM real-host compatibility fixtures, native Vault/Kubernetes Secret adapters, Kerberos and certificate authentication, SNMP, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded `env:`/`file:`/`vault:`/`k8s:` credential references; an authenticated controller ingestion API; an outbound-only Topo Agent MVP with encrypted offline buffering; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and ServiceNow IRE payload generation. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, Linux systemd/Windows service wrapping for the agent, SNMP, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, enrollment/mTLS, and fleet scheduling remain subsequent work rather than being represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -62,9 +62,24 @@ TOPO_API_KEY='replace-with-a-long-random-value' ./bin/topo serve
 curl http://localhost:8080/healthz
 ```
 
-Controller, SSH, and WinRM credentials share the same `env:<name>` and
-`file:<absolute-path>` reference contract. Values never appear in CLI
-arguments. See [Credential references](docs/credential-references.md).
+Controller, SSH, WinRM, and Topo Agent credentials share the same
+`env:<name>`, `file:<absolute-path>`, `vault:<path>#<field>`, and
+`k8s:[<namespace>/]<secret-name>#<field>` reference contract. Values never
+appear in CLI arguments. See [Credential references](docs/credential-references.md).
+
+Run the outbound-only Topo Agent against the controller started above, self-reporting on an interval and buffering to an encrypted local spool if the controller is unreachable:
+
+```sh
+TOPO_AGENT_SPOOL_KEY=$(openssl rand -hex 32) \
+TOPO_AGENT_API_KEY='replace-with-a-long-random-value' \
+./bin/topo agent run \
+  -controller-url http://localhost:8080 \
+  -spool-dir /var/lib/topo-agent/spool \
+  -interval 15m
+```
+
+See [Topo Agent](docs/topo-agent.md) for the spool encryption, delivery
+retry semantics, and current limitations.
 
 Submit an observation produced by the CLI:
 
@@ -107,9 +122,10 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - The SSH plugin executes a fixed audited command set, requires host-key verification by default, bounds command output, and applies connection and command deadlines.
 - The WinRM plugin executes fixed CIM resource/query pairs for required host identity and optional network, volume, service, and patch inventory plus one compiled-in PowerShell command for machine-wide uninstall-registry software inventory; it requires HTTPS outside loopback-only Lab mode, verifies server certificates, performs NTLMv2 without Basic fallback, bounds SOAP and command output, and applies operation deadlines and concurrency limits.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
-- Secrets are resolved through bounded environment or absolute-file references and never serialized into observations. Native Vault and Kubernetes API providers are not yet implemented.
+- Secrets are resolved through bounded `env:`, `file:`, `vault:`, or `k8s:` references and never serialized into observations, CLI arguments, or logs.
+- The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
 
-The current API-key transport is suitable for local evaluation only. Do not expose the controller to an untrusted network until collector enrollment, mTLS, certificate rotation, audit logging, and a persistent secret provider are implemented. See [SECURITY.md](SECURITY.md).
+The current API-key transport is suitable for local evaluation only. Do not expose the controller to an untrusted network until collector enrollment, mTLS, certificate rotation, audit logging, and a persistent secret provider are implemented; the controller does not yet terminate TLS natively, so production deployments need a TLS-terminating reverse proxy in front of it. See [SECURITY.md](SECURITY.md).
 
 ## Project status
 

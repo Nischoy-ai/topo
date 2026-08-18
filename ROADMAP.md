@@ -16,11 +16,11 @@
 - **Implemented milestone slices:** fixed WS-Management CIM identity, BIOS, OS, compute, network, volume, service, and patch operations; fixed machine-wide uninstall-registry software inventory over bounded WinRS; loopback Topo Lab WinRM frontend; HTTPS-only NTLMv2 authentication; fault isolation; a two-scan 500-Windows test; and concurrent two-scan acceptance for 500 Linux plus 500 Windows targets with 2,000 stable assets and no duplicates.
 - **Explicitly deferred evidence:** sanitized real-host compatibility fixtures from Windows Server 2022 and one other supported release remain required before a real-host compatibility claim; per-user software inventory, Kerberos, and certificate authentication remain tracked follow-ups.
 - **Implemented:** shared bounded `env:`/`file:` credential references for controller, SSH, and WinRM inputs; a Vault KV version 2 provider adapter with token lease lookup/renewal support; and a Kubernetes Secret provider adapter using the pod's own service account, with least-privilege RBAC scoping and redacted API errors. Secret values remain prohibited as CLI arguments. This completes the credential-references milestone.
-- **Current milestone:** outbound-only Topo Agent MVP for Linux and Windows with encrypted offline buffering.
+- **Implemented (agent core loop):** outbound-only `topo agent run` — periodic local discovery delivered to the controller's existing ingestion API over the same bearer-key contract, with an AES-256-GCM-encrypted, bounded, tamper-detecting offline spool keyed by the same credential-reference contract used everywhere else. See [docs/topo-agent.md](docs/topo-agent.md).
+- **Current milestone:** Linux systemd unit and Windows service wrapping for the Topo Agent, so `topo agent run` survives reboots and restarts on failure, plus install/uninstall documentation.
 - ServiceNow IRE duplicate-CI validation.
 - Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and jobs.
 - Isolated gRPC plugin supervisor with signed manifests and resource limits.
-- Linux systemd and Windows service agents with encrypted offline buffering.
 - Persistent observation/audit storage and scheduling; evaluate PostgreSQL after the discovery and CMDB validation gates rather than treating it as the immediate next dependency.
 
 The detailed scope, decisions, acceptance gates, and current handoff are maintained in [docs/project-plan.md](docs/project-plan.md).
