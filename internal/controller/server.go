@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -8,14 +9,28 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Nischoy-ai/topo/internal/enrollment"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/model"
 )
 
+// enrollmentTokenTTL bounds a minted enrollment token's lifetime.
+const enrollmentTokenTTL = time.Hour
+
+// maxEnrollRequestBytes bounds the POST /v1/enroll request body.
+const maxEnrollRequestBytes = 16 << 10
+
 type Server struct {
-	Store   store.Repository
-	Logger  *slog.Logger
-	APIKey  string
+	Store  store.Repository
+	Logger *slog.Logger
+	APIKey string
+
+	// CA and Tokens enable collector enrollment (POST /v1/enrollment-tokens
+	// and POST /v1/enroll) when both are set. Leaving either nil disables
+	// enrollment entirely; existing deployments that never set them see no
+	// behavior change.
+	CA      *enrollment.CA
+	Tokens  *enrollment.TokenStore
 	started time.Time
 }
 
@@ -31,6 +46,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/assets", s.auth(s.assets))
 	mux.HandleFunc("GET /v1/observations", s.auth(s.observations))
 	mux.HandleFunc("POST /v1/observations", s.auth(s.ingest))
+	mux.HandleFunc("POST /v1/enrollment-tokens", s.auth(s.createEnrollmentToken))
+	mux.HandleFunc("POST /v1/enroll", s.enroll)
 	return securityHeaders(mux)
 }
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
@@ -80,6 +97,66 @@ func (s *Server) ingest(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 202, map[string]string{"observation_id": e.ObservationID, "status": "accepted"})
 }
+func (s *Server) createEnrollmentToken(w http.ResponseWriter, _ *http.Request) {
+	if s.CA == nil || s.Tokens == nil {
+		writeError(w, http.StatusNotImplemented, "collector enrollment is not enabled")
+		return
+	}
+	token, expiresAt, err := s.Tokens.Issue(enrollmentTokenTTL)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, enrollment.TokenResponse{Token: token, ExpiresAt: expiresAt})
+}
+
+func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
+	if s.CA == nil || s.Tokens == nil {
+		writeError(w, http.StatusNotImplemented, "collector enrollment is not enabled")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxEnrollRequestBytes)
+	var req enrollment.EnrollRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, 400, "invalid enrollment request: "+err.Error())
+		return
+	}
+	if !enrollment.ValidCollectorID(req.CollectorID) {
+		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
+		return
+	}
+	csrDER, err := base64.StdEncoding.DecodeString(req.CSR)
+	if err != nil {
+		writeError(w, 400, "csr is not valid base64")
+		return
+	}
+	csr, err := enrollment.ParseCSR(csrDER)
+	if err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
+
+	// The token is redeemed only after the CSR itself is structurally
+	// valid, so a malformed request never burns a valid token.
+	if err := s.Tokens.Redeem(req.Token); err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	certPEM, err := s.CA.Sign(csr, req.CollectorID, enrollment.DefaultCertificateTTL)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, enrollment.EnrollResponse{
+		CertificatePEM:   string(certPEM),
+		CACertificatePEM: string(s.CA.CACertPEM()),
+		ExpiresAt:        time.Now().Add(enrollment.DefaultCertificateTTL),
+	})
+}
+
 func validateObservation(e model.ObservationEnvelope) error {
 	if e.SchemaVersion != model.SchemaVersion {
 		return errors.New("unsupported schema_version")

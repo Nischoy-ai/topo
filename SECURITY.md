@@ -62,10 +62,10 @@ encrypted with AES-256-GCM using a key from the same credential-reference
 contract (never a CLI argument); spool files and their directory are created
 with owner-only permissions, tampering is detected via AEAD authentication
 rather than silently returning corrupted data, and total spool size is
-bounded so an extended outage cannot grow it without limit. The agent does
-not yet support collector enrollment, mTLS, or certificate rotation; it
-relies on the same evaluation-grade bearer-key trust model as the rest of
-the controller until that later milestone lands.
+bounded so an extended outage cannot grow it without limit. Collector
+enrollment now exists (see below) but is not yet wired into the agent's
+live traffic; the agent still authenticates with the bearer API-key
+contract until the next slice of that milestone.
 
 The packaged Linux systemd unit (`packaging/systemd/topo-agent.service`)
 runs as a dedicated non-root system user with an empty capability set,
@@ -80,6 +80,27 @@ verified by cross-compilation and code review only; it has not yet been
 exercised against a real Windows Service Control Manager, so treat it as
 unverified on real Windows until that gate closes, the same posture already
 applied to WinRM real-host compatibility.
+
+## Collector enrollment
+
+The controller can act as its own certificate authority (ECDSA P-256,
+self-signed, `-ca-dir`) and issue collectors short-lived (90-day) client
+certificates through `POST /v1/enrollment-tokens` (existing bearer-key
+auth, mints a single-use one-hour token) and `POST /v1/enroll` (redeems the
+token and signs a submitted CSR). The private key is generated on the
+collector and never transmitted; only the CSR — a public key plus a
+signature proving possession of the private key — crosses the network. A
+malformed enrollment request is rejected before the token is redeemed, so
+it cannot burn a valid token. The CA's own private key is protected by
+filesystem permissions, matching every other private key in this project,
+not a second application-level encryption layer. The token store is
+in-memory only and does not survive a controller restart, matching every
+other piece of controller state today. There is no certificate revocation
+yet; a compromised collector certificate is contained only by its bounded
+lifetime. Enrollment is opt-in and does not change any existing
+bearer-key-authenticated behavior when `-ca-dir` is not set. The issued
+certificate is not yet used to authenticate any live request — that is the
+next slice of this milestone. See [Collector enrollment](docs/enrollment.md).
 
 ## ServiceNow publishing
 
