@@ -17,7 +17,9 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Require HTTPS with normal certificate and hostname verification for non-Lab WinRM targets. Production NTLMv2 never falls back to Basic authentication. Basic authentication and HTTP are restricted to the explicit loopback-only Topo Lab mode.
 - Never place credentials in job options, labels, logs, or observation attributes.
 - Pass credential provider references, never credential values, as CLI arguments. Restrict credential-file permissions to the Topo process identity.
-- Review ServiceNow IRE preview output before enabling destination writes.
+- Review ServiceNow IRE preview output before enabling destination writes,
+  and configure identification/reconciliation rules for every CI class Topo
+  emits; see [ServiceNow publishing](docs/servicenow.md).
 
 ## SSH discovery
 
@@ -78,3 +80,19 @@ verified by cross-compilation and code review only; it has not yet been
 exercised against a real Windows Service Control Manager, so treat it as
 unverified on real Windows until that gate closes, the same posture already
 applied to WinRM real-host compatibility.
+
+## ServiceNow publishing
+
+Topo's ServiceNow IRE payload builder deduplicates by `source_native_key`
+and by relationship `(type, from, to)` within a batch, and is validated to
+produce an identical `(source_native_key, className)` set across
+independently repeated Topo Lab discovery scans — the condition ServiceNow's
+own IRE relies on to reconcile a CI rather than create a duplicate one.
+That is the extent of what this project can verify: there is no ServiceNow
+instance available here, so ServiceNow's own identification/reconciliation
+logic and its IRE response schema are neither exercised nor assumed.
+`PublishBatch` treats any 2xx response as published and any non-2xx as
+rejected without parsing response fields, and requires an absolute HTTPS
+instance URL and a bearer token supplied through the same credential
+reference contract as every other Topo secret. See
+[ServiceNow publishing](docs/servicenow.md).

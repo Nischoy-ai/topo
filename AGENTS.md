@@ -67,9 +67,20 @@ The outbound-only Topo Agent MVP milestone is complete:
    against a real Windows Service Control Manager; treat it as unverified
    on real Windows, matching the WinRM real-host fixture posture below.
 
-The current follow-on milestone is end-to-end ServiceNow IRE duplicate-CI
-and reconciliation validation, per the follow-on order in
-`docs/project-plan.md`.
+The ServiceNow IRE duplicate-CI validation milestone is complete for the
+half of it Topo controls: `mapPayload` deduplicates by `source_native_key`
+(and relationships by `(type, from, to)`) within a batch, and is validated
+to emit an identical `(source_native_key, className)` set across
+independently repeated Topo Lab discovery scans — the precondition for
+ServiceNow's own IRE to reconcile rather than duplicate a CI. See
+`docs/servicenow.md`. ServiceNow's own identification/reconciliation
+behavior and IRE response schema remain unverified: there is no ServiceNow
+instance available to this project, so do not represent that half as
+validated.
+
+The current follow-on milestone is collector enrollment, outbound mTLS,
+certificate rotation, heartbeats, and job delivery, per the follow-on order
+in `docs/project-plan.md`.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

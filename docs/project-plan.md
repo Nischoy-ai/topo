@@ -8,13 +8,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-18
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** Linux systemd unit and Windows service wrapping for the Topo Agent. `packaging/systemd/topo-agent.service` is a hardened unit (dedicated non-root user, empty capability set, `NoNewPrivileges`, `ProtectSystem=strict`, `StateDirectory` for the spool) verified with `systemd-analyze verify` and, in this slice, actually installed end-to-end in a scratch container (system user, `/etc/topo-agent` secret files, real `topo serve`/`topo agent run` as that unprivileged user) before being torn back down — not just syntax-checked. `cmd/topo/service_windows.go` (`//go:build windows`) implements the `svc.Handler` interface so `topo agent run` auto-detects `svc.IsWindowsService()` and runs identically either interactively or under the Service Control Manager, plus `topo agent install`/`uninstall` subcommands that register/remove the service (automatic start, three restart-on-failure attempts, an Event Log source) via `golang.org/x/sys/windows/svc/mgr` and `eventlog`; credential references are stored as-is in the service's persisted command line, never resolved, so a secret value is never written to the registry. **This completes the Topo Agent MVP milestone.**
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/11> (Agent core loop, the prior slice); this systemd/Windows-service slice is <https://github.com/Nischoy-ai/topo/pull/12>
-- **Merged commit:** `e12b609` (merge of the Agent core loop into `main`; update after this slice merges)
-- **Current milestone (next):** End-to-end ServiceNow IRE duplicate-CI and reconciliation validation, per the follow-on order below.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass (added as a CI step). New `cmd/topo` tests cover `decodeSpoolKey` bounds/encoding errors and `agent install`/`uninstall` flag validation plus their non-Windows-stub error path. The systemd unit was verified with `systemd-analyze verify` against both a synthetic and the real installed path, and manually installed/exercised end-to-end (system user creation, `/etc/topo-agent` secret files with `file:` references, `topo serve` + `topo agent run` running as that unprivileged user against each other, full teardown afterward — no residue left in the environment). Windows service registration (`mgr.CreateService`, `eventlog.InstallAsEventCreate`, the `svc.Handler` loop) is verified by cross-compilation and code review only; there is no Windows environment available to exercise it against a real Service Control Manager, so it remains an explicit real-Windows verification gate, the same posture already applied to WinRM real-host fixtures. Also fixed a pre-existing timing-sensitive flake in `TestRunDeliversWhileControllerReachable` (too-tight deadline under parallel test load) discovered while re-running the full suite.
-- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; and now also real-Windows verification of the Windows service wrapper described above. Do not fabricate either from Topo Lab; obtain them from controlled real hosts/Windows systems and review sanitized fixtures for hostnames, addresses, domain data, serials, UUIDs, account names, and other sensitive values before commit. These gates remain open before claiming real-host Windows compatibility or production readiness. Per-user uninstall hives, Kerberos/SPNEGO, and certificate authentication also remain follow-ups.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. Collector enrollment, outbound mTLS, certificate rotation, and heartbeats/jobs are a separate, later roadmap item, not part of the Agent MVP. One agent instance per host (fixed systemd unit / Windows service name) is an intentional MVP limitation, not tracked as a gap.
+- **Latest completed slice:** ServiceNow IRE duplicate-CI validation, for the half of it Topo controls. `mapPayload` (`pkg/publisher/servicenow/servicenow.go`) now deduplicates by `source_native_key` (last observation wins) and by relationship `(type, from, to)` even across multiple input envelopes in one batch — previously, an asset appearing twice in the input produced two IRE items with the same `source_native_key`. `TestMapPayloadIsIdempotentAcrossRepeatedLabScans` runs a Topo Lab estate through discovery twice (the same two-scan pattern the SSH/WinRM acceptance gates use) and asserts the mapped `(source_native_key, className)` set is identical both times; `TestPublishBatchSendsIdempotentRequestsAcrossRepeatedLabScans` asserts the same at the wire level against a fake IRE endpoint. `PublishBatch` also now captures the (bounded) response body in `Diagnostics` for operator review. **This is deliberately scoped to what Topo itself controls**: there is no ServiceNow instance available to this project, so ServiceNow's own identification/reconciliation behavior and its IRE response schema are neither exercised nor assumed — see `docs/servicenow.md` for the explicit boundary. This closes the ServiceNow IRE duplicate-CI validation milestone within that scope.
+- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/12> (systemd/Windows-service wrapping, the prior slice); this ServiceNow slice is <https://github.com/Nischoy-ai/topo/pull/13>
+- **Merged commit:** `a628a8a` (merge of the systemd/Windows-service wrapping into `main`; update after this slice merges)
+- **Current milestone (next):** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery, per the follow-on order below.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. `pkg/publisher/servicenow` coverage rose from 39.7% to 78.4%. New tests cover: within-batch dedup for both items (last-observation-wins) and relationships; response-body diagnostics capture; cross-scan idempotency of `mapPayload` output against a real two-scan Topo Lab estate; and cross-scan idempotency of the actual `PublishBatch` HTTP requests (method, path, auth header, and source keys) against a fake IRE endpoint (`httptest.NewTLSServer`, since `Validate` requires HTTPS).
+- **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and now also validation of ServiceNow's own IRE identification/reconciliation behavior and response schema against a real or sandboxed instance. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system. These gates remain open before claiming real-host Windows compatibility, ServiceNow production readiness, or general production readiness.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -251,21 +251,92 @@ Both slices are implemented; this milestone is complete.
 - `gofmt`, `go vet ./...`, `go test -race ./...`, and the production build
   pass, matching every other milestone in this project.
 
+## Completed milestone: ServiceNow IRE duplicate-CI validation
+
+### Objective
+
+Prove that Topo's ServiceNow publisher sends idempotent, duplicate-free
+Identify & Reconcile payloads — the same physical asset always maps to the
+same `(className, source_native_key)` pair, both within a single batch and
+across independently repeated scans — which is the precondition for
+ServiceNow's own IRE engine to reconcile to one CI rather than create
+duplicates.
+
+This milestone is deliberately scoped to what Topo itself controls. There is
+no ServiceNow instance available to this project to develop or test
+against, and ServiceNow's IRE response schema is proprietary and
+undocumented outside an instance's own scripted REST API definitions.
+Claiming to validate ServiceNow's own identification/reconciliation
+behavior without a real instance would mean fabricating unverified
+real-system behavior, which this project's own conventions (WinRM real-host
+fixtures, Windows service verification) explicitly avoid. "Duplicate-CI
+validation" here therefore means proving Topo's outbound behavior is
+correct, not ServiceNow's.
+
+### Slices
+
+1. **Done.** Fix within-batch duplicate emission: `mapPayload` previously
+   appended a new IRE item every time an asset's native ID appeared in the
+   input, so the same asset present in more than one input envelope (for
+   example, a batch of several buffered observations covering the same
+   host) produced two IRE items with the identical `source_native_key`.
+   It now deduplicates by `source_native_key` (most recent observation
+   wins, matching `store.Memory`'s resolved-asset semantics) and
+   deduplicates relationships by `(type, from, to)`.
+2. **Done.** Cross-scan idempotency validation using Topo Lab's existing
+   two-scan pattern (the same one the SSH/WinRM acceptance gates use):
+   `TestMapPayloadIsIdempotentAcrossRepeatedLabScans` asserts the mapped
+   `(source_native_key, className)` set from two independent discovery runs
+   of the same estate is identical, and
+   `TestPublishBatchSendsIdempotentRequestsAcrossRepeatedLabScans` asserts
+   the same at the wire level (method, path, auth header, source keys)
+   against a fake IRE endpoint that exists to validate Topo's request
+   generation, not to simulate ServiceNow's response behavior.
+3. **Done.** `PublishBatch` captures the (bounded) response body in
+   `Diagnostics` for operator review, without parsing or depending on any
+   particular field of it, since that schema is unverified.
+4. **Done.** `docs/servicenow.md` documents exactly what is and is not
+   validated, and what an operator must still do (configure identification
+   rules per CI class, validate against a real/sandboxed instance) before
+   claiming production readiness.
+
+### Deliberate non-goals for this milestone
+
+- No parsing of ServiceNow's IRE response body; its schema is proprietary
+  and unverified without a real instance.
+- No claim about ServiceNow's own identification/reconciliation behavior;
+  only Topo's outbound payload is validated.
+- No real or sandboxed ServiceNow instance integration test; that requires
+  infrastructure this project does not have access to and remains an
+  explicit deferred gate before production readiness, alongside WinRM
+  real-host fixtures and real-Windows Topo Agent service verification.
+
+### Acceptance gates
+
+- `mapPayload` never emits two items with the same `source_native_key`, or
+  two identical relationships, from one `PublishBatch`/`Preview` call.
+- The `(source_native_key, className)` set `mapPayload` produces from two
+  independently repeated Topo Lab discovery scans of the same estate is
+  identical.
+- The actual HTTP requests `PublishBatch` sends for those same two scans
+  are identical in method, path, auth header, and source keys.
+- `gofmt`, `go vet ./...`, `go test -race ./...`, and the production build
+  pass, matching every other milestone in this project.
+
 ## Follow-on order
 
-With the credential-provider and Topo Agent MVP milestones complete, pursue
-these slices in order unless evidence from an enterprise pilot changes the
-priority:
+With the credential-provider, Topo Agent MVP, and ServiceNow IRE
+duplicate-CI validation milestones complete, pursue these slices in order
+unless evidence from an enterprise pilot changes the priority:
 
-1. End-to-end ServiceNow IRE duplicate-CI and reconciliation validation.
-2. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
+1. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
    job delivery.
-3. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
+2. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
    this point rather than assuming it is mandatory.
-4. SNMPv3/network topology and VMware vCenter discovery.
-5. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
+3. SNMPv3/network topology and VMware vCenter discovery.
+4. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
    security testing.
-6. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
+5. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
    gates leading toward Topo Graph.
 
 ## Definition of milestone completion

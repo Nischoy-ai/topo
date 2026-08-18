@@ -100,9 +100,21 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return publisher.Result{Destination: "servicenow-ire", Rejected: len(payload.Items)}, fmt.Errorf("ServiceNow IRE returned %s: %s", resp.Status, string(body))
 	}
-	return publisher.Result{Destination: "servicenow-ire", Published: len(payload.Items), Diagnostics: map[string]any{"status": resp.StatusCode}}, nil
+	// The response body is captured for operator diagnostics (for example,
+	// manual reconciliation review) rather than parsed, since ServiceNow's
+	// exact IRE response schema is proprietary and unverified against a real
+	// instance; see docs/servicenow.md.
+	return publisher.Result{Destination: "servicenow-ire", Published: len(payload.Items), Diagnostics: map[string]any{"status": resp.StatusCode, "response": string(body)}}, nil
 }
 
+// mapPayload builds the IRE request payload. Each source_native_key appears
+// at most once, and each (type, from, to) relationship appears at most once,
+// even across multiple input envelopes (for example, a batch of several
+// buffered observations covering the same asset): ServiceNow's IRE matches
+// and reconciles CIs by source_native_key, so submitting the same key twice
+// in one request risks a duplicate or conflicting reconciliation rather than
+// updating one CI. When an asset appears more than once, the most recent
+// envelope's values win, matching store.Memory's resolved-asset semantics.
 func (p Publisher) mapPayload(envelopes []model.ObservationEnvelope) IREPayload {
 	out := IREPayload{}
 	index := map[string]int{}
@@ -112,17 +124,31 @@ func (p Publisher) mapPayload(envelopes []model.ObservationEnvelope) IREPayload 
 			for k, v := range a.Attributes {
 				values[k] = v
 			}
+			item := IREItem{ClassName: classFor(a.Type), Values: values, SourceInfo: SourceInfo{SourceName: p.Config.DiscoverySource, SourceNativeKey: a.NativeID}}
+			if pos, exists := index[a.NativeID]; exists {
+				out.Items[pos] = item
+				continue
+			}
 			index[a.NativeID] = len(out.Items)
-			out.Items = append(out.Items, IREItem{ClassName: classFor(a.Type), Values: values, SourceInfo: SourceInfo{SourceName: p.Config.DiscoverySource, SourceNativeKey: a.NativeID}})
+			out.Items = append(out.Items, item)
 		}
 	}
+
+	type relationKey struct{ typ, from, to string }
+	seenRelations := map[relationKey]bool{}
 	for _, e := range envelopes {
 		for _, r := range e.Relationships {
 			from, ok1 := index[r.FromNativeID]
 			to, ok2 := index[r.ToNativeID]
-			if ok1 && ok2 {
-				out.Relations = append(out.Relations, IRERelation{Type: relationFor(r.Type), Parent: from, Child: to})
+			if !ok1 || !ok2 {
+				continue
 			}
+			key := relationKey{r.Type, r.FromNativeID, r.ToNativeID}
+			if seenRelations[key] {
+				continue
+			}
+			seenRelations[key] = true
+			out.Relations = append(out.Relations, IRERelation{Type: relationFor(r.Type), Parent: from, Child: to})
 		}
 	}
 	return out
