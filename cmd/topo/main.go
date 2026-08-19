@@ -470,7 +470,7 @@ func serve(args []string) error {
 
 func runAgent(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo agent <run|install|uninstall|enroll>")
+		return errors.New("usage: topo agent <run|install|uninstall|enroll|rotate>")
 	}
 	switch args[0] {
 	case "run":
@@ -481,8 +481,10 @@ func runAgent(args []string) error {
 		return agentUninstall(args[1:])
 	case "enroll":
 		return agentEnroll(args[1:])
+	case "rotate":
+		return agentRotate(args[1:])
 	default:
-		return errors.New("usage: topo agent <run|install|uninstall|enroll>")
+		return errors.New("usage: topo agent <run|install|uninstall|enroll|rotate>")
 	}
 }
 
@@ -676,23 +678,52 @@ func agentEnroll(args []string) error {
 		return fmt.Errorf("enroll: %w", err)
 	}
 
-	if err := os.MkdirAll(*certDir, 0o700); err != nil {
-		return fmt.Errorf("create cert directory: %w", err)
-	}
-	if err := os.Chmod(*certDir, 0o700); err != nil {
-		return fmt.Errorf("restrict cert directory permissions: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(*certDir, "client-cert.pem"), result.CertificatePEM, 0o644); err != nil {
-		return fmt.Errorf("write client certificate: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(*certDir, "client-key.pem"), result.PrivateKeyPEM, 0o600); err != nil {
-		return fmt.Errorf("write client private key: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(*certDir, "ca-cert.pem"), result.CACertificatePEM, 0o644); err != nil {
-		return fmt.Errorf("write CA certificate: %w", err)
+	if err := enrollment.WriteResult(*certDir, result); err != nil {
+		return err
 	}
 
 	fmt.Printf("Enrolled collector %q; certificate expires %s. Certificate, key, and CA certificate written to %s\n", collectorID, result.ExpiresAt.Format(time.RFC3339), *certDir)
+	return nil
+}
+
+func agentRotate(args []string) error {
+	fs := flag.NewFlagSet("agent rotate", flag.ContinueOnError)
+	controllerURL := fs.String("controller-url", env("TOPO_AGENT_CONTROLLER_URL", ""), "Topo Hub controller base URL; must be the -mtls listener, since rotation authenticates with the current certificate, not a token or the bearer API key")
+	certDir := fs.String("cert-dir", "", "absolute path holding the certificate, key, and CA certificate topo agent enroll wrote; overwritten in place with the newly issued certificate")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *controllerURL == "" {
+		return errors.New("-controller-url is required")
+	}
+	if *certDir == "" {
+		return errors.New("-cert-dir is required")
+	}
+	if !filepath.IsAbs(*certDir) {
+		return errors.New("-cert-dir must be an absolute path")
+	}
+
+	tlsConfig, err := enrollment.LoadClientTLSConfig(*certDir)
+	if err != nil {
+		return fmt.Errorf("load current certificate: %w", err)
+	}
+	collectorID, err := enrollment.CurrentCollectorID(*certDir)
+	if err != nil {
+		return fmt.Errorf("determine current collector ID: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	result, err := enrollment.Rotate(ctx, *controllerURL, tlsConfig, collectorID)
+	if err != nil {
+		return fmt.Errorf("rotate: %w", err)
+	}
+
+	if err := enrollment.WriteResult(*certDir, result); err != nil {
+		return err
+	}
+
+	fmt.Printf("Rotated collector %q; new certificate expires %s. A running `topo agent run -mtls-cert-dir %s` must be restarted to pick it up.\n", collectorID, result.ExpiresAt.Format(time.RFC3339), *certDir)
 	return nil
 }
 

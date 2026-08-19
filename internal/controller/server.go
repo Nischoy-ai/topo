@@ -48,6 +48,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/observations", s.auth(s.ingest))
 	mux.HandleFunc("POST /v1/enrollment-tokens", s.auth(s.createEnrollmentToken))
 	mux.HandleFunc("POST /v1/enroll", s.enroll)
+	mux.HandleFunc("POST /v1/rotate", s.rotate)
 	return securityHeaders(mux)
 }
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
@@ -156,6 +157,63 @@ func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	certPEM, err := s.CA.Sign(csr, req.CollectorID, enrollment.DefaultCertificateTTL)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, enrollment.EnrollResponse{
+		CertificatePEM:   string(certPEM),
+		CACertificatePEM: string(s.CA.CACertPEM()),
+		ExpiresAt:        time.Now().Add(enrollment.DefaultCertificateTTL),
+	})
+}
+
+// rotate issues a collector a fresh certificate ahead of its current one
+// expiring, authenticated by that current certificate rather than a new
+// enrollment token. Deliberately not wrapped in s.auth(): the bearer API
+// key must never be accepted here, since it is shared across every
+// collector and accepting it would let any holder mint a certificate for
+// any collector ID, defeating per-collector identity. Only a client
+// certificate the TLS handshake has already verified against s.CA — which
+// requires the controller to be running `topo serve -mtls` — can reach
+// this far; the collector ID comes from that certificate's subject, not
+// from the request body, so a collector can only ever rotate its own
+// certificate.
+func (s *Server) rotate(w http.ResponseWriter, r *http.Request) {
+	if s.CA == nil {
+		writeError(w, http.StatusNotImplemented, "collector enrollment is not enabled")
+		return
+	}
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		writeError(w, http.StatusUnauthorized, "certificate rotation requires an already-verified client certificate")
+		return
+	}
+	collectorID := r.TLS.PeerCertificates[0].Subject.CommonName
+	if !enrollment.ValidCollectorID(collectorID) {
+		writeError(w, http.StatusUnauthorized, "peer certificate has an invalid collector ID")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxEnrollRequestBytes)
+	var req enrollment.RotateRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, 400, "invalid rotation request: "+err.Error())
+		return
+	}
+	csrDER, err := base64.StdEncoding.DecodeString(req.CSR)
+	if err != nil {
+		writeError(w, 400, "csr is not valid base64")
+		return
+	}
+	csr, err := enrollment.ParseCSR(csrDER)
+	if err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
+
+	certPEM, err := s.CA.Sign(csr, collectorID, enrollment.DefaultCertificateTTL)
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return

@@ -29,11 +29,10 @@ const (
 	caCertFile = "ca-cert.pem"
 	caValidity = 10 * 365 * 24 * time.Hour
 
-	// DefaultCertificateTTL bounds an issued collector certificate's
-	// lifetime. Certificate rotation (renewal before expiry) is a
-	// follow-on slice; a bounded TTL limits how long a compromised
+	// DefaultCertificateTTL bounds an issued or rotated collector
+	// certificate's lifetime. A bounded TTL limits how long a compromised
 	// collector key remains trusted, since Topo does not implement
-	// revocation yet.
+	// revocation yet; `topo agent rotate` renews it before it expires.
 	DefaultCertificateTTL = 90 * 24 * time.Hour
 
 	// DefaultServerCertificateTTL bounds the controller's own TLS server

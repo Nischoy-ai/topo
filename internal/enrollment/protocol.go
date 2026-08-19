@@ -23,3 +23,12 @@ type TokenResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
+
+// RotateRequest is the POST /v1/rotate request body. Unlike EnrollRequest,
+// it carries no token and no collector ID: the requesting collector's
+// identity comes from the client certificate the TLS handshake already
+// verified, so a collector can only ever renew its own certificate, never
+// request one for a different collector ID.
+type RotateRequest struct {
+	CSR string `json:"csr"`
+}

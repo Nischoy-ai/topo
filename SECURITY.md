@@ -6,7 +6,7 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Before production readiness, Nischoy Topo requires per-device enrollment, short-lived mTLS certificates, rotation/revocation, encrypted persistent secrets, immutable audit events, signed artifacts and plugin manifests, SBOM generation, and external penetration testing.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Before production readiness, Nischoy Topo requires per-device enrollment, short-lived mTLS certificates, and rotation (all implemented — see [Collector enrollment](docs/enrollment.md)) plus revocation (still outstanding), encrypted persistent secrets, immutable audit events, signed artifacts and plugin manifests, SBOM generation, and external penetration testing.
 
 ## Deployment guidance
 
@@ -103,20 +103,38 @@ bearer-key-authenticated behavior when `-ca-dir` is not set.
 The issued certificate now authenticates live traffic: `topo serve -mtls`
 runs a native TLS listener, issuing itself a server certificate from the
 same CA (1-year TTL, reissued fresh on every start rather than persisted
-or renewed while the process keeps running — certificate rotation, the
-next slice of this milestone, covers that), and verifies client
-certificates presented against that CA. A request with a certificate
-verified during the TLS handshake reaches protected endpoints without the
-bearer API key. The TLS layer still accepts a handshake with no client
-certificate at all — a collector's first-ever request, `POST /v1/enroll`,
-has none to present yet, authenticating instead with its one-time
-enrollment token — so per-endpoint enforcement (a verified certificate or
-the bearer key) happens in application-layer middleware, not the TLS
-handshake itself. `topo agent enroll -controller-ca-cert` pins the
-controller's self-signed CA certificate (distributed out-of-band alongside
-the enrollment token) so the bootstrap enrollment request itself can
-complete against an `-mtls` controller, whose certificate an ordinary
-HTTPS client would otherwise not trust. See
+or renewed while the process keeps running — collector certificate
+rotation, below, does not change that, since the server certificate is
+never persisted in the first place), and verifies client certificates
+presented against that CA. A request with a certificate verified during
+the TLS handshake reaches protected endpoints without the bearer API key.
+The TLS layer still accepts a handshake with no client certificate at all
+— a collector's first-ever request, `POST /v1/enroll`, has none to present
+yet, authenticating instead with its one-time enrollment token — so
+per-endpoint enforcement (a verified certificate or the bearer key)
+happens in application-layer middleware, not the TLS handshake itself.
+`topo agent enroll -controller-ca-cert` pins the controller's self-signed
+CA certificate (distributed out-of-band alongside the enrollment token) so
+the bootstrap enrollment request itself can complete against an `-mtls`
+controller, whose certificate an ordinary HTTPS client would otherwise not
+trust.
+
+A collector's certificate can be renewed before its 90-day expiry with
+`POST /v1/rotate`, authenticated by the certificate being renewed rather
+than a new token — and deliberately with no bearer-API-key fallback for
+this one endpoint, since accepting the shared key here would let any
+holder mint a certificate for any collector ID, defeating per-collector
+identity entirely. The reissued certificate's identity always comes from
+the peer certificate the TLS handshake already verified, never from
+anything the client claims in the CSR or request body, so a collector can
+only ever rotate its own certificate. Rotation generates a fresh key pair,
+not just a fresh certificate for the existing key. `topo agent rotate` is
+the collector-side command; it overwrites the same certificate directory
+`topo agent enroll` wrote, and a running `topo agent run` must be
+restarted afterward to pick up the renewed certificate — it is loaded once
+at startup, not reloaded live. There is still no certificate revocation;
+rotation renews a certificate on the collector's own initiative but gives
+the controller no way to invalidate one early. See
 [Collector enrollment](docs/enrollment.md).
 
 ## ServiceNow publishing
