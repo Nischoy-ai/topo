@@ -9,4 +9,9 @@ require (
 
 require golang.org/x/sys v0.35.0
 
-require github.com/gosnmp/gosnmp v1.42.1
+require (
+	github.com/gosnmp/gosnmp v1.42.1
+	github.com/vmware/govmomi v0.52.0
+)
+
+require github.com/google/uuid v1.6.0 // indirect

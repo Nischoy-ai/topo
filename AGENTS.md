@@ -152,8 +152,7 @@ staged as separate slices:
 The complete scope and acceptance gates for every slice are in
 `docs/project-plan.md`.
 
-The SNMP and VMware discovery milestone (M2) is now current, staged as two
-slices:
+The SNMP and VMware discovery milestone (M2) is complete, both slices:
 
 1. **Done.** SNMP device identity and interfaces: `pkg/discovery/snmp`
    implements the existing `discovery.Plugin` interface, querying MIB-II
@@ -173,12 +172,35 @@ slices:
    implemented via gosnmp's own client-side USM crypto but remains
    unverified against real network equipment, matching the WinRM
    real-host fixture posture below. See `docs/snmp.md`.
-2. **Not started.** VMware vCenter virtual machine and host inventory: a
-   new `pkg/discovery/vmware` plugin using `github.com/vmware/govmomi`,
-   tested against its own `vcsim` simulator rather than a hand-rolled Topo
-   Lab fixture.
+2. **Done.** VMware vCenter virtual machine and host inventory:
+   `pkg/discovery/vmware` implements `discovery.Plugin`, enumerating
+   `HostSystem`/`VirtualMachine` objects read-only over the vSphere API
+   (a bounded property-collector container view; no configuration, power,
+   or lifecycle operation is ever issued) using `github.com/vmware/govmomi`,
+   pinned to `v0.52.0` — the last release declaring `go 1.23.0`
+   compatibility. Asset identity is a host's hardware UUID or a VM's
+   VC-managed instance UUID (falling back to its BIOS UUID for standalone
+   ESXi hosts with no vCenter to assign one), never an IP address or
+   inventory path; `vm_runs_on_host`, `host_has_interface`, and
+   `vm_has_interface` relationships connect hosts, VMs, and their
+   interfaces. Production requires HTTPS with normal certificate
+   verification, with no fallback outside Topo Lab's `-lab` mode. Unlike
+   SNMP, govmomi ships its own `vcsim` simulator built for exactly this
+   kind of testing, so the two-scan idempotency and fault-isolation
+   acceptance tests (`pkg/discovery/vmware/integration_test.go`) run
+   directly against `govmomi/simulator` — with TLS and real credential
+   enforcement deliberately turned on, since vcsim defaults to plaintext
+   HTTP and accepts any non-empty credentials unless explicitly
+   configured otherwise — rather than a hand-rolled Topo Lab fixture.
+   Real vCenter/ESXi verification beyond `vcsim` has not been performed,
+   matching the SNMP `authPriv` and WinRM real-host fixture posture. See
+   `docs/vmware.md`.
 
 The complete scope and acceptance gates are in `docs/project-plan.md`.
+
+The persistent observation/audit storage and scheduling milestone is now
+current and has not started; evaluate PostgreSQL at this point rather than
+assuming it is mandatory. See "Follow-on order" in `docs/project-plan.md`.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are
