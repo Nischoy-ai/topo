@@ -66,3 +66,71 @@ func TestLoadClientTLSConfigMissingFiles(t *testing.T) {
 		t.Fatal("expected missing certificate files to be rejected")
 	}
 }
+
+func TestWriteResultThenLoadRoundTrips(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "cert-dir")
+	ca, err := generateCA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	csrDER, _ := generateTestCSR(t, "collector-1")
+	csr, err := ParseCSR(csrDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPEM, err := ca.Sign(csr, "collector-1", caValidity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := Result{
+		CertificatePEM:   certPEM,
+		PrivateKeyPEM:    []byte("not a real key, only round-tripping matters here"),
+		CACertificatePEM: ca.CACertPEM(),
+	}
+
+	if err := WriteResult(dir, result); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, ClientCertFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(result.CertificatePEM) {
+		t.Fatal("written client certificate does not match what was passed to WriteResult")
+	}
+	if info, err := os.Stat(dir); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("cert directory permissions = %v, want 0700 (err=%v)", info, err)
+	}
+}
+
+func TestWriteResultRejectsRelativeDir(t *testing.T) {
+	if err := WriteResult("relative/dir", Result{}); err == nil {
+		t.Fatal("expected a relative directory to be rejected")
+	}
+}
+
+func TestCurrentCollectorID(t *testing.T) {
+	dir := t.TempDir()
+	writeEnrollmentFiles(t, dir)
+
+	id, err := CurrentCollectorID(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != "collector-1" {
+		t.Fatalf("collector ID = %q, want collector-1", id)
+	}
+}
+
+func TestCurrentCollectorIDRejectsRelativeDir(t *testing.T) {
+	if _, err := CurrentCollectorID("relative/dir"); err == nil {
+		t.Fatal("expected a relative directory to be rejected")
+	}
+}
+
+func TestCurrentCollectorIDMissingFile(t *testing.T) {
+	if _, err := CurrentCollectorID(t.TempDir()); err == nil {
+		t.Fatal("expected a missing certificate file to be rejected")
+	}
+}

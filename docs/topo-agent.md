@@ -151,8 +151,11 @@ the same posture this project already takes with WinRM real-host fixtures.
   authenticates with the certificate `topo agent enroll` issued instead of,
   or alongside, the bearer API key; an agent that omits the flag still
   authenticates with the same static bearer API key as before. See
-  [Collector enrollment](enrollment.md#running-as-native-mtls). Certificate
-  rotation is a later slice of the same milestone.
+  [Collector enrollment](enrollment.md#running-as-native-mtls).
+  `topo agent rotate` renews that certificate before its 90-day expiry, but
+  `agent run` must be restarted afterward to pick up the renewed
+  certificate — it is loaded once at startup, not reloaded live. See
+  [Renewing a certificate](enrollment.md#renewing-a-certificate).
 - **The controller only terminates TLS itself when `-mtls` is set.**
   Without it, place a TLS-terminating reverse proxy in front of the
   controller for any deployment beyond local evaluation, the same guidance

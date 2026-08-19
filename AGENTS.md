@@ -101,9 +101,19 @@ deliberately staged as separate slices:
    -controller-ca-cert` pins the controller's self-signed CA certificate so
    the bootstrap enrollment request itself can complete against an `-mtls`
    controller. See `docs/enrollment.md`.
-3. Certificate rotation (renew before expiry, authenticated by the current
-   certificate rather than a new enrollment token). This is the next slice.
-4. Heartbeats (liveness/status distinct from observation delivery).
+3. **Done.** Certificate rotation: `POST /v1/rotate` renews a collector's
+   certificate before it expires, authenticated by the collector's current
+   certificate over mTLS rather than a new enrollment token — deliberately
+   no bearer-API-key fallback (accepting one would let any holder mint a
+   certificate for any collector ID), and the reissued certificate's
+   identity always comes from the already-verified peer certificate, never
+   from the CSR. `topo agent rotate` presents the current certificate,
+   generates a fresh key pair and CSR, and overwrites `-cert-dir`. Manual,
+   not automatic: a running `agent run` loads its certificate once at
+   startup and must be restarted after rotation to pick it up. See
+   `docs/enrollment.md`.
+4. Heartbeats (liveness/status distinct from observation delivery). This is
+   the next slice.
 5. Job delivery, necessarily collector-initiated polling since the agent
    remains outbound-only.
 
