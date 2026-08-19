@@ -22,11 +22,21 @@ type Config struct {
 	Sender      *Sender
 	Spool       *Spool
 	Logger      *slog.Logger
+
+	// HeartbeatInterval, when positive, sends a liveness heartbeat on this
+	// separate cadence in addition to the discovery/delivery Interval —
+	// distinct from observation delivery, so the controller can tell the
+	// collector is alive even between long discovery scans, rather than
+	// only inferring liveness from Interval-paced observation delivery.
+	// Zero or negative disables heartbeats entirely.
+	HeartbeatInterval time.Duration
 }
 
 // Run discovers and delivers on Interval until ctx is cancelled, returning
 // nil on a clean shutdown. Each tick first retries anything already
-// spooled, oldest first, then performs a fresh discovery pass.
+// spooled, oldest first, then performs a fresh discovery pass. If
+// HeartbeatInterval is positive, a liveness heartbeat is also sent on that
+// independent cadence.
 func Run(ctx context.Context, cfg Config) error {
 	if cfg.Interval <= 0 {
 		return errors.New("agent interval must be positive")
@@ -47,13 +57,39 @@ func Run(ctx context.Context, cfg Config) error {
 	tick()
 	ticker := time.NewTicker(cfg.Interval)
 	defer ticker.Stop()
+
+	// A nil heartbeatC blocks forever in the select below, which is
+	// exactly how HeartbeatInterval <= 0 disables heartbeats without a
+	// separate branch.
+	var heartbeatC <-chan time.Time
+	if cfg.HeartbeatInterval > 0 {
+		sendHeartbeat(ctx, cfg, logger)
+		heartbeatTicker := time.NewTicker(cfg.HeartbeatInterval)
+		defer heartbeatTicker.Stop()
+		heartbeatC = heartbeatTicker.C
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
 			tick()
+		case <-heartbeatC:
+			sendHeartbeat(ctx, cfg, logger)
 		}
+	}
+}
+
+// sendHeartbeat is best-effort: a failed heartbeat is logged, not
+// retried or spooled, since a stale heartbeat has no lasting value once
+// the next one supersedes it.
+func sendHeartbeat(ctx context.Context, cfg Config, logger *slog.Logger) {
+	sendCtx, cancel := context.WithTimeout(ctx, requestTimeout)
+	err := cfg.Sender.SendHeartbeat(sendCtx, cfg.CollectorID, cfg.SiteID)
+	cancel()
+	if err != nil {
+		logger.Warn("heartbeat delivery failed", "error", err)
 	}
 }
 

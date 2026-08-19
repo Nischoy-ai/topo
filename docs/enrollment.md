@@ -8,7 +8,9 @@ agent can present its certificate on every outbound request instead of, or
 alongside, the bearer API key. Since a collector certificate is
 deliberately short-lived (90 days), it can also be renewed before it
 expires, authenticated by itself rather than a new token. This is the
-first three of several slices toward heartbeats and job delivery; see
+first three of several slices toward heartbeats (see
+[Collector heartbeats](heartbeats.md), a separate capability that does not
+require enrollment or mTLS) and job delivery; see
 [project plan](project-plan.md) for the full staged plan.
 
 Enrollment and mTLS are entirely opt-in and additive. `topo serve` without
@@ -206,8 +208,9 @@ typically paired with a reload of whatever consumes its certificate.
 
 ## Current limitations
 
-- **No heartbeats or job delivery yet.** These are later slices of the same
-  milestone.
+- **No job delivery yet.** That is a later slice of the same milestone.
+  Heartbeats now exist, but as an independent capability — see
+  [Collector heartbeats](heartbeats.md) — not part of this document.
 - **No revocation**, as above.
 - **`-mtls-cert-dir` and `-api-key-ref` are independent flags on
   `topo agent run`; neither one currently causes the other to be skipped

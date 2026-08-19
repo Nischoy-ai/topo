@@ -27,6 +27,7 @@ commands.
 | `-spool-key-ref` | required `env:TOPO_AGENT_SPOOL_KEY` | Credential reference for the 64-hex-character (32-byte) AES-256 spool encryption key. Generate one with `openssl rand -hex 32`. |
 | `-spool-max-bytes` | `67108864` (64 MiB) | Maximum total bytes retained in the offline buffer. |
 | `-interval` | `15m` | How often the agent discovers and attempts delivery. |
+| `-heartbeat-interval` | `1m` | How often the agent sends a liveness heartbeat, independent of `-interval`; `0` disables heartbeats. See [Collector heartbeats](heartbeats.md). |
 | `-site` | `default` | Site ID recorded on each observation. |
 | `-collector` | local hostname | Collector ID recorded on each observation. |
 
@@ -156,6 +157,11 @@ the same posture this project already takes with WinRM real-host fixtures.
   `agent run` must be restarted afterward to pick up the renewed
   certificate — it is loaded once at startup, not reloaded live. See
   [Renewing a certificate](enrollment.md#renewing-a-certificate).
+- **The agent sends liveness heartbeats on their own cadence.**
+  `-heartbeat-interval` (default one minute) is independent of `-interval`,
+  so the controller can tell the agent is alive without waiting for the
+  next full discovery/delivery cycle. See
+  [Collector heartbeats](heartbeats.md).
 - **The controller only terminates TLS itself when `-mtls` is set.**
   Without it, place a TLS-terminating reverse proxy in front of the
   controller for any deployment beyond local evaluation, the same guidance

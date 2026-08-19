@@ -8,14 +8,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-19
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** Certificate rotation (slice 3 of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). `POST /v1/rotate` renews a collector's certificate before it expires, authenticated by the collector's current, still-valid certificate over mTLS rather than a new enrollment token — deliberately with no bearer-API-key fallback, since accepting the shared key would let any holder mint a certificate for any collector ID, and deliberately deriving the certificate's identity from the already-TLS-verified peer certificate rather than anything in the request body, so a collector can only ever rotate its own identity. `topo agent rotate` is the collector-side CLI command: it presents the certificate in `-cert-dir` over mTLS, generates a fresh key pair and CSR (rotation renews the key, not just the certificate), and overwrites `-cert-dir` with what the controller returns. Rotation is a manual/externally-scheduled CLI command, not a background loop inside `agent run` — a running `agent run` process loads its certificate once at startup and must be restarted after rotation to pick up the renewed one; there is no in-process live reload yet. `internal/enrollment/client.go`'s `Enroll` and the new `Rotate` were refactored to share CSR-generation and response-submission helpers rather than duplicating that logic a second time. `enrollment.WriteResult` and `enrollment.CurrentCollectorID` factor out the certificate-directory read/write logic `topo agent enroll` already had, now shared with `topo agent rotate`. Verified with unit tests (including one proving a CSR that requests a different collector ID than the presenting peer certificate is ignored, not honored) and a manual run of the real CLI binaries end to end (enroll → rotate → run → observations land at the controller, with the controller's bearer key strictly enforced throughout to prove the rotated certificate alone authenticates).
-- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/16> (certificate rotation, this slice)
-- **Merged pull request:** collector enrollment in <https://github.com/Nischoy-ai/topo/pull/14>; outbound mTLS in <https://github.com/Nischoy-ai/topo/pull/15>; ServiceNow IRE duplicate-CI validation in <https://github.com/Nischoy-ai/topo/pull/13>.
-- **Merged commit:** `1291618` (merge of outbound mTLS into `main`); this slice not yet merged.
-- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery (see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below). Slices 1 (enrollment), 2 (outbound mTLS), and 3 (certificate rotation) are implemented; slice 4 (heartbeats) is next.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: a valid client certificate rotating itself into a certificate with a new serial number and a freshly generated key; rejection of a rotation request presenting no client certificate, proven at the real TLS handshake; rejection of a rotation request presenting the correct bearer key but no client certificate, proving there is no bearer-key fallback specifically for this endpoint; a CSR requesting a different collector ID than the presenting peer certificate being ignored in favor of the peer certificate's actual identity; and `enrollment` package-level input-validation tests for both `Enroll` and `Rotate` (empty collector ID, malformed controller URL, nil TLS config), closing a coverage gap the refactor would otherwise have opened. Also manually verified the full CLI flow end to end (mint token → `topo agent enroll` → `topo agent rotate` → `topo agent run -mtls-cert-dir` → observations land at the controller), confirming the rotated certificate's serial number differs from the original and that rotation is rejected when only the bearer key (no client certificate) is presented.
+- **Latest completed slice:** Heartbeats (slice 4 of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). `POST /v1/heartbeats` is a lightweight liveness signal, distinct from observation delivery, so the controller can tell a collector is alive without waiting on the (often 15+ minute) discovery/delivery `-interval`. `topo agent run` sends it on its own independent cadence, `-heartbeat-interval` (default one minute, `0` disables it) — a second ticker inside `agent.Run`, entirely decoupled from `-interval`; a nil channel in the `select` is how the ticker is skipped when disabled, rather than a separate code path. Heartbeats accept either the bearer API key or a verified mTLS certificate (`s.auth()`, the same middleware as every other data-plane endpoint) — unlike `POST /v1/rotate`, there is no reason to exclude the bearer key here, since a heartbeat only asserts liveness rather than getting new certificate material issued to it. When a verified peer certificate is present, its subject overrides whatever `collector_id` the request body claims, mirroring rotation's identity rule; bearer-key-authenticated heartbeats have no such stronger signal and use the body's value. `GET /v1/collectors` lists every collector's most recent heartbeat and whether it is within `controller.DefaultHeartbeatStaleAfter` (three minutes, a fixed constant — the controller has no reliable way to know an individual collector's actual configured interval). Both endpoints are always registered, unlike enrollment/mTLS/rotation: heartbeats need no CA or opt-in flag, only whatever auth a collector already has. A failed heartbeat is logged and dropped, never spooled or retried, unlike a failed observation delivery — a stale heartbeat has no lasting value once the next one supersedes it. `internal/agent.Sender.Send` and the new `SendHeartbeat` were refactored to share a `post` helper. Verified with unit tests (including one proving a heartbeat over mTLS is recorded under the peer certificate's identity even when the request body claims a different collector ID, and one proving `agent.Run` with a long `Interval` and a short `HeartbeatInterval` still causes the controller to see the collector as alive, isolating the independent ticker from discovery delivery) and a manual run of the real CLI binaries end to end (agent with `-interval 100h` and `-heartbeat-interval 2s` shows up alive in `GET /v1/collectors` well before any observation could have been delivered).
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/17> (heartbeats, this slice)
+- **Merged pull request:** certificate rotation in <https://github.com/Nischoy-ai/topo/pull/16>; collector enrollment in <https://github.com/Nischoy-ai/topo/pull/14>; outbound mTLS in <https://github.com/Nischoy-ai/topo/pull/15>; ServiceNow IRE duplicate-CI validation in <https://github.com/Nischoy-ai/topo/pull/13>.
+- **Merged commit:** `f04e87e` (merge of certificate rotation into `main`); this slice not yet merged.
+- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery (see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below). Slices 1 (enrollment), 2 (outbound mTLS), 3 (certificate rotation), and 4 (heartbeats) are implemented; slice 5 (job delivery) is next and completes the milestone.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: `POST /v1/heartbeats` recording a collector as alive over both the bearer API key and mTLS; a heartbeat over mTLS claiming a different `collector_id` in its body still being recorded under the verified peer certificate's real identity; rejection cases (missing auth, wrong schema version, invalid collector ID); `HeartbeatStore` recording/overwriting/staleness behavior with an injected short threshold rather than a real multi-minute wait; `agent.Run` driving a real `controller.Server` over `httptest` with `Interval` far longer than the test's deadline and a short `HeartbeatInterval`, proving the two tickers are genuinely independent; `agent.Run` with `HeartbeatInterval` left unset sending no heartbeats at all; and `Sender.SendHeartbeat` unit tests (correct endpoint, retryable-on-5xx). Also manually verified the full CLI flow end to end (controller with a strictly enforced bearer key → agent with `-interval 100h -heartbeat-interval 2s` → `GET /v1/collectors` shows it alive), confirming heartbeats work independently of any discovery/delivery cycle ever firing.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and validation of ServiceNow's own IRE identification/reconciliation behavior and response schema against a real or sandboxed instance. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system. These gates remain open before claiming real-host Windows compatibility, ServiceNow production readiness, or general production readiness.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment, outbound-mTLS, and rotation slices; a compromised collector key is contained by the bounded 90-day certificate TTL (or less, if rotated more often) only. The controller's own server certificate is not persisted or rotated within a run — reissued fresh on every `topo serve -mtls` start — and rotation (this slice) does not change that; it renews collector certificates only. In-process automatic/background rotation inside `agent run` is explicitly deferred, not implemented by mistake — `topo agent rotate` is deliberately a separate, manual/externally-scheduled command for this slice.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment, outbound-mTLS, and rotation slices; a compromised collector key is contained by the bounded 90-day certificate TTL (or less, if rotated more often) only. Heartbeat state is in-memory only, like the enrollment token store; it does not survive a controller restart, and there is deliberately no historical heartbeat log or alerting in this slice — `GET /v1/collectors` must be polled.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -390,9 +390,30 @@ PR, matching every other multi-part milestone in this project.
    its certificate once at startup and does not reload it live, so an
    operator (or a scheduler) invoking `agent rotate` must also restart
    `agent run` afterward for the renewed certificate to take effect.
-4. Heartbeats: a lightweight liveness/status endpoint distinct from
-   observation delivery, so the Hub can tell a collector is alive between
-   scans.
+4. **Done.** Heartbeats: `POST /v1/heartbeats` is a lightweight liveness
+   signal, distinct from observation delivery, so the controller can tell
+   a collector is alive between scans without waiting on the
+   discovery/delivery `-interval` (often 15+ minutes). `topo agent run`
+   sends it on its own independent cadence, `-heartbeat-interval` (default
+   one minute, `0` disables it) — a second ticker inside `agent.Run`,
+   decoupled from `-interval` entirely. Unlike `POST /v1/rotate`,
+   heartbeats accept the bearer API key as well as a verified mTLS
+   certificate (`s.auth()`, the same middleware every other data-plane
+   endpoint uses) — there's no analogous "any holder can impersonate any
+   collector" risk, since a heartbeat only ever asserts liveness, not an
+   identity that gets material (a certificate) issued to it; when a
+   verified peer certificate is present, its subject overrides whatever
+   `collector_id` the request body claims, matching rotation's identity
+   rule, but bearer-key-authenticated heartbeats have no such stronger
+   signal to fall back on. `GET /v1/collectors` lists every collector's
+   most recent heartbeat and whether it is still within
+   `enrollment`-independent `controller.DefaultHeartbeatStaleAfter` (three
+   minutes). Both endpoints are always registered, not gated behind a
+   flag: heartbeats need no CA or additional infrastructure, only
+   whichever auth a collector already has. A failed heartbeat is logged
+   and dropped, never spooled or retried — unlike a failed observation
+   delivery, a stale heartbeat has no lasting value once the next one
+   supersedes it. See `docs/heartbeats.md`.
 5. Job delivery: since Topo Agent is deliberately outbound-only (it never
    accepts inbound connections), this must be collector-initiated polling
    (for example, `GET /v1/jobs`) rather than a server push.
@@ -447,6 +468,23 @@ PR, matching every other multi-part milestone in this project.
   nothing to rotate mid-run.
 - No bearer-API-key path for rotation, by design, not oversight — see the
   slice 3 description above for why.
+
+### Deliberate non-goals for slice 4
+
+- No historical heartbeat log; `GET /v1/collectors` reports only each
+  collector's single most recent heartbeat.
+- No alerting when a collector goes stale; `GET /v1/collectors` must be
+  polled by whatever consumes it.
+- No spooling or retry for a failed heartbeat, unlike a failed
+  observation delivery — deliberate, not an oversight, since a stale
+  heartbeat has no value once the next one supersedes it a
+  `-heartbeat-interval` later.
+- No persistent heartbeat storage; like the enrollment token store, it is
+  in-memory only and does not survive a controller restart.
+- No per-collector configurable staleness threshold on the controller;
+  `controller.DefaultHeartbeatStaleAfter` is one fixed constant for every
+  collector, since the controller has no reliable way to know an
+  individual collector's actual configured `-heartbeat-interval`.
 
 ### Acceptance gates (slice 1)
 
@@ -519,6 +557,35 @@ PR, matching every other multi-part milestone in this project.
   end (enroll → rotate → run → observations land at the controller),
   matching the manual-verification bar every other slice in this project
   has met.
+- `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
+  ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
+
+### Acceptance gates (slice 4)
+
+- `POST /v1/heartbeats` accepts either the bearer API key or a verified
+  mTLS client certificate, and `GET /v1/collectors` then reports that
+  collector as alive.
+- A heartbeat over mTLS is recorded under the verified peer certificate's
+  identity even when the request body claims a different `collector_id` —
+  proven the same way as rotation's identical rule: a CSR-equivalent
+  spoofing attempt is ignored, not honored.
+- `agent.Run`, given an `Interval` far longer than the test's own
+  deadline and a short `HeartbeatInterval`, still causes the controller to
+  record the collector as alive — proven end to end against a real
+  `controller.Server` over `httptest`, not a mocked heartbeat call, so a
+  regression that accidentally coupled the two tickers together would be
+  caught.
+- `agent.Run` with `HeartbeatInterval` left at its zero value sends no
+  heartbeats at all, confirming the feature is opt-in at the library level
+  even though the CLI defaults `-heartbeat-interval` to one minute.
+- A collector's status flips from alive to not-alive once its last
+  heartbeat is older than the configured staleness threshold — proven
+  with an injected short threshold, not a real multi-minute wait.
+- Manually verified against the real CLI binaries: a collector running
+  with a discovery `-interval` deliberately far longer than the test
+  window (so no observation delivery can be responsible) still appears
+  alive in `GET /v1/collectors`, driven entirely by
+  `-heartbeat-interval`'s independent ticker.
 - `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
   ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
 

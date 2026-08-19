@@ -188,6 +188,86 @@ func TestRunDropsObservationsWhenDiscoveryFails(t *testing.T) {
 	}
 }
 
+func TestRunSendsHeartbeatsOnIndependentCadence(t *testing.T) {
+	repo := store.NewMemory()
+	ctrl := controller.New(repo, slog.Default(), "")
+	server := httptest.NewServer(ctrl.Handler())
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spool, err := NewSpool(t.TempDir(), testKey(t), 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	// Interval is deliberately much longer than the test's own deadline, so
+	// only the independent HeartbeatInterval ticker can be responsible for
+	// any heartbeats the controller records.
+	err = Run(ctx, Config{
+		SiteID: "default", CollectorID: "agent-1", Interval: time.Hour,
+		HeartbeatInterval: 30 * time.Millisecond,
+		Plugin:            &counterPlugin{}, Sender: sender, Spool: spool,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	statuses := ctrl.Heartbeats.List()
+	if len(statuses) != 1 {
+		t.Fatalf("collector statuses = %d, want 1", len(statuses))
+	}
+	if statuses[0].CollectorID != "agent-1" || statuses[0].SiteID != "default" {
+		t.Fatalf("status = %+v", statuses[0])
+	}
+	if !statuses[0].Alive {
+		t.Fatal("expected the collector to still be reported alive")
+	}
+
+	observations, err := repo.ListObservations(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(observations) != 1 {
+		t.Fatalf("observations = %d, want exactly 1: Run's own immediate first tick, not its hour-long Interval ticker", len(observations))
+	}
+}
+
+func TestRunHeartbeatDisabledByDefault(t *testing.T) {
+	repo := store.NewMemory()
+	ctrl := controller.New(repo, slog.Default(), "")
+	server := httptest.NewServer(ctrl.Handler())
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spool, err := NewSpool(t.TempDir(), testKey(t), 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	// HeartbeatInterval left at its zero value: heartbeats must stay off.
+	err = Run(ctx, Config{
+		SiteID: "default", CollectorID: "agent-1", Interval: 20 * time.Millisecond,
+		Plugin: &counterPlugin{}, Sender: sender, Spool: spool,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if statuses := ctrl.Heartbeats.List(); len(statuses) != 0 {
+		t.Fatalf("collector statuses = %d, want 0 when HeartbeatInterval is unset", len(statuses))
+	}
+}
+
 func TestRunRejectsInvalidConfig(t *testing.T) {
 	if err := Run(context.Background(), Config{Interval: 0}); err == nil {
 		t.Fatal("expected non-positive interval to be rejected")

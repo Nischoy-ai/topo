@@ -137,6 +137,33 @@ rotation renews a certificate on the collector's own initiative but gives
 the controller no way to invalidate one early. See
 [Collector enrollment](docs/enrollment.md).
 
+## Collector heartbeats
+
+`POST /v1/heartbeats` is a lightweight liveness signal, distinct from
+observation delivery, so the controller can tell a collector is alive
+without waiting on the discovery/delivery interval, which is often 15
+minutes or longer. Unlike `POST /v1/rotate`, it accepts either the bearer
+API key or a verified mTLS client certificate — the same `auth()`
+middleware every other data-plane endpoint uses — since a heartbeat only
+asserts liveness rather than getting new certificate material issued to
+it, so there is no analogous "any bearer-key holder can impersonate any
+collector" risk to guard against. When a verified peer certificate is
+present, its subject still overrides whatever `collector_id` the request
+body claims, matching the same identity rule as certificate rotation, so
+a collector authenticated by mTLS can never appear alive under a
+different collector's identity; a bearer-key-authenticated heartbeat has
+no such stronger signal and is recorded under whatever `collector_id` the
+body states. `GET /v1/collectors` lists every collector's most recent
+heartbeat and whether it falls within a fixed three-minute staleness
+window. Heartbeat state is in-memory only, like the enrollment token
+store, and does not survive a controller restart. A failed heartbeat is
+logged and dropped — never spooled or retried the way a failed
+observation delivery is — since a stale heartbeat has no lasting value
+once the next one supersedes it. Heartbeats are always available, unlike
+enrollment/mTLS/rotation: they require no CA, no `-mtls`, and no opt-in
+flag, only whichever credential a collector already presents. See
+[Collector heartbeats](docs/heartbeats.md).
+
 ## ServiceNow publishing
 
 Topo's ServiceNow IRE payload builder deduplicates by `source_native_key`

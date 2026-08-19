@@ -35,13 +35,14 @@ type DeliveryError struct {
 func (e *DeliveryError) Error() string { return e.err.Error() }
 func (e *DeliveryError) Unwrap() error { return e.err }
 
-// Sender delivers observation envelopes to a Topo Hub controller's ingest
-// endpoint one at a time, matching the controller's single-object wire
+// Sender delivers observation envelopes and heartbeats to a Topo Hub
+// controller one at a time, matching the controller's single-object wire
 // format.
 type Sender struct {
-	ingestURL  string
-	apiKey     string
-	httpClient *http.Client
+	ingestURL    string
+	heartbeatURL string
+	apiKey       string
+	httpClient   *http.Client
 }
 
 // NewSender builds a Sender targeting controllerURL, the controller's base
@@ -57,7 +58,7 @@ func NewSender(controllerURL, apiKey string, tlsConfig *tls.Config) (*Sender, er
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return nil, errors.New("controller URL must be an absolute http:// or https:// URL")
 	}
-	ingest := strings.TrimRight(controllerURL, "/") + "/v1/observations"
+	base := strings.TrimRight(controllerURL, "/")
 	httpClient := &http.Client{Timeout: requestTimeout}
 	if tlsConfig != nil {
 		transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -65,9 +66,10 @@ func NewSender(controllerURL, apiKey string, tlsConfig *tls.Config) (*Sender, er
 		httpClient.Transport = transport
 	}
 	return &Sender{
-		ingestURL:  ingest,
-		apiKey:     apiKey,
-		httpClient: httpClient,
+		ingestURL:    base + "/v1/observations",
+		heartbeatURL: base + "/v1/heartbeats",
+		apiKey:       apiKey,
+		httpClient:   httpClient,
 	}, nil
 }
 
@@ -78,9 +80,30 @@ func (s *Sender) Send(ctx context.Context, envelope model.ObservationEnvelope) e
 	if err != nil {
 		return fmt.Errorf("marshal observation: %w", err)
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, s.ingestURL, bytes.NewReader(body))
+	return s.post(ctx, s.ingestURL, body)
+}
+
+// SendHeartbeat posts a lightweight liveness signal, distinct from
+// observation delivery, so the controller can tell the collector is alive
+// between discovery scans. The returned error is a *DeliveryError when the
+// failure's retryability is known; callers are not expected to buffer a
+// failed heartbeat the way Send's caller buffers a failed observation —
+// a stale heartbeat has no lasting value once superseded by the next one.
+func (s *Sender) SendHeartbeat(ctx context.Context, collectorID, siteID string) error {
+	body, err := json.Marshal(model.HeartbeatRequest{SchemaVersion: model.SchemaVersion, CollectorID: collectorID, SiteID: siteID})
 	if err != nil {
-		return fmt.Errorf("build delivery request: %w", err)
+		return fmt.Errorf("marshal heartbeat: %w", err)
+	}
+	return s.post(ctx, s.heartbeatURL, body)
+}
+
+// post issues one authenticated POST and classifies the result the same
+// way for every Sender method: a transport-level failure or 5xx is
+// retryable, a 4xx is not.
+func (s *Sender) post(ctx context.Context, url string, body []byte) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 	if s.apiKey != "" {
@@ -89,7 +112,7 @@ func (s *Sender) Send(ctx context.Context, envelope model.ObservationEnvelope) e
 
 	response, err := s.httpClient.Do(request)
 	if err != nil {
-		return &DeliveryError{Retryable: true, err: fmt.Errorf("deliver observation: %w", err)}
+		return &DeliveryError{Retryable: true, err: fmt.Errorf("deliver request: %w", err)}
 	}
 	defer response.Body.Close()
 

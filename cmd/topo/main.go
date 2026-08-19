@@ -499,6 +499,7 @@ func agentRun(args []string) error {
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "", "collector ID; defaults to the local hostname")
 	mtlsCertDir := fs.String("mtls-cert-dir", "", "absolute path to the certificate, key, and CA certificate topo agent enroll wrote; authenticates outbound requests with mutual TLS instead of, or alongside, -api-key-ref")
+	heartbeatInterval := fs.Duration("heartbeat-interval", time.Minute, "interval between liveness heartbeats (POST /v1/heartbeats), independent of and distinct from -interval; 0 disables heartbeats")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -550,13 +551,14 @@ func agentRun(args []string) error {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	cfg := agent.Config{
-		SiteID:      *site,
-		CollectorID: collectorID,
-		Interval:    *interval,
-		Plugin:      localdiscovery.Plugin{},
-		Sender:      sender,
-		Spool:       spool,
-		Logger:      logger,
+		SiteID:            *site,
+		CollectorID:       collectorID,
+		Interval:          *interval,
+		HeartbeatInterval: *heartbeatInterval,
+		Plugin:            localdiscovery.Plugin{},
+		Sender:            sender,
+		Spool:             spool,
+		Logger:            logger,
 	}
 
 	asService, err := isWindowsService()
@@ -569,7 +571,7 @@ func agentRun(args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	logger.Info("topo agent starting", "controller_url", *controllerURL, "interval", interval.String(), "site", *site, "collector", collectorID, "spool_dir", *spoolDir)
+	logger.Info("topo agent starting", "controller_url", *controllerURL, "interval", interval.String(), "heartbeat_interval", heartbeatInterval.String(), "site", *site, "collector", collectorID, "spool_dir", *spoolDir)
 	return agent.Run(ctx, cfg)
 }
 

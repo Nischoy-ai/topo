@@ -20,6 +20,10 @@ const enrollmentTokenTTL = time.Hour
 // maxEnrollRequestBytes bounds the POST /v1/enroll request body.
 const maxEnrollRequestBytes = 16 << 10
 
+// maxHeartbeatRequestBytes bounds the POST /v1/heartbeats request body,
+// which carries only a schema version and two short IDs.
+const maxHeartbeatRequestBytes = 4 << 10
+
 type Server struct {
 	Store  store.Repository
 	Logger *slog.Logger
@@ -29,16 +33,22 @@ type Server struct {
 	// and POST /v1/enroll) when both are set. Leaving either nil disables
 	// enrollment entirely; existing deployments that never set them see no
 	// behavior change.
-	CA      *enrollment.CA
-	Tokens  *enrollment.TokenStore
-	started time.Time
+	CA     *enrollment.CA
+	Tokens *enrollment.TokenStore
+
+	// Heartbeats tracks collector liveness (POST /v1/heartbeats,
+	// GET /v1/collectors). Unlike CA/Tokens this is always populated by
+	// New: it requires no additional infrastructure to enable, only the
+	// same auth already required for observation delivery.
+	Heartbeats *HeartbeatStore
+	started    time.Time
 }
 
 func New(repo store.Repository, logger *slog.Logger, apiKey string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{Store: repo, Logger: logger, APIKey: apiKey, started: time.Now()}
+	return &Server{Store: repo, Logger: logger, APIKey: apiKey, Heartbeats: NewHeartbeatStore(DefaultHeartbeatStaleAfter), started: time.Now()}
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -49,6 +59,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/enrollment-tokens", s.auth(s.createEnrollmentToken))
 	mux.HandleFunc("POST /v1/enroll", s.enroll)
 	mux.HandleFunc("POST /v1/rotate", s.rotate)
+	mux.HandleFunc("POST /v1/heartbeats", s.auth(s.heartbeat))
+	mux.HandleFunc("GET /v1/collectors", s.auth(s.collectors))
 	return securityHeaders(mux)
 }
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
@@ -223,6 +235,45 @@ func (s *Server) rotate(w http.ResponseWriter, r *http.Request) {
 		CACertificatePEM: string(s.CA.CACertPEM()),
 		ExpiresAt:        time.Now().Add(enrollment.DefaultCertificateTTL),
 	})
+}
+
+// heartbeat records a lightweight liveness signal, distinct from
+// observation delivery, so GET /v1/collectors can tell a collector is
+// alive between discovery scans. Wrapped in s.auth(), so it accepts either
+// the bearer API key or a verified mTLS client certificate.
+func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxHeartbeatRequestBytes)
+	var req model.HeartbeatRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, 400, "invalid heartbeat: "+err.Error())
+		return
+	}
+	if req.SchemaVersion != model.SchemaVersion {
+		writeError(w, 400, "unsupported schema_version")
+		return
+	}
+
+	collectorID := req.CollectorID
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		// The verified peer certificate is a stronger identity signal than
+		// anything the client claims in the body, exactly as for
+		// POST /v1/rotate: a collector can only ever heartbeat as itself.
+		collectorID = r.TLS.PeerCertificates[0].Subject.CommonName
+	}
+	if !enrollment.ValidCollectorID(collectorID) {
+		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
+		return
+	}
+
+	s.Heartbeats.Record(collectorID, req.SiteID)
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "ok"})
+}
+
+func (s *Server) collectors(w http.ResponseWriter, _ *http.Request) {
+	v := s.Heartbeats.List()
+	writeJSON(w, 200, map[string]any{"items": v, "count": len(v)})
 }
 
 func validateObservation(e model.ObservationEnvelope) error {
