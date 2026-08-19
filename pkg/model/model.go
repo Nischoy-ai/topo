@@ -85,6 +85,52 @@ type CollectorStatus struct {
 	Alive         bool      `json:"alive"`
 }
 
+// JobType enumerates the kinds of work a controller can dispatch to a
+// collector. There is exactly one today, since it is the only capability
+// `topo agent run` actually has: an out-of-schedule discovery pass.
+type JobType string
+
+const JobTypeDiscover JobType = "discover"
+
+// Job is one unit of work a controller has queued for a specific
+// collector, returned by GET /v1/jobs when that collector polls.
+type Job struct {
+	JobID       string    `json:"job_id"`
+	CollectorID string    `json:"collector_id"`
+	Type        JobType   `json:"type"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// JobRequest is the POST /v1/jobs request body: an operator queuing one
+// job for a specific collector.
+type JobRequest struct {
+	CollectorID string  `json:"collector_id"`
+	Type        JobType `json:"type"`
+}
+
+// JobResult is the POST /v1/jobs/{id}/result request body: a collector
+// reporting back that it executed a dispatched job. CollectorID is
+// overridden by a verified mTLS peer certificate's identity when present,
+// exactly like HeartbeatRequest.CollectorID.
+type JobResult struct {
+	CollectorID string    `json:"collector_id"`
+	Success     bool      `json:"success"`
+	Error       string    `json:"error,omitempty"`
+	CompletedAt time.Time `json:"completed_at"`
+}
+
+// JobStatus is the GET /v1/jobs/{id} response: a job's current lifecycle
+// state and, once known, its result.
+type JobStatus struct {
+	JobID       string    `json:"job_id"`
+	CollectorID string    `json:"collector_id"`
+	Type        JobType   `json:"type"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	CompletedAt time.Time `json:"completed_at"`
+	Error       string    `json:"error,omitempty"`
+}
+
 // StableAssetID produces a deterministic ID without making IP address an identity.
 func StableAssetID(a Asset) string {
 	parts := []string{string(a.Type), a.NativeID}

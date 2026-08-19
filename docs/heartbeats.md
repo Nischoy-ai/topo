@@ -92,5 +92,7 @@ blocks the other.
   collector's single most recent heartbeat, not a timeline of past ones.
 - **No alerting.** Nothing yet notifies an operator when a collector goes
   stale; `GET /v1/collectors` must be polled.
-- **No job delivery yet.** That is the next, final slice of this
-  milestone.
+
+[Job delivery](jobs.md) rides this same `-heartbeat-interval` cadence —
+see there for how a collector checks in for queued work at the same time
+it sends a heartbeat.

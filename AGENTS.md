@@ -78,9 +78,9 @@ behavior and IRE response schema remain unverified: there is no ServiceNow
 instance available to this project, so do not represent that half as
 validated.
 
-The current milestone is collector enrollment, outbound mTLS, certificate
-rotation, heartbeats, and job delivery — five distinct capabilities,
-deliberately staged as separate slices:
+The collector enrollment, outbound mTLS, certificate rotation, heartbeats,
+and job delivery milestone is complete — five distinct capabilities,
+staged as separate slices:
 
 1. **Done.** Collector enrollment: the controller is its own certificate
    authority (`internal/enrollment`, `-ca-dir`), issuing short-lived
@@ -126,11 +126,22 @@ deliberately staged as separate slices:
    available, no CA or opt-in flag required. `GET /v1/collectors` lists
    each collector's most recent heartbeat and liveness. See
    `docs/heartbeats.md`.
-5. Job delivery, necessarily collector-initiated polling since the agent
-   remains outbound-only. This is the next, final slice of the milestone.
+5. **Done.** Job delivery: necessarily collector-initiated polling since
+   the agent remains outbound-only, not a server push. `POST /v1/jobs`
+   queues one job (today, exactly one type — `discover`) for a specific
+   collector; `GET /v1/jobs` returns and marks-dispatched every job
+   queued for the polling collector, at most once (no redelivery);
+   `POST /v1/jobs/{id}/result` reports the outcome; `GET /v1/jobs/{id}`
+   is a read-only status lookup. Identity-bound the same way as rotation
+   and heartbeats, via a `collectorIdentity` helper now shared with the
+   heartbeat handler too. `topo agent run` polls on the same
+   `-heartbeat-interval` cadence it already uses for heartbeats — no new
+   flag. A `discover` job reuses the existing `discoverAndSend` helper
+   directly. Always available, no CA or opt-in flag required. See
+   `docs/jobs.md`.
 
-The complete scope and acceptance gates for slice 1, and the plan for
-slices 2-5, are in `docs/project-plan.md`.
+The complete scope and acceptance gates for every slice are in
+`docs/project-plan.md`.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are
