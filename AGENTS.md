@@ -155,16 +155,24 @@ The complete scope and acceptance gates for every slice are in
 The SNMP and VMware discovery milestone (M2) is now current, staged as two
 slices:
 
-1. **In progress.** SNMP device identity and interfaces: a new
-   `pkg/discovery/snmp` plugin implementing the existing `discovery.Plugin`
-   interface, querying MIB-II (`system` and `interfaces` groups) over
-   SNMPv3 using `github.com/gosnmp/gosnmp`, pinned to `v1.42.1` — the last
-   version declaring `go 1.22` compatibility with this project's pinned
-   `go 1.23.0` toolchain. Production requires `authPriv` (SHA/AES); Topo
-   Lab's hand-rolled SNMP test agent supports `noAuthNoPriv` only, so
-   `authPriv` is implemented via gosnmp's own client-side USM crypto but
-   remains unverified against real network equipment, matching the WinRM
-   real-host fixture posture below.
+1. **Done.** SNMP device identity and interfaces: `pkg/discovery/snmp`
+   implements the existing `discovery.Plugin` interface, querying MIB-II
+   (`system`: `sysDescr`/`sysObjectID`/`sysUpTime`/`sysName`, and
+   `interfaces`: `ifDescr`/`ifPhysAddress` via GETBULK) over SNMPv3 using
+   `github.com/gosnmp/gosnmp`, pinned to `v1.42.1` — the last version
+   declaring `go 1.22` compatibility with this project's pinned `go
+   1.23.0` toolchain. Production requires `authPriv` with SHA
+   authentication and AES privacy, with no weaker fallback, mirroring how
+   WinRM's production path requires NTLM+HTTPS. Asset identity is the
+   SNMPv3 engine ID discovered during the USM handshake, not an IP
+   address. Topo Lab's hand-rolled SNMP agent (`pkg/lab/snmp_server.go`,
+   one loopback UDP socket per simulated device, `noAuthNoPriv` only,
+   built on gosnmp's own exported packet decode/encode so the wire format
+   exercised is real) backs a two-scan idempotency acceptance test
+   exercising the plugin's actual SNMPv3 message framing. `authPriv` is
+   implemented via gosnmp's own client-side USM crypto but remains
+   unverified against real network equipment, matching the WinRM
+   real-host fixture posture below. See `docs/snmp.md`.
 2. **Not started.** VMware vCenter virtual machine and host inventory: a
    new `pkg/discovery/vmware` plugin using `github.com/vmware/govmomi`,
    tested against its own `vcsim` simulator rather than a hand-rolled Topo

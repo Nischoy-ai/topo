@@ -29,6 +29,7 @@ import (
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
+	"github.com/Nischoy-ai/topo/pkg/discovery/snmp"
 	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
 	"github.com/Nischoy-ai/topo/pkg/discovery/winrm"
 	"github.com/Nischoy-ai/topo/pkg/lab"
@@ -79,7 +80,7 @@ func usage() error {
 
 func runLab(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets>")
+		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve>")
 	}
 	switch args[0] {
 	case "generate":
@@ -98,9 +99,50 @@ func runLab(args []string) error {
 		return labWinRMServe(args[1:])
 	case "winrm-targets":
 		return labWinRMTargets(args[1:])
+	case "snmp-serve":
+		return labSNMPServe(args[1:])
 	default:
 		return fmt.Errorf("unknown lab command %q", args[0])
 	}
+}
+
+// labSNMPServe binds one loopback UDP socket per simulated host and prints
+// each host's assigned "host:port" to stdout, one per line — suitable for
+// piping straight into a -targets file for `topo discover snmp -lab`.
+// Unlike the SSH/WinRM Lab servers, addresses are not fixed by an -addr
+// flag: each simulated host is its own SNMP agent on an OS-assigned
+// ephemeral port, so serving and listing targets are combined into one
+// command rather than split into separate "serve"/"targets" commands whose
+// ports could otherwise drift out of sync.
+func labSNMPServe(args []string) error {
+	fs := flag.NewFlagSet("lab snmp-serve", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	server, err := lab.NewSNMPServer(estate)
+	if err != nil {
+		return err
+	}
+	defer server.Close()
+	for _, host := range estate.Hosts {
+		if addr, ok := server.Address(host.ID); ok {
+			fmt.Println(addr)
+		}
+	}
+	slog.Info("Topo Lab SNMP listening", "hosts", len(estate.Hosts), "username", lab.LabSNMPUsername)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	<-ctx.Done()
+	return nil
 }
 
 func labWinRMServe(args []string) error {
@@ -745,6 +787,9 @@ func discover(args []string) error {
 	if len(args) > 0 && args[0] == "winrm" {
 		return discoverWinRM(args[1:])
 	}
+	if len(args) > 0 && args[0] == "snmp" {
+		return discoverSNMP(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -837,6 +882,82 @@ func discoverWinRM(args []string) error {
 		OperationTimeout: *operationTimeout,
 		MaxResponseBytes: *maxResponseBytes,
 	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
+}
+
+func discoverSNMP(args []string) error {
+	fs := flag.NewFlagSet("discover snmp", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one host:port SNMP target per line")
+	username := fs.String("username", env("TOPO_SNMP_USERNAME", ""), "SNMPv3 username")
+	securityLevel := fs.String("security-level", "", "SNMPv3 security level (authPriv in production; defaults to noAuthNoPriv with -lab)")
+	authProtocol := fs.String("auth-protocol", snmp.AuthProtocolSHA, "SNMPv3 authentication protocol (SHA)")
+	authPassphraseRef := fs.String("auth-passphrase-ref", "", "credential reference for the SNMPv3 authentication passphrase (env: or file:)")
+	privProtocol := fs.String("priv-protocol", snmp.PrivProtocolAES, "SNMPv3 privacy protocol (AES)")
+	privPassphraseRef := fs.String("priv-passphrase-ref", "", "credential reference for the SNMPv3 privacy passphrase (env: or file:)")
+	labMode := fs.Bool("lab", false, "enable noAuthNoPriv to loopback Topo Lab endpoints")
+	concurrency := fs.Int("concurrency", 32, "maximum concurrent SNMP targets")
+	timeout := fs.Duration("timeout", 5*time.Second, "per-request SNMP timeout")
+	retries := fs.Int("retries", 1, "per-request SNMP retry count")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "snmp-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+	selectedUsername := *username
+	if *labMode && selectedUsername == "" {
+		selectedUsername = lab.LabSNMPUsername
+	}
+	if selectedUsername == "" {
+		return errors.New("SNMPv3 username is required; set -username or TOPO_SNMP_USERNAME")
+	}
+	selectedLevel := *securityLevel
+	if selectedLevel == "" {
+		if *labMode {
+			selectedLevel = snmp.SecurityLevelNoAuthNoPriv
+		} else {
+			selectedLevel = snmp.SecurityLevelAuthPriv
+		}
+	}
+	cfg := snmp.Config{
+		Username:      selectedUsername,
+		SecurityLevel: selectedLevel,
+		LabMode:       *labMode,
+		Concurrency:   *concurrency,
+		Timeout:       *timeout,
+		Retries:       *retries,
+	}
+	if selectedLevel == snmp.SecurityLevelAuthPriv {
+		authPassphrase, err := resolveCredential(*authPassphraseRef, "", "TOPO_SNMP_AUTH_PASSPHRASE", false)
+		if err != nil {
+			return fmt.Errorf("resolve SNMP authentication passphrase: %w", err)
+		}
+		privPassphrase, err := resolveCredential(*privPassphraseRef, "", "TOPO_SNMP_PRIV_PASSPHRASE", false)
+		if err != nil {
+			return fmt.Errorf("resolve SNMP privacy passphrase: %w", err)
+		}
+		cfg.AuthProtocol = *authProtocol
+		cfg.AuthPassphrase = string(authPassphrase)
+		cfg.PrivProtocol = *privProtocol
+		cfg.PrivPassphrase = string(privPassphrase)
+	}
+	plugin := snmp.Plugin{Config: cfg}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})

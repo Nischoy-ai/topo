@@ -4,7 +4,7 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded `env:`/`file:`/`vault:`/`k8s:` credential references; an authenticated controller ingestion API with an opt-in certificate authority for collector enrollment, opt-in native outbound mTLS, certificate rotation, and always-on collector liveness heartbeats and job delivery; an outbound-only Topo Agent MVP with encrypted offline buffering, a hardened Linux systemd unit, and Windows Service Control Manager integration; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and a ServiceNow IRE publisher whose outbound payload is validated duplicate-free and idempotent across repeated Topo Lab scans, and whose reconciliation behavior (submit once creates a CI, resubmit the same source key updates it rather than duplicating it) is verified against a real ServiceNow developer instance. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, real-Windows verification of the agent's service wrapper, broader ServiceNow class/relationship coverage against a real instance beyond the single class validated so far, SNMP, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, and fleet scheduling remain subsequent work rather than being represented as complete.
+This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; SNMPv3 network device identity and interface discovery (MIB-II `system`/`interfaces`, `authPriv` required in production); concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded `env:`/`file:`/`vault:`/`k8s:` credential references; an authenticated controller ingestion API with an opt-in certificate authority for collector enrollment, opt-in native outbound mTLS, certificate rotation, and always-on collector liveness heartbeats and job delivery; an outbound-only Topo Agent MVP with encrypted offline buffering, a hardened Linux systemd unit, and Windows Service Control Manager integration; in-memory identity resolution; JSON Lines and HTTPS webhook publishers; and a ServiceNow IRE publisher whose outbound payload is validated duplicate-free and idempotent across repeated Topo Lab scans, and whose reconciliation behavior (submit once creates a CI, resubmit the same source key updates it rather than duplicating it) is verified against a real ServiceNow developer instance. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, real-Windows verification of the agent's service wrapper, broader ServiceNow class/relationship coverage against a real instance beyond the single class validated so far, SNMP `authPriv` verification against a real device, VMware, cloud and Kubernetes discovery, persistent PostgreSQL storage, and fleet scheduling remain subsequent work rather than being represented as complete.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -52,6 +52,17 @@ TOPO_WINRM_PASSWORD=topo-lab ./bin/topo discover winrm \
 ```
 
 Basic authentication and HTTP are accepted only with the explicit Lab flag and loopback targets. Production NTLMv2 targets require HTTPS, verified certificates, and `-auth ntlm`; Kerberos is not yet implemented. See [Windows WinRM discovery](docs/winrm-discovery.md).
+
+Exercise simulated network devices over real SNMPv3 message exchanges, one loopback UDP agent per device:
+
+```sh
+./bin/topo lab snmp-serve -scenario examples/lab/clean-500.json > snmp-targets.txt
+# In another terminal:
+./bin/topo discover snmp \
+  -targets snmp-targets.txt -site lab -lab > snmp-observation.jsonl
+```
+
+`-lab` is restricted to loopback targets and `noAuthNoPriv`. Production targets require `authPriv` with SHA authentication and AES privacy; there is no weaker fallback. See [SNMP network device discovery](docs/snmp.md).
 
 Start the controller with authentication enabled:
 
