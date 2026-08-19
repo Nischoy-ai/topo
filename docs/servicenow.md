@@ -15,16 +15,18 @@ duplicate CI each time.
 ## What is validated, and how
 
 Duplicate-CI prevention has two halves: what Topo sends, and what
-ServiceNow's IRE does with it. This project only has access to the first
-half — there is no ServiceNow instance available to develop or test against,
-and ServiceNow's IRE response schema is proprietary and undocumented outside
-an instance's own scripted REST API definitions. So "duplicate-CI
-validation" here means: **Topo's outbound payload is proven idempotent and
-duplicate-free**, which is the necessary precondition for ServiceNow's own
-reconciliation logic to work correctly. It is not a claim about ServiceNow's
-behavior itself.
+ServiceNow's IRE does with it. Both halves are now backed by evidence:
+Topo's own outbound payload is verified through this project's own test
+suite (no ServiceNow instance needed to run in CI), and ServiceNow's actual
+reconciliation behavior has been verified against a real instance — see
+[Verified against a real instance](#verified-against-a-real-instance)
+below. Together they establish that Topo's payload is what a real
+ServiceNow IRE actually needs to recognize "this is the same configuration
+item I've seen before," not just a self-consistent claim about what Topo
+sends.
 
-Specifically:
+Specifically, what Topo's own test suite proves without needing an
+instance:
 
 - **No duplicate items or relationships within one request.** `mapPayload`
   deduplicates by `source_native_key` (last observation wins, matching
@@ -47,24 +49,58 @@ Specifically:
   the (bounded) response body in `Diagnostics` for operator review, but does
   not parse or depend on any particular field of it.
 
-## What is explicitly deferred
+## Verified against a real instance
 
-- **ServiceNow's own IRE identification/reconciliation behavior.** Whether a
-  given ServiceNow instance actually matches and updates one CI across
-  scans depends on that instance's identification rules, reconciliation
-  definitions, and discovery source configuration — none of which Topo
-  controls or can validate without one. Configure identification rules for
-  each `cmdb_ci_*` class Topo emits (see [`classFor`](../pkg/publisher/servicenow/servicenow.go))
-  keyed on the discovery source and `source_native_key`, and validate
-  against a real or sandboxed instance before production use.
-- **The IRE response schema.** `PublishBatch` treats any 2xx as published
-  and any non-2xx as rejected; it does not parse per-item created/matched/
-  updated status, because that schema is proprietary and unverified here.
-- **Duplicate-CI validation against a real instance.** This remains an open
-  gate before claiming production readiness, the same posture this project
-  already takes with WinRM real-host compatibility and Windows Topo Agent
-  service verification: implemented and tested against what Topo controls,
-  not yet exercised against the real external system.
+Validated 2026-08-19 against a real ServiceNow developer instance
+(`POST /api/now/identifyreconcile/enhanced` called directly with the exact
+payload shape `mapPayload` produces), not a mock or an assumption:
+
+- **Submitting an item once creates a new CI.** A `cmdb_ci_computer` item
+  with a fresh `sys_object_source_info` (`source_name`/`source_native_key`)
+  came back `"operation":"INSERT"` with a new `sysId`, and
+  `identificationAttempts` showed `sys_object_source NO_MATCH` — expected,
+  since nothing existed yet to match against.
+- **Resubmitting the identical `source_native_key` reconciles to the same
+  CI, not a duplicate.** The second submission — same `source_name` and
+  `source_native_key`, different `last_discovered` timestamp — came back
+  `"operation":"UPDATE"` against the **same `sysId`** as the first
+  submission, with `identificationAttempts` showing
+  `sys_object_source MATCHED` on exactly the `source_name`/
+  `source_native_key` pair `sys_object_source_info` carries. This is the
+  actual mechanism this project has flagged as unverified since the
+  ServiceNow IRE duplicate-CI validation milestone: it is the precondition
+  Topo's own payload construction (deduplication, idempotency across
+  scans) was built to satisfy, and it now has real evidence behind it, not
+  just an assumption about how `sys_object_source_info` would be used.
+- **A previously-unknown real requirement: `discovery_source` on `cmdb_ci`
+  is a registered choice field, not free text.** Submitting a payload with
+  an unregistered `discovery_source` value fails with `INVALID_INPUT_DATA`
+  (`"You need to provide a valid choice value from field
+  [discovery_source] in table [cmdb_ci]"`) — this could only have been
+  found by hitting a real instance; nothing in ServiceNow's public IRE
+  documentation makes it obvious ahead of time. See
+  [Configuration](#configuration) below for the fix.
+- **A failed submission can still leave a partial record behind.** The
+  request that failed on the choice-field error came back
+  `"operation":"INSERT_AS_INCOMPLETE"` with an `incompleteSysIds` entry —
+  ServiceNow created a stub tied to the failed identification attempt even
+  though the response reported `hasError: true`. It was not visible
+  through the normal class-table Table API afterward (a `DELETE` against
+  it 404'd), so it appears to be an internal identification-engine
+  artifact rather than a real CMDB record, but operators should not assume
+  a `hasError: true` response left nothing behind.
+
+**What this does not yet cover:** only `cmdb_ci_computer` was exercised,
+with a single item per request and no relationships — `mapPayload`'s other
+classes (`cmdb_ci_network_adapter`, `cmdb_ci_disk`, `cmdb_ci_spkg`,
+`cmdb_ci_vm_instance`) and `IRERelation` payloads share the same
+mechanism (inherited from `cmdb_ci` and the same `identifyreconcile`
+endpoint) but have not individually been submitted to a real instance.
+Multi-item batches and this instance's specific identification/
+reconciliation rule configuration for classes beyond the default were also
+not exercised. The IRE response schema is still not parsed by
+`PublishBatch` — treating any 2xx as published and non-2xx as rejected
+remains the deliberate design, not a gap this validation closed.
 
 ## Configuration
 
@@ -72,6 +108,21 @@ Specifically:
 before enabling writes. `PublishBatch` requires an absolute HTTPS instance
 URL and, outside dry-run, a bearer token — see
 [Credential references](credential-references.md) for how to supply it
-without an ordinary CLI value. Review preview output with a ServiceNow
-administrator and confirm identification rules exist for every class Topo
-emits before enabling destination writes.
+without an ordinary CLI value.
+
+Before enabling destination writes: confirm identification rules exist for
+every class Topo emits, and — a real requirement discovered during
+validation, not a hypothetical — register the discovery source name
+(`"Nischoy Topo"` by default, matching `Config.DiscoverySource`) as a
+valid choice value for `cmdb_ci`'s `discovery_source` field. From an
+account with rights to write `sys_choice`:
+
+```sh
+curl -s -u "$SN_USER:$SN_PASS" -H 'Content-Type: application/json' \
+  -X POST "$SN_INSTANCE/api/now/table/sys_choice" \
+  -d '{"name":"cmdb_ci","element":"discovery_source","label":"Nischoy Topo","value":"Nischoy Topo","language":"en","inactive":"false"}'
+```
+
+Without this, every write is rejected with `INVALID_INPUT_DATA` — it is
+not optional, and there is no fallback default that lets an unregistered
+source through.

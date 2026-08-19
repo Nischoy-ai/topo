@@ -199,11 +199,15 @@ and by relationship `(type, from, to)` within a batch, and is validated to
 produce an identical `(source_native_key, className)` set across
 independently repeated Topo Lab discovery scans — the condition ServiceNow's
 own IRE relies on to reconcile a CI rather than create a duplicate one.
-That is the extent of what this project can verify: there is no ServiceNow
-instance available here, so ServiceNow's own identification/reconciliation
-logic and its IRE response schema are neither exercised nor assumed.
-`PublishBatch` treats any 2xx response as published and any non-2xx as
-rejected without parsing response fields, and requires an absolute HTTPS
-instance URL and a bearer token supplied through the same credential
-reference contract as every other Topo secret. See
-[ServiceNow publishing](docs/servicenow.md).
+That condition has been verified against a real ServiceNow developer
+instance for the `cmdb_ci_computer` class: submitting the same
+`sys_object_source_info` twice reconciles to the same CI (`operation:
+UPDATE` against the original `sysId`, matched via `sys_object_source`) —
+not a new one. Coverage of the other CI classes Topo emits and of
+`IRERelation` payloads against a real instance remains open. ServiceNow's
+IRE response schema is still not parsed: `PublishBatch` treats any 2xx
+response as published and any non-2xx as rejected without depending on
+response fields, since that schema is proprietary and only partially
+observed so far, and requires an absolute HTTPS instance URL and a bearer
+token supplied through the same credential reference contract as every
+other Topo secret. See [ServiceNow publishing](docs/servicenow.md).

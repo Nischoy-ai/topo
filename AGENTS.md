@@ -67,16 +67,22 @@ The outbound-only Topo Agent MVP milestone is complete:
    against a real Windows Service Control Manager; treat it as unverified
    on real Windows, matching the WinRM real-host fixture posture below.
 
-The ServiceNow IRE duplicate-CI validation milestone is complete for the
-half of it Topo controls: `mapPayload` deduplicates by `source_native_key`
-(and relationships by `(type, from, to)`) within a batch, and is validated
-to emit an identical `(source_native_key, className)` set across
+The ServiceNow IRE duplicate-CI validation milestone is complete for both
+halves now: `mapPayload` deduplicates by `source_native_key` (and
+relationships by `(type, from, to)`) within a batch, and is validated to
+emit an identical `(source_native_key, className)` set across
 independently repeated Topo Lab discovery scans — the precondition for
-ServiceNow's own IRE to reconcile rather than duplicate a CI. See
-`docs/servicenow.md`. ServiceNow's own identification/reconciliation
-behavior and IRE response schema remain unverified: there is no ServiceNow
-instance available to this project, so do not represent that half as
-validated.
+ServiceNow's own IRE to reconcile rather than duplicate a CI. That
+precondition was verified against a real ServiceNow developer instance on
+2026-08-19 for the `cmdb_ci_computer` class: submitting the same
+`sys_object_source_info` twice returns `operation: UPDATE` against the
+original `sysId`, not a new one. See `docs/servicenow.md` for the full
+evidence and scope. Still unverified: ServiceNow's own behavior for Topo's
+other CI classes and for `IRERelation` payloads, and the IRE response
+schema — do not represent those as validated. A ServiceNow developer
+instance is available for further validation when needed; do not fabricate
+findings for the classes/paths not yet exercised — get real evidence the
+same way this one was obtained.
 
 The collector enrollment, outbound mTLS, certificate rotation, heartbeats,
 and job delivery milestone is complete — five distinct capabilities,
