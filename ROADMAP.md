@@ -30,7 +30,24 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 
 ## M2 — network and virtualization beta
 
-- Rate-limited allowlisted sweep, SNMPv3, topology, and VMware vCenter plugins.
+- **Implemented alpha (SNMP):** SNMPv3 network device identity and
+  interface discovery — MIB-II `system` (`sysDescr`, `sysObjectID`,
+  `sysUpTime`, `sysName`) and `interfaces` (`ifDescr`, `ifPhysAddress` via
+  GETBULK) groups only, via `github.com/gosnmp/gosnmp`. Production
+  requires `authPriv` with SHA authentication and AES privacy; there is no
+  weaker fallback outside Topo Lab's `-lab` mode. Asset identity is the
+  SNMPv3 engine ID discovered during the USM handshake, not an IP address.
+  Topo Lab's hand-rolled `noAuthNoPriv` SNMP agent (one loopback UDP
+  socket per simulated device) proves the plugin's own message framing
+  and parsing/mapping logic through a real two-scan idempotency
+  acceptance test; `authPriv` is implemented but not yet verified against
+  a real device. See [docs/snmp.md](docs/snmp.md).
+- **Not started (VMware):** VMware vCenter virtual machine and host
+  inventory via `github.com/vmware/govmomi` and its `vcsim` simulator —
+  the next slice of the SNMP/VMware discovery milestone. See "Current
+  milestone: SNMP and VMware discovery" in
+  [docs/project-plan.md](docs/project-plan.md).
+- Rate-limited allowlisted sweep and topology plugins.
 - Mapping overrides, incremental exports, retries, dead-letter queue, staleness policies, and high-availability collectors.
 - DEB, RPM, MSI, Helm, offline bundle, signed artifacts, and SBOMs.
 

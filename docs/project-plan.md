@@ -13,7 +13,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Merged pull request:** ServiceNow real-instance item validation in <https://github.com/Nischoy-ai/topo/pull/19>; job delivery in <https://github.com/Nischoy-ai/topo/pull/18> (completes the enrollment/mTLS/rotation/heartbeats/jobs milestone); heartbeats in <https://github.com/Nischoy-ai/topo/pull/17>; certificate rotation in <https://github.com/Nischoy-ai/topo/pull/16>; collector enrollment in <https://github.com/Nischoy-ai/topo/pull/14>; outbound mTLS in <https://github.com/Nischoy-ai/topo/pull/15>; ServiceNow IRE duplicate-CI validation in <https://github.com/Nischoy-ai/topo/pull/13>.
 - **Merged commit:** `a83652e` (merge of ServiceNow item-validation docs into `main`); PR #20 not yet merged.
 - **Also verified this session, outside any slice/PR:** given access to a real ServiceNow developer instance, ServiceNow's own IRE reconciliation behavior was confirmed for real for the first time, for both items and relationships — submitting a `cmdb_ci_computer` item once creates a CI, resubmitting the identical `sys_object_source_info` updates that same CI (`operation: UPDATE` against the original `sysId`) rather than duplicating it; the same holds for an `IRERelation` between a `cmdb_ci_computer` and a `cmdb_ci_network_adapter`, which came back `operation: NO_CHANGE` on resubmission rather than a duplicate `cmdb_rel_ci` row. A real, previously-unknown requirement was found in the process: `cmdb_ci`'s `discovery_source` field is a registered choice list, and an unregistered value is rejected outright. See [`docs/servicenow.md`](servicenow.md#verified-against-a-real-instance) for full detail and exactly what remains unverified (the other CI classes, larger batches, multiple relations, the response schema).
-- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery — **complete** as of this slice (all five slices implemented; see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below for the full spec and every slice's acceptance gates). The next milestone has not yet been chosen; see "Follow-on order" below for candidates.
+- **Current milestone:** SNMP and VMware discovery (see "Current milestone: SNMP and VMware discovery" below for the full spec). Slice 1 (SNMP, `pkg/discovery/snmp`, `topo discover snmp`, `topo lab snmp-serve`, `docs/snmp.md`) is complete; slice 2 (VMware) has not begun. The collector enrollment/outbound mTLS/rotation/heartbeats/jobs milestone (above) and the ServiceNow real-instance validation follow-on are both complete.
 - **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: a job queued for one collector not being returned by a different collector's poll; a job being returned by exactly one poll, never redelivered; a poll or result report over mTLS claiming a different `collector_id` still being bound to the verified peer certificate's real identity; result-reporting rejections (wrong collector, undispatched job, double report, unknown job ID); `POST /v1/jobs` rejecting an unsupported job type at creation; `agent.Run` end to end against a real `controller.Server` over `httptest`, proving a queued job is polled/executed/reported purely via the independent `HeartbeatInterval` ticker while `Interval` never fires within the test; a failed discovery pass being reported as a `failed` job with a non-empty error, not silently dropped; and `Sender.PollJobs`/`ReportJobResult` unit tests. Also manually verified the full CLI flow end to end (controller → agent with `-interval 100h -heartbeat-interval 2s` → `curl`-submitted `discover` job → `GET /v1/jobs/{id}` shows `succeeded` and the observation count increases), and confirmed `POST /v1/jobs` with an unsupported type is rejected with 400 rather than silently accepted.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and validation of ServiceNow's own IRE identification/reconciliation behavior for the CI classes not yet exercised against the real instance now available (`cmdb_ci_computer` and `cmdb_ci_network_adapter`, plus one relationship between them, have been tested and reconcile correctly on resubmission — see `docs/servicenow.md`; `cmdb_ci_disk`, `cmdb_ci_spkg`, and `cmdb_ci_vm_instance` have not), plus the IRE response schema itself, which remains unparsed and proprietary. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system — a ServiceNow developer instance is now available for exactly this. These gates remain open before claiming real-host Windows compatibility, full ServiceNow production readiness, or general production readiness.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment, outbound-mTLS, and rotation slices; a compromised collector key is contained by the bounded 90-day certificate TTL (or less, if rotated more often) only. Heartbeat and job state are in-memory only, like the enrollment token store; neither survives a controller restart. Job delivery has deliberately no listing/browsing endpoint (status lookup is by ID only), no cancellation, and no redelivery of an already-dispatched job — an operator resubmits if a job's outcome still matters after a collector never reports back. A real ServiceNow developer instance is now available (see above); use it to close the remaining gaps rather than guessing at ServiceNow's behavior, but do not claim broader ServiceNow coverage than what has actually been exercised against it.
@@ -355,7 +355,7 @@ This did not reopen the milestone or its slices above, which remain
 accurate as a record of what shipped in PR #13; it is additional evidence
 obtained afterward, once instance access became available.
 
-## Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs
+## Completed milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs
 
 ### Objective
 
@@ -699,20 +699,99 @@ PR, matching every other multi-part milestone in this project.
 This completes all five slices of the "collector enrollment, outbound
 mTLS, rotation, heartbeats, and jobs" milestone.
 
+## Current milestone: SNMP and VMware discovery
+
+### Objective
+
+Extend Topo's discovery surface beyond SSH/Linux and WinRM/Windows host
+discovery to network equipment (via SNMPv3) and virtualization inventory
+(via VMware vCenter), matching `ROADMAP.md`'s M2 line: "Rate-limited
+allowlisted sweep, SNMPv3, topology, and VMware vCenter plugins." Like
+every other multi-part milestone in this project, this is staged as
+separate slices rather than one PR — SNMP and VMware are different
+protocols, different dependencies, and different testing strategies, so
+they do not share a slice.
+
+### Slices
+
+1. **Done.** SNMP device identity and interfaces: a new `pkg/discovery/snmp` plugin
+   implementing the existing `discovery.Plugin` interface, querying MIB-II
+   (`system` and `interfaces` groups — `sysDescr`, `sysObjectID`,
+   `sysUpTime`, `sysName`, and an `ifTable` walk) over SNMPv3 using
+   `github.com/gosnmp/gosnmp` — the ecosystem-standard pure-Go SNMP client;
+   hand-rolling SNMP's BER/ASN.1 wire format and SNMPv3's USM
+   authentication/privacy crypto (RFC 3414/3826) from scratch is exactly
+   the kind of well-trodden, security-sensitive protocol work this
+   project's "prefer standard-library components and narrowly scoped
+   dependencies" principle exists to weigh against, not to forbid outright
+   — this is the project's third external dependency, after
+   `golang.org/x/crypto` (SSH) and `github.com/Azure/go-ntlmssp` (WinRM
+   NTLM), each added for the same reason. Pinned to `v1.42.1`, the last
+   version declaring `go 1.22` compatibility with this project's `go
+   1.23.0` — newer versions require `go 1.24` and were deliberately not
+   used to avoid silently bumping the language version CI is pinned to.
+   Production requires `authPriv` (SHA/AES), mirroring how WinRM's
+   production path requires NTLM+HTTPS and only permits a weaker mode
+   (Basic auth) inside explicit `LabMode`; Topo Lab's SNMP agent —
+   necessarily hand-rolled, since gosnmp is client-only and there is no
+   equivalent "vcsim"-style SNMP agent simulator to reuse — supports
+   `noAuthNoPriv` only, so the two-scan idempotency acceptance test
+   exercises real SNMPv3 message framing and the plugin's parsing/mapping
+   logic without requiring a from-scratch reimplementation of USM's HMAC
+   and AES-CFB crypto on the server side. `authPriv` is implemented via
+   gosnmp's own (independently maintained and widely used) client-side USM
+   implementation, but — like WinRM real-host fixtures and Windows Service
+   Control Manager verification before it — is implemented-but-unverified
+   against a real device until one is available; do not represent it as
+   validated against real network equipment. CLI: `topo discover snmp`
+   (production and `-lab`) and `topo lab snmp-serve` (binds one loopback
+   UDP socket per simulated device and prints `host:port` targets, since
+   — unlike the SSH/WinRM Lab servers, which multiplex by username behind
+   one fixed `-addr` — SNMP has no connection-level identity to multiplex
+   on, so serving and listing targets are one command rather than two).
+   See `docs/snmp.md`.
+2. VMware vCenter virtual machine and host inventory: a new
+   `pkg/discovery/vmware` plugin using
+   `github.com/vmware/govmomi`, the official vSphere Go SDK. Unlike SNMP,
+   govmomi ships its own vCenter simulator (`vcsim`) built for exactly this
+   kind of testing, so Topo Lab does not need a hand-rolled vCenter
+   simulator the way it needed one for SSH/WinRM/SNMP — this slice's
+   acceptance tests run against `vcsim` directly. Scope and exact API
+   surface (REST vs. SOAP-based govmomi client, which inventory objects to
+   map to which `model.AssetType`s) to be finalized when this slice starts;
+   this entry will be updated then rather than speculating on details now.
+
+### Deliberate non-goals for slice 1
+
+- No SNMPv1/v2c support. Production targets community-string SNMP as a
+  legacy, lower-security protocol this project does not want to
+  standardize collector credentials around; if a real deployment needs it,
+  that is a separate, explicitly scoped follow-up, not silently bundled
+  into "SNMP discovery."
+- No vendor-specific MIBs (Cisco, Juniper, etc.) or topology protocols
+  (LLDP/CDP) in this slice — MIB-II only. Vendor MIB support is real,
+  useful, unbounded scope better added incrementally once the core plugin
+  and its testing pattern exist.
+- No real-device verification. Like WinRM real-host fixtures, this is an
+  explicit deferred gate, not a claim of completeness — Topo Lab's
+  `noAuthNoPriv`-only agent proves the plugin's own logic, not
+  interoperability with real network equipment or `authPriv` against a
+  real USM implementation other than gosnmp's own.
+
 ## Follow-on order
 
-With the credential-provider, Topo Agent MVP, and ServiceNow IRE
-duplicate-CI validation milestones complete, pursue these slices in order
-unless evidence from an enterprise pilot changes the priority:
+With the credential-provider, Topo Agent MVP, ServiceNow IRE duplicate-CI
+validation, and collector enrollment/outbound mTLS/rotation/heartbeats/jobs
+milestones complete, pursue these slices in order unless evidence from an
+enterprise pilot changes the priority:
 
-1. Collector enrollment, outbound mTLS, rotation/revocation, heartbeat, and
-   job delivery.
+1. SNMPv3/network topology and VMware vCenter discovery (current milestone,
+   see above).
 2. Persistent observation/audit storage and scheduling; evaluate PostgreSQL at
    this point rather than assuming it is mandatory.
-3. SNMPv3/network topology and VMware vCenter discovery.
-4. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
+3. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
    security testing.
-5. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
+4. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
    gates leading toward Topo Graph.
 
 ## Definition of milestone completion

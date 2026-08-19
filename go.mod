@@ -8,3 +8,5 @@ require (
 )
 
 require golang.org/x/sys v0.35.0
+
+require github.com/gosnmp/gosnmp v1.42.1

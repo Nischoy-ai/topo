@@ -15,6 +15,7 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Use dedicated read-only discovery identities and restrict targets by allowlist.
 - Verify SSH host keys with a managed `known_hosts` file. `-insecure-host-key` exists only for isolated Topo Lab evaluation.
 - Require HTTPS with normal certificate and hostname verification for non-Lab WinRM targets. Production NTLMv2 never falls back to Basic authentication. Basic authentication and HTTP are restricted to the explicit loopback-only Topo Lab mode.
+- Require SNMPv3 `authPriv` with SHA authentication and AES privacy for non-Lab SNMP targets; there is no weaker fallback. `noAuthNoPriv` is restricted to the explicit loopback-only Topo Lab mode.
 - Never place credentials in job options, labels, logs, or observation attributes.
 - Pass credential provider references, never credential values, as CLI arguments. Restrict credential-file permissions to the Topo process identity.
 - Review ServiceNow IRE preview output before enabling destination writes,
@@ -32,6 +33,10 @@ The Windows plugin's operation set consists of compiled-in WS-Management action,
 Non-Lab targets must use HTTPS; Go's standard TLS hostname and certificate verification remains enabled. Production `ntlm` mode implements NTLMv2 over server `NTLM` or `Negotiate` challenges, disables HTTP/2 to retain connection affinity, caps authentication headers and tokens, and never answers a Basic-only challenge. It does not implement Kerberos/SPNEGO. The CLI resolves the password from an `env:` or absolute-path `file:` reference rather than a value flag. Lab Basic remains explicitly limited to loopback Topo Lab endpoints.
 
 Each CIM or software operation has a deadline, responses and cumulative command output are bounded, enumeration pages, receive messages, objects, and software records are capped, and target concurrency is controlled. Remote shell and command identifiers are length- and control-character-checked before reuse, and created shells are deleted after command completion or failure while the operation context remains active. Required identity/hardware failures reject that target; optional network, volume, service, patch, or software permission and parse failures retain a partial host and identify the affected operation. The concurrent mixed 500-Linux/500-Windows simulated acceptance gate passes; reviewed real-system compatibility fixtures are still required before claiming the Windows milestone complete.
+
+## SNMP discovery
+
+The SNMP plugin queries a fixed, compiled-in set of MIB-II OIDs (`system` and `interfaces` groups only); targets and jobs cannot supply an OID, community string, or arbitrary SNMP operation. Asset identity is the SNMPv3 engine ID discovered during the USM handshake, never an IP address. Production requires `authPriv` — SHA authentication and AES privacy — with no fallback to `authNoPriv` or `noAuthNoPriv`; those weaker levels are accepted only with the explicit `-lab` flag and a loopback target, the same restriction pattern as WinRM's Basic-authentication Lab mode. Authentication and privacy passphrases resolve through the same `env:`/`file:`/`vault:`/`k8s:` credential-reference contract as every other Topo secret and are never accepted as command-line values. The interface-table walk is bounded to 4096 entries so a malformed or hostile agent cannot force unbounded memory use. `authPriv` uses gosnmp's own client-side USM implementation and has not yet been verified against a real device — Topo Lab's `noAuthNoPriv`-only hand-rolled agent proves the plugin's own message framing and parsing logic, not interoperability with real network equipment. See [SNMP network device discovery](docs/snmp.md).
 
 ## Credential references
 
