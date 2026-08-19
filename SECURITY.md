@@ -164,6 +164,34 @@ enrollment/mTLS/rotation: they require no CA, no `-mtls`, and no opt-in
 flag, only whichever credential a collector already presents. See
 [Collector heartbeats](docs/heartbeats.md).
 
+## Job delivery
+
+Topo Agent is deliberately outbound-only and never accepts inbound
+connections, so a controller cannot push work to it; instead an operator
+queues a job with `POST /v1/jobs`, and the collector picks it up by
+polling `GET /v1/jobs` on the same `-heartbeat-interval` cadence it
+already uses for liveness heartbeats. `GET /v1/jobs` marks a job
+dispatched the moment it is returned, so a job is delivered at most
+once — there is no redelivery if a collector crashes between polling and
+reporting a result via `POST /v1/jobs/{id}/result`. Polling and result
+reporting are identity-bound the same way as `POST /v1/rotate` and
+`POST /v1/heartbeats`: a verified mTLS peer certificate's subject always
+overrides whatever `collector_id` the caller claims in a query parameter
+or request body field, so a collector can only ever poll for and report
+its own jobs, never another collector's; a bearer-key-only request has no
+such stronger signal and uses the claimed value as-is, the same
+limitation heartbeats already have. `POST /v1/jobs` itself — queuing a
+job for a collector — uses the same `auth()` middleware as every other
+admin-style action in this project, including `POST /v1/enrollment-tokens`;
+the shared bearer key or any verified collector certificate is accepted,
+matching existing precedent rather than introducing a new admin-only
+credential tier here. There is exactly one job type, `discover`, since it
+is the only real capability `topo agent run` has; a request for any
+other type is rejected at creation, not silently accepted and left
+unrunnable. Job state is in-memory only, like the enrollment token store
+and heartbeat store, and does not survive a controller restart. See
+[Job delivery](docs/jobs.md).
+
 ## ServiceNow publishing
 
 Topo's ServiceNow IRE payload builder deduplicates by `source_native_key`

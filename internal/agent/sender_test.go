@@ -171,6 +171,84 @@ func TestSenderSendHeartbeatServerErrorIsRetryable(t *testing.T) {
 	}
 }
 
+func TestSenderPollJobsDecodesItems(t *testing.T) {
+	var gotPath, gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.String()
+		gotAuth = r.Header.Get("Authorization")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items": []model.Job{{JobID: "job-1", CollectorID: "collector-1", Type: model.JobTypeDiscover}},
+			"count": 1,
+		})
+	}))
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "test-api-key", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobs, err := sender.PollJobs(context.Background(), "collector-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/v1/jobs?collector_id=collector-1" {
+		t.Fatalf("path = %q", gotPath)
+	}
+	if gotAuth != "Bearer test-api-key" {
+		t.Fatalf("authorization = %q", gotAuth)
+	}
+	if len(jobs) != 1 || jobs[0].JobID != "job-1" {
+		t.Fatalf("jobs = %+v", jobs)
+	}
+}
+
+func TestSenderPollJobsServerErrorIsRetryable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = sender.PollJobs(context.Background(), "collector-1")
+	var delivery *DeliveryError
+	if !errors.As(err, &delivery) {
+		t.Fatalf("error = %v, want *DeliveryError", err)
+	}
+	if !delivery.Retryable {
+		t.Fatal("expected a 503 to be retryable")
+	}
+}
+
+func TestSenderReportJobResultPostsToResultEndpoint(t *testing.T) {
+	var gotPath string
+	var gotBody model.JobResult
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatal(err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sender.ReportJobResult(context.Background(), "collector-1", "job-1", model.JobResult{Success: true}); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/v1/jobs/job-1/result" {
+		t.Fatalf("path = %q", gotPath)
+	}
+	if gotBody.CollectorID != "collector-1" || !gotBody.Success {
+		t.Fatalf("body = %+v", gotBody)
+	}
+}
+
 func TestNewSenderRejectsInvalidURL(t *testing.T) {
 	if _, err := NewSender("not-a-url", "", nil); err == nil {
 		t.Fatal("expected an invalid controller URL to be rejected")

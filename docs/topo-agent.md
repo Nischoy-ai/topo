@@ -162,14 +162,16 @@ the same posture this project already takes with WinRM real-host fixtures.
   so the controller can tell the agent is alive without waiting for the
   next full discovery/delivery cycle. See
   [Collector heartbeats](heartbeats.md).
+- **The agent can be told to discover right now.** It polls for queued
+  work on that same `-heartbeat-interval` cadence — no separate flag —
+  and executes it, today limited to one job type: an out-of-schedule
+  discovery pass. See [Job delivery](jobs.md).
 - **The controller only terminates TLS itself when `-mtls` is set.**
   Without it, place a TLS-terminating reverse proxy in front of the
   controller for any deployment beyond local evaluation, the same guidance
   that already applies to `topo serve`.
 - **Windows service registration is unverified on real Windows.** See
   [Running as a Windows service](#running-as-a-windows-service).
-- **No job delivery.** The agent only self-reports on its own schedule; it
-  cannot be remotely instructed to run different discovery.
 - **Linux and Windows only** in scope for this milestone; no macOS agent.
 - **One agent instance per host.** The systemd unit and Windows service name
   are both fixed (`topo-agent` / `TopoAgent`); running multiple independently

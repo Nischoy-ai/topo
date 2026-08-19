@@ -268,6 +268,98 @@ func TestRunHeartbeatDisabledByDefault(t *testing.T) {
 	}
 }
 
+func TestRunPollsAndExecutesDispatchedJobs(t *testing.T) {
+	repo := store.NewMemory()
+	ctrl := controller.New(repo, slog.Default(), "")
+	server := httptest.NewServer(ctrl.Handler())
+	defer server.Close()
+
+	job, err := ctrl.Jobs.Enqueue("agent-1", model.JobTypeDiscover)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spool, err := NewSpool(t.TempDir(), testKey(t), 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	// Interval is deliberately much longer than the test's own deadline;
+	// only the queued job, picked up via the HeartbeatInterval poll,
+	// should be able to cause a second discovery pass beyond Run's own
+	// initial immediate tick.
+	err = Run(ctx, Config{
+		SiteID: "default", CollectorID: "agent-1", Interval: time.Hour,
+		HeartbeatInterval: 30 * time.Millisecond,
+		Plugin:            &counterPlugin{}, Sender: sender, Spool: spool,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := ctrl.Jobs.Status(job.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Status != "succeeded" {
+		t.Fatalf("job status = %+v, want succeeded", status)
+	}
+
+	observations, err := repo.ListObservations(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(observations) < 2 {
+		t.Fatalf("observations = %d, want at least 2: Run's own immediate first tick, plus the dispatched job's discovery pass", len(observations))
+	}
+}
+
+func TestRunReportsFailedDiscoveryJobResult(t *testing.T) {
+	repo := store.NewMemory()
+	ctrl := controller.New(repo, slog.Default(), "")
+	server := httptest.NewServer(ctrl.Handler())
+	defer server.Close()
+
+	job, err := ctrl.Jobs.Enqueue("agent-1", model.JobTypeDiscover)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spool, err := NewSpool(t.TempDir(), testKey(t), 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	err = Run(ctx, Config{
+		SiteID: "default", CollectorID: "agent-1", Interval: time.Hour,
+		HeartbeatInterval: 30 * time.Millisecond,
+		Plugin:            failingPlugin{}, Sender: sender, Spool: spool,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := ctrl.Jobs.Status(job.JobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Status != "failed" || status.Error == "" {
+		t.Fatalf("job status = %+v, want failed with a non-empty error", status)
+	}
+}
+
 func TestRunRejectsInvalidConfig(t *testing.T) {
 	if err := Run(context.Background(), Config{Interval: 0}); err == nil {
 		t.Fatal("expected non-positive interval to be rejected")

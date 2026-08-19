@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -24,6 +25,10 @@ const maxEnrollRequestBytes = 16 << 10
 // which carries only a schema version and two short IDs.
 const maxHeartbeatRequestBytes = 4 << 10
 
+// maxJobRequestBytes bounds POST /v1/jobs and POST /v1/jobs/{id}/result
+// request bodies, both small fixed-shape objects.
+const maxJobRequestBytes = 4 << 10
+
 type Server struct {
 	Store  store.Repository
 	Logger *slog.Logger
@@ -41,14 +46,26 @@ type Server struct {
 	// New: it requires no additional infrastructure to enable, only the
 	// same auth already required for observation delivery.
 	Heartbeats *HeartbeatStore
-	started    time.Time
+
+	// Jobs queues collector-initiated-poll jobs (POST /v1/jobs,
+	// GET /v1/jobs, GET /v1/jobs/{id}, POST /v1/jobs/{id}/result).
+	// Always populated by New, for the same reason as Heartbeats.
+	Jobs    *JobStore
+	started time.Time
 }
 
 func New(repo store.Repository, logger *slog.Logger, apiKey string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{Store: repo, Logger: logger, APIKey: apiKey, Heartbeats: NewHeartbeatStore(DefaultHeartbeatStaleAfter), started: time.Now()}
+	return &Server{
+		Store:      repo,
+		Logger:     logger,
+		APIKey:     apiKey,
+		Heartbeats: NewHeartbeatStore(DefaultHeartbeatStaleAfter),
+		Jobs:       NewJobStore(),
+		started:    time.Now(),
+	}
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -61,7 +78,26 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/rotate", s.rotate)
 	mux.HandleFunc("POST /v1/heartbeats", s.auth(s.heartbeat))
 	mux.HandleFunc("GET /v1/collectors", s.auth(s.collectors))
+	mux.HandleFunc("POST /v1/jobs", s.auth(s.createJob))
+	mux.HandleFunc("GET /v1/jobs", s.auth(s.pollJobs))
+	mux.HandleFunc("GET /v1/jobs/{id}", s.auth(s.jobStatus))
+	mux.HandleFunc("POST /v1/jobs/{id}/result", s.auth(s.reportJobResult))
 	return securityHeaders(mux)
+}
+
+// collectorIdentity determines the calling collector's ID for
+// identity-bound endpoints (POST /v1/heartbeats, GET /v1/jobs,
+// POST /v1/jobs/{id}/result). A verified mTLS peer certificate's subject
+// always wins over fallback (whatever the caller claims via a request
+// body field or query parameter), exactly as for POST /v1/rotate, so a
+// collector can never act as a different one. fallback is used only when
+// there is no verified peer certificate, since a bearer-key-authenticated
+// request carries no identity of its own.
+func collectorIdentity(r *http.Request, fallback string) string {
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		return r.TLS.PeerCertificates[0].Subject.CommonName
+	}
+	return fallback
 }
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -255,13 +291,7 @@ func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collectorID := req.CollectorID
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
-		// The verified peer certificate is a stronger identity signal than
-		// anything the client claims in the body, exactly as for
-		// POST /v1/rotate: a collector can only ever heartbeat as itself.
-		collectorID = r.TLS.PeerCertificates[0].Subject.CommonName
-	}
+	collectorID := collectorIdentity(r, req.CollectorID)
 	if !enrollment.ValidCollectorID(collectorID) {
 		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
 		return
@@ -274,6 +304,88 @@ func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request) {
 func (s *Server) collectors(w http.ResponseWriter, _ *http.Request) {
 	v := s.Heartbeats.List()
 	writeJSON(w, 200, map[string]any{"items": v, "count": len(v)})
+}
+
+// createJob queues jobType for collectorID, to be picked up on that
+// collector's next GET /v1/jobs poll. Wrapped in s.auth() like every
+// other admin-style action in this project (POST /v1/enrollment-tokens
+// included) — the shared bearer key or any verified collector
+// certificate is treated as sufficient, matching existing precedent
+// rather than introducing a separate admin-only credential here.
+func (s *Server) createJob(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxJobRequestBytes)
+	var req model.JobRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, 400, "invalid job request: "+err.Error())
+		return
+	}
+	if !enrollment.ValidCollectorID(req.CollectorID) {
+		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
+		return
+	}
+	if req.Type != model.JobTypeDiscover {
+		writeError(w, 400, fmt.Sprintf("unsupported job type %q", req.Type))
+		return
+	}
+	job, err := s.Jobs.Enqueue(req.CollectorID, req.Type)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, job)
+}
+
+// pollJobs returns and marks-dispatched every pending job queued for the
+// calling collector. Unlike heartbeats, there is no request body (it is a
+// GET), so the collector ID comes from a query parameter when there is no
+// stronger mTLS identity to use instead.
+func (s *Server) pollJobs(w http.ResponseWriter, r *http.Request) {
+	collectorID := collectorIdentity(r, r.URL.Query().Get("collector_id"))
+	if !enrollment.ValidCollectorID(collectorID) {
+		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
+		return
+	}
+	jobs := s.Jobs.Poll(collectorID)
+	writeJSON(w, 200, map[string]any{"items": jobs, "count": len(jobs)})
+}
+
+// jobStatus is a read-only lookup, unlike pollJobs: it never marks a job
+// dispatched, so an operator can check on a job without racing the
+// collector's own poll.
+func (s *Server) jobStatus(w http.ResponseWriter, r *http.Request) {
+	status, err := s.Jobs.Status(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, 200, status)
+}
+
+func (s *Server) reportJobResult(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxJobRequestBytes)
+	var req model.JobResult
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, 400, "invalid job result: "+err.Error())
+		return
+	}
+	collectorID := collectorIdentity(r, req.CollectorID)
+	if !enrollment.ValidCollectorID(collectorID) {
+		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
+		return
+	}
+	if err := s.Jobs.Result(r.PathValue("id"), collectorID, req); err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
 
 func validateObservation(e model.ObservationEnvelope) error {

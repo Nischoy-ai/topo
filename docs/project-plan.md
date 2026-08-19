@@ -8,14 +8,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-19
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** Heartbeats (slice 4 of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). `POST /v1/heartbeats` is a lightweight liveness signal, distinct from observation delivery, so the controller can tell a collector is alive without waiting on the (often 15+ minute) discovery/delivery `-interval`. `topo agent run` sends it on its own independent cadence, `-heartbeat-interval` (default one minute, `0` disables it) — a second ticker inside `agent.Run`, entirely decoupled from `-interval`; a nil channel in the `select` is how the ticker is skipped when disabled, rather than a separate code path. Heartbeats accept either the bearer API key or a verified mTLS certificate (`s.auth()`, the same middleware as every other data-plane endpoint) — unlike `POST /v1/rotate`, there is no reason to exclude the bearer key here, since a heartbeat only asserts liveness rather than getting new certificate material issued to it. When a verified peer certificate is present, its subject overrides whatever `collector_id` the request body claims, mirroring rotation's identity rule; bearer-key-authenticated heartbeats have no such stronger signal and use the body's value. `GET /v1/collectors` lists every collector's most recent heartbeat and whether it is within `controller.DefaultHeartbeatStaleAfter` (three minutes, a fixed constant — the controller has no reliable way to know an individual collector's actual configured interval). Both endpoints are always registered, unlike enrollment/mTLS/rotation: heartbeats need no CA or opt-in flag, only whatever auth a collector already has. A failed heartbeat is logged and dropped, never spooled or retried, unlike a failed observation delivery — a stale heartbeat has no lasting value once the next one supersedes it. `internal/agent.Sender.Send` and the new `SendHeartbeat` were refactored to share a `post` helper. Verified with unit tests (including one proving a heartbeat over mTLS is recorded under the peer certificate's identity even when the request body claims a different collector ID, and one proving `agent.Run` with a long `Interval` and a short `HeartbeatInterval` still causes the controller to see the collector as alive, isolating the independent ticker from discovery delivery) and a manual run of the real CLI binaries end to end (agent with `-interval 100h` and `-heartbeat-interval 2s` shows up alive in `GET /v1/collectors` well before any observation could have been delivered).
-- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/17> (heartbeats, this slice)
-- **Merged pull request:** certificate rotation in <https://github.com/Nischoy-ai/topo/pull/16>; collector enrollment in <https://github.com/Nischoy-ai/topo/pull/14>; outbound mTLS in <https://github.com/Nischoy-ai/topo/pull/15>; ServiceNow IRE duplicate-CI validation in <https://github.com/Nischoy-ai/topo/pull/13>.
-- **Merged commit:** `f04e87e` (merge of certificate rotation into `main`); this slice not yet merged.
-- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery (see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below). Slices 1 (enrollment), 2 (outbound mTLS), 3 (certificate rotation), and 4 (heartbeats) are implemented; slice 5 (job delivery) is next and completes the milestone.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: `POST /v1/heartbeats` recording a collector as alive over both the bearer API key and mTLS; a heartbeat over mTLS claiming a different `collector_id` in its body still being recorded under the verified peer certificate's real identity; rejection cases (missing auth, wrong schema version, invalid collector ID); `HeartbeatStore` recording/overwriting/staleness behavior with an injected short threshold rather than a real multi-minute wait; `agent.Run` driving a real `controller.Server` over `httptest` with `Interval` far longer than the test's deadline and a short `HeartbeatInterval`, proving the two tickers are genuinely independent; `agent.Run` with `HeartbeatInterval` left unset sending no heartbeats at all; and `Sender.SendHeartbeat` unit tests (correct endpoint, retryable-on-5xx). Also manually verified the full CLI flow end to end (controller with a strictly enforced bearer key → agent with `-interval 100h -heartbeat-interval 2s` → `GET /v1/collectors` shows it alive), confirming heartbeats work independently of any discovery/delivery cycle ever firing.
+- **Latest completed slice:** Job delivery (slice 5, the final slice, of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). `POST /v1/jobs` lets an operator queue one job (today, exactly one type: `discover`, an out-of-schedule discovery pass — the only real capability `topo agent run` has) for a specific collector. `GET /v1/jobs` returns and marks-dispatched every job queued for the polling collector, at most once (no redelivery if the collector crashes before reporting a result — deliberate, matching this project's preference for simple, explicit behavior over queue-redelivery semantics). `POST /v1/jobs/{id}/result` reports the outcome; `GET /v1/jobs/{id}` is a read-only status lookup with no dispatch side effect. Polling and reporting are identity-bound exactly like `POST /v1/rotate` and `POST /v1/heartbeats`: a verified mTLS peer certificate's subject overrides whatever `collector_id` the caller claims otherwise, now via a shared `collectorIdentity` helper that also replaced the heartbeat handler's previously-inlined copy of the same logic. `topo agent run` polls for jobs on the same `-heartbeat-interval` cadence it already uses for liveness heartbeats — no new flag — since both are cheap, frequent check-ins distinct from the heavier discovery `-interval`. A `discover` job reuses the existing `discoverAndSend` helper directly (now returning an error, so a job's reported outcome reflects whether discovery itself succeeded, not whether the resulting observation was delivered synchronously — delivery keeps its own independent spool-retry path regardless of how discovery was triggered). Always registered, like heartbeats: no CA or opt-in flag required. `internal/agent.Sender` gained `PollJobs`/`ReportJobResult` alongside a shared `get`/`doRaw` helper pairing with the existing `post`, so GET and POST requests share the same auth-header and status-classification logic. Verified with unit tests (including one proving a job poll/result over mTLS is bound to the verified peer certificate's identity even when the caller claims a different `collector_id`, and one proving `agent.Run` with a long `Interval` and a short `HeartbeatInterval` still causes a queued `discover` job to be polled, executed, and reported `succeeded`, isolating job execution from the discovery ticker entirely) and a manual run of the real CLI binaries end to end (agent with `-interval 100h` picks up and executes a `curl`-submitted job purely through `-heartbeat-interval`'s poll).
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/18> (job delivery, this slice — completes the milestone)
+- **Merged pull request:** heartbeats in <https://github.com/Nischoy-ai/topo/pull/17>; certificate rotation in <https://github.com/Nischoy-ai/topo/pull/16>; collector enrollment in <https://github.com/Nischoy-ai/topo/pull/14>; outbound mTLS in <https://github.com/Nischoy-ai/topo/pull/15>; ServiceNow IRE duplicate-CI validation in <https://github.com/Nischoy-ai/topo/pull/13>.
+- **Merged commit:** `21e7478` (merge of heartbeats into `main`); this slice not yet merged.
+- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery — **complete** as of this slice (all five slices implemented; see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below for the full spec and every slice's acceptance gates). The next milestone has not yet been chosen; see "Follow-on order" below for candidates.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: a job queued for one collector not being returned by a different collector's poll; a job being returned by exactly one poll, never redelivered; a poll or result report over mTLS claiming a different `collector_id` still being bound to the verified peer certificate's real identity; result-reporting rejections (wrong collector, undispatched job, double report, unknown job ID); `POST /v1/jobs` rejecting an unsupported job type at creation; `agent.Run` end to end against a real `controller.Server` over `httptest`, proving a queued job is polled/executed/reported purely via the independent `HeartbeatInterval` ticker while `Interval` never fires within the test; a failed discovery pass being reported as a `failed` job with a non-empty error, not silently dropped; and `Sender.PollJobs`/`ReportJobResult` unit tests. Also manually verified the full CLI flow end to end (controller → agent with `-interval 100h -heartbeat-interval 2s` → `curl`-submitted `discover` job → `GET /v1/jobs/{id}` shows `succeeded` and the observation count increases), and confirmed `POST /v1/jobs` with an unsupported type is rejected with 400 rather than silently accepted.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and validation of ServiceNow's own IRE identification/reconciliation behavior and response schema against a real or sandboxed instance. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system. These gates remain open before claiming real-host Windows compatibility, ServiceNow production readiness, or general production readiness.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment, outbound-mTLS, and rotation slices; a compromised collector key is contained by the bounded 90-day certificate TTL (or less, if rotated more often) only. Heartbeat state is in-memory only, like the enrollment token store; it does not survive a controller restart, and there is deliberately no historical heartbeat log or alerting in this slice — `GET /v1/collectors` must be polled.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment, outbound-mTLS, and rotation slices; a compromised collector key is contained by the bounded 90-day certificate TTL (or less, if rotated more often) only. Heartbeat and job state are in-memory only, like the enrollment token store; neither survives a controller restart. Job delivery has deliberately no listing/browsing endpoint (status lookup is by ID only), no cancellation, and no redelivery of an already-dispatched job — an operator resubmits if a job's outcome still matters after a collector never reports back.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -414,9 +414,31 @@ PR, matching every other multi-part milestone in this project.
    and dropped, never spooled or retried — unlike a failed observation
    delivery, a stale heartbeat has no lasting value once the next one
    supersedes it. See `docs/heartbeats.md`.
-5. Job delivery: since Topo Agent is deliberately outbound-only (it never
-   accepts inbound connections), this must be collector-initiated polling
-   (for example, `GET /v1/jobs`) rather than a server push.
+5. **Done.** Job delivery: since Topo Agent is deliberately outbound-only
+   (it never accepts inbound connections), this is collector-initiated
+   polling rather than a server push. `POST /v1/jobs` queues one job (an
+   operator names the target `collector_id`); `GET /v1/jobs` returns and
+   marks-dispatched every job queued for the polling collector (at most
+   once — a crash between poll and result loses the job, no redelivery);
+   `POST /v1/jobs/{id}/result` reports the outcome; `GET /v1/jobs/{id}` is
+   a read-only status lookup with no dispatch side effect, for an operator
+   checking on a job independent of the collector's own poll. Polling and
+   reporting are identity-bound the same way as `POST /v1/rotate` and
+   `POST /v1/heartbeats`: a verified mTLS peer certificate's subject
+   overrides whatever `collector_id` the caller claims otherwise, via
+   the shared `collectorIdentity` helper (also now used by the heartbeat
+   handler, replacing its previous inlined copy of the same logic).
+   `topo agent run` polls for jobs on the same `-heartbeat-interval`
+   cadence it already uses for liveness heartbeats — no new flag — since
+   both are cheap, frequent check-ins distinct from the heavier discovery
+   `-interval`. There is exactly one job type, `discover`, since it is
+   the only capability the agent actually has; it reuses the existing
+   `discoverAndSend` helper directly (now returning an error so a job's
+   reported outcome reflects whether discovery itself succeeded, not
+   whether the resulting observation was delivered synchronously —
+   delivery keeps its own independent spool-retry path regardless of how
+   discovery was triggered). Always registered, like heartbeats: no CA or
+   opt-in flag required. See `docs/jobs.md`.
 
 ### Deliberate non-goals for slice 1
 
@@ -485,6 +507,28 @@ PR, matching every other multi-part milestone in this project.
   `controller.DefaultHeartbeatStaleAfter` is one fixed constant for every
   collector, since the controller has no reliable way to know an
   individual collector's actual configured `-heartbeat-interval`.
+
+### Deliberate non-goals for slice 5
+
+- No job listing or browsing endpoint; `GET /v1/jobs/{id}` looks up one
+  job by ID only. An operator must keep track of the `job_id`
+  `POST /v1/jobs` returned.
+- No job cancellation once queued.
+- No job redelivery. `GET /v1/jobs` marks a job dispatched the instant it
+  is returned; a collector that crashes before reporting a result loses
+  that job, with no automatic retry. Deliberate, matching this project's
+  preference for simple, explicit behavior over a queue with redelivery
+  semantics that would need their own edge cases worked out — an operator
+  who still wants the work done resubmits it.
+- No job types beyond `discover`. Nothing else is a real, honest
+  capability of `topo agent run` today, so nothing else is offered.
+- No persistent job storage; like the enrollment token store and
+  heartbeat store, `JobStore` is in-memory only and does not survive a
+  controller restart.
+- No separate job-polling cadence or flag; it rides `-heartbeat-interval`
+  on purpose, to avoid a second ticker and a second flag for what is,
+  operationally, the same kind of frequent, cheap check-in as a
+  heartbeat.
 
 ### Acceptance gates (slice 1)
 
@@ -588,6 +632,41 @@ PR, matching every other multi-part milestone in this project.
   `-heartbeat-interval`'s independent ticker.
 - `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
   ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
+
+### Acceptance gates (slice 5)
+
+- A job queued for collector A is not returned by collector B's poll,
+  proven with two distinct collector IDs against the same `JobStore`.
+- A job is returned by exactly one poll; a second poll for the same
+  collector after the first does not redeliver it.
+- A poll or result report over mTLS claiming a different `collector_id`
+  than the verified peer certificate's real identity is bound to that
+  real identity anyway — the same identity rule already proven for
+  `POST /v1/rotate` and `POST /v1/heartbeats`, verified here specifically
+  for `GET /v1/jobs` and `POST /v1/jobs/{id}/result`.
+- A result reported for a job dispatched to a different collector, or for
+  a job never dispatched, or reported twice for the same job, is
+  rejected.
+- `POST /v1/jobs` with an unsupported `type` is rejected at creation
+  (400), not accepted and left to fail silently later.
+- `agent.Run`, given an `Interval` far longer than the test's own
+  deadline and a short `HeartbeatInterval`, still causes a queued
+  `discover` job to be polled, executed, and reported as `succeeded` —
+  proven end to end against a real `controller.Server` over `httptest`,
+  confirming discovery/delivery happened as a direct result of the job,
+  not the (effectively disabled) `Interval` ticker.
+- A job whose discovery pass fails is reported as `failed`, with a
+  non-empty error, not silently dropped or reported as `succeeded`.
+- Manually verified against the real CLI binaries: a collector running
+  with `-interval 100h` picks up and executes a `discover` job queued via
+  `curl`, purely through `-heartbeat-interval`'s poll, and the job's
+  status transitions to `succeeded` — the same "isolate the mechanism
+  from the discovery ticker entirely" pattern used to verify heartbeats.
+- `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
+  ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
+
+This completes all five slices of the "collector enrollment, outbound
+mTLS, rotation, heartbeats, and jobs" milestone.
 
 ## Follow-on order
 
