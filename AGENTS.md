@@ -112,10 +112,22 @@ deliberately staged as separate slices:
    not automatic: a running `agent run` loads its certificate once at
    startup and must be restarted after rotation to pick it up. See
    `docs/enrollment.md`.
-4. Heartbeats (liveness/status distinct from observation delivery). This is
-   the next slice.
+4. **Done.** Heartbeats: `POST /v1/heartbeats` is a lightweight liveness
+   signal, distinct from observation delivery, so the controller need not
+   wait on the (often 15+ minute) discovery `-interval` to notice a
+   collector has gone quiet. `topo agent run -heartbeat-interval` (default
+   one minute, `0` disables it) runs on its own independent ticker inside
+   `agent.Run`, entirely decoupled from `-interval`. Unlike
+   `POST /v1/rotate`, it accepts the bearer API key as well as a verified
+   mTLS certificate — a heartbeat only asserts liveness, not an identity
+   that gets certificate material issued to it — but a verified peer
+   certificate's subject still overrides whatever `collector_id` the
+   request body claims, matching rotation's identity rule. Always
+   available, no CA or opt-in flag required. `GET /v1/collectors` lists
+   each collector's most recent heartbeat and liveness. See
+   `docs/heartbeats.md`.
 5. Job delivery, necessarily collector-initiated polling since the agent
-   remains outbound-only.
+   remains outbound-only. This is the next, final slice of the milestone.
 
 The complete scope and acceptance gates for slice 1, and the plan for
 slices 2-5, are in `docs/project-plan.md`.

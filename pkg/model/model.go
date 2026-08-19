@@ -67,6 +67,24 @@ type ObservationEnvelope struct {
 	Labels        map[string]string `json:"labels,omitempty"`
 }
 
+// HeartbeatRequest is the POST /v1/heartbeats request body: a lightweight
+// liveness signal, distinct from an observation delivery, so the
+// controller can tell a collector is alive between discovery scans.
+type HeartbeatRequest struct {
+	SchemaVersion string `json:"schema_version"`
+	CollectorID   string `json:"collector_id"`
+	SiteID        string `json:"site_id"`
+}
+
+// CollectorStatus is one entry in the GET /v1/collectors response: a
+// collector's most recently known liveness, derived from its heartbeats.
+type CollectorStatus struct {
+	CollectorID   string    `json:"collector_id"`
+	SiteID        string    `json:"site_id"`
+	LastHeartbeat time.Time `json:"last_heartbeat"`
+	Alive         bool      `json:"alive"`
+}
+
 // StableAssetID produces a deterministic ID without making IP address an identity.
 func StableAssetID(a Asset) string {
 	parts := []string{string(a.Type), a.NativeID}

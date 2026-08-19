@@ -120,6 +120,57 @@ func TestSenderHonorsContextCancellation(t *testing.T) {
 	}
 }
 
+func TestSenderSendHeartbeatPostsToHeartbeatsEndpoint(t *testing.T) {
+	var gotPath, gotAuth string
+	var gotBody model.HeartbeatRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatal(err)
+		}
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "test-api-key", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sender.SendHeartbeat(context.Background(), "collector-1", "site-a"); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/v1/heartbeats" {
+		t.Fatalf("path = %q", gotPath)
+	}
+	if gotAuth != "Bearer test-api-key" {
+		t.Fatalf("authorization = %q", gotAuth)
+	}
+	if gotBody.SchemaVersion != model.SchemaVersion || gotBody.CollectorID != "collector-1" || gotBody.SiteID != "site-a" {
+		t.Fatalf("body = %+v", gotBody)
+	}
+}
+
+func TestSenderSendHeartbeatServerErrorIsRetryable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = sender.SendHeartbeat(context.Background(), "collector-1", "site-a")
+	var delivery *DeliveryError
+	if !errors.As(err, &delivery) {
+		t.Fatalf("error = %v, want *DeliveryError", err)
+	}
+	if !delivery.Retryable {
+		t.Fatal("expected a 503 to be retryable")
+	}
+}
+
 func TestNewSenderRejectsInvalidURL(t *testing.T) {
 	if _, err := NewSender("not-a-url", "", nil); err == nil {
 		t.Fatal("expected an invalid controller URL to be rejected")
