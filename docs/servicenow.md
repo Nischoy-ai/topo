@@ -89,18 +89,36 @@ payload shape `mapPayload` produces), not a mock or an assumption:
   it 404'd), so it appears to be an internal identification-engine
   artifact rather than a real CMDB record, but operators should not assume
   a `hasError: true` response left nothing behind.
+- **`IRERelation` payloads reconcile too, not just items.** A single
+  request submitting two items (`cmdb_ci_computer` and
+  `cmdb_ci_network_adapter`) plus a `relations` entry referencing them by
+  their in-request index (`{"type":"Owns::Owned by","parent":0,"child":1}`
+  — the exact relationship type `relationFor("host_has_interface")`
+  produces) came back with both items `INSERT`ed and the relation itself
+  `INSERT`ed as a new `cmdb_rel_ci` row. Resubmitting the identical
+  payload came back with both items `UPDATE`d (matched via
+  `sys_object_source`, same `sysId`s as before) and the relation reported
+  **`"operation":"NO_CHANGE"`** — not a second `INSERT` — and a direct
+  `cmdb_rel_ci` table query after each submission confirmed exactly one
+  relationship row throughout, same `sys_id` both times. Relationship
+  types are also a registered value (`cmdb_rel_type`, checked read-only
+  via the Table API before submitting, the same lesson as
+  `discovery_source`) rather than free text; an unregistered type would
+  likely fail the same way an unregistered discovery source did, though
+  that specific failure mode was not separately provoked here.
 
-**What this does not yet cover:** only `cmdb_ci_computer` was exercised,
-with a single item per request and no relationships — `mapPayload`'s other
-classes (`cmdb_ci_network_adapter`, `cmdb_ci_disk`, `cmdb_ci_spkg`,
-`cmdb_ci_vm_instance`) and `IRERelation` payloads share the same
+**What this does not yet cover:** `cmdb_ci_computer` and
+`cmdb_ci_network_adapter` were exercised, single- and two-item requests,
+with one relationship between them — `mapPayload`'s other classes
+(`cmdb_ci_disk`, `cmdb_ci_spkg`, `cmdb_ci_vm_instance`) share the same
 mechanism (inherited from `cmdb_ci` and the same `identifyreconcile`
 endpoint) but have not individually been submitted to a real instance.
-Multi-item batches and this instance's specific identification/
-reconciliation rule configuration for classes beyond the default were also
-not exercised. The IRE response schema is still not parsed by
-`PublishBatch` — treating any 2xx as published and non-2xx as rejected
-remains the deliberate design, not a gap this validation closed.
+Larger multi-item batches, multiple relations in one request, and this
+instance's specific identification/reconciliation rule configuration for
+classes beyond the default were also not exercised. The IRE response
+schema is still not parsed by `PublishBatch` — treating any 2xx as
+published and non-2xx as rejected remains the deliberate design, not a
+gap this validation closed.
 
 ## Configuration
 

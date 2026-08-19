@@ -200,13 +200,15 @@ produce an identical `(source_native_key, className)` set across
 independently repeated Topo Lab discovery scans — the condition ServiceNow's
 own IRE relies on to reconcile a CI rather than create a duplicate one.
 That condition has been verified against a real ServiceNow developer
-instance for the `cmdb_ci_computer` class: submitting the same
-`sys_object_source_info` twice reconciles to the same CI (`operation:
-UPDATE` against the original `sysId`, matched via `sys_object_source`) —
-not a new one. Coverage of the other CI classes Topo emits and of
-`IRERelation` payloads against a real instance remains open. ServiceNow's
-IRE response schema is still not parsed: `PublishBatch` treats any 2xx
-response as published and any non-2xx as rejected without depending on
+instance for the `cmdb_ci_computer` class, and for an `IRERelation`
+between it and `cmdb_ci_network_adapter`: submitting the same
+`sys_object_source_info` twice reconciles both items to the same CIs
+(`operation: UPDATE` against the original `sysId`s, matched via
+`sys_object_source`) and the relation between them to `operation:
+NO_CHANGE` — none of the three duplicated. Coverage of Topo's other CI
+classes against a real instance remains open. ServiceNow's IRE response
+schema is still not parsed: `PublishBatch` treats any 2xx response as
+published and any non-2xx as rejected without depending on
 response fields, since that schema is proprietary and only partially
 observed so far, and requires an absolute HTTPS instance URL and a bearer
 token supplied through the same credential reference contract as every

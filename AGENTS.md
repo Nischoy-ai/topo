@@ -74,13 +74,16 @@ emit an identical `(source_native_key, className)` set across
 independently repeated Topo Lab discovery scans — the precondition for
 ServiceNow's own IRE to reconcile rather than duplicate a CI. That
 precondition was verified against a real ServiceNow developer instance on
-2026-08-19 for the `cmdb_ci_computer` class: submitting the same
+2026-08-19 for the `cmdb_ci_computer` class, and for an `IRERelation`
+between it and `cmdb_ci_network_adapter`: submitting the same
 `sys_object_source_info` twice returns `operation: UPDATE` against the
-original `sysId`, not a new one. See `docs/servicenow.md` for the full
-evidence and scope. Still unverified: ServiceNow's own behavior for Topo's
-other CI classes and for `IRERelation` payloads, and the IRE response
-schema — do not represent those as validated. A ServiceNow developer
-instance is available for further validation when needed; do not fabricate
+original `sysId`, not a new one, and resubmitting the same relation
+returns `operation: NO_CHANGE`, not a duplicate `cmdb_rel_ci` row. See
+`docs/servicenow.md` for the full evidence and scope. Still unverified:
+ServiceNow's own behavior for Topo's other CI classes, larger multi-item
+batches, and the IRE response schema — do not represent those as
+validated. A ServiceNow developer instance is available for further
+validation when needed; do not fabricate
 findings for the classes/paths not yet exercised — get real evidence the
 same way this one was obtained.
 
