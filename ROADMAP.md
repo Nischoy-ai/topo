@@ -30,7 +30,13 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 
 ## M2 — network and virtualization beta
 
-- Rate-limited allowlisted sweep, SNMPv3, topology, and VMware vCenter plugins.
+- **In progress:** SNMPv3 and VMware vCenter discovery plugins. Slice 1
+  (SNMP device identity and interfaces over SNMPv3, MIB-II `system` and
+  `interfaces` groups, via `github.com/gosnmp/gosnmp`) is starting; slice 2
+  (VMware vCenter inventory via `github.com/vmware/govmomi` and its
+  `vcsim` simulator) has not begun. See "Current milestone: SNMP and
+  VMware discovery" in [docs/project-plan.md](docs/project-plan.md).
+- Rate-limited allowlisted sweep and topology plugins.
 - Mapping overrides, incremental exports, retries, dead-letter queue, staleness policies, and high-availability collectors.
 - DEB, RPM, MSI, Helm, offline bundle, signed artifacts, and SBOMs.
 

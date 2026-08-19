@@ -152,6 +152,26 @@ staged as separate slices:
 The complete scope and acceptance gates for every slice are in
 `docs/project-plan.md`.
 
+The SNMP and VMware discovery milestone (M2) is now current, staged as two
+slices:
+
+1. **In progress.** SNMP device identity and interfaces: a new
+   `pkg/discovery/snmp` plugin implementing the existing `discovery.Plugin`
+   interface, querying MIB-II (`system` and `interfaces` groups) over
+   SNMPv3 using `github.com/gosnmp/gosnmp`, pinned to `v1.42.1` — the last
+   version declaring `go 1.22` compatibility with this project's pinned
+   `go 1.23.0` toolchain. Production requires `authPriv` (SHA/AES); Topo
+   Lab's hand-rolled SNMP test agent supports `noAuthNoPriv` only, so
+   `authPriv` is implemented via gosnmp's own client-side USM crypto but
+   remains unverified against real network equipment, matching the WinRM
+   real-host fixture posture below.
+2. **Not started.** VMware vCenter virtual machine and host inventory: a
+   new `pkg/discovery/vmware` plugin using `github.com/vmware/govmomi`,
+   tested against its own `vcsim` simulator rather than a hand-rolled Topo
+   Lab fixture.
+
+The complete scope and acceptance gates are in `docs/project-plan.md`.
+
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are
 explicitly deferred, not represented as completed, and remain required before

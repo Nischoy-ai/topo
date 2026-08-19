@@ -1,5 +1,7 @@
 github.com/Azure/go-ntlmssp v0.0.0-20251107120209-3297034cd2cf h1:lpXI4kQJKWg1OnNLaWZMgGCtx/jFzV/TbNL2viCmruo=
 github.com/Azure/go-ntlmssp v0.0.0-20251107120209-3297034cd2cf/go.mod h1:P/Wrai1IsNvkfWRRN0jvRobt7ZJdz4sHQ3dOjiEGDt0=
+github.com/gosnmp/gosnmp v1.42.1 h1:MEJxhpC5v1coL3tFRix08PYmky9nyb1TLRRgJAmXm8A=
+github.com/gosnmp/gosnmp v1.42.1/go.mod h1:CxVS6bXqmWZlafUj9pZUnQX5e4fAltqPcijxWpCitDo=
 golang.org/x/crypto v0.41.0 h1:WKYxWedPGCTVVl5+WHSSrOBT0O8lx32+zxmHxijgXp4=
 golang.org/x/crypto v0.41.0/go.mod h1:pO5AFd7FA68rFak7rOAGVuygIISepHftHnr8dr6+sUc=
 golang.org/x/sys v0.35.0 h1:vz1N37gP5bs89s7He8XuIYXpyY0+QlsKmzipCbUtyxI=
