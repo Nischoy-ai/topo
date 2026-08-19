@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,20 +45,29 @@ type Sender struct {
 }
 
 // NewSender builds a Sender targeting controllerURL, the controller's base
-// address (for example the value passed to `topo serve -addr`). Native TLS
-// termination on the controller itself remains a later roadmap item; place
-// a TLS-terminating reverse proxy in front of the controller for production
-// deployments, matching how `topo serve` is documented today.
-func NewSender(controllerURL, apiKey string) (*Sender, error) {
+// address (for example the value passed to `topo serve -addr`). tlsConfig
+// is optional; pass one built with enrollment.LoadClientTLSConfig to
+// authenticate with an enrolled certificate over outbound mTLS instead of,
+// or alongside, the bearer API key. When tlsConfig is nil and controllerURL
+// is plain HTTP, place a TLS-terminating reverse proxy in front of the
+// controller for production deployments, matching how `topo serve` is
+// documented today.
+func NewSender(controllerURL, apiKey string, tlsConfig *tls.Config) (*Sender, error) {
 	parsed, err := url.Parse(controllerURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return nil, errors.New("controller URL must be an absolute http:// or https:// URL")
 	}
 	ingest := strings.TrimRight(controllerURL, "/") + "/v1/observations"
+	httpClient := &http.Client{Timeout: requestTimeout}
+	if tlsConfig != nil {
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = tlsConfig
+		httpClient.Transport = transport
+	}
 	return &Sender{
 		ingestURL:  ingest,
 		apiKey:     apiKey,
-		httpClient: &http.Client{Timeout: requestTimeout},
+		httpClient: httpClient,
 	}, nil
 }
 

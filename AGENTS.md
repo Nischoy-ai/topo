@@ -89,11 +89,20 @@ deliberately staged as separate slices:
    The collector's private key is generated locally and never transmitted.
    Opt-in and additive: `topo serve` without `-ca-dir` is unchanged. See
    `docs/enrollment.md`.
-2. Outbound mTLS: give `topo serve` a native TLS listener that verifies
-   enrolled client certificates, and give the agent a way to present its
-   enrolled certificate on outbound requests. This is the next slice.
+2. **Done.** Outbound mTLS: `topo serve -mtls` runs a native TLS listener
+   issuing itself a server certificate from the enrollment CA and verifying
+   client certificates against it (`tls.VerifyClientCertIfGiven`, not
+   `RequireAndVerifyClientCert` — the TLS layer must still accept a
+   connection with no client certificate at all, since a collector's first
+   request, `POST /v1/enroll`, has none to present yet; per-endpoint
+   enforcement happens in `auth()` instead). `topo agent run
+   -mtls-cert-dir` presents the enrolled certificate on outbound requests
+   instead of, or alongside, the bearer API key. `topo agent enroll
+   -controller-ca-cert` pins the controller's self-signed CA certificate so
+   the bootstrap enrollment request itself can complete against an `-mtls`
+   controller. See `docs/enrollment.md`.
 3. Certificate rotation (renew before expiry, authenticated by the current
-   certificate rather than a new enrollment token).
+   certificate rather than a new enrollment token). This is the next slice.
 4. Heartbeats (liveness/status distinct from observation delivery).
 5. Job delivery, necessarily collector-initiated polling since the agent
    remains outbound-only.

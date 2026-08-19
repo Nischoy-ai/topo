@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,15 @@ const (
 	// collector key remains trusted, since Topo does not implement
 	// revocation yet.
 	DefaultCertificateTTL = 90 * 24 * time.Hour
+
+	// DefaultServerCertificateTTL bounds the controller's own TLS server
+	// certificate. It is regenerated fresh on every `topo serve` start
+	// rather than persisted, so this is deliberately longer than
+	// DefaultCertificateTTL: a long-running controller process does not
+	// yet renew it while running (that is part of the certificate
+	// rotation follow-on slice), so it must outlive the process, not just
+	// bound exposure the way a collector certificate's TTL does.
+	DefaultServerCertificateTTL = 365 * 24 * time.Hour
 
 	// clockSkewTolerance backdates NotBefore slightly so a certificate is
 	// immediately valid even if the collector's and controller's clocks
@@ -227,6 +237,57 @@ func (ca *CA) Sign(csr *x509.CertificateRequest, commonName string, ttl time.Dur
 		return nil, fmt.Errorf("sign certificate: %w", err)
 	}
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), nil
+}
+
+// IssueServerCertificate issues a fresh TLS server certificate for the
+// controller itself, signed by the same CA that signs collector client
+// certificates, so an enrolled collector can verify the controller using
+// the CA certificate it already received during enrollment. sans must
+// contain at least one DNS name or IP address the controller is reachable
+// at; entries that parse as an IP address become IP SANs, everything else
+// becomes a DNS SAN.
+func (ca *CA) IssueServerCertificate(sans []string, ttl time.Duration) (certPEM, keyPEM []byte, err error) {
+	if ttl <= 0 {
+		return nil, nil, errors.New("certificate ttl must be positive")
+	}
+	if len(sans) == 0 {
+		return nil, nil, errors.New("server certificate requires at least one subject alternative name")
+	}
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate server key: %w", err)
+	}
+	serial, err := randomSerial()
+	if err != nil {
+		return nil, nil, err
+	}
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber: serial,
+		Subject:      pkix.Name{CommonName: "Topo Hub"},
+		NotBefore:    now.Add(-clockSkewTolerance),
+		NotAfter:     now.Add(ttl),
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	for _, san := range sans {
+		if ip := net.ParseIP(san); ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
+		} else {
+			template.DNSNames = append(template.DNSNames, san)
+		}
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, ca.cert, &key.PublicKey, ca.key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("sign server certificate: %w", err)
+	}
+	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal server key: %w", err)
+	}
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+	return certPEM, keyPEM, nil
 }
 
 func randomSerial() (*big.Int, error) {

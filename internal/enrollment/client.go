@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
@@ -41,7 +42,16 @@ type Result struct {
 // one-time token, and returns the signed certificate. The private key is
 // generated here and never transmitted; only the CSR — the public key plus
 // a signature proving possession of the private key — crosses the network.
-func Enroll(ctx context.Context, controllerURL, token, collectorID string) (Result, error) {
+//
+// bootstrapCACertPEM is optional. When controllerURL runs `topo serve -mtls`,
+// the controller presents a certificate signed by its own enrollment CA,
+// which system trust roots do not recognize; pass that CA's certificate
+// (distributed out-of-band alongside the enrollment token, the same way a
+// collector already receives the token) to pin the connection to it instead
+// of relying on system trust roots. Leave it nil when the controller's TLS
+// is terminated by a reverse proxy with a publicly-trusted certificate, or
+// when the controller runs over plain HTTP within a trusted network.
+func Enroll(ctx context.Context, controllerURL, token, collectorID string, bootstrapCACertPEM []byte) (Result, error) {
 	if !ValidCollectorID(collectorID) {
 		return Result{}, errors.New("collector ID is empty, too long, or contains control characters")
 	}
@@ -76,6 +86,15 @@ func Enroll(ctx context.Context, controllerURL, token, collectorID string) (Resu
 	httpRequest.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: requestTimeout}
+	if len(bootstrapCACertPEM) > 0 {
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(bootstrapCACertPEM) {
+			return Result{}, errors.New("bootstrap CA certificate does not contain a valid PEM certificate")
+		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}
+		client.Transport = transport
+	}
 	response, err := client.Do(httpRequest)
 	if err != nil {
 		return Result{}, fmt.Errorf("submit enrollment request: %w", err)

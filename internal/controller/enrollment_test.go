@@ -188,7 +188,7 @@ func TestEnrollClientEndToEnd(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	result, err := enrollment.Enroll(ctx, httpServer.URL, tokenResp.Token, "collector-1")
+	result, err := enrollment.Enroll(ctx, httpServer.URL, tokenResp.Token, "collector-1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestEnrollClientEndToEnd(t *testing.T) {
 }
 
 func TestEnrollClientRejectsNonHTTPURL(t *testing.T) {
-	if _, err := enrollment.Enroll(context.Background(), "ftp://example.test", "token", "collector-1"); err == nil {
+	if _, err := enrollment.Enroll(context.Background(), "ftp://example.test", "token", "collector-1", nil); err == nil {
 		t.Fatal("expected a non-http(s) controller URL to be rejected")
 	}
 }

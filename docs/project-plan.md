@@ -6,15 +6,16 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-18
+- **Updated:** 2026-08-19
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** Collector enrollment (slice 1 of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). New `internal/enrollment` package: the controller is its own certificate authority (ECDSA P-256, self-signed, persisted to `-ca-dir` with the private key protected by filesystem permissions, not a second application-level encryption layer — matching how every other private key in this project, SSH/TLS, is handled). `POST /v1/enrollment-tokens` (existing bearer-key auth) mints a single-use, one-hour token; `POST /v1/enroll` validates a submitted CSR's self-signature *before* redeeming the token (so a malformed request never burns a valid token), then issues a 90-day client-auth certificate plus the CA certificate. The collector's private key is generated locally by `topo agent enroll` and never transmitted. Enrollment is fully opt-in: `topo serve` without `-ca-dir` is unchanged, and the two new endpoints return 501 when not configured. Verified with unit tests, a controller-side end-to-end test using the real `enrollment.Enroll` HTTP client (not just hand-built requests), and a manual run against a live `topo serve` cross-checked with `openssl x509`/`openssl verify` (independent of Go's own `crypto/x509`).
-- **Merged pull request:** <https://github.com/Nischoy-ai/topo/pull/13> (ServiceNow IRE duplicate-CI validation, the prior milestone); this enrollment slice is <https://github.com/Nischoy-ai/topo/pull/14>
-- **Merged commit:** `7e84661` (merge of the ServiceNow duplicate-CI validation into `main`; update after this slice merges)
-- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery (see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below). Slice 1 (enrollment) is implemented; slice 2 (wiring the enrolled certificate into live mTLS transport) is next.
-- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: CA generate/persist/reload round-trip, CSR signature verification (including tampered-signature rejection), issued-certificate verification against the CA with the correct subject/EKU, token single-use/expiry/concurrency semantics, the full `POST /v1/enrollment-tokens` → `POST /v1/enroll` HTTP flow including that a malformed CSR does not burn the token, enrollment-disabled-by-default (501), and an end-to-end test driving the real `enrollment.Enroll` client against a real controller handler. Also manually verified the full CLI flow (`topo serve -ca-dir`, mint token via curl, `topo agent enroll`) with `openssl x509 -noout -subject -issuer -dates -ext extendedKeyUsage` and `openssl verify -CAfile`.
+- **Latest completed slice:** Outbound mTLS (slice 2 of the "collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" milestone). `topo serve -mtls` (requires `-ca-dir`) runs a native TLS listener: the controller issues itself a server certificate from the same CA that signs collector certificates (`enrollment.IssueServerCertificate`, 1-year TTL, generated fresh on every start rather than persisted), and verifies client certificates presented against that CA with `tls.VerifyClientCertIfGiven` — not `RequireAndVerifyClientCert`, since a collector's first-ever request (`POST /v1/enroll`) has no certificate yet and authenticates with its one-time token instead; per-endpoint enforcement (a verified certificate or the bearer API key) happens in the existing `auth()` middleware. `topo agent run -mtls-cert-dir` and `internal/agent.Sender`'s new `tlsConfig` parameter present the enrolled certificate on outbound requests. `topo agent enroll` gains `-controller-ca-cert` to pin the controller's self-signed CA certificate (distributed out-of-band alongside the token) for the bootstrap enrollment request itself — a bug caught during manual end-to-end verification (the initial `RequireAndVerifyClientCert` config broke `POST /v1/enroll` outright, and the initial enrollment client had no way to trust a self-signed controller at all) and fixed before this slice was called done, not after. Verified with unit tests (including a real TLS-handshake test proving `POST /v1/enroll` still works with no client certificate under `-mtls`) and a manual run of the real CLI binaries end to end, twice — once against a controller with no bearer key configured, and once against a controller that strictly enforces one, to prove the certificate alone (not merely disabled auth) authenticates the collector.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/15> (outbound mTLS, this slice)
+- **Merged pull request:** collector enrollment in <https://github.com/Nischoy-ai/topo/pull/14>; ServiceNow IRE duplicate-CI validation in <https://github.com/Nischoy-ai/topo/pull/13>.
+- **Merged commit:** `fe82ed6` (merge of collector enrollment into `main`); this slice not yet merged.
+- **Current milestone:** Collector enrollment, outbound mTLS, certificate rotation, heartbeats, and job delivery (see "Current milestone: collector enrollment, outbound mTLS, rotation, heartbeats, and jobs" below). Slices 1 (enrollment) and 2 (outbound mTLS) are implemented; slice 3 (certificate rotation) is next.
+- **Verified in this slice:** Under Go 1.23, `gofmt -l` (clean), `go vet ./...`, the exact CI race/coverage command `go test -race -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` all pass on Linux; `GOOS=windows GOARCH=amd64 go vet ./...` and `go build` also pass. New tests cover: a request with a verified client certificate and no bearer header reaching a protected endpoint; a request with neither being rejected with 401 (not a TLS handshake failure); the TLS handshake itself succeeding with no client certificate at all so `POST /v1/enroll` keeps working under `-mtls`; `internal/agent.Sender` delivering over real mutual TLS and being rejected without a client certificate; and `enrollment.Enroll` completing with a pinned bootstrap CA certificate against a self-signed `-mtls` controller, and failing without one. Also manually verified the full CLI flow twice end to end (mint token → `topo agent enroll -controller-ca-cert` → `topo agent run -mtls-cert-dir` → observations land at the controller), the second time with the controller's bearer key strictly enforced to prove certificate-only authentication.
 - **Explicitly deferred evidence:** Sanitized captures and regression fixtures from Windows Server 2022 and one other supported release; real-Windows verification of the Topo Agent's Windows service wrapper; and validation of ServiceNow's own IRE identification/reconciliation behavior and response schema against a real or sandboxed instance. Do not fabricate any of these from Topo Lab or from guessed schemas; obtain them from the real controlled system. These gates remain open before claiming real-host Windows compatibility, ServiceNow production readiness, or general production readiness.
-- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for the enrollment slice; a compromised collector key is contained by the bounded 90-day certificate TTL only.
+- **Explicit deferral:** Do not make PostgreSQL the next milestone. Automatic background Vault token renewal for long-running processes, and support for leased dynamic-secrets engines beyond token renewal, remain deferred follow-ups. One agent instance per host (fixed systemd unit / Windows service name) is an intentional Agent MVP limitation, not tracked as a gap. Do not attempt to parse or assume ServiceNow's IRE response schema without a real instance to verify it against. Certificate revocation is explicitly out of scope for both the enrollment and outbound-mTLS slices; a compromised collector key is contained by the bounded 90-day certificate TTL only. The controller's own server certificate is not persisted or rotated within a run — reissued fresh on every `topo serve -mtls` start — and that is deliberately left to certificate rotation (slice 3), not this slice.
 
 Before beginning new work, synchronize local `main`, create a focused feature
 branch, and replace this handoff when the milestone changes.
@@ -352,12 +353,27 @@ PR, matching every other multi-part milestone in this project.
    `topo agent enroll` is the collector-side CLI command. Enrollment is
    opt-in: `topo serve` without `-ca-dir` behaves exactly as before, and
    `/v1/enrollment-tokens`/`/v1/enroll` return 501 when not configured.
-2. Outbound mTLS: wire the enrolled certificate into live traffic. The
-   controller gains a native TLS listener (today `topo serve` is plain HTTP
-   behind an operator-provided reverse proxy) that verifies client
-   certificates against its CA, and `topo agent run`/`internal/agent.Sender`
-   gains a way to present the enrolled certificate instead of, or alongside,
-   the bearer API key.
+2. **Done.** Outbound mTLS: wire the enrolled certificate into live traffic.
+   `topo serve -mtls` gains a native TLS listener — the controller issues
+   itself a server certificate from the same CA that signs collector
+   certificates (`enrollment.IssueServerCertificate`, 1-year TTL, generated
+   fresh on every start rather than persisted) — and verifies client
+   certificates presented against that CA
+   (`tls.VerifyClientCertIfGiven`, not `RequireAndVerifyClientCert`: the TLS
+   layer must still accept a handshake with no client certificate at all,
+   because a collector's first-ever request, `POST /v1/enroll`, has none to
+   present; the `auth()` middleware enforces the requirement — a verified
+   peer certificate or the bearer API key — per endpoint instead). A
+   verified peer certificate satisfies `auth()` without the bearer key.
+   `topo agent run -mtls-cert-dir` and `internal/agent.Sender` gain a way to
+   present the enrolled certificate on outbound requests instead of, or
+   alongside, the bearer API key
+   (`enrollment.LoadClientTLSConfig`/`agent.NewSender`'s new `tlsConfig`
+   parameter). `topo agent enroll` gains `-controller-ca-cert` to pin the
+   controller's self-signed CA certificate for the enrollment request
+   itself (distributed out-of-band alongside the token, the same way the
+   token already is), solving the bootstrap trust problem a self-signed
+   `-mtls` controller otherwise creates for an ordinary HTTPS client.
 3. Certificate rotation: renew a collector's certificate before it expires,
    authenticated by the current still-valid certificate rather than a new
    enrollment token.
@@ -384,6 +400,20 @@ PR, matching every other multi-part milestone in this project.
   primitive (token → CSR → signed, CA-verifiable certificate) independent
   of how it will later be used for live authentication.
 
+### Deliberate non-goals for slice 2
+
+- No certificate rotation. The controller's own server certificate is
+  reissued fresh on every `topo serve -mtls` start rather than persisted or
+  renewed while the process runs; its 1-year TTL is chosen to outlive
+  reasonably long controller uptimes, not to bound compromise the way a
+  collector certificate's 90-day TTL does. Rotation (slice 3) covers both.
+- No change to existing bearer-key or plain-HTTP behavior; `-mtls` is
+  opt-in and requires `-ca-dir`, and `-mtls-cert-dir` on `topo agent run` is
+  independent of `-api-key-ref` — setting one does not disable the other.
+- No automatic reverse-proxy replacement guidance change for deployments
+  that do not opt into `-mtls`; they still need an operator-provided
+  TLS-terminating reverse proxy, exactly as before this slice.
+
 ### Acceptance gates (slice 1)
 
 - A minted enrollment token can be redeemed exactly once; a second
@@ -399,6 +429,34 @@ PR, matching every other multi-part milestone in this project.
   hand-built requests, and was additionally verified manually with
   `openssl x509`/`openssl verify` against a running `topo serve` and
   `topo agent enroll`, independent of Go's own `crypto/x509` implementation.
+- `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
+  ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
+
+### Acceptance gates (slice 2)
+
+- A request presenting a client certificate verified against the
+  controller's CA reaches protected endpoints without a bearer
+  `Authorization` header.
+- A request presenting neither a verified client certificate nor a correct
+  bearer key is rejected (401) by every endpoint that requires either.
+- `POST /v1/enroll` still succeeds over the `-mtls` listener from a client
+  presenting no certificate at all — proven by a test that exercises the
+  real `httptest`-driven TLS handshake, not just the application-level
+  handler, so a regression to `RequireAndVerifyClientCert` (which would
+  break every collector's first-ever enrollment) is caught at the TLS
+  layer, not just the HTTP layer.
+- `internal/agent.Sender`, configured with an enrolled certificate and no
+  API key, delivers successfully to a controller running `-mtls` with a
+  bearer key configured — proving certificate-only authentication actually
+  works end to end, not just that the controller *accepts* certificates in
+  isolation.
+- `topo agent enroll -controller-ca-cert` completes successfully against a
+  live `topo serve -mtls` controller with a self-signed certificate, and
+  fails without `-controller-ca-cert` against the same controller — proven
+  both by unit test and by a manual run of the real CLI binaries end to
+  end (mint token → enroll → run → observations land at the controller),
+  matching the manual-verification bar every other slice in this project
+  has met.
 - `gofmt`, `go vet ./...`, `go test -race ./...`, `go build -trimpath
   ./cmd/topo`, and the `GOOS=windows` cross-compile check all pass.
 
