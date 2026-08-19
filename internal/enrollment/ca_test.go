@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -104,6 +105,59 @@ func TestSignRejectsNonPositiveTTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := ca.Sign(csr, "collector-1", 0); err == nil {
+		t.Fatal("expected a non-positive ttl to be rejected")
+	}
+}
+
+func TestIssueServerCertificateVerifiesForServerAuth(t *testing.T) {
+	ca, err := generateCA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPEM, keyPEM, err := ca.IssueServerCertificate([]string{"localhost", "127.0.0.1"}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tls.X509KeyPair(certPEM, keyPEM); err != nil {
+		t.Fatalf("issued server certificate and key do not form a valid pair: %v", err)
+	}
+
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(ca.CACertPEM()) {
+		t.Fatal("failed to load CA cert into pool")
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		t.Fatal("expected a PEM block")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cert.Verify(x509.VerifyOptions{Roots: pool, DNSName: "localhost", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}); err != nil {
+		t.Fatalf("issued server certificate does not verify for localhost: %v", err)
+	}
+	if _, err := cert.Verify(x509.VerifyOptions{Roots: pool, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}}); err == nil {
+		t.Fatal("server certificate should not verify for client authentication")
+	}
+}
+
+func TestIssueServerCertificateRequiresSANs(t *testing.T) {
+	ca, err := generateCA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := ca.IssueServerCertificate(nil, time.Hour); err == nil {
+		t.Fatal("expected an empty SAN list to be rejected")
+	}
+}
+
+func TestIssueServerCertificateRejectsNonPositiveTTL(t *testing.T) {
+	ca, err := generateCA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := ca.IssueServerCertificate([]string{"localhost"}, 0); err == nil {
 		t.Fatal("expected a non-positive ttl to be rejected")
 	}
 }

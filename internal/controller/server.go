@@ -52,6 +52,16 @@ func (s *Server) Handler() http.Handler {
 }
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// A non-empty PeerCertificates here means the TLS handshake already
+		// verified a client certificate against the server's configured
+		// ClientCAs (Go's crypto/tls rejects the connection during the
+		// handshake otherwise) — an enrolled collector authenticating over
+		// outbound mTLS, an alternative to the bearer API key rather than a
+		// replacement for it.
+		if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+			next(w, r)
+			return
+		}
 		if s.APIKey != "" && r.Header.Get("Authorization") != "Bearer "+s.APIKey {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return

@@ -147,16 +147,16 @@ the same posture this project already takes with WinRM real-host fixtures.
 
 ## Current limitations
 
-- **No outbound mTLS yet.** The agent still authenticates with the same
-  static bearer API key `topo serve` accepts. Collector enrollment now
-  exists (`topo agent enroll`, see [Collector enrollment](enrollment.md))
-  and issues a per-collector certificate, but wiring that certificate into
-  `agent run`'s live traffic, plus certificate rotation, are later slices
-  of the same milestone.
-- **No native controller TLS termination.** The controller does not
-  terminate TLS itself yet; place a TLS-terminating reverse proxy in front
-  of it for any deployment beyond local evaluation, the same guidance that
-  already applies to `topo serve`.
+- **Outbound mTLS exists but is opt-in.** `topo agent run -mtls-cert-dir`
+  authenticates with the certificate `topo agent enroll` issued instead of,
+  or alongside, the bearer API key; an agent that omits the flag still
+  authenticates with the same static bearer API key as before. See
+  [Collector enrollment](enrollment.md#running-as-native-mtls). Certificate
+  rotation is a later slice of the same milestone.
+- **The controller only terminates TLS itself when `-mtls` is set.**
+  Without it, place a TLS-terminating reverse proxy in front of the
+  controller for any deployment beyond local evaluation, the same guidance
+  that already applies to `topo serve`.
 - **Windows service registration is unverified on real Windows.** See
   [Running as a Windows service](#running-as-a-windows-service).
 - **No job delivery.** The agent only self-reports on its own schedule; it

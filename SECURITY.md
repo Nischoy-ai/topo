@@ -63,9 +63,9 @@ contract (never a CLI argument); spool files and their directory are created
 with owner-only permissions, tampering is detected via AEAD authentication
 rather than silently returning corrupted data, and total spool size is
 bounded so an extended outage cannot grow it without limit. Collector
-enrollment now exists (see below) but is not yet wired into the agent's
-live traffic; the agent still authenticates with the bearer API-key
-contract until the next slice of that milestone.
+enrollment and outbound mTLS now exist (see below): `topo agent run
+-mtls-cert-dir` authenticates with the enrolled certificate instead of, or
+alongside, the bearer API-key contract.
 
 The packaged Linux systemd unit (`packaging/systemd/topo-agent.service`)
 runs as a dedicated non-root system user with an empty capability set,
@@ -98,9 +98,26 @@ in-memory only and does not survive a controller restart, matching every
 other piece of controller state today. There is no certificate revocation
 yet; a compromised collector certificate is contained only by its bounded
 lifetime. Enrollment is opt-in and does not change any existing
-bearer-key-authenticated behavior when `-ca-dir` is not set. The issued
-certificate is not yet used to authenticate any live request — that is the
-next slice of this milestone. See [Collector enrollment](docs/enrollment.md).
+bearer-key-authenticated behavior when `-ca-dir` is not set.
+
+The issued certificate now authenticates live traffic: `topo serve -mtls`
+runs a native TLS listener, issuing itself a server certificate from the
+same CA (1-year TTL, reissued fresh on every start rather than persisted
+or renewed while the process keeps running — certificate rotation, the
+next slice of this milestone, covers that), and verifies client
+certificates presented against that CA. A request with a certificate
+verified during the TLS handshake reaches protected endpoints without the
+bearer API key. The TLS layer still accepts a handshake with no client
+certificate at all — a collector's first-ever request, `POST /v1/enroll`,
+has none to present yet, authenticating instead with its one-time
+enrollment token — so per-endpoint enforcement (a verified certificate or
+the bearer key) happens in application-layer middleware, not the TLS
+handshake itself. `topo agent enroll -controller-ca-cert` pins the
+controller's self-signed CA certificate (distributed out-of-band alongside
+the enrollment token) so the bootstrap enrollment request itself can
+complete against an `-mtls` controller, whose certificate an ordinary
+HTTPS client would otherwise not trust. See
+[Collector enrollment](docs/enrollment.md).
 
 ## ServiceNow publishing
 

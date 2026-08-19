@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -385,6 +387,8 @@ func serve(args []string) error {
 	addr := fs.String("addr", env("TOPO_ADDR", ":8080"), "listen address")
 	apiKeyRef := fs.String("api-key-ref", "", "credential reference for the controller API key (env: or file:)")
 	caDir := fs.String("ca-dir", "", "absolute path to persist the collector enrollment CA; enables POST /v1/enrollment-tokens and POST /v1/enroll when set")
+	mtls := fs.Bool("mtls", false, "serve natively over mutual TLS, requiring a client certificate verified against -ca-dir; requires -ca-dir")
+	mtlsSAN := fs.String("mtls-san", "localhost,127.0.0.1,::1", "comma-separated DNS names/IPs for the controller's own TLS server certificate")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -395,10 +399,15 @@ func serve(args []string) error {
 	if len(apiKey) > 4096 {
 		return errors.New("controller API key exceeds 4096 bytes")
 	}
+	if *mtls && *caDir == "" {
+		return errors.New("-mtls requires -ca-dir")
+	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	controllerServer := controller.New(store.NewMemory(), logger, string(apiKey))
+	var ca *enrollment.CA
 	if *caDir != "" {
-		ca, caErr := enrollment.LoadOrCreateCA(*caDir)
+		var caErr error
+		ca, caErr = enrollment.LoadOrCreateCA(*caDir)
 		if caErr != nil {
 			return fmt.Errorf("load or create enrollment CA: %w", caErr)
 		}
@@ -406,6 +415,39 @@ func serve(args []string) error {
 		controllerServer.Tokens = enrollment.NewTokenStore()
 	}
 	srv := &http.Server{Addr: *addr, Handler: controllerServer.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
+	if *mtls {
+		sans := strings.Split(*mtlsSAN, ",")
+		for i := range sans {
+			sans[i] = strings.TrimSpace(sans[i])
+		}
+		certPEM, keyPEM, certErr := ca.IssueServerCertificate(sans, enrollment.DefaultServerCertificateTTL)
+		if certErr != nil {
+			return fmt.Errorf("issue controller server certificate: %w", certErr)
+		}
+		serverCert, tlsErr := tls.X509KeyPair(certPEM, keyPEM)
+		if tlsErr != nil {
+			return fmt.Errorf("load controller server certificate: %w", tlsErr)
+		}
+		clientCAs := x509.NewCertPool()
+		if !clientCAs.AppendCertsFromPEM(ca.CACertPEM()) {
+			return errors.New("failed to load enrollment CA certificate for client verification")
+		}
+		// VerifyClientCertIfGiven, not RequireAndVerifyClientCert: the TLS
+		// layer must accept connections with no client certificate at all,
+		// because a collector's first-ever request (POST /v1/enroll) has
+		// none to present yet — it authenticates with a single-use
+		// enrollment token instead. The auth() middleware enforces the
+		// per-endpoint requirement (valid peer certificate or bearer API
+		// key) once the request reaches the application layer; a
+		// certificate that IS presented is still verified against
+		// ClientCAs during the handshake.
+		srv.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{serverCert},
+			ClientCAs:    clientCAs,
+			ClientAuth:   tls.VerifyClientCertIfGiven,
+			MinVersion:   tls.VersionTLS12,
+		}
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go func() {
@@ -414,8 +456,12 @@ func serve(args []string) error {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	logger.Info("controller listening", "address", *addr, "auth_enabled", len(apiKey) != 0, "enrollment_enabled", controllerServer.CA != nil)
-	err = srv.ListenAndServe()
+	logger.Info("controller listening", "address", *addr, "auth_enabled", len(apiKey) != 0, "enrollment_enabled", controllerServer.CA != nil, "mtls_enabled", *mtls)
+	if *mtls {
+		err = srv.ListenAndServeTLS("", "")
+	} else {
+		err = srv.ListenAndServe()
+	}
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -450,6 +496,7 @@ func agentRun(args []string) error {
 	interval := fs.Duration("interval", 15*time.Minute, "discovery and delivery interval")
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "", "collector ID; defaults to the local hostname")
+	mtlsCertDir := fs.String("mtls-cert-dir", "", "absolute path to the certificate, key, and CA certificate topo agent enroll wrote; authenticates outbound requests with mutual TLS instead of, or alongside, -api-key-ref")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -486,7 +533,15 @@ func agentRun(args []string) error {
 	if err != nil {
 		return fmt.Errorf("initialize spool: %w", err)
 	}
-	sender, err := agent.NewSender(*controllerURL, string(apiKey))
+
+	var tlsConfig *tls.Config
+	if *mtlsCertDir != "" {
+		tlsConfig, err = enrollment.LoadClientTLSConfig(*mtlsCertDir)
+		if err != nil {
+			return fmt.Errorf("load mTLS certificate: %w", err)
+		}
+	}
+	sender, err := agent.NewSender(*controllerURL, string(apiKey), tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -578,6 +633,7 @@ func agentEnroll(args []string) error {
 	tokenRef := fs.String("token-ref", "", "credential reference for the one-time enrollment token (env:, file:, vault:, or k8s:)")
 	certDir := fs.String("cert-dir", "", "absolute path to store the issued certificate, private key, and CA certificate")
 	collector := fs.String("collector-id", "", "collector ID to request in the certificate; defaults to the local hostname")
+	controllerCACert := fs.String("controller-ca-cert", "", "absolute path to the controller's enrollment CA certificate; required when the controller runs `topo serve -mtls` (its TLS certificate is self-signed by that CA, distribute the file out-of-band alongside the enrollment token); omit when TLS is terminated by a reverse proxy with a publicly-trusted certificate, or the controller runs over plain HTTP")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -596,6 +652,14 @@ func agentEnroll(args []string) error {
 		return fmt.Errorf("resolve enrollment token: %w", err)
 	}
 
+	var bootstrapCACert []byte
+	if *controllerCACert != "" {
+		bootstrapCACert, err = os.ReadFile(*controllerCACert)
+		if err != nil {
+			return fmt.Errorf("read controller CA certificate: %w", err)
+		}
+	}
+
 	collectorID := *collector
 	if collectorID == "" {
 		if hostname, hostErr := os.Hostname(); hostErr == nil {
@@ -607,7 +671,7 @@ func agentEnroll(args []string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	result, err := enrollment.Enroll(ctx, *controllerURL, string(token), collectorID)
+	result, err := enrollment.Enroll(ctx, *controllerURL, string(token), collectorID, bootstrapCACert)
 	if err != nil {
 		return fmt.Errorf("enroll: %w", err)
 	}

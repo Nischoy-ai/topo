@@ -59,7 +59,7 @@ func TestRunDeliversWhileControllerReachable(t *testing.T) {
 	server := httptest.NewServer(controller.New(repo, slog.Default(), "").Handler())
 	defer server.Close()
 
-	sender, err := NewSender(server.URL, "")
+	sender, err := NewSender(server.URL, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestRunBuffersWhileControllerUnreachableThenDrains(t *testing.T) {
 	// Start with the server closed so the first deliveries fail and spool.
 	server.Close()
 
-	sender, err := NewSender(server.URL, "")
+	sender, err := NewSender(server.URL, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestRunBuffersWhileControllerUnreachableThenDrains(t *testing.T) {
 	repo2 := store.NewMemory()
 	recovered := httptest.NewServer(controller.New(repo2, slog.Default(), "").Handler())
 	defer recovered.Close()
-	recoveredSender, err := NewSender(recovered.URL, "")
+	recoveredSender, err := NewSender(recovered.URL, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestRunDropsObservationsWhenDiscoveryFails(t *testing.T) {
 	server := httptest.NewServer(controller.New(repo, slog.Default(), "").Handler())
 	defer server.Close()
 
-	sender, err := NewSender(server.URL, "")
+	sender, err := NewSender(server.URL, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
