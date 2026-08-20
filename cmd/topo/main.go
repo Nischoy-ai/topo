@@ -31,6 +31,7 @@ import (
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/snmp"
 	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
+	"github.com/Nischoy-ai/topo/pkg/discovery/vmware"
 	"github.com/Nischoy-ai/topo/pkg/discovery/winrm"
 	"github.com/Nischoy-ai/topo/pkg/lab"
 	"github.com/Nischoy-ai/topo/pkg/model"
@@ -790,6 +791,9 @@ func discover(args []string) error {
 	if len(args) > 0 && args[0] == "snmp" {
 		return discoverSNMP(args[1:])
 	}
+	if len(args) > 0 && args[0] == "vmware" {
+		return discoverVMware(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -881,6 +885,55 @@ func discoverWinRM(args []string) error {
 		ConnectTimeout:   *connectTimeout,
 		OperationTimeout: *operationTimeout,
 		MaxResponseBytes: *maxResponseBytes,
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
+}
+
+func discoverVMware(args []string) error {
+	fs := flag.NewFlagSet("discover vmware", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one vCenter (or standalone ESXi) endpoint per line")
+	username := fs.String("username", env("TOPO_VMWARE_USERNAME", ""), "vCenter/ESXi username")
+	passwordRef := fs.String("password-ref", "", "credential reference for the vCenter/ESXi password (env: or file:)")
+	labMode := fs.Bool("lab", false, "permit HTTP and skip certificate verification, restricted to loopback vcsim targets")
+	concurrency := fs.Int("concurrency", 8, "maximum concurrent vCenter targets")
+	connectTimeout := fs.Duration("connect-timeout", 10*time.Second, "vCenter connection timeout")
+	operationTimeout := fs.Duration("operation-timeout", 30*time.Second, "per-operation timeout")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "vmware-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+	if *username == "" {
+		return errors.New("vCenter username is required; set -username or TOPO_VMWARE_USERNAME")
+	}
+	password, err := resolveCredential(*passwordRef, "", "TOPO_VMWARE_PASSWORD", false)
+	if err != nil {
+		return fmt.Errorf("resolve vCenter password: %w", err)
+	}
+	plugin := vmware.Plugin{Config: vmware.Config{
+		Username:         *username,
+		Password:         string(password),
+		LabMode:          *labMode,
+		Concurrency:      *concurrency,
+		ConnectTimeout:   *connectTimeout,
+		OperationTimeout: *operationTimeout,
 	}}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

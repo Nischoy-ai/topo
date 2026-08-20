@@ -42,11 +42,22 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   and parsing/mapping logic through a real two-scan idempotency
   acceptance test; `authPriv` is implemented but not yet verified against
   a real device. See [docs/snmp.md](docs/snmp.md).
-- **Not started (VMware):** VMware vCenter virtual machine and host
-  inventory via `github.com/vmware/govmomi` and its `vcsim` simulator —
-  the next slice of the SNMP/VMware discovery milestone. See "Current
-  milestone: SNMP and VMware discovery" in
-  [docs/project-plan.md](docs/project-plan.md).
+- **Implemented alpha (VMware):** VMware vCenter (or standalone ESXi)
+  virtual machine and host inventory via `github.com/vmware/govmomi`,
+  using read-only vSphere API enumeration only. Asset identity is a
+  host's hardware UUID or a VM's VC-managed instance UUID (falling back
+  to its BIOS UUID for standalone ESXi hosts with no vCenter to assign
+  one), never an IP address or inventory path; `vm_runs_on_host`,
+  `host_has_interface`, and `vm_has_interface` relationships connect
+  hosts, VMs, and their interfaces. Production requires HTTPS with
+  normal certificate verification; there is no fallback outside Topo
+  Lab's `-lab` mode. Unlike SNMP, govmomi ships its own `vcsim`
+  simulator built for exactly this kind of testing, so the two-scan
+  idempotency and fault-isolation acceptance tests run directly against
+  `govmomi/simulator` rather than a hand-rolled Topo Lab fixture; real
+  vCenter/ESXi verification beyond `vcsim` has not been performed. This
+  completes both slices of the SNMP/VMware discovery milestone. See
+  [docs/vmware.md](docs/vmware.md).
 - Rate-limited allowlisted sweep and topology plugins.
 - Mapping overrides, incremental exports, retries, dead-letter queue, staleness policies, and high-availability collectors.
 - DEB, RPM, MSI, Helm, offline bundle, signed artifacts, and SBOMs.
