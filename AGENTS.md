@@ -199,8 +199,26 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
 The complete scope and acceptance gates are in `docs/project-plan.md`.
 
 The persistent observation/audit storage and scheduling milestone is now
-current and has not started; evaluate PostgreSQL at this point rather than
-assuming it is mandatory. See "Follow-on order" in `docs/project-plan.md`.
+current. Slice 1 (persistent storage) is done: `internal/store/sqlite`
+implements the existing `store.Repository` interface using
+`modernc.org/sqlite` (pure-Go, no cgo — required for this project's
+`GOOS=windows` cross-compile CI check to keep working) pinned to `v1.39.0`,
+the last release declaring `go 1.23.0` compatibility. PostgreSQL is
+deliberately not used: this project has no HA/clustered-controller story
+yet, so a client-server database is not yet justified over a single
+embedded file — see "Storage technology decision" under "Completed
+milestone slice: persistent observation/audit storage and scheduling,
+slice 1" in `docs/project-plan.md` for the full reasoning, which also
+covers slice 1's other real gap-fix: relationships are now queryable
+through `store.Repository` (`ListRelationships`, and `GET
+/v1/relationships`), since previously `Memory` received them in every
+observation but never exposed them. `topo serve -db-driver sqlite -db-dsn
+<path>` opts in; `-db-driver memory` (the default) is unchanged — nothing
+survives a restart, same as before this slice. Enrollment tokens,
+heartbeats, and job state remain in-memory only; whether they need to
+become durable is a question for a later slice, not assumed now. See
+`docs/storage.md`. Slices 2 (immutable audit log) and 3 (server-side
+recurring discovery scheduling) have not started.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

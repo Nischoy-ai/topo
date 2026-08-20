@@ -71,6 +71,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /v1/assets", s.auth(s.assets))
+	mux.HandleFunc("GET /v1/relationships", s.auth(s.relationships))
 	mux.HandleFunc("GET /v1/observations", s.auth(s.observations))
 	mux.HandleFunc("POST /v1/observations", s.auth(s.ingest))
 	mux.HandleFunc("POST /v1/enrollment-tokens", s.auth(s.createEnrollmentToken))
@@ -123,6 +124,14 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 }
 func (s *Server) assets(w http.ResponseWriter, r *http.Request) {
 	v, err := s.Store.ListAssets(r.Context())
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"items": v, "count": len(v)})
+}
+func (s *Server) relationships(w http.ResponseWriter, r *http.Request) {
+	v, err := s.Store.ListRelationships(r.Context())
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return

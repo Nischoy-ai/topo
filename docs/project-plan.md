@@ -32,10 +32,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none at last update; the VMware slice above is
-  being pushed and a PR opened for it now.
-- **Merged pull requests (this milestone):** SNMP discovery in
-  <https://github.com/Nischoy-ai/topo/pull/21>.
+- **Open pull request:** none at last update; slice 1 of the persistent
+  storage milestone (below) is starting.
+- **Merged pull requests (SNMP/VMware milestone, now complete):** SNMP
+  discovery in <https://github.com/Nischoy-ai/topo/pull/21>; VMware
+  discovery in <https://github.com/Nischoy-ai/topo/pull/22>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -49,11 +50,32 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** persistent observation/audit storage and
-  scheduling (see "Follow-on order" below) — not yet started. The
-  collector enrollment/outbound mTLS/rotation/heartbeats/jobs milestone,
-  the ServiceNow real-instance validation follow-on, and the SNMP/VMware
-  discovery milestone are all complete.
-- **Verified in this slice (VMware):** Under Go 1.23, `gofmt -l` (clean),
+  scheduling (see "Current milestone: persistent observation/audit storage
+  and scheduling" above for the full spec). Slice 1 (SQLite-backed
+  `store.Repository`, `internal/store/sqlite`, relationships as
+  newly-first-class stored data, `docs/storage.md`) is complete; slice 2
+  (immutable audit log) and slice 3 (server-side recurring discovery
+  scheduling) have not started. The collector enrollment/outbound
+  mTLS/rotation/heartbeats/jobs milestone, the ServiceNow real-instance
+  validation follow-on, and the SNMP/VMware discovery milestone are all
+  complete.
+- **Verified in this slice (persistent storage):** Under Go 1.23, `gofmt
+  -l` (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
+  test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
+  cross-compile build all pass. New tests: `internal/store/storetest`'s
+  shared conformance suite (round-trip fidelity, dedup-by-stable-ID across
+  repeated observations for both assets and relationships, idempotent
+  resubmission by `ObservationID`, concurrent-write safety under
+  `-race`) run identically against `Memory` and the SQLite backend;
+  SQLite-specific tests for data surviving a close/reopen cycle and for
+  rejecting a database with a newer schema version than the binary
+  supports; a controller-level test for `POST /v1/observations` →
+  `GET /v1/relationships`. Also manually verified end to end: `topo serve
+  -db-driver sqlite -db-dsn <path>`, ingested an observation via `curl`,
+  confirmed `GET /v1/assets` and `GET /v1/relationships`, killed and
+  restarted the controller against the same `-db-dsn`, and confirmed the
+  same data was still there.
+- **Verified in the previous slice (VMware):** Under Go 1.23, `gofmt -l` (clean),
   `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go test -race
   ./...`, `go build -trimpath ./cmd/topo`, and the Windows cross-compile
   build all pass. New tests cover: pure-function config validation and
@@ -898,6 +920,107 @@ This completes both slices of the SNMP/VMware discovery milestone.
 - No real vCenter/ESXi verification beyond `vcsim`. The same deferred-gate
   posture as SNMP's real-device verification: implemented and tested
   against a faithful simulator, not yet proven against a live system.
+
+## Current milestone: persistent observation/audit storage and scheduling
+
+### Objective
+
+Close the gap `ROADMAP.md`'s release gates already name explicitly: "No
+production claim is made until mTLS enrollment, persistent storage, audit
+logs, ... pass." Today `internal/store.Memory` is the only
+`store.Repository` implementation, and every other piece of controller
+state (enrollment tokens, heartbeats, jobs) is also in-memory-only by
+explicit prior design — none of it survives a restart. Discovery is
+scheduled only client-side, via `topo agent run -interval`; the controller
+has no notion of a recurring schedule, only one-off jobs. Like every other
+multi-part milestone in this project, this is staged as separate slices.
+
+### Storage technology decision
+
+`modernc.org/sqlite`, pinned to `v1.39.0` — the last release declaring `go
+1.23.0` compatibility with this project's pinned toolchain (newer releases
+require `go 1.24`/`go 1.25` and were deliberately not used, the same
+reasoning applied to every prior dependency pin in this project). It is a
+pure-Go transpilation of SQLite's C source (no cgo), which matters
+concretely here: this project's CI cross-compiles for Windows
+(`GOOS=windows GOARCH=amd64 go build`), and a cgo-based SQLite driver would
+require a Windows C cross-compiler this CI does not have. This is the
+project's fifth external dependency, after `golang.org/x/crypto`,
+`github.com/Azure/go-ntlmssp`, `github.com/gosnmp/gosnmp`, and
+`github.com/vmware/govmomi` — added for the same reason each of those was:
+implementing a durable, concurrent-safe, ACID storage engine from scratch
+is exactly the kind of well-trodden work this project's dependency
+philosophy exists to weigh against, not to forbid outright.
+
+PostgreSQL is deliberately not used yet. `AGENTS.md` already says not to
+make it "the next milestone on its own — evaluate it as part of the
+persistent-storage-and-scheduling milestone now current, not before," and
+having actually reached this milestone, the evaluation's conclusion is:
+Topo has no HA/clustered-controller story yet (a single controller process
+is still the only supported deployment shape — see `SECURITY.md`), so a
+client-server database operators must additionally provision and manage
+is not yet justified by anything Topo actually needs. SQLite is a single
+file, requires no separate service, and is sufficient for a single
+controller process. The `Repository` interface change in slice 1 is
+designed so a `postgres` driver can be added later as a third option
+without another interface change — this is a capacity decision, not a
+architecture lock-in, and should be revisited once HA/clustering is
+actually on the roadmap rather than assumed now.
+
+### Slices
+
+1. **Done.** Persistent storage: a new `internal/store/sqlite` package
+   implementing the existing `store.Repository` interface (observations,
+   assets) plus a new `ListRelationships` method both `Memory` and the new
+   SQLite backend implement — relationships were not previously queryable
+   at all through `store.Repository`, even though `Memory.SaveObservation`
+   received them in every envelope; this was a real gap fixed here, not
+   scope creep, since retrofitting a persisted schema after the fact is a
+   real migration cost. `model.StableRelationshipID` mirrors the existing
+   `model.StableAssetID` scheme (hash of type/from/to). Saving an
+   observation is now idempotent by `ObservationID` in both backends too
+   (a resubmitted ID replaces in place rather than duplicating) — a second
+   real gap found and fixed while defining the `Repository` contract
+   formally for the first time. CLI: `topo serve -db-driver sqlite -db-dsn
+   <path>` (default `-db-driver memory`, unchanged prior behavior). A
+   shared black-box conformance suite (`internal/store/storetest`) runs
+   identical assertions against both `Memory` and the SQLite backend
+   through the `Repository` interface alone, so the two implementations
+   cannot silently diverge in observable behavior; a `TestSQLiteDataSurvivesReopen`
+   test and a `TestSQLiteRejectsNewerSchemaVersion` test cover behavior
+   specific to the persistent backend. New `GET /v1/relationships`
+   endpoint alongside the existing `GET /v1/assets` and `GET
+   /v1/observations`. Enrollment tokens, heartbeats, and job state remain
+   in-memory only — persisting them is a question for a later slice, not
+   assumed now. See `docs/storage.md`.
+2. Immutable audit log: an append-only record of admin/security-relevant
+   controller actions (enrollment token issuance, enrollment, certificate
+   rotation, job creation), persisted the same way observations are.
+   "Immutable" here means hash-chained entries (each entry's stored hash
+   covers its own content and the previous entry's hash, so removing or
+   editing an entry after the fact is detectable, not that the underlying
+   storage is physically write-once) — the same class of guarantee, not
+   cryptographic non-repudiation. Scope and exact API surface to be
+   finalized when this slice starts.
+3. Server-side recurring discovery scheduling: today `POST /v1/jobs`
+   queues exactly one job; there is no controller-side notion of "run
+   `discover` for this collector every N minutes" independent of whatever
+   `-interval` a given `topo agent run` happens to be started with.
+   Scope and exact API surface to be finalized when this slice starts.
+
+### Deliberate non-goals for slice 1
+
+- No PostgreSQL backend yet — see "Storage technology decision" above.
+- No migration of existing in-memory enrollment-token/heartbeat/job state
+  to persistent storage in this slice. Those remain explicitly
+  in-memory-only per their own prior design notes; whether they need to
+  become durable is a question for a later slice once discovery data
+  persistence itself is proven, not assumed now.
+- No schema versioning/migration framework beyond what SQLite's own
+  `PRAGMA user_version` and a small in-code migration table need for this
+  project's single-controller deployment shape; a dedicated migration tool
+  is unwarranted complexity until there is more than one schema revision
+  to manage in practice.
 
 ## Follow-on order
 
