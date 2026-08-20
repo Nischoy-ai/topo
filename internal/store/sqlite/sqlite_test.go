@@ -122,18 +122,22 @@ func TestSQLiteAuditLogSurvivesReopen(t *testing.T) {
 	}
 }
 
-// TestSQLiteMigratesExistingDatabaseToLatestSchema simulates a database
-// created by an earlier binary that only knew about schema version 1 (no
-// audit_entries table) and confirms the current binary upgrades it in
-// place rather than requiring the database to be recreated.
-func TestSQLiteMigratesExistingDatabaseToLatestSchema(t *testing.T) {
+// TestSQLiteMigratesExistingDatabaseFromV1ToLatestSchema simulates a
+// database created by the binary that shipped only persistent-storage
+// slice 1 (schema version 1: observations/assets/relationships only, no
+// audit_entries or schedules table) and confirms the current binary
+// upgrades it through every intervening version in place, rather than
+// requiring the database to be recreated. Dropping every table added by a
+// later migration keeps this valid as a "what did a real v1 database look
+// like" simulation regardless of how many schema versions exist today.
+func TestSQLiteMigratesExistingDatabaseFromV1ToLatestSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "topo.db")
 
 	v1, err := sqlite.Open(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := v1.DB().Exec(`DROP TABLE audit_entries`); err != nil {
+	if _, err := v1.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v1.DB().Exec(`PRAGMA user_version = 1`); err != nil {
@@ -155,6 +159,78 @@ func TestSQLiteMigratesExistingDatabaseToLatestSchema(t *testing.T) {
 	}
 	if entry.Sequence != 1 {
 		t.Fatalf("got sequence %d, want 1", entry.Sequence)
+	}
+	if err := upgraded.UpsertSchedule(context.Background(), store.Schedule{CollectorID: "collector-1", JobType: "discover", IntervalSeconds: 60}); err != nil {
+		t.Fatalf("schedules table missing after upgrade: %v", err)
+	}
+}
+
+// TestSQLiteMigratesExistingDatabaseFromV2ToLatestSchema is the more
+// realistic near-term upgrade: a database written by the binary that
+// shipped audit-log slice 2 (schema version 2, no schedules table yet)
+// upgraded by the binary that adds slice 3.
+func TestSQLiteMigratesExistingDatabaseFromV2ToLatestSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+
+	v2, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v2.DB().Exec(`DROP TABLE schedules`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v2.DB().Exec(`PRAGMA user_version = 2`); err != nil {
+		t.Fatal(err)
+	}
+	if err := v2.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening a version-2 database with the current binary should upgrade it in place: %v", err)
+	}
+	defer upgraded.Close()
+
+	if err := upgraded.UpsertSchedule(context.Background(), store.Schedule{CollectorID: "collector-1", JobType: "discover", IntervalSeconds: 60}); err != nil {
+		t.Fatalf("schedules table missing after upgrade: %v", err)
+	}
+}
+
+func TestSQLiteSchedulesSurviveReopen(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+
+	first, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sched := store.Schedule{
+		CollectorID:     "collector-1",
+		JobType:         "discover",
+		IntervalSeconds: 3600,
+		NextRunAt:       time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC),
+		CreatedAt:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	if err := first.UpsertSchedule(context.Background(), sched); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	second, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+
+	got, err := second.GetSchedule(context.Background(), "collector-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CollectorID != sched.CollectorID || got.IntervalSeconds != sched.IntervalSeconds || !got.NextRunAt.Equal(sched.NextRunAt) {
+		t.Fatalf("schedule did not survive reopen: got %#v, want %#v", got, sched)
 	}
 }
 

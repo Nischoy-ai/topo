@@ -17,7 +17,7 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Require HTTPS with normal certificate and hostname verification for non-Lab WinRM targets. Production NTLMv2 never falls back to Basic authentication. Basic authentication and HTTP are restricted to the explicit loopback-only Topo Lab mode.
 - Require SNMPv3 `authPriv` with SHA authentication and AES privacy for non-Lab SNMP targets; there is no weaker fallback. `noAuthNoPriv` is restricted to the explicit loopback-only Topo Lab mode.
 - Require HTTPS with normal certificate verification for non-Lab VMware targets; there is no fallback. `-lab` (HTTP, skipped certificate verification) is restricted to loopback `vcsim` targets. Use a read-only vCenter role — the plugin never issues a configuration, power, or lifecycle operation.
-- For a persistent controller, use `-db-driver sqlite -db-dsn <path>` and restrict the database file's permissions to the Topo process identity; the default `-db-driver memory` loses all discovery data — and audit log entries — on every restart. There is no encryption at rest yet — treat the database file itself as sensitive.
+- For a persistent controller, use `-db-driver sqlite -db-dsn <path>` and restrict the database file's permissions to the Topo process identity; the default `-db-driver memory` loses all discovery data, audit log entries, and recurring discovery schedules on every restart. There is no encryption at rest yet — treat the database file itself as sensitive.
 - The audit log (`GET /v1/audit`) is tamper-evident, not tamper-proof: it detects an edited, reordered, or removed entry via `internal/audit.VerifyChain`, but does not prevent someone with direct database access from rewriting the whole chain undetected if they also have write access to `-db-dsn`. Treat database file access as equivalent to audit log access; export or forward `GET /v1/audit` to a separate, append-only sink if you need audit records to survive a compromise of the controller host itself.
 - Never place credentials in job options, labels, logs, or observation attributes.
 - Pass credential provider references, never credential values, as CLI arguments. Restrict credential-file permissions to the Topo process identity.
@@ -47,7 +47,7 @@ The VMware plugin creates a read-only property-collector container view scoped t
 
 ## Persistent storage and the audit log
 
-The controller's storage backend (`store.Repository`) is opt-in persistent: the default `-db-driver memory` keeps every prior release's behavior exactly (nothing survives a restart), and `-db-driver sqlite -db-dsn <path>` opts into a SQLite-backed store that does. There is no encryption at rest — the database file's confidentiality depends entirely on filesystem permissions, the same trust boundary this project already places on the enrollment CA's private key and Topo Agent's offline spool. Enrollment tokens, collector heartbeats, and job state remain in-memory only regardless of `-db-driver`; a controller restart still invalidates outstanding enrollment tokens and loses heartbeat/job history — though the audit record that a token was issued, a collector enrolled, or a job created still persists, independent of that transient state. `SaveObservation` is idempotent by observation ID in both backends — a collector retrying a delivery whose response was lost replaces the existing record rather than creating a duplicate, so retried delivery cannot be used to inflate stored observation counts.
+The controller's storage backend (`store.Repository`) is opt-in persistent: the default `-db-driver memory` keeps every prior release's behavior exactly (nothing survives a restart), and `-db-driver sqlite -db-dsn <path>` opts into a SQLite-backed store that does. There is no encryption at rest — the database file's confidentiality depends entirely on filesystem permissions, the same trust boundary this project already places on the enrollment CA's private key and Topo Agent's offline spool. Enrollment tokens, collector heartbeats, and one-off job state remain in-memory only regardless of `-db-driver`; a controller restart still invalidates outstanding enrollment tokens and loses heartbeat/job history — though the audit record that a token was issued, a collector enrolled, or a job created still persists, independent of that transient state. Recurring discovery schedules (see "Server-side recurring discovery scheduling" below) are the one exception that is itself persisted, not just audited. `SaveObservation` is idempotent by observation ID in both backends — a collector retrying a delivery whose response was lost replaces the existing record rather than creating a duplicate, so retried delivery cannot be used to inflate stored observation counts.
 
 `GET /v1/audit` returns a hash-chained log of enrollment token issuance, collector enrollment, certificate rotation, and job creation. Each entry's hash covers its own content and the previous entry's hash, so `internal/audit.VerifyChain` detects an entry edited, reordered, or removed after the fact — a Merkle/hash-chain class guarantee, not cryptographic non-repudiation, and not protection against someone who can rewrite the underlying database file wholesale (see "Deployment guidance" above). Audit detail values are always short strings and never secret material: an enrollment token is referenced only by a truncated SHA-256 fingerprint, never the token itself. Appending an audit entry is best-effort with respect to the action it records — an audit-write failure is logged but does not undo or block the action that already completed, since none of those actions' effects are stored in `store.Repository` to roll back; this is not a fail-closed audit log. See [Persistent storage and the audit log](docs/storage.md).
 
@@ -209,6 +209,32 @@ other type is rejected at creation, not silently accepted and left
 unrunnable. Job state is in-memory only, like the enrollment token store
 and heartbeat store, and does not survive a controller restart. See
 [Job delivery](docs/jobs.md).
+
+## Server-side recurring discovery scheduling
+
+`POST /v1/schedules` lets an operator set a recurring `discover` cadence
+for a collector, upserted and keyed by `collector_id` (at most one
+schedule per collector); `GET /v1/schedules` lists every schedule, and
+`DELETE /v1/schedules/{collector_id}` removes one. All three use the same
+`auth()` middleware as every other admin-style action in this project.
+`interval_seconds` is bounded to between 60 and 604800 (one week) — below
+the minimum a misconfigured schedule could hammer a collector on every
+poll, and there is no server-side rate limit protecting against that
+beyond this bound. There is no background ticker: a schedule only becomes
+an actual job the moment its collector next polls `GET /v1/jobs` and the
+schedule is found due, reusing job delivery's existing
+collector-initiated-polling trust model exactly (see "Job delivery"
+above) rather than introducing a second one. If a job of the schedule's
+type is already outstanding for that collector, the controller does not
+queue a second one, so a slow or temporarily unreachable collector cannot
+be made to accumulate a growing backlog by a schedule alone. Unlike
+enrollment tokens, heartbeats, and one-off job state, a schedule is
+persisted under `-db-driver sqlite` — a lost recurring-discovery policy on
+restart is a silent, indefinitely-lasting behavior change an operator is
+unlikely to notice, unlike a lost heartbeat or a lost single job. Schedule
+creation, update, and deletion are each recorded in the audit log (see
+"Persistent storage and the audit log" above). See
+[Server-side recurring discovery scheduling](docs/scheduling.md).
 
 ## ServiceNow publishing
 

@@ -88,6 +88,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/jobs", s.auth(s.pollJobs))
 	mux.HandleFunc("GET /v1/jobs/{id}", s.auth(s.jobStatus))
 	mux.HandleFunc("POST /v1/jobs/{id}/result", s.auth(s.reportJobResult))
+	mux.HandleFunc("POST /v1/schedules", s.auth(s.createOrUpdateSchedule))
+	mux.HandleFunc("GET /v1/schedules", s.auth(s.listSchedules))
+	mux.HandleFunc("DELETE /v1/schedules/{collector_id}", s.auth(s.deleteSchedule))
 	return securityHeaders(mux)
 }
 
@@ -407,13 +410,17 @@ func (s *Server) createJob(w http.ResponseWriter, r *http.Request) {
 // pollJobs returns and marks-dispatched every pending job queued for the
 // calling collector. Unlike heartbeats, there is no request body (it is a
 // GET), so the collector ID comes from a query parameter when there is no
-// stronger mTLS identity to use instead.
+// stronger mTLS identity to use instead. Before polling, it also checks
+// whether the collector has a recurring schedule that is now due — see
+// maybeEnqueueScheduledJob — so a scheduled job appears in the same poll
+// exactly as if it had been queued manually.
 func (s *Server) pollJobs(w http.ResponseWriter, r *http.Request) {
 	collectorID := collectorIdentity(r, r.URL.Query().Get("collector_id"))
 	if !enrollment.ValidCollectorID(collectorID) {
 		writeError(w, 400, "collector_id is empty, too long, or contains control characters")
 		return
 	}
+	s.maybeEnqueueScheduledJob(r.Context(), collectorID)
 	jobs := s.Jobs.Poll(collectorID)
 	writeJSON(w, 200, map[string]any{"items": jobs, "count": len(jobs)})
 }

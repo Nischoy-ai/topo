@@ -8,7 +8,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-20
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed milestone:** SNMP and VMware discovery (`ROADMAP.md`
+- **Latest completed milestone:** persistent observation/audit storage and
+  scheduling — all three slices done (SQLite-backed `store.Repository`,
+  PR #23; a hash-chained audit log, PR #24; server-side recurring
+  discovery scheduling, slice 3's PR about to be opened — see "Open pull
+  request" above). See "Completed milestone: persistent observation/audit
+  storage and scheduling" above for the full spec, and
+  `docs/storage.md`/`docs/scheduling.md`.
+- **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
   queries MIB-II `system`/`interfaces` over SNMPv3 via
@@ -32,13 +39,15 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** slice 2 of the persistent storage milestone
-  (immutable audit log) is about to be opened.
+- **Open pull request:** slice 3 of the persistent storage milestone
+  (server-side recurring discovery scheduling) is about to be opened —
+  the final slice of that milestone.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
   milestone slice 1 (SQLite-backed `store.Repository`) in
-  <https://github.com/Nischoy-ai/topo/pull/23>.
+  <https://github.com/Nischoy-ai/topo/pull/23>; slice 2 (hash-chained
+  audit log) in <https://github.com/Nischoy-ai/topo/pull/24>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -51,71 +60,40 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   [`docs/servicenow.md`](servicenow.md#verified-against-a-real-instance)
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
-- **Current milestone:** persistent observation/audit storage and
-  scheduling (see "Current milestone: persistent observation/audit storage
-  and scheduling" above for the full spec). Slice 1 (SQLite-backed
-  `store.Repository`) and slice 2 (immutable audit log) are complete;
-  slice 3 (server-side recurring discovery scheduling) has not started.
-  The collector enrollment/outbound mTLS/rotation/heartbeats/jobs
-  milestone, the ServiceNow real-instance validation follow-on, and the
-  SNMP/VMware discovery milestone are all complete.
-- **Verified in this slice (audit log):** Under Go 1.23, `gofmt -l`
+- **Current milestone:** none yet started. The persistent observation/audit
+  storage and scheduling milestone (all three slices), the collector
+  enrollment/outbound mTLS/rotation/heartbeats/jobs milestone, the
+  ServiceNow real-instance validation follow-on, and the SNMP/VMware
+  discovery milestone are all complete. See "Follow-on order" below for
+  candidates for the next milestone; do not start one without an explicit
+  go-ahead.
+- **Verified in this slice (scheduling):** Under Go 1.23, `gofmt -l`
   (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
   test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
-  cross-compile build all pass. New tests: `internal/audit` unit tests
-  covering chain construction, determinism (map key order does not affect
-  the hash), content sensitivity (every field participates in the hash),
-  and `VerifyChain` detecting edited/removed/reordered/forged entries;
-  `internal/store/storetest` conformance subtests for sequential
-  hash-chained appends and concurrent-append safety under `-race`, run
-  identically against `Memory` and the SQLite backend; a SQLite-specific
-  test proving an existing schema-version-1 database (no `audit_entries`
-  table) upgrades to version 2 in place when opened by the current binary,
-  and a reopen test proving a post-restart append continues the
-  pre-restart chain rather than restarting it; controller-level tests that
-  enrollment token issuance, collector enrollment, certificate rotation,
-  and job creation each produce the expected audit entry, that
-  `GET /v1/audit` requires auth, and — a security-relevant regression
-  test — that the raw enrollment token never appears anywhere in the audit
-  response. Also manually verified end to end: `topo serve -db-driver
-  sqlite -db-dsn <path>`, created a job via `curl`, confirmed the resulting
-  `job_created` entry in `GET /v1/audit`, killed and restarted the
-  controller against the same `-db-dsn`, and confirmed the same audit
-  entry (identical hash) was still there.
-- **Verified in the previous slice (persistent storage):** Under Go 1.23, `gofmt
-  -l` (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
-  test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
-  cross-compile build all pass. New tests: `internal/store/storetest`'s
-  shared conformance suite (round-trip fidelity, dedup-by-stable-ID across
-  repeated observations for both assets and relationships, idempotent
-  resubmission by `ObservationID`, concurrent-write safety under
-  `-race`) run identically against `Memory` and the SQLite backend;
-  SQLite-specific tests for data surviving a close/reopen cycle and for
-  rejecting a database with a newer schema version than the binary
-  supports; a controller-level test for `POST /v1/observations` →
-  `GET /v1/relationships`. Also manually verified end to end: `topo serve
-  -db-driver sqlite -db-dsn <path>`, ingested an observation via `curl`,
-  confirmed `GET /v1/assets` and `GET /v1/relationships`, killed and
-  restarted the controller against the same `-db-dsn`, and confirmed the
-  same data was still there.
-- **Verified in the milestone before that (VMware):** Under Go 1.23, `gofmt -l` (clean),
-  `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go test -race
-  ./...`, `go build -trimpath ./cmd/topo`, and the Windows cross-compile
-  build all pass. New tests cover: pure-function config validation and
-  target parsing (embedded-credential rejection, HTTPS-required-outside-
-  `-lab`, loopback-only `-lab` targets); pure-function inventory mapping
-  (missing-identity objects skipped rather than failing the whole target,
-  `InstanceUuid`-preferred-over-`Uuid` fallback, host-moref-to-VM
-  relationship resolution, MAC extraction from virtual/physical NICs); a
-  two-scan idempotency acceptance test against a real `vcsim` instance
-  over HTTPS with enforced credentials, proving stable host/VM identity
-  and zero duplicates across repeated scans through `store.Memory`; a
-  wrong-password case proving real (not simulator-default-open) auth
-  rejection surfaces as a `vmware_connect` error; and an unreachable-
-  target case proving a retryable `vmware_connect` error rather than a
-  hang or crash. Also manually verified the full CLI flow end to end
-  (`vcsim`-backed model → `topo discover vmware -lab` → inspected JSON
-  Lines output) via a throwaway harness, not committed to the repository.
+  cross-compile build all pass. New tests: `internal/store/storetest`
+  conformance subtests for schedule round-trip/upsert-replaces,
+  not-found, delete, and list-all-collectors, run identically against
+  `Memory` and the SQLite backend; SQLite-specific tests for a
+  version-1-to-latest and a version-2-to-latest migration upgrade (the
+  latter the more realistic near-term case) and for a schedule surviving
+  reopen; a `JobStore.HasOutstanding` unit test; controller-level tests
+  that creating a schedule produces a due job on the very next poll, that
+  a second immediate poll does not produce a second job (no pile-up) even
+  when a schedule is forced due again while the first job is still
+  outstanding, that updating a schedule replaces it in place while
+  preserving `created_at`, interval bounds are rejected, all three
+  schedule endpoints require auth, deleting a schedule stops future jobs,
+  and each of `schedule_created`/`schedule_updated`/`schedule_deleted` is
+  audited. Also manually verified end to end: `topo serve -db-driver
+  sqlite -db-dsn <path>`, created a schedule via `curl`, confirmed the
+  next poll produced exactly one due job and a second immediate poll
+  produced none, killed and restarted the controller against the same
+  `-db-dsn`, confirmed the schedule was still there, then deleted it and
+  confirmed polling stopped producing jobs.
+- **Verified in the previous slices (persistent storage, audit log):** see
+  PR #23 and PR #24 for the equivalent detail; both followed the same
+  gofmt/vet/race-test/cross-compile/manual-smoke-test verification bar as
+  every slice in this project.
 - **Explicitly deferred evidence:** Sanitized captures and regression
   fixtures from Windows Server 2022 and one other supported release;
   real-Windows verification of the Topo Agent's Windows service wrapper;
@@ -944,7 +922,7 @@ This completes both slices of the SNMP/VMware discovery milestone.
   posture as SNMP's real-device verification: implemented and tested
   against a faithful simulator, not yet proven against a live system.
 
-## Current milestone: persistent observation/audit storage and scheduling
+## Completed milestone: persistent observation/audit storage and scheduling
 
 ### Objective
 
@@ -1040,11 +1018,37 @@ actually on the roadmap rather than assumed now.
    New `GET /v1/audit` endpoint (auth required like every other read
    endpoint); it returns entries as stored and does not itself re-verify
    the chain. See `docs/storage.md`.
-3. Server-side recurring discovery scheduling: today `POST /v1/jobs`
-   queues exactly one job; there is no controller-side notion of "run
-   `discover` for this collector every N minutes" independent of whatever
-   `-interval` a given `topo agent run` happens to be started with.
-   Scope and exact API surface to be finalized when this slice starts.
+3. **Done.** Server-side recurring discovery scheduling: `store.Repository`
+   gained a `Schedule` type (`collector_id`, `job_type`,
+   `interval_seconds`, `next_run_at`) and `UpsertSchedule`/`ListSchedules`/
+   `GetSchedule`/`DeleteSchedule`, implemented by both `Memory` and the
+   SQLite backend (a new `schedules` table, schema version 3). New
+   `POST /v1/schedules` (upsert, keyed by `collector_id` — at most one
+   schedule per collector), `GET /v1/schedules`, and
+   `DELETE /v1/schedules/{collector_id}` endpoints. Deliberately no
+   background ticker: a schedule only ever turns into an actual
+   `model.Job` lazily, the moment its collector next polls `GET /v1/jobs`
+   and the schedule is found due, reusing `POST /v1/jobs`'s existing
+   collector-initiated-polling machinery outright rather than building a
+   second, parallel job-dispatch path — Topo Agent is deliberately
+   outbound-only, so a background ticker would have nothing to push to
+   anyway. `JobStore` gained `HasOutstanding` so a schedule does not pile
+   up a second job while an earlier one is still outstanding for that
+   collector; when a job is actually queued, `next_run_at` advances to
+   `now + interval_seconds` (never `old next_run_at + interval_seconds`),
+   so a collector offline for several intervals catches up with exactly
+   one job, not a backlog. Unlike enrollment tokens, heartbeats, and job
+   state — all deliberately left in-memory-only by this milestone's
+   earlier slices — a schedule *is* persisted under `-db-driver sqlite`:
+   it is a standing operator policy, not short-lived or self-healing like
+   a heartbeat or a single job, so silently losing it on restart would be
+   a real, easy-to-miss operational surprise. Schedule changes are
+   audited (`schedule_created`/`schedule_updated`/`schedule_deleted`).
+   See `docs/scheduling.md`.
+
+**This completes the persistent observation/audit storage and scheduling
+milestone** — all three slices are done. See "Follow-on order" below for
+what comes next.
 
 ### Deliberate non-goals for slice 1
 
@@ -1063,16 +1067,20 @@ actually on the roadmap rather than assumed now.
 ## Follow-on order
 
 With the credential-provider, Topo Agent MVP, ServiceNow IRE duplicate-CI
-validation, collector enrollment/outbound mTLS/rotation/heartbeats/jobs, and
-SNMP/VMware discovery milestones complete, pursue these slices in order
-unless evidence from an enterprise pilot changes the priority:
+validation, collector enrollment/outbound mTLS/rotation/heartbeats/jobs,
+SNMP/VMware discovery, and persistent observation/audit storage and
+scheduling milestones all complete, pursue these in order unless evidence
+from an enterprise pilot changes the priority:
 
-1. Persistent observation/audit storage and scheduling (current milestone);
-   evaluate PostgreSQL at this point rather than assuming it is mandatory.
-2. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
+1. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
    security testing.
-3. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
+2. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
    gates leading toward Topo Graph.
+
+PostgreSQL was evaluated as part of the persistent-storage milestone and
+deliberately deferred (see "Storage technology decision" under the
+completed-milestone section above) — revisit it once an HA/clustered-
+controller deployment shape is actually on the roadmap, not before.
 
 `ROADMAP.md`'s M2 line also lists a "rate-limited allowlisted sweep" and
 network topology protocols (LLDP/CDP) — real, scoped follow-ups deliberately
