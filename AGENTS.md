@@ -199,8 +199,19 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
 The complete scope and acceptance gates are in `docs/project-plan.md`.
 
 The persistent observation/audit storage and scheduling milestone is now
-current and has not started; evaluate PostgreSQL at this point rather than
-assuming it is mandatory. See "Follow-on order" in `docs/project-plan.md`.
+current. Slice 1 (persistent storage) is starting: `internal/store/sqlite`
+will implement the existing `store.Repository` interface using
+`modernc.org/sqlite` (pure-Go, no cgo — required for this project's
+`GOOS=windows` cross-compile CI check to keep working) pinned to `v1.39.0`,
+the last release declaring `go 1.23.0` compatibility. PostgreSQL is
+deliberately not used: this project has no HA/clustered-controller story
+yet, so a client-server database is not yet justified over a single
+embedded file — see "Storage technology decision" under "Current
+milestone: persistent observation/audit storage and scheduling" in
+`docs/project-plan.md` for the full reasoning, which also covers slice 1's
+other real gap-fix: relationships become queryable through
+`store.Repository` for the first time (`ListRelationships`), since today
+`Memory` receives them in every observation but never exposes them.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are
