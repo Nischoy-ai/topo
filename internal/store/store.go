@@ -5,7 +5,9 @@ import (
 	"errors"
 	"sort"
 	"sync"
+	"time"
 
+	"github.com/Nischoy-ai/topo/internal/audit"
 	"github.com/Nischoy-ai/topo/pkg/model"
 )
 
@@ -22,6 +24,17 @@ type Repository interface {
 	ListObservations(context.Context) ([]model.ObservationEnvelope, error)
 	ListAssets(context.Context) ([]ResolvedAsset, error)
 	ListRelationships(context.Context) ([]ResolvedRelationship, error)
+
+	// AppendAuditEvent records one admin/security-relevant controller
+	// action, assigning it the next Sequence number and hash-chaining it
+	// to the previously appended entry (see internal/audit). Implementations
+	// must serialize appends against each other so Sequence values are
+	// gap-free and PrevHash always references the entry actually preceding
+	// it, even under concurrent callers.
+	AppendAuditEvent(context.Context, audit.Event) (audit.Entry, error)
+	// ListAuditEntries returns every audit entry in Sequence order, suitable
+	// for passing directly to audit.VerifyChain.
+	ListAuditEntries(context.Context) ([]audit.Entry, error)
 }
 type ResolvedAsset struct {
 	ID                 string      `json:"id"`
@@ -49,6 +62,7 @@ type Memory struct {
 	observationIndex map[string]int
 	assets           map[string]ResolvedAsset
 	relationships    map[string]ResolvedRelationship
+	auditEntries     []audit.Entry
 }
 
 func NewMemory() *Memory {
@@ -118,5 +132,26 @@ func (m *Memory) ListRelationships(_ context.Context) ([]ResolvedRelationship, e
 		out = append(out, r)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+// AppendAuditEvent is serialized under the same mutex as SaveObservation,
+// so concurrent callers can never observe or produce a torn Sequence/PrevHash
+// pair.
+func (m *Memory) AppendAuditEvent(_ context.Context, e audit.Event) (audit.Entry, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	prevHash := ""
+	if n := len(m.auditEntries); n > 0 {
+		prevHash = m.auditEntries[n-1].Hash
+	}
+	entry := audit.Chain(prevHash, int64(len(m.auditEntries)+1), time.Now(), e)
+	m.auditEntries = append(m.auditEntries, entry)
+	return entry, nil
+}
+func (m *Memory) ListAuditEntries(_ context.Context) ([]audit.Entry, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := append([]audit.Entry(nil), m.auditEntries...)
 	return out, nil
 }

@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-19
+- **Updated:** 2026-08-20
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Latest completed milestone:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
@@ -32,11 +32,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none at last update; slice 1 of the persistent
-  storage milestone (below) is starting.
-- **Merged pull requests (SNMP/VMware milestone, now complete):** SNMP
-  discovery in <https://github.com/Nischoy-ai/topo/pull/21>; VMware
-  discovery in <https://github.com/Nischoy-ai/topo/pull/22>.
+- **Open pull request:** slice 2 of the persistent storage milestone
+  (immutable audit log) is about to be opened.
+- **Merged pull requests:** SNMP discovery in
+  <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
+  <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
+  milestone slice 1 (SQLite-backed `store.Repository`) in
+  <https://github.com/Nischoy-ai/topo/pull/23>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -52,14 +54,35 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Current milestone:** persistent observation/audit storage and
   scheduling (see "Current milestone: persistent observation/audit storage
   and scheduling" above for the full spec). Slice 1 (SQLite-backed
-  `store.Repository`, `internal/store/sqlite`, relationships as
-  newly-first-class stored data, `docs/storage.md`) is complete; slice 2
-  (immutable audit log) and slice 3 (server-side recurring discovery
-  scheduling) have not started. The collector enrollment/outbound
-  mTLS/rotation/heartbeats/jobs milestone, the ServiceNow real-instance
-  validation follow-on, and the SNMP/VMware discovery milestone are all
-  complete.
-- **Verified in this slice (persistent storage):** Under Go 1.23, `gofmt
+  `store.Repository`) and slice 2 (immutable audit log) are complete;
+  slice 3 (server-side recurring discovery scheduling) has not started.
+  The collector enrollment/outbound mTLS/rotation/heartbeats/jobs
+  milestone, the ServiceNow real-instance validation follow-on, and the
+  SNMP/VMware discovery milestone are all complete.
+- **Verified in this slice (audit log):** Under Go 1.23, `gofmt -l`
+  (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
+  test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
+  cross-compile build all pass. New tests: `internal/audit` unit tests
+  covering chain construction, determinism (map key order does not affect
+  the hash), content sensitivity (every field participates in the hash),
+  and `VerifyChain` detecting edited/removed/reordered/forged entries;
+  `internal/store/storetest` conformance subtests for sequential
+  hash-chained appends and concurrent-append safety under `-race`, run
+  identically against `Memory` and the SQLite backend; a SQLite-specific
+  test proving an existing schema-version-1 database (no `audit_entries`
+  table) upgrades to version 2 in place when opened by the current binary,
+  and a reopen test proving a post-restart append continues the
+  pre-restart chain rather than restarting it; controller-level tests that
+  enrollment token issuance, collector enrollment, certificate rotation,
+  and job creation each produce the expected audit entry, that
+  `GET /v1/audit` requires auth, and — a security-relevant regression
+  test — that the raw enrollment token never appears anywhere in the audit
+  response. Also manually verified end to end: `topo serve -db-driver
+  sqlite -db-dsn <path>`, created a job via `curl`, confirmed the resulting
+  `job_created` entry in `GET /v1/audit`, killed and restarted the
+  controller against the same `-db-dsn`, and confirmed the same audit
+  entry (identical hash) was still there.
+- **Verified in the previous slice (persistent storage):** Under Go 1.23, `gofmt
   -l` (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
   test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
   cross-compile build all pass. New tests: `internal/store/storetest`'s
@@ -75,7 +98,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   confirmed `GET /v1/assets` and `GET /v1/relationships`, killed and
   restarted the controller against the same `-db-dsn`, and confirmed the
   same data was still there.
-- **Verified in the previous slice (VMware):** Under Go 1.23, `gofmt -l` (clean),
+- **Verified in the milestone before that (VMware):** Under Go 1.23, `gofmt -l` (clean),
   `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go test -race
   ./...`, `go build -trimpath ./cmd/topo`, and the Windows cross-compile
   build all pass. New tests cover: pure-function config validation and
@@ -993,15 +1016,30 @@ actually on the roadmap rather than assumed now.
    /v1/observations`. Enrollment tokens, heartbeats, and job state remain
    in-memory only — persisting them is a question for a later slice, not
    assumed now. See `docs/storage.md`.
-2. Immutable audit log: an append-only record of admin/security-relevant
-   controller actions (enrollment token issuance, enrollment, certificate
-   rotation, job creation), persisted the same way observations are.
-   "Immutable" here means hash-chained entries (each entry's stored hash
-   covers its own content and the previous entry's hash, so removing or
-   editing an entry after the fact is detectable, not that the underlying
-   storage is physically write-once) — the same class of guarantee, not
-   cryptographic non-repudiation. Scope and exact API surface to be
-   finalized when this slice starts.
+2. **Done.** Immutable audit log: a new `internal/audit` package
+   (`Event`/`Entry`, `Chain`, `VerifyChain`) implements the hash chain
+   itself — each entry's stored hash covers its own content and the
+   previous entry's hash, so editing, reordering, or removing an entry
+   after the fact breaks the chain from that point forward, detectably via
+   `VerifyChain`; "immutable" means this tamper-evidence, not that the
+   underlying storage is physically write-once, and not cryptographic
+   non-repudiation. `store.Repository` gained `AppendAuditEvent` and
+   `ListAuditEntries`, implemented by both `Memory` and the SQLite backend
+   (a new `audit_entries` table, schema version 2 — the `migrate` function
+   was generalized from applying one fixed migration to applying every
+   pending versioned migration in order, so an existing version-1 database
+   upgrades in place rather than needing to be recreated). The controller
+   appends an entry for the four actions named when this slice was
+   scoped — `enrollment_token_issued`, `collector_enrolled`,
+   `certificate_rotated`, `job_created` — best-effort with respect to the
+   action itself (an audit-write failure is logged, not treated as
+   grounds to fail or undo an action that already completed, since none of
+   those actions' effects live in `store.Repository` to roll back). Detail
+   fields are always short strings and never secret material — an
+   enrollment token is referenced only by a truncated SHA-256 fingerprint.
+   New `GET /v1/audit` endpoint (auth required like every other read
+   endpoint); it returns entries as stored and does not itself re-verify
+   the chain. See `docs/storage.md`.
 3. Server-side recurring discovery scheduling: today `POST /v1/jobs`
    queues exactly one job; there is no controller-side notion of "run
    `discover` for this collector every N minutes" independent of whatever

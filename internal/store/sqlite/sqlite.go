@@ -10,12 +10,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
 
+	"github.com/Nischoy-ai/topo/internal/audit"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/model"
 )
@@ -23,9 +25,9 @@ import (
 // schemaVersion is tracked via SQLite's own PRAGMA user_version. A
 // dedicated migration framework is unwarranted complexity for this
 // project's single-controller deployment shape until there is more than
-// one schema revision to manage in practice; this constant and migrate
-// are the seam a future migration would extend.
-const schemaVersion = 1
+// one schema revision to manage in practice; migrations (below) and
+// migrate are the seam a future migration would extend.
+const schemaVersion = 2
 
 const migrationV1 = `
 CREATE TABLE observations (
@@ -47,6 +49,28 @@ CREATE TABLE relationships (
 	last_observation_id  TEXT NOT NULL
 );
 `
+
+const migrationV2 = `
+CREATE TABLE audit_entries (
+	sequence    INTEGER PRIMARY KEY,
+	recorded_at TEXT NOT NULL,
+	action      TEXT NOT NULL,
+	actor       TEXT NOT NULL,
+	detail_json TEXT NOT NULL,
+	prev_hash   TEXT NOT NULL,
+	hash        TEXT NOT NULL UNIQUE
+);
+`
+
+// migrations maps each schema version to the SQL that upgrades a database
+// from version-1 to that version. migrate applies every entry between the
+// database's current PRAGMA user_version and schemaVersion in order, so a
+// database created under an older binary upgrades incrementally rather than
+// needing to be recreated from scratch.
+var migrations = map[int]string{
+	1: migrationV1,
+	2: migrationV2,
+}
 
 // Store implements store.Repository backed by a SQLite database.
 type Store struct {
@@ -103,21 +127,30 @@ func (s *Store) migrate(ctx context.Context) error {
 	if version > schemaVersion {
 		return fmt.Errorf("database schema version %d is newer than this binary supports (%d); upgrade Topo before opening this database", version, schemaVersion)
 	}
-	if version == schemaVersion {
-		return nil
+	for v := version + 1; v <= schemaVersion; v++ {
+		if err := s.applyMigration(ctx, v); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func (s *Store) applyMigration(ctx context.Context, version int) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin schema migration: %w", err)
+		return fmt.Errorf("begin schema migration to version %d: %w", version, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, migrationV1); err != nil {
-		return fmt.Errorf("apply schema migration: %w", err)
+	if _, err := tx.ExecContext(ctx, migrations[version]); err != nil {
+		return fmt.Errorf("apply schema migration to version %d: %w", version, err)
 	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion)); err != nil {
-		return fmt.Errorf("set schema version: %w", err)
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, version)); err != nil {
+		return fmt.Errorf("set schema version to %d: %w", version, err)
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit schema migration to version %d: %w", version, err)
+	}
+	return nil
 }
 
 // SaveObservation is idempotent by ObservationID, matching store.Memory:
@@ -253,6 +286,74 @@ func (s *Store) ListRelationships(ctx context.Context) ([]store.ResolvedRelation
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list relationships: %w", err)
+	}
+	return out, nil
+}
+
+// AppendAuditEvent reads the last entry and inserts the next one inside a
+// single transaction. Since the *sql.DB backing Store holds exactly one
+// connection (see Open), BeginTx serializes this against every other
+// caller for its whole duration, so Sequence/PrevHash can never be assigned
+// from a stale read the way they could if two callers read-then-wrote
+// independently.
+func (s *Store) AppendAuditEvent(ctx context.Context, e audit.Event) (audit.Entry, error) {
+	detailJSON, err := json.Marshal(e.Detail)
+	if err != nil {
+		return audit.Entry{}, fmt.Errorf("marshal audit detail: %w", err)
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return audit.Entry{}, fmt.Errorf("begin append audit event: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var lastSeq int64
+	var prevHash string
+	switch err := tx.QueryRowContext(ctx, `SELECT sequence, hash FROM audit_entries ORDER BY sequence DESC LIMIT 1`).Scan(&lastSeq, &prevHash); {
+	case errors.Is(err, sql.ErrNoRows):
+		lastSeq, prevHash = 0, ""
+	case err != nil:
+		return audit.Entry{}, fmt.Errorf("read last audit entry: %w", err)
+	}
+
+	entry := audit.Chain(prevHash, lastSeq+1, time.Now(), e)
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO audit_entries (sequence, recorded_at, action, actor, detail_json, prev_hash, hash)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, entry.Sequence, entry.RecordedAt.UTC().Format(time.RFC3339Nano), entry.Action, entry.Actor, string(detailJSON), entry.PrevHash, entry.Hash); err != nil {
+		return audit.Entry{}, fmt.Errorf("save audit entry: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return audit.Entry{}, fmt.Errorf("commit audit entry: %w", err)
+	}
+	return entry, nil
+}
+
+func (s *Store) ListAuditEntries(ctx context.Context) ([]audit.Entry, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT sequence, recorded_at, action, actor, detail_json, prev_hash, hash FROM audit_entries ORDER BY sequence`)
+	if err != nil {
+		return nil, fmt.Errorf("list audit entries: %w", err)
+	}
+	defer rows.Close()
+	var out []audit.Entry
+	for rows.Next() {
+		var e audit.Entry
+		var recordedAt, detailJSON string
+		if err := rows.Scan(&e.Sequence, &recordedAt, &e.Action, &e.Actor, &detailJSON, &e.PrevHash, &e.Hash); err != nil {
+			return nil, fmt.Errorf("scan audit entry: %w", err)
+		}
+		t, err := time.Parse(time.RFC3339Nano, recordedAt)
+		if err != nil {
+			return nil, fmt.Errorf("decode audit entry recorded_at: %w", err)
+		}
+		e.RecordedAt = t
+		if err := json.Unmarshal([]byte(detailJSON), &e.Detail); err != nil {
+			return nil, fmt.Errorf("decode audit entry detail: %w", err)
+		}
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list audit entries: %w", err)
 	}
 	return out, nil
 }

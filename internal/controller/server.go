@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Nischoy-ai/topo/internal/audit"
 	"github.com/Nischoy-ai/topo/internal/enrollment"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/model"
@@ -72,6 +76,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /v1/assets", s.auth(s.assets))
 	mux.HandleFunc("GET /v1/relationships", s.auth(s.relationships))
+	mux.HandleFunc("GET /v1/audit", s.auth(s.auditLog))
 	mux.HandleFunc("GET /v1/observations", s.auth(s.observations))
 	mux.HandleFunc("POST /v1/observations", s.auth(s.ingest))
 	mux.HandleFunc("POST /v1/enrollment-tokens", s.auth(s.createEnrollmentToken))
@@ -138,6 +143,42 @@ func (s *Server) relationships(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]any{"items": v, "count": len(v)})
 }
+
+// auditLog returns the full hash-chained audit trail in sequence order,
+// exactly as stored — it does not re-verify the chain itself. An operator
+// or external tool wanting proof the log has not been tampered with should
+// fetch this and run audit.VerifyChain over the result.
+func (s *Server) auditLog(w http.ResponseWriter, r *http.Request) {
+	v, err := s.Store.ListAuditEntries(r.Context())
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"items": v, "count": len(v)})
+}
+
+// recordAudit appends an audit event for an action that has already
+// completed successfully. It is deliberately best-effort: an audit-storage
+// failure (for example, a full disk under -db-driver sqlite) is logged but
+// does not undo or fail the action that already happened, since the
+// action's own effects (a minted token, an issued certificate, a queued
+// job) are not stored in s.Store and cannot be rolled back through it.
+func (s *Server) recordAudit(ctx context.Context, action, actor string, detail map[string]string) {
+	if _, err := s.Store.AppendAuditEvent(ctx, audit.Event{Action: action, Actor: actor, Detail: detail}); err != nil {
+		s.Logger.Error("append audit event failed", "action", action, "actor", actor, "err", err)
+	}
+}
+
+// tokenFingerprint is a one-way, non-reversible reference to an enrollment
+// token safe to place in the audit log: it lets an operator correlate an
+// audit entry with a specific token (for example, while investigating a
+// suspected leak) without the log itself ever holding secret material that
+// would grant access if the log were read by the wrong party.
+func tokenFingerprint(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:8])
+}
+
 func (s *Server) observations(w http.ResponseWriter, r *http.Request) {
 	v, err := s.Store.ListObservations(r.Context())
 	if err != nil {
@@ -165,7 +206,7 @@ func (s *Server) ingest(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 202, map[string]string{"observation_id": e.ObservationID, "status": "accepted"})
 }
-func (s *Server) createEnrollmentToken(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) createEnrollmentToken(w http.ResponseWriter, r *http.Request) {
 	if s.CA == nil || s.Tokens == nil {
 		writeError(w, http.StatusNotImplemented, "collector enrollment is not enabled")
 		return
@@ -175,6 +216,10 @@ func (s *Server) createEnrollmentToken(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
+	s.recordAudit(r.Context(), "enrollment_token_issued", collectorIdentity(r, "api-key"), map[string]string{
+		"token_fingerprint": tokenFingerprint(token),
+		"expires_at":        expiresAt.UTC().Format(time.RFC3339),
+	})
 	writeJSON(w, http.StatusCreated, enrollment.TokenResponse{Token: token, ExpiresAt: expiresAt})
 }
 
@@ -218,10 +263,14 @@ func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
+	expiresAt := time.Now().Add(enrollment.DefaultCertificateTTL)
+	s.recordAudit(r.Context(), "collector_enrolled", req.CollectorID, map[string]string{
+		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+	})
 	writeJSON(w, http.StatusOK, enrollment.EnrollResponse{
 		CertificatePEM:   string(certPEM),
 		CACertificatePEM: string(s.CA.CACertPEM()),
-		ExpiresAt:        time.Now().Add(enrollment.DefaultCertificateTTL),
+		ExpiresAt:        expiresAt,
 	})
 }
 
@@ -275,10 +324,14 @@ func (s *Server) rotate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
+	expiresAt := time.Now().Add(enrollment.DefaultCertificateTTL)
+	s.recordAudit(r.Context(), "certificate_rotated", collectorID, map[string]string{
+		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+	})
 	writeJSON(w, http.StatusOK, enrollment.EnrollResponse{
 		CertificatePEM:   string(certPEM),
 		CACertificatePEM: string(s.CA.CACertPEM()),
-		ExpiresAt:        time.Now().Add(enrollment.DefaultCertificateTTL),
+		ExpiresAt:        expiresAt,
 	})
 }
 
@@ -343,6 +396,11 @@ func (s *Server) createJob(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
+	s.recordAudit(r.Context(), "job_created", collectorIdentity(r, "api-key"), map[string]string{
+		"collector_id": req.CollectorID,
+		"job_id":       job.JobID,
+		"job_type":     string(req.Type),
+	})
 	writeJSON(w, http.StatusCreated, job)
 }
 
