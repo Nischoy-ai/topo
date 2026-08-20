@@ -53,10 +53,28 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   scheduling (see "Current milestone: persistent observation/audit storage
   and scheduling" above for the full spec). Slice 1 (SQLite-backed
   `store.Repository`, `internal/store/sqlite`, relationships as
-  newly-first-class stored data) is starting. The collector
-  enrollment/outbound mTLS/rotation/heartbeats/jobs milestone, the
-  ServiceNow real-instance validation follow-on, and the SNMP/VMware
-  discovery milestone are all complete.
+  newly-first-class stored data, `docs/storage.md`) is complete; slice 2
+  (immutable audit log) and slice 3 (server-side recurring discovery
+  scheduling) have not started. The collector enrollment/outbound
+  mTLS/rotation/heartbeats/jobs milestone, the ServiceNow real-instance
+  validation follow-on, and the SNMP/VMware discovery milestone are all
+  complete.
+- **Verified in this slice (persistent storage):** Under Go 1.23, `gofmt
+  -l` (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
+  test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
+  cross-compile build all pass. New tests: `internal/store/storetest`'s
+  shared conformance suite (round-trip fidelity, dedup-by-stable-ID across
+  repeated observations for both assets and relationships, idempotent
+  resubmission by `ObservationID`, concurrent-write safety under
+  `-race`) run identically against `Memory` and the SQLite backend;
+  SQLite-specific tests for data surviving a close/reopen cycle and for
+  rejecting a database with a newer schema version than the binary
+  supports; a controller-level test for `POST /v1/observations` →
+  `GET /v1/relationships`. Also manually verified end to end: `topo serve
+  -db-driver sqlite -db-dsn <path>`, ingested an observation via `curl`,
+  confirmed `GET /v1/assets` and `GET /v1/relationships`, killed and
+  restarted the controller against the same `-db-dsn`, and confirmed the
+  same data was still there.
 - **Verified in the previous slice (VMware):** Under Go 1.23, `gofmt -l` (clean),
   `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go test -race
   ./...`, `go build -trimpath ./cmd/topo`, and the Windows cross-compile
@@ -951,22 +969,30 @@ actually on the roadmap rather than assumed now.
 
 ### Slices
 
-1. Persistent storage: a new `internal/store/sqlite` package implementing
-   the existing `store.Repository` interface (observations, assets) plus a
-   new `ListRelationships` method both `Memory` and the new SQLite backend
-   must implement — relationships are not currently queryable at all
-   through `store.Repository`, even though `Memory.SaveObservation`
-   receives them in every envelope; this is a real gap being fixed here,
-   not scope creep, since retrofitting a persisted schema after the fact
-   is a real migration cost. `model.StableRelationshipID` mirrors the
-   existing `model.StableAssetID` scheme (hash of type/from/to). CLI:
-   `topo serve -db-driver sqlite -db-dsn <path>` (default `-db-driver
-   memory`, today's unchanged behavior). A shared black-box test suite runs
+1. **Done.** Persistent storage: a new `internal/store/sqlite` package
+   implementing the existing `store.Repository` interface (observations,
+   assets) plus a new `ListRelationships` method both `Memory` and the new
+   SQLite backend implement — relationships were not previously queryable
+   at all through `store.Repository`, even though `Memory.SaveObservation`
+   received them in every envelope; this was a real gap fixed here, not
+   scope creep, since retrofitting a persisted schema after the fact is a
+   real migration cost. `model.StableRelationshipID` mirrors the existing
+   `model.StableAssetID` scheme (hash of type/from/to). Saving an
+   observation is now idempotent by `ObservationID` in both backends too
+   (a resubmitted ID replaces in place rather than duplicating) — a second
+   real gap found and fixed while defining the `Repository` contract
+   formally for the first time. CLI: `topo serve -db-driver sqlite -db-dsn
+   <path>` (default `-db-driver memory`, unchanged prior behavior). A
+   shared black-box conformance suite (`internal/store/storetest`) runs
    identical assertions against both `Memory` and the SQLite backend
    through the `Repository` interface alone, so the two implementations
-   cannot silently diverge in observable behavior. New `GET
-   /v1/relationships` endpoint alongside the existing `GET /v1/assets` and
-   `GET /v1/observations`. See `docs/storage.md`.
+   cannot silently diverge in observable behavior; a `TestSQLiteDataSurvivesReopen`
+   test and a `TestSQLiteRejectsNewerSchemaVersion` test cover behavior
+   specific to the persistent backend. New `GET /v1/relationships`
+   endpoint alongside the existing `GET /v1/assets` and `GET
+   /v1/observations`. Enrollment tokens, heartbeats, and job state remain
+   in-memory only — persisting them is a question for a later slice, not
+   assumed now. See `docs/storage.md`.
 2. Immutable audit log: an append-only record of admin/security-relevant
    controller actions (enrollment token issuance, enrollment, certificate
    rotation, job creation), persisted the same way observations are.

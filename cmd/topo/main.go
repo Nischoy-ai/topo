@@ -26,6 +26,7 @@ import (
 	"github.com/Nischoy-ai/topo/internal/controller"
 	"github.com/Nischoy-ai/topo/internal/enrollment"
 	"github.com/Nischoy-ai/topo/internal/store"
+	"github.com/Nischoy-ai/topo/internal/store/sqlite"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
@@ -425,6 +426,28 @@ func labRun(args []string) error {
 	}
 	return nil
 }
+
+// openRepository builds the store.Repository -db-driver selects. The
+// returned close func is always safe to call (a no-op for the memory
+// driver) so callers can unconditionally defer it.
+func openRepository(driver, dsn string) (store.Repository, func(), error) {
+	switch driver {
+	case "memory":
+		return store.NewMemory(), func() {}, nil
+	case "sqlite":
+		if dsn == "" {
+			return nil, nil, errors.New("-db-dsn is required when -db-driver sqlite")
+		}
+		db, err := sqlite.Open(dsn)
+		if err != nil {
+			return nil, nil, fmt.Errorf("open sqlite database: %w", err)
+		}
+		return db, func() { _ = db.Close() }, nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported -db-driver %q (want memory or sqlite)", driver)
+	}
+}
+
 func serve(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	addr := fs.String("addr", env("TOPO_ADDR", ":8080"), "listen address")
@@ -432,9 +455,16 @@ func serve(args []string) error {
 	caDir := fs.String("ca-dir", "", "absolute path to persist the collector enrollment CA; enables POST /v1/enrollment-tokens and POST /v1/enroll when set")
 	mtls := fs.Bool("mtls", false, "serve natively over mutual TLS, requiring a client certificate verified against -ca-dir; requires -ca-dir")
 	mtlsSAN := fs.String("mtls-san", "localhost,127.0.0.1,::1", "comma-separated DNS names/IPs for the controller's own TLS server certificate")
+	dbDriver := fs.String("db-driver", "memory", "storage backend: memory (default; does not survive a restart) or sqlite (persistent, requires -db-dsn)")
+	dbDSN := fs.String("db-dsn", "", "sqlite: database file path, or \":memory:\" for a non-persistent SQLite instance used only for testing the SQL code paths")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	repo, closeRepo, err := openRepository(*dbDriver, *dbDSN)
+	if err != nil {
+		return err
+	}
+	defer closeRepo()
 	apiKey, err := resolveCredential(*apiKeyRef, "", "TOPO_API_KEY", true)
 	if err != nil {
 		return fmt.Errorf("resolve controller API key: %w", err)
@@ -446,7 +476,7 @@ func serve(args []string) error {
 		return errors.New("-mtls requires -ca-dir")
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	controllerServer := controller.New(store.NewMemory(), logger, string(apiKey))
+	controllerServer := controller.New(repo, logger, string(apiKey))
 	var ca *enrollment.CA
 	if *caDir != "" {
 		var caErr error

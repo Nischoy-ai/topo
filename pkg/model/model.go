@@ -145,3 +145,14 @@ func StableAssetID(a Asset) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:16])
 }
+
+// StableRelationshipID produces a deterministic ID for a relationship from
+// its type and endpoints alone, mirroring StableAssetID — the same
+// (type, from, to) triple always resolves to the same relationship record
+// across repeated observations, rather than each observation creating an
+// indistinguishable duplicate.
+func StableRelationshipID(r Relationship) string {
+	parts := []string{r.Type, r.FromNativeID, r.ToNativeID}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return hex.EncodeToString(sum[:16])
+}
