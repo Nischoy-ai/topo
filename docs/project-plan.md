@@ -11,9 +11,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Latest completed milestone:** persistent observation/audit storage and
   scheduling — all three slices done (SQLite-backed `store.Repository`,
   PR #23; a hash-chained audit log, PR #24; server-side recurring
-  discovery scheduling, slice 3's PR about to be opened — see "Open pull
-  request" above). See "Completed milestone: persistent observation/audit
-  storage and scheduling" above for the full spec, and
+  discovery scheduling, PR #25). See "Completed milestone: persistent
+  observation/audit storage and scheduling" above for the full spec, and
   `docs/storage.md`/`docs/scheduling.md`.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
@@ -39,9 +38,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** slice 3 of the persistent storage milestone
-  (server-side recurring discovery scheduling) is about to be opened —
-  the final slice of that milestone.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/25> —
+  slice 3 of the persistent storage milestone (server-side recurring
+  discovery scheduling), the final slice of that milestone.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
