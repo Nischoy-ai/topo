@@ -206,19 +206,37 @@ implements the existing `store.Repository` interface using
 the last release declaring `go 1.23.0` compatibility. PostgreSQL is
 deliberately not used: this project has no HA/clustered-controller story
 yet, so a client-server database is not yet justified over a single
-embedded file — see "Storage technology decision" under "Completed
-milestone slice: persistent observation/audit storage and scheduling,
-slice 1" in `docs/project-plan.md` for the full reasoning, which also
-covers slice 1's other real gap-fix: relationships are now queryable
-through `store.Repository` (`ListRelationships`, and `GET
-/v1/relationships`), since previously `Memory` received them in every
-observation but never exposed them. `topo serve -db-driver sqlite -db-dsn
-<path>` opts in; `-db-driver memory` (the default) is unchanged — nothing
-survives a restart, same as before this slice. Enrollment tokens,
-heartbeats, and job state remain in-memory only; whether they need to
-become durable is a question for a later slice, not assumed now. See
-`docs/storage.md`. Slices 2 (immutable audit log) and 3 (server-side
-recurring discovery scheduling) have not started.
+embedded file — see "Storage technology decision" under "Current
+milestone: persistent observation/audit storage and scheduling" in
+`docs/project-plan.md` for the full reasoning, which also covers slice 1's
+other real gap-fix: relationships are now queryable through
+`store.Repository` (`ListRelationships`, and `GET /v1/relationships`),
+since previously `Memory` received them in every observation but never
+exposed them. `topo serve -db-driver sqlite -db-dsn <path>` opts in;
+`-db-driver memory` (the default) is unchanged — nothing survives a
+restart, same as before this slice.
+
+Slice 2 (immutable audit log) is also done: a new `internal/audit` package
+implements a hash chain (each entry's hash covers its own content and the
+previous entry's hash — tamper-evident, not physically write-once, and not
+cryptographic non-repudiation), `store.Repository` gained
+`AppendAuditEvent`/`ListAuditEntries` (implemented by both `Memory` and a
+new SQLite `audit_entries` table, schema version 2 — `migrate` now applies
+every pending versioned migration in order, so an existing version-1
+database upgrades in place). The controller records an entry for
+enrollment token issuance, collector enrollment, certificate rotation, and
+job creation, best-effort with respect to the action itself (an
+audit-write failure is logged, not treated as grounds to fail or undo an
+action that already completed). Detail fields are always short strings,
+never secret material — an enrollment token is referenced only by a
+truncated SHA-256 fingerprint. New `GET /v1/audit` endpoint. See
+`docs/storage.md`.
+
+Enrollment tokens, heartbeats, and job state (not the audit record that an
+action involving them happened, which does persist under
+`-db-driver sqlite`) remain in-memory only; whether they need to become
+durable is a question for a later slice, not assumed now. Slice 3
+(server-side recurring discovery scheduling) has not started.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

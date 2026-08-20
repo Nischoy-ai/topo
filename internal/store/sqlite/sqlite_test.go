@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Nischoy-ai/topo/internal/audit"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
 	"github.com/Nischoy-ai/topo/internal/store/storetest"
@@ -74,6 +75,86 @@ func TestSQLiteDataSurvivesReopen(t *testing.T) {
 	}
 	if len(relationships) != 1 || relationships[0].Relationship.Type != "host_has_interface" {
 		t.Fatalf("relationship did not survive reopen: %#v", relationships)
+	}
+}
+
+func TestSQLiteAuditLogSurvivesReopen(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+
+	first, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range []string{"enrollment_token_issued", "collector_enrolled"} {
+		if _, err := first.AppendAuditEvent(context.Background(), audit.Event{Action: action, Actor: "test"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	second, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+
+	entries, err := second.ListAuditEntries(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("got %d audit entries after reopen, want 2", len(entries))
+	}
+	if err := audit.VerifyChain(entries); err != nil {
+		t.Fatalf("VerifyChain after reopen: %v", err)
+	}
+
+	// A third entry appended after reopen must chain onto the entries
+	// written before the restart, not restart the chain from scratch.
+	third, err := second.AppendAuditEvent(context.Background(), audit.Event{Action: "job_created", Actor: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if third.Sequence != 3 || third.PrevHash != entries[1].Hash {
+		t.Fatalf("post-reopen append did not continue the existing chain: %#v", third)
+	}
+}
+
+// TestSQLiteMigratesExistingDatabaseToLatestSchema simulates a database
+// created by an earlier binary that only knew about schema version 1 (no
+// audit_entries table) and confirms the current binary upgrades it in
+// place rather than requiring the database to be recreated.
+func TestSQLiteMigratesExistingDatabaseToLatestSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+
+	v1, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v1.DB().Exec(`DROP TABLE audit_entries`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v1.DB().Exec(`PRAGMA user_version = 1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := v1.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening a version-1 database with the current binary should upgrade it in place: %v", err)
+	}
+	defer upgraded.Close()
+
+	entry, err := upgraded.AppendAuditEvent(context.Background(), audit.Event{Action: "job_created", Actor: "test"})
+	if err != nil {
+		t.Fatalf("audit_entries table missing after upgrade: %v", err)
+	}
+	if entry.Sequence != 1 {
+		t.Fatalf("got sequence %d, want 1", entry.Sequence)
 	}
 }
 

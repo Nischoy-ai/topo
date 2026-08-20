@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Nischoy-ai/topo/internal/audit"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/pkg/model"
 )
@@ -30,6 +31,8 @@ func Run(t *testing.T, newRepo func(t *testing.T) store.Repository) {
 	t.Run("DistinctAssetsAndRelationshipsStaySeparate", func(t *testing.T) { testDistinctEntities(t, newRepo(t)) })
 	t.Run("ConcurrentSaveObservationIsSafe", func(t *testing.T) { testConcurrentSave(t, newRepo(t)) })
 	t.Run("ResubmittingTheSameObservationIDIsIdempotent", func(t *testing.T) { testIdempotentResubmission(t, newRepo(t)) })
+	t.Run("AppendAuditEventBuildsAVerifiableHashChain", func(t *testing.T) { testAuditChain(t, newRepo(t)) })
+	t.Run("ConcurrentAppendAuditEventIsSafe", func(t *testing.T) { testConcurrentAuditAppend(t, newRepo(t)) })
 }
 
 func testEmpty(t *testing.T, repo store.Repository) {
@@ -46,6 +49,10 @@ func testEmpty(t *testing.T, repo store.Repository) {
 	relationships, err := repo.ListRelationships(ctx)
 	if err != nil || len(relationships) != 0 {
 		t.Fatalf("ListRelationships on empty repo: %v, %v", relationships, err)
+	}
+	entries, err := repo.ListAuditEntries(ctx)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("ListAuditEntries on empty repo: %v, %v", entries, err)
 	}
 }
 
@@ -211,6 +218,63 @@ func testIdempotentResubmission(t *testing.T, repo store.Repository) {
 	}
 	if len(observations) != 1 {
 		t.Fatalf("got %d observations after resubmitting the same observation_id twice, want 1", len(observations))
+	}
+}
+
+func testAuditChain(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	actions := []string{"enrollment_token_issued", "collector_enrolled", "certificate_rotated", "job_created"}
+	for i, action := range actions {
+		entry, err := repo.AppendAuditEvent(ctx, audit.Event{Action: action, Actor: "tester", Detail: map[string]string{"i": string(rune('a' + i))}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry.Sequence != int64(i+1) {
+			t.Fatalf("append %d: got sequence %d, want %d", i, entry.Sequence, i+1)
+		}
+	}
+	entries, err := repo.ListAuditEntries(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != len(actions) {
+		t.Fatalf("got %d audit entries, want %d", len(entries), len(actions))
+	}
+	for i, e := range entries {
+		if e.Action != actions[i] {
+			t.Fatalf("entry %d: got action %q, want %q", i, e.Action, actions[i])
+		}
+	}
+	if err := audit.VerifyChain(entries); err != nil {
+		t.Fatalf("VerifyChain on entries returned by ListAuditEntries: %v", err)
+	}
+}
+
+func testConcurrentAuditAppend(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	const workers = 16
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if _, err := repo.AppendAuditEvent(ctx, audit.Event{Action: "job_created", Actor: "worker"}); err != nil {
+				t.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	entries, err := repo.ListAuditEntries(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != workers {
+		t.Fatalf("got %d audit entries after %d concurrent appends, want %d", len(entries), workers, workers)
+	}
+	if err := audit.VerifyChain(entries); err != nil {
+		t.Fatalf("VerifyChain after concurrent appends: %v", err)
 	}
 }
 
