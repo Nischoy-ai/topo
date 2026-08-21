@@ -38,10 +38,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Current work:** M2.5 slice 1 is on `agent/m25-authz-boundary`; pull
-  request pending. It separates operator bearer-key authorization from
-  collector certificate authorization and binds mTLS observations to the
-  verified peer identity.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/26> — M2.5
+  slice 1 on `agent/m25-authz-boundary`. It separates operator bearer-key
+  authorization from collector certificate authorization and binds mTLS
+  observations to the verified peer identity.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
