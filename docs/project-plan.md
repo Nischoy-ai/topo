@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-20
+- **Updated:** 2026-08-21
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Latest completed milestone:** persistent observation/audit storage and
   scheduling — all three slices done (SQLite-backed `store.Repository`,
@@ -38,15 +38,18 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/25> —
-  slice 3 of the persistent storage milestone (server-side recurring
-  discovery scheduling), the final slice of that milestone.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/26> — M2.5
+  slice 1 on `agent/m25-authz-boundary`. It separates operator bearer-key
+  authorization from collector certificate authorization and binds mTLS
+  observations to the verified peer identity.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
   milestone slice 1 (SQLite-backed `store.Repository`) in
   <https://github.com/Nischoy-ai/topo/pull/23>; slice 2 (hash-chained
-  audit log) in <https://github.com/Nischoy-ai/topo/pull/24>.
+  audit log) in <https://github.com/Nischoy-ai/topo/pull/24>; slice 3
+  (server-side recurring discovery scheduling) in
+  <https://github.com/Nischoy-ai/topo/pull/25>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -59,14 +62,22 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   [`docs/servicenow.md`](servicenow.md#verified-against-a-real-instance)
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
-- **Current milestone:** none yet started. The persistent observation/audit
-  storage and scheduling milestone (all three slices), the collector
-  enrollment/outbound mTLS/rotation/heartbeats/jobs milestone, the
-  ServiceNow real-instance validation follow-on, and the SNMP/VMware
-  discovery milestone are all complete. See "Follow-on order" below for
-  candidates for the next milestone; do not start one without an explicit
-  go-ahead.
-- **Verified in this slice (scheduling):** Under Go 1.23, `gofmt -l`
+- **Current milestone:** M2.5 — release readiness and security hardening.
+  Slice 1 (current) is the operator-versus-collector authorization boundary;
+  slice 2 is certificate revocation and compromise recovery. Backup/restore
+  and upgrades, signed reproducible artifacts/SBOM/provenance, packaging, and
+  an external security review follow in that order. See "Current milestone:
+  M2.5" below.
+- **Verified in the current slice:** focused `internal/controller` tests pass
+  under Go 1.23, including the full endpoint authorization matrix, real TLS
+  tests for certificate-only collector access and certificate-only admin
+  rejection, bearer-plus-certificate operator access, evaluation-mode
+  compatibility, and mTLS observation identity binding. The full repository
+  gates also pass under Go 1.23: `gofmt -l .` (clean), `go vet ./...`, `go
+  test -race -coverprofile=coverage.out ./...`, `go build -trimpath
+  ./cmd/topo`, plus `GOOS=windows GOARCH=amd64 go vet ./...` and the Windows
+  cross-compile build.
+- **Verified in the previous slice (scheduling):** Under Go 1.23, `gofmt -l`
   (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
   test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
   cross-compile build all pass. New tests: `internal/store/storetest`
@@ -105,15 +116,16 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   controlled system when one becomes available, the same way the
   ServiceNow real-instance evidence above was obtained.
 - **Explicit deferral:** Do not make PostgreSQL the next milestone on its
-  own — evaluate it as part of the persistent-storage-and-scheduling
-  milestone now current, not before. Automatic background Vault token
+  own — it was evaluated and deferred in the completed
+  persistent-storage-and-scheduling milestone. Automatic background Vault token
   renewal for long-running processes, and support for leased
   dynamic-secrets engines beyond token renewal, remain deferred follow-ups.
   One agent instance per host (fixed systemd unit / Windows service name)
   is an intentional Agent MVP limitation, not tracked as a gap. Do not
   attempt to parse or assume ServiceNow's IRE response schema without a
-  real instance to verify it against. Certificate revocation is explicitly
-  out of scope for the enrollment/outbound-mTLS/rotation slices. Heartbeat
+  real instance to verify it against. Certificate revocation was explicitly
+  out of scope for the completed enrollment/outbound-mTLS/rotation milestone
+  and is now the next M2.5 slice. Heartbeat
   and job state are in-memory only and do not survive a controller
   restart. SNMPv1/v2c, vendor MIBs, LLDP/CDP topology, and VMware
   datastore/network/resource-pool/folder/vApp inventory are real, scoped
@@ -496,9 +508,9 @@ PR, matching every other multi-part milestone in this project.
    (`tls.VerifyClientCertIfGiven`, not `RequireAndVerifyClientCert`: the TLS
    layer must still accept a handshake with no client certificate at all,
    because a collector's first-ever request, `POST /v1/enroll`, has none to
-   present; the `auth()` middleware enforces the requirement — a verified
-   peer certificate or the bearer API key — per endpoint instead). A
-   verified peer certificate satisfies `auth()` without the bearer key.
+   present; application middleware enforces authorization per endpoint).
+   A verified peer certificate satisfies collector data-plane authorization
+   without the bearer key.
    `topo agent run -mtls-cert-dir` and `internal/agent.Sender` gain a way to
    present the enrolled certificate on outbound requests instead of, or
    alongside, the bearer API key
@@ -532,7 +544,7 @@ PR, matching every other multi-part milestone in this project.
    one minute, `0` disables it) — a second ticker inside `agent.Run`,
    decoupled from `-interval` entirely. Unlike `POST /v1/rotate`,
    heartbeats accept the bearer API key as well as a verified mTLS
-   certificate (`s.auth()`, the same middleware every other data-plane
+   certificate (the same authorization policy every other data-plane
    endpoint uses) — there's no analogous "any holder can impersonate any
    collector" risk, since a heartbeat only ever asserts liveness, not an
    identity that gets material (a certificate) issued to it; when a
@@ -685,10 +697,10 @@ PR, matching every other multi-part milestone in this project.
 ### Acceptance gates (slice 2)
 
 - A request presenting a client certificate verified against the
-  controller's CA reaches protected endpoints without a bearer
+  controller's CA reaches collector data-plane endpoints without a bearer
   `Authorization` header.
 - A request presenting neither a verified client certificate nor a correct
-  bearer key is rejected (401) by every endpoint that requires either.
+  bearer key is rejected (401) by every configured protected endpoint.
 - `POST /v1/enroll` still succeeds over the `-mtls` listener from a client
   presenting no certificate at all — proven by a test that exercises the
   real `httptest`-driven TLS handshake, not just the application-level
@@ -721,8 +733,8 @@ PR, matching every other multi-part milestone in this project.
   application-level handler.
 - A request to `POST /v1/rotate` presenting the correct bearer API key but
   no client certificate is still rejected, proving there is no bearer-key
-  fallback for this endpoint specifically (unlike every other protected
-  endpoint).
+  fallback for this endpoint specifically (unlike collector data-plane
+  endpoints).
 - A CSR submitted to `POST /v1/rotate` requesting a different collector ID
   than the one on the presenting peer certificate is ignored: the issued
   certificate's subject always matches the peer certificate's identity,
@@ -952,10 +964,8 @@ implementing a durable, concurrent-safe, ACID storage engine from scratch
 is exactly the kind of well-trodden work this project's dependency
 philosophy exists to weigh against, not to forbid outright.
 
-PostgreSQL is deliberately not used yet. `AGENTS.md` already says not to
-make it "the next milestone on its own — evaluate it as part of the
-persistent-storage-and-scheduling milestone now current, not before," and
-having actually reached this milestone, the evaluation's conclusion is:
+PostgreSQL is deliberately not used yet. It was evaluated as part of this
+milestone, and the conclusion is:
 Topo has no HA/clustered-controller story yet (a single controller process
 is still the only supported deployment shape — see `SECURITY.md`), so a
 client-server database operators must additionally provision and manage
@@ -1063,18 +1073,79 @@ what comes next.
   is unwarranted complexity until there is more than one schema revision
   to manage in practice.
 
+## Current milestone: M2.5 release readiness and security hardening
+
+### Objective
+
+Turn the implemented discovery/controller capabilities into a system that can
+be operated and distributed safely. This milestone closes trust-boundary,
+compromise-recovery, upgrade/restore, supply-chain, packaging, and independent
+security-review gaps. It does not add new discovery protocols.
+
+### Slices
+
+1. **Current — operator versus collector authorization.** With
+   `-api-key-ref` configured, the bearer key authorizes operator reads and
+   control-plane mutations: assets, relationships, observations, audit,
+   collector status, enrollment-token issuance, job creation/status, and all
+   schedule operations. A verified collector certificate alone is limited to
+   observation delivery, heartbeats, job polling/results, and certificate
+   rotation; it receives 403 from operator endpoints. The verified peer
+   identity overrides an observation body's `collector_id`, matching existing
+   heartbeat and job-result binding. Bearer auth remains accepted on collector
+   endpoints for compatibility, and an empty API key preserves evaluation
+   mode. Consequently, the bearer key still carries operator authority and
+   must not be distributed where certificate-only least privilege is desired.
+2. **Next — certificate revocation and compromise recovery.** Add durable,
+   auditable early invalidation for collector credentials plus explicit
+   operator and collector recovery flows; define behavior across controller
+   restarts and rotation races before implementation.
+3. **Backup/restore and upgrades.** Provide supported SQLite backup and
+   restore commands/procedures, migration testing from every supported schema,
+   rollback/failure behavior, and recovery drills using real generated data.
+4. **Supply-chain release evidence.** Produce reproducible signed artifacts,
+   SBOMs, checksums, and build provenance from CI without weakening the Go 1.23
+   and Windows cross-compile gates.
+5. **Packaging.** Ship DEB, RPM, MSI, Helm, and an offline bundle using the
+   same verified artifacts and documented upgrade/rollback paths.
+6. **External security review.** Commission an independent review, remediate
+   findings, and retain evidence before any production-readiness claim.
+
+### Acceptance gates for slice 1
+
+- Every operator endpoint rejects a verified collector certificate without the
+  bearer key with 403; a missing/incorrect credential without a verified
+  certificate receives 401.
+- Every collector data-plane endpoint continues to accept a verified
+  certificate, and the bearer-key path remains compatible with existing
+  agents.
+- Presenting a valid bearer key alongside a collector certificate authorizes
+  operator access, so clients that automatically attach certificates do not
+  break.
+- An observation submitted over mTLS is stored under the verified certificate
+  identity even if its body claims another collector.
+- Leaving the API key empty preserves the existing open evaluation mode.
+- Focused real-TLS tests and the full Go 1.23 Linux/Windows verification gates
+  pass; README, security documentation, roadmap, and this handoff describe the
+  same endpoint matrix and its remaining shared-bearer limitation.
+
+### Deliberate non-goals for slice 1
+
+- No new user/RBAC/SSO system and no second bearer-key type. This slice removes
+  administrative authority from collector certificates; bearer-only collectors
+  still possess the operator key by definition and should migrate to mTLS where
+  least privilege is required.
+- No certificate revocation in the same PR; it is the next slice and needs a
+  durable design rather than an in-memory denylist.
+- No removal of open evaluation mode or bearer compatibility. Tightening those
+  defaults is a separately versioned compatibility decision.
+
 ## Follow-on order
 
-With the credential-provider, Topo Agent MVP, ServiceNow IRE duplicate-CI
-validation, collector enrollment/outbound mTLS/rotation/heartbeats/jobs,
-SNMP/VMware discovery, and persistent observation/audit storage and
-scheduling milestones all complete, pursue these in order unless evidence
-from an enterprise pilot changes the priority:
-
-1. Packaging, signed artifacts, SBOMs, upgrades, backup/restore, and external
-   security testing.
-2. AWS, Azure, Kubernetes, conflict/freshness visibility, and larger scale
-   gates leading toward Topo Graph.
+Complete the M2.5 slices above in order unless evidence from an enterprise
+pilot changes the priority. After M2.5, pursue AWS, Azure, Kubernetes,
+conflict/freshness visibility, and larger scale gates leading toward Topo
+Graph.
 
 PostgreSQL was evaluated as part of the persistent-storage milestone and
 deliberately deferred (see "Storage technology decision" under the

@@ -164,7 +164,12 @@ func TestHeartbeatOverMTLSUsesPeerCertificateIdentity(t *testing.T) {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
 
-	resp2, err := client.Get(server.URL + "/v1/collectors")
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/v1/collectors", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer secret")
+	resp2, err := client.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}

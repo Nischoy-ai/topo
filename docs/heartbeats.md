@@ -6,9 +6,10 @@ slice 4 of the "collector enrollment, outbound mTLS, rotation, heartbeats,
 and jobs" milestone; see [project plan](project-plan.md) for the full
 staged plan. Unlike enrollment, outbound mTLS, and certificate rotation
 ([Collector enrollment](enrollment.md)), heartbeats require no additional
-infrastructure to use: they authenticate with whatever credential a
-collector already presents — the bearer API key or a verified mTLS client
-certificate — and are always available, not opt-in behind a flag.
+infrastructure to use: `POST /v1/heartbeats` authenticates with whatever
+credential a collector already presents — the bearer API key or a verified
+mTLS client certificate — and is always available, not opt-in behind a flag.
+Operator-only `GET /v1/collectors` requires the configured bearer key.
 
 ## How it works
 

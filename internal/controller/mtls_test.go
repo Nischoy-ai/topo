@@ -65,7 +65,7 @@ func newMTLSTestServer(t *testing.T) (httpServer *httptest.Server, clientCert tl
 	// VerifyClientCertIfGiven, matching `topo serve -mtls`: the TLS layer
 	// must accept a handshake with no client certificate at all (a
 	// collector's first-ever request, POST /v1/enroll, has none to
-	// present), leaving per-endpoint enforcement to the auth() middleware.
+	// present), leaving per-endpoint enforcement to the authorization middleware.
 	server := httptest.NewUnstartedServer(s.Handler())
 	server.TLS = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
@@ -82,7 +82,7 @@ func newMTLSTestServer(t *testing.T) (httpServer *httptest.Server, clientCert tl
 	return server, cert, pool
 }
 
-func TestAuthAcceptsVerifiedClientCertificateWithoutBearerKey(t *testing.T) {
+func TestCollectorAuthAcceptsVerifiedClientCertificateWithoutBearerKey(t *testing.T) {
 	server, clientCert, caPool := newMTLSTestServer(t)
 
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
@@ -90,13 +90,48 @@ func TestAuthAcceptsVerifiedClientCertificateWithoutBearerKey(t *testing.T) {
 		RootCAs:      caPool,
 	}}}
 
-	r, err := http.NewRequest(http.MethodGet, server.URL+"/v1/assets", nil)
+	// Deliberately no Authorization header: the certificate alone must be
+	// sufficient for collector data-plane traffic.
+	resp, err := client.Post(server.URL+"/v1/heartbeats", "application/json", strings.NewReader(`{"schema_version":"v1alpha1","collector_id":"collector-1","site_id":"site-a"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Deliberately no Authorization header: the certificate alone must be
-	// sufficient.
-	resp, err := client.Do(r)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202", resp.StatusCode)
+	}
+}
+
+func TestAdminAuthRejectsVerifiedCollectorCertificateWithoutBearerKey(t *testing.T) {
+	server, clientCert, caPool := newMTLSTestServer(t)
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      caPool,
+	}}}
+
+	resp, err := client.Get(server.URL + "/v1/assets")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", resp.StatusCode)
+	}
+}
+
+func TestAdminAuthAcceptsBearerKeyAlongsideCollectorCertificate(t *testing.T) {
+	server, clientCert, caPool := newMTLSTestServer(t)
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      caPool,
+	}}}
+
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/v1/assets", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer secret")
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}

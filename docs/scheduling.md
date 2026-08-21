@@ -104,12 +104,10 @@ distinction from a one-off `POST /v1/jobs`.
   silently losing it on every restart would be a real, easy-to-miss
   operational surprise — unlike, say, a lost enrollment token, which an
   operator just reissues.
-- **`POST /v1/schedules` and `DELETE /v1/schedules/{collector_id}` use the
-  same `s.auth()` middleware as every other admin-style action in this
-  project** (`POST /v1/jobs`, `POST /v1/enrollment-tokens` included). The
-  shared bearer key or any verified collector certificate is accepted;
-  there is no separate admin-only credential distinguishing "can schedule
-  discovery for any collector" from "is a collector."
+- **All schedule endpoints are operator actions.** `POST /v1/schedules`,
+  `GET /v1/schedules`, and `DELETE /v1/schedules/{collector_id}` require the
+  configured bearer key; a verified collector certificate alone receives
+  `403 Forbidden`.
 
 ## Current limitations
 

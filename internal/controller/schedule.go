@@ -38,8 +38,8 @@ type scheduleRequest struct {
 }
 
 // createOrUpdateSchedule creates or replaces the recurring discovery
-// schedule for a collector. Wrapped in s.auth() like every other
-// admin-style action in this project (POST /v1/jobs included). Every call
+// schedule for a collector. Wrapped in adminAuth like every other
+// operator control-plane action (POST /v1/jobs included). Every call
 // — whether it creates a new schedule or replaces an existing one — sets
 // NextRunAt to now, so the effect is always "apply this schedule starting
 // now": an admin narrowing an interval, for example, does not have to wait
@@ -87,7 +87,7 @@ func (s *Server) createOrUpdateSchedule(w http.ResponseWriter, r *http.Request) 
 		writeError(w, 500, err.Error())
 		return
 	}
-	s.recordAudit(r.Context(), action, collectorIdentity(r, "api-key"), map[string]string{
+	s.recordAudit(r.Context(), action, "api-key", map[string]string{
 		"collector_id":     sched.CollectorID,
 		"job_type":         string(sched.JobType),
 		"interval_seconds": fmt.Sprintf("%d", sched.IntervalSeconds),
@@ -122,7 +122,7 @@ func (s *Server) deleteSchedule(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
-	s.recordAudit(r.Context(), "schedule_deleted", collectorIdentity(r, "api-key"), map[string]string{"collector_id": collectorID})
+	s.recordAudit(r.Context(), "schedule_deleted", "api-key", map[string]string{"collector_id": collectorID})
 	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
 

@@ -6,8 +6,9 @@ ever making an inbound connection to the collector. This is slice 5, the
 final slice, of the "collector enrollment, outbound mTLS, rotation,
 heartbeats, and jobs" milestone; see [project plan](project-plan.md) for
 the full staged plan. Like [heartbeats](heartbeats.md), job delivery
-requires no additional infrastructure to use — it authenticates with
-whatever credential a collector already presents, and is always
+requires no additional infrastructure to use — collector polling and result
+reporting authenticate with whatever credential a collector already presents,
+while job creation and status lookup require the operator bearer key. It is always
 available, not opt-in behind a flag.
 
 ## How it works
@@ -76,13 +77,11 @@ ignored later.
   retry, matching this project's existing preference for simple,
   explicit behavior over a queue with redelivery semantics that would
   need their own edge cases worked out.
-- **`POST /v1/jobs` — queuing a job for a collector — uses the same
-  `s.auth()` middleware as every other admin-style action in this
-  project (`POST /v1/enrollment-tokens` included).** The shared bearer
-  key or any verified collector certificate is accepted; there is no
-  separate admin-only credential distinguishing "can queue jobs for
-  anyone" from "is a collector." This matches existing precedent rather
-  than introducing a new trust tier in this slice.
+- **Job creation and status lookup are operator actions.** `POST /v1/jobs`
+  and `GET /v1/jobs/{id}` require the configured bearer key; a verified
+  collector certificate alone receives `403 Forbidden`. `GET /v1/jobs` and
+  `POST /v1/jobs/{id}/result` remain collector endpoints and accept either a
+  verified certificate or the bearer key for backward compatibility.
 - **A `discover` job's reported success reflects whether discovery itself
   succeeded, not whether the resulting observation was delivered
   synchronously.** Delivery already has its own robust, independent
