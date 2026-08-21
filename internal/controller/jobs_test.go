@@ -119,6 +119,36 @@ func TestJobStoreStatusUnknownJob(t *testing.T) {
 	}
 }
 
+func TestJobStoreHasOutstanding(t *testing.T) {
+	s := NewJobStore()
+	if s.HasOutstanding("collector-1", model.JobTypeDiscover) {
+		t.Fatal("empty store must have no outstanding jobs")
+	}
+
+	job, err := s.Enqueue("collector-1", model.JobTypeDiscover)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.HasOutstanding("collector-1", model.JobTypeDiscover) {
+		t.Fatal("expected a pending job to count as outstanding")
+	}
+	if s.HasOutstanding("collector-2", model.JobTypeDiscover) {
+		t.Fatal("a job queued for a different collector must not count")
+	}
+
+	s.Poll("collector-1")
+	if !s.HasOutstanding("collector-1", model.JobTypeDiscover) {
+		t.Fatal("expected a dispatched-but-unresulted job to still count as outstanding")
+	}
+
+	if err := s.Result(job.JobID, "collector-1", model.JobResult{Success: true}); err != nil {
+		t.Fatal(err)
+	}
+	if s.HasOutstanding("collector-1", model.JobTypeDiscover) {
+		t.Fatal("a job with a reported result must no longer count as outstanding")
+	}
+}
+
 func TestJobStoreFailedResult(t *testing.T) {
 	s := NewJobStore()
 	job, err := s.Enqueue("collector-1", model.JobTypeDiscover)

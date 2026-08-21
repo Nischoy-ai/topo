@@ -199,7 +199,7 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
 The complete scope and acceptance gates are in `docs/project-plan.md`.
 
 The persistent observation/audit storage and scheduling milestone is now
-current. Slice 1 (persistent storage) is done: `internal/store/sqlite`
+complete (all three slices). Slice 1 (persistent storage): `internal/store/sqlite`
 implements the existing `store.Repository` interface using
 `modernc.org/sqlite` (pure-Go, no cgo — required for this project's
 `GOOS=windows` cross-compile CI check to keep working) pinned to `v1.39.0`,
@@ -216,7 +216,7 @@ exposed them. `topo serve -db-driver sqlite -db-dsn <path>` opts in;
 `-db-driver memory` (the default) is unchanged — nothing survives a
 restart, same as before this slice.
 
-Slice 2 (immutable audit log) is also done: a new `internal/audit` package
+Slice 2 (immutable audit log): a new `internal/audit` package
 implements a hash chain (each entry's hash covers its own content and the
 previous entry's hash — tamper-evident, not physically write-once, and not
 cryptographic non-repudiation), `store.Repository` gained
@@ -232,11 +232,31 @@ never secret material — an enrollment token is referenced only by a
 truncated SHA-256 fingerprint. New `GET /v1/audit` endpoint. See
 `docs/storage.md`.
 
-Enrollment tokens, heartbeats, and job state (not the audit record that an
-action involving them happened, which does persist under
+Slice 3 (server-side recurring discovery scheduling): `store.Repository`
+gained a `Schedule` type and `UpsertSchedule`/`ListSchedules`/
+`GetSchedule`/`DeleteSchedule` (implemented by both `Memory` and a new
+SQLite `schedules` table, schema version 3). New `POST /v1/schedules`
+(upsert, at most one schedule per collector), `GET /v1/schedules`, and
+`DELETE /v1/schedules/{collector_id}` endpoints. Deliberately no
+background ticker: a schedule only turns into a `model.Job` lazily, the
+moment its collector next polls `GET /v1/jobs` and the schedule is due —
+reusing `POST /v1/jobs`'s existing collector-initiated-polling machinery
+rather than a second dispatch path, since Topo Agent is deliberately
+outbound-only and a ticker would have nothing to push to anyway.
+`JobStore.HasOutstanding` prevents a schedule from piling up a second job
+while an earlier one is still outstanding. Unlike enrollment tokens,
+heartbeats, and one-off job state — all still in-memory only — a schedule
+*is* persisted under `-db-driver sqlite`: it is a standing operator
+policy, not short-lived/self-healing like a heartbeat or a single job, so
+silently losing it on restart would be a real operational surprise.
+Schedule changes are audited
+(`schedule_created`/`schedule_updated`/`schedule_deleted`). See
+`docs/scheduling.md`.
+
+Enrollment tokens, heartbeats, and one-off job state (not the audit record
+that an action involving them happened, which does persist under
 `-db-driver sqlite`) remain in-memory only; whether they need to become
-durable is a question for a later slice, not assumed now. Slice 3
-(server-side recurring discovery scheduling) has not started.
+durable is a question for a later milestone, not assumed now.
 
 The Windows implementation and simulated scale gates are complete. Sanitized
 fixtures from Windows Server 2022 and one other supported release are

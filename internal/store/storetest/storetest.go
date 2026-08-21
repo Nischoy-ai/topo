@@ -9,6 +9,7 @@ package storetest
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sort"
 	"sync"
@@ -33,6 +34,10 @@ func Run(t *testing.T, newRepo func(t *testing.T) store.Repository) {
 	t.Run("ResubmittingTheSameObservationIDIsIdempotent", func(t *testing.T) { testIdempotentResubmission(t, newRepo(t)) })
 	t.Run("AppendAuditEventBuildsAVerifiableHashChain", func(t *testing.T) { testAuditChain(t, newRepo(t)) })
 	t.Run("ConcurrentAppendAuditEventIsSafe", func(t *testing.T) { testConcurrentAuditAppend(t, newRepo(t)) })
+	t.Run("ScheduleRoundTripsAndUpsertReplaces", func(t *testing.T) { testScheduleRoundTrip(t, newRepo(t)) })
+	t.Run("GetScheduleUnknownCollectorReturnsErrNotFound", func(t *testing.T) { testScheduleNotFound(t, newRepo(t)) })
+	t.Run("DeleteScheduleRemovesIt", func(t *testing.T) { testScheduleDelete(t, newRepo(t)) })
+	t.Run("ListSchedulesReturnsEveryCollector", func(t *testing.T) { testScheduleList(t, newRepo(t)) })
 }
 
 func testEmpty(t *testing.T, repo store.Repository) {
@@ -53,6 +58,10 @@ func testEmpty(t *testing.T, repo store.Repository) {
 	entries, err := repo.ListAuditEntries(ctx)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("ListAuditEntries on empty repo: %v, %v", entries, err)
+	}
+	schedules, err := repo.ListSchedules(ctx)
+	if err != nil || len(schedules) != 0 {
+		t.Fatalf("ListSchedules on empty repo: %v, %v", schedules, err)
 	}
 }
 
@@ -275,6 +284,103 @@ func testConcurrentAuditAppend(t *testing.T, repo store.Repository) {
 	}
 	if err := audit.VerifyChain(entries); err != nil {
 		t.Fatalf("VerifyChain after concurrent appends: %v", err)
+	}
+}
+
+func testScheduleRoundTrip(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	sched := store.Schedule{
+		CollectorID:     "collector-1",
+		JobType:         model.JobTypeDiscover,
+		IntervalSeconds: 3600,
+		NextRunAt:       now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := repo.UpsertSchedule(ctx, sched); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetSchedule(ctx, "collector-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CollectorID != sched.CollectorID || got.JobType != sched.JobType || got.IntervalSeconds != sched.IntervalSeconds {
+		t.Fatalf("got %#v, want %#v", got, sched)
+	}
+	if !got.NextRunAt.Equal(sched.NextRunAt) || !got.CreatedAt.Equal(sched.CreatedAt) || !got.UpdatedAt.Equal(sched.UpdatedAt) {
+		t.Fatalf("timestamp round-trip mismatch: got %#v, want %#v", got, sched)
+	}
+
+	// Upserting again for the same collector replaces the schedule in
+	// place — there is at most one schedule per collector, matching
+	// SaveObservation's own idempotent-upsert-by-key precedent.
+	updated := sched
+	updated.IntervalSeconds = 1800
+	updated.NextRunAt = now.Add(30 * time.Minute)
+	if err := repo.UpsertSchedule(ctx, updated); err != nil {
+		t.Fatal(err)
+	}
+	got, err = repo.GetSchedule(ctx, "collector-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IntervalSeconds != 1800 || !got.NextRunAt.Equal(updated.NextRunAt) {
+		t.Fatalf("upsert did not replace the existing schedule: got %#v", got)
+	}
+	schedules, err := repo.ListSchedules(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(schedules) != 1 {
+		t.Fatalf("got %d schedules after upserting the same collector twice, want 1", len(schedules))
+	}
+}
+
+func testScheduleNotFound(t *testing.T, repo store.Repository) {
+	t.Helper()
+	if _, err := repo.GetSchedule(context.Background(), "nonexistent"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("error = %v, want store.ErrNotFound", err)
+	}
+}
+
+func testScheduleDelete(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := repo.UpsertSchedule(ctx, store.Schedule{CollectorID: "collector-1", JobType: model.JobTypeDiscover, IntervalSeconds: 60, NextRunAt: now, CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.DeleteSchedule(ctx, "collector-1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetSchedule(ctx, "collector-1"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("error = %v, want store.ErrNotFound after delete", err)
+	}
+	// Deleting a schedule that does not (or no longer) exist is not an
+	// error — the caller's intent ("this collector should have no
+	// schedule") is already satisfied.
+	if err := repo.DeleteSchedule(ctx, "collector-1"); err != nil {
+		t.Fatalf("deleting an already-deleted schedule: %v", err)
+	}
+}
+
+func testScheduleList(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for _, id := range []string{"collector-1", "collector-2"} {
+		if err := repo.UpsertSchedule(ctx, store.Schedule{CollectorID: id, JobType: model.JobTypeDiscover, IntervalSeconds: 60, NextRunAt: now, CreatedAt: now, UpdatedAt: now}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	schedules, err := repo.ListSchedules(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(schedules) != 2 {
+		t.Fatalf("got %d schedules, want 2", len(schedules))
 	}
 }
 

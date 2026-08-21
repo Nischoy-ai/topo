@@ -35,6 +35,34 @@ type Repository interface {
 	// ListAuditEntries returns every audit entry in Sequence order, suitable
 	// for passing directly to audit.VerifyChain.
 	ListAuditEntries(context.Context) ([]audit.Entry, error)
+
+	// UpsertSchedule creates or replaces the recurring discovery schedule
+	// for sched.CollectorID — there is at most one schedule per collector.
+	UpsertSchedule(context.Context, Schedule) error
+	// ListSchedules returns every schedule, in no particular guaranteed
+	// order beyond being stable across calls with no intervening writes.
+	ListSchedules(context.Context) ([]Schedule, error)
+	// GetSchedule returns collectorID's schedule, or ErrNotFound if it has
+	// none.
+	GetSchedule(ctx context.Context, collectorID string) (Schedule, error)
+	// DeleteSchedule removes collectorID's schedule, if any. Deleting a
+	// schedule that does not exist is not an error.
+	DeleteSchedule(ctx context.Context, collectorID string) error
+}
+
+// Schedule is a collector's recurring discovery schedule. Since Topo Agent
+// is deliberately outbound-only, a schedule only ever turns into an actual
+// model.Job when its collector next polls GET /v1/jobs and the schedule is
+// found due — see Server.maybeEnqueueScheduledJob in internal/controller.
+// There is no background ticker; this matches the same
+// collector-initiated-polling architecture POST /v1/jobs already uses.
+type Schedule struct {
+	CollectorID     string        `json:"collector_id"`
+	JobType         model.JobType `json:"job_type"`
+	IntervalSeconds int64         `json:"interval_seconds"`
+	NextRunAt       time.Time     `json:"next_run_at"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
 }
 type ResolvedAsset struct {
 	ID                 string      `json:"id"`
@@ -63,6 +91,7 @@ type Memory struct {
 	assets           map[string]ResolvedAsset
 	relationships    map[string]ResolvedRelationship
 	auditEntries     []audit.Entry
+	schedules        map[string]Schedule
 }
 
 func NewMemory() *Memory {
@@ -70,6 +99,7 @@ func NewMemory() *Memory {
 		observationIndex: map[string]int{},
 		assets:           map[string]ResolvedAsset{},
 		relationships:    map[string]ResolvedRelationship{},
+		schedules:        map[string]Schedule{},
 	}
 }
 
@@ -154,4 +184,36 @@ func (m *Memory) ListAuditEntries(_ context.Context) ([]audit.Entry, error) {
 	defer m.mu.RUnlock()
 	out := append([]audit.Entry(nil), m.auditEntries...)
 	return out, nil
+}
+
+func (m *Memory) UpsertSchedule(_ context.Context, sched Schedule) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.schedules[sched.CollectorID] = sched
+	return nil
+}
+func (m *Memory) ListSchedules(_ context.Context) ([]Schedule, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]Schedule, 0, len(m.schedules))
+	for _, s := range m.schedules {
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CollectorID < out[j].CollectorID })
+	return out, nil
+}
+func (m *Memory) GetSchedule(_ context.Context, collectorID string) (Schedule, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	sched, ok := m.schedules[collectorID]
+	if !ok {
+		return Schedule{}, ErrNotFound
+	}
+	return sched, nil
+}
+func (m *Memory) DeleteSchedule(_ context.Context, collectorID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.schedules, collectorID)
+	return nil
 }

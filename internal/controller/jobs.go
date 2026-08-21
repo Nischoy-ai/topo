@@ -110,6 +110,22 @@ func (s *JobStore) Result(jobID, collectorID string, result model.JobResult) err
 	return nil
 }
 
+// HasOutstanding reports whether collectorID has a job of jobType that is
+// pending or dispatched (i.e. not yet resulted). The scheduler uses this to
+// avoid queuing a second scheduled job while an earlier one is still
+// outstanding, so a slow or temporarily offline collector catches up with
+// one job on its next poll rather than an ever-growing backlog.
+func (s *JobStore) HasOutstanding(collectorID string, jobType model.JobType) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, r := range s.jobs {
+		if r.collectorID == collectorID && r.jobType == jobType && (r.status == jobPending || r.status == jobDispatched) {
+			return true
+		}
+	}
+	return false
+}
+
 // Status returns jobID's current lifecycle state.
 func (s *JobStore) Status(jobID string) (model.JobStatus, error) {
 	s.mu.Lock()

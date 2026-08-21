@@ -27,7 +27,7 @@ import (
 // project's single-controller deployment shape until there is more than
 // one schema revision to manage in practice; migrations (below) and
 // migrate are the seam a future migration would extend.
-const schemaVersion = 2
+const schemaVersion = 3
 
 const migrationV1 = `
 CREATE TABLE observations (
@@ -62,6 +62,17 @@ CREATE TABLE audit_entries (
 );
 `
 
+const migrationV3 = `
+CREATE TABLE schedules (
+	collector_id     TEXT PRIMARY KEY,
+	job_type         TEXT NOT NULL,
+	interval_seconds INTEGER NOT NULL,
+	next_run_at      TEXT NOT NULL,
+	created_at       TEXT NOT NULL,
+	updated_at       TEXT NOT NULL
+);
+`
+
 // migrations maps each schema version to the SQL that upgrades a database
 // from version-1 to that version. migrate applies every entry between the
 // database's current PRAGMA user_version and schemaVersion in order, so a
@@ -70,6 +81,7 @@ CREATE TABLE audit_entries (
 var migrations = map[int]string{
 	1: migrationV1,
 	2: migrationV2,
+	3: migrationV3,
 }
 
 // Store implements store.Repository backed by a SQLite database.
@@ -356,4 +368,84 @@ func (s *Store) ListAuditEntries(ctx context.Context) ([]audit.Entry, error) {
 		return nil, fmt.Errorf("list audit entries: %w", err)
 	}
 	return out, nil
+}
+
+func (s *Store) UpsertSchedule(ctx context.Context, sched store.Schedule) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO schedules (collector_id, job_type, interval_seconds, next_run_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(collector_id) DO UPDATE SET
+			job_type         = excluded.job_type,
+			interval_seconds = excluded.interval_seconds,
+			next_run_at      = excluded.next_run_at,
+			updated_at       = excluded.updated_at
+	`, sched.CollectorID, string(sched.JobType), sched.IntervalSeconds,
+		sched.NextRunAt.UTC().Format(time.RFC3339Nano),
+		sched.CreatedAt.UTC().Format(time.RFC3339Nano),
+		sched.UpdatedAt.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return fmt.Errorf("upsert schedule: %w", err)
+	}
+	return nil
+}
+
+func scanSchedule(row interface {
+	Scan(dest ...any) error
+}) (store.Schedule, error) {
+	var sched store.Schedule
+	var jobType, nextRunAt, createdAt, updatedAt string
+	if err := row.Scan(&sched.CollectorID, &jobType, &sched.IntervalSeconds, &nextRunAt, &createdAt, &updatedAt); err != nil {
+		return store.Schedule{}, err
+	}
+	sched.JobType = model.JobType(jobType)
+	var err error
+	if sched.NextRunAt, err = time.Parse(time.RFC3339Nano, nextRunAt); err != nil {
+		return store.Schedule{}, fmt.Errorf("decode next_run_at: %w", err)
+	}
+	if sched.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt); err != nil {
+		return store.Schedule{}, fmt.Errorf("decode created_at: %w", err)
+	}
+	if sched.UpdatedAt, err = time.Parse(time.RFC3339Nano, updatedAt); err != nil {
+		return store.Schedule{}, fmt.Errorf("decode updated_at: %w", err)
+	}
+	return sched, nil
+}
+
+func (s *Store) ListSchedules(ctx context.Context) ([]store.Schedule, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT collector_id, job_type, interval_seconds, next_run_at, created_at, updated_at FROM schedules ORDER BY collector_id`)
+	if err != nil {
+		return nil, fmt.Errorf("list schedules: %w", err)
+	}
+	defer rows.Close()
+	var out []store.Schedule
+	for rows.Next() {
+		sched, err := scanSchedule(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan schedule: %w", err)
+		}
+		out = append(out, sched)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list schedules: %w", err)
+	}
+	return out, nil
+}
+
+func (s *Store) GetSchedule(ctx context.Context, collectorID string) (store.Schedule, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT collector_id, job_type, interval_seconds, next_run_at, created_at, updated_at FROM schedules WHERE collector_id = ?`, collectorID)
+	sched, err := scanSchedule(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return store.Schedule{}, store.ErrNotFound
+	}
+	if err != nil {
+		return store.Schedule{}, fmt.Errorf("get schedule: %w", err)
+	}
+	return sched, nil
+}
+
+func (s *Store) DeleteSchedule(ctx context.Context, collectorID string) error {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM schedules WHERE collector_id = ?`, collectorID); err != nil {
+		return fmt.Errorf("delete schedule: %w", err)
+	}
+	return nil
 }
