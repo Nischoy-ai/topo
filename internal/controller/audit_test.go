@@ -128,9 +128,14 @@ func TestRotateIsAudited(t *testing.T) {
 		t.Fatalf("rotate status = %d", resp.StatusCode)
 	}
 
-	// GET /v1/audit itself also requires a verified client certificate or
-	// the bearer key; the mTLS client already presents one.
-	auditResp, err := client.Get(httpServer.URL + "/v1/audit")
+	// GET /v1/audit is an operator endpoint, so the collector certificate
+	// used for rotation is not sufficient by itself.
+	auditReq, err := http.NewRequest(http.MethodGet, httpServer.URL+"/v1/audit", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auditReq.Header.Set("Authorization", "Bearer secret")
+	auditResp, err := client.Do(auditReq)
 	if err != nil {
 		t.Fatal(err)
 	}

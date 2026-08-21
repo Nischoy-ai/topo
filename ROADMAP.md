@@ -60,7 +60,15 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   [docs/vmware.md](docs/vmware.md).
 - Rate-limited allowlisted sweep and topology plugins.
 - Mapping overrides, incremental exports, retries, dead-letter queue, staleness policies, and high-availability collectors.
-- DEB, RPM, MSI, Helm, offline bundle, signed artifacts, and SBOMs.
+
+## M2.5 — release readiness and security hardening
+
+- **Implemented (authorization boundary):** operator reads and control-plane mutations require the configured bearer API key; verified collector certificates are limited to observation delivery, heartbeats, job polling/results, and certificate rotation. mTLS observations are bound to the peer certificate identity. The bearer key remains accepted on collector endpoints for backward compatibility, and leaving it unset preserves evaluation mode.
+- **Next:** certificate revocation and safer rotation/recovery operations.
+- Backup/restore and upgrade tooling with tested rollback and migration paths.
+- Reproducible signed artifacts, SBOMs, and build provenance.
+- DEB, RPM, MSI, Helm, and offline bundle packaging.
+- External security review and remediation before any production claim.
 
 ## M3 — hybrid release candidate
 

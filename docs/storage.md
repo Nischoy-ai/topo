@@ -30,13 +30,13 @@ Schema versioning uses SQLite's own `PRAGMA user_version` plus a small in-code m
 
 ## Audit log
 
-`GET /v1/audit` (auth required, like every other read endpoint) returns an append-only, hash-chained log of admin/security-relevant controller actions:
+`GET /v1/audit` (operator bearer key required) returns an append-only, hash-chained log of admin/security-relevant controller actions:
 
-- `enrollment_token_issued` — actor is the caller's verified mTLS identity or `api-key`; detail carries `token_fingerprint` (a SHA-256 fingerprint, never the raw token — see below) and `expires_at`.
+- `enrollment_token_issued` — actor is `api-key`; detail carries `token_fingerprint` (a SHA-256 fingerprint, never the raw token — see below) and `expires_at`.
 - `collector_enrolled` — actor is the enrolling collector's ID; detail carries `expires_at`.
 - `certificate_rotated` — actor is the collector's verified peer-certificate identity; detail carries `expires_at`.
-- `job_created` — actor is the caller's verified mTLS identity or `api-key`; detail carries the target `collector_id`, `job_id`, and `job_type`.
-- `schedule_created` / `schedule_updated` / `schedule_deleted` — actor is the caller's verified mTLS identity or `api-key`; detail carries `collector_id`, `job_type`, and `interval_seconds` (omitted for `schedule_deleted`). See [Server-side recurring discovery scheduling](scheduling.md).
+- `job_created` — actor is `api-key`; detail carries the target `collector_id`, `job_id`, and `job_type`.
+- `schedule_created` / `schedule_updated` / `schedule_deleted` — actor is `api-key`; detail carries `collector_id`, `job_type`, and `interval_seconds` (omitted for `schedule_deleted`). See [Server-side recurring discovery scheduling](scheduling.md).
 
 Each entry (`internal/audit.Entry`) has a `sequence` number, `recorded_at` timestamp, `action`, `actor`, a `detail` map, and a `hash` that covers the entry's own content plus the previous entry's `hash` (`prev_hash`). "Immutable" here means *tamper-evident*, not physically write-once: editing, reordering, or deleting an entry after the fact breaks the chain from that point forward, which `internal/audit.VerifyChain` (run it over whatever `GET /v1/audit` returns) detects — this is the same class of guarantee as a Merkle/hash chain generally, not cryptographic non-repudiation, and `GET /v1/audit` itself does not re-verify the chain before returning it.
 

@@ -74,23 +74,23 @@ func New(repo store.Repository, logger *slog.Logger, apiKey string) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
-	mux.HandleFunc("GET /v1/assets", s.auth(s.assets))
-	mux.HandleFunc("GET /v1/relationships", s.auth(s.relationships))
-	mux.HandleFunc("GET /v1/audit", s.auth(s.auditLog))
-	mux.HandleFunc("GET /v1/observations", s.auth(s.observations))
-	mux.HandleFunc("POST /v1/observations", s.auth(s.ingest))
-	mux.HandleFunc("POST /v1/enrollment-tokens", s.auth(s.createEnrollmentToken))
+	mux.HandleFunc("GET /v1/assets", s.adminAuth(s.assets))
+	mux.HandleFunc("GET /v1/relationships", s.adminAuth(s.relationships))
+	mux.HandleFunc("GET /v1/audit", s.adminAuth(s.auditLog))
+	mux.HandleFunc("GET /v1/observations", s.adminAuth(s.observations))
+	mux.HandleFunc("POST /v1/observations", s.collectorAuth(s.ingest))
+	mux.HandleFunc("POST /v1/enrollment-tokens", s.adminAuth(s.createEnrollmentToken))
 	mux.HandleFunc("POST /v1/enroll", s.enroll)
 	mux.HandleFunc("POST /v1/rotate", s.rotate)
-	mux.HandleFunc("POST /v1/heartbeats", s.auth(s.heartbeat))
-	mux.HandleFunc("GET /v1/collectors", s.auth(s.collectors))
-	mux.HandleFunc("POST /v1/jobs", s.auth(s.createJob))
-	mux.HandleFunc("GET /v1/jobs", s.auth(s.pollJobs))
-	mux.HandleFunc("GET /v1/jobs/{id}", s.auth(s.jobStatus))
-	mux.HandleFunc("POST /v1/jobs/{id}/result", s.auth(s.reportJobResult))
-	mux.HandleFunc("POST /v1/schedules", s.auth(s.createOrUpdateSchedule))
-	mux.HandleFunc("GET /v1/schedules", s.auth(s.listSchedules))
-	mux.HandleFunc("DELETE /v1/schedules/{collector_id}", s.auth(s.deleteSchedule))
+	mux.HandleFunc("POST /v1/heartbeats", s.collectorAuth(s.heartbeat))
+	mux.HandleFunc("GET /v1/collectors", s.adminAuth(s.collectors))
+	mux.HandleFunc("POST /v1/jobs", s.adminAuth(s.createJob))
+	mux.HandleFunc("GET /v1/jobs", s.collectorAuth(s.pollJobs))
+	mux.HandleFunc("GET /v1/jobs/{id}", s.adminAuth(s.jobStatus))
+	mux.HandleFunc("POST /v1/jobs/{id}/result", s.collectorAuth(s.reportJobResult))
+	mux.HandleFunc("POST /v1/schedules", s.adminAuth(s.createOrUpdateSchedule))
+	mux.HandleFunc("GET /v1/schedules", s.adminAuth(s.listSchedules))
+	mux.HandleFunc("DELETE /v1/schedules/{collector_id}", s.adminAuth(s.deleteSchedule))
 	return securityHeaders(mux)
 }
 
@@ -103,20 +103,26 @@ func (s *Server) Handler() http.Handler {
 // there is no verified peer certificate, since a bearer-key-authenticated
 // request carries no identity of its own.
 func collectorIdentity(r *http.Request, fallback string) string {
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+	if hasVerifiedCollectorCertificate(r) {
 		return r.TLS.PeerCertificates[0].Subject.CommonName
 	}
 	return fallback
 }
-func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
+
+// hasVerifiedCollectorCertificate reports whether the TLS listener supplied
+// a peer certificate. In production, crypto/tls populates PeerCertificates
+// only after verifying the presented chain against topo serve's ClientCAs.
+func hasVerifiedCollectorCertificate(r *http.Request) bool {
+	return r.TLS != nil && len(r.TLS.PeerCertificates) > 0
+}
+
+// collectorAuth protects the collector data plane. An enrolled certificate
+// is preferred because it carries a per-collector identity; the shared bearer
+// key remains accepted so existing agents and evaluation deployments do not
+// break while certificate enrollment stays opt-in.
+func (s *Server) collectorAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// A non-empty PeerCertificates here means the TLS handshake already
-		// verified a client certificate against the server's configured
-		// ClientCAs (Go's crypto/tls rejects the connection during the
-		// handshake otherwise) — an enrolled collector authenticating over
-		// outbound mTLS, an alternative to the bearer API key rather than a
-		// replacement for it.
-		if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		if hasVerifiedCollectorCertificate(r) {
 			next(w, r)
 			return
 		}
@@ -125,6 +131,29 @@ func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		next(w, r)
+	}
+}
+
+// adminAuth protects operator reads and control-plane mutations. Collector
+// certificates deliberately do not confer administrative authority: with an
+// API key configured, the operator bearer credential is required even when a
+// client certificate is also present. Leaving APIKey empty preserves Topo's
+// existing unauthenticated evaluation mode.
+func (s *Server) adminAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.APIKey == "" {
+			next(w, r)
+			return
+		}
+		if r.Header.Get("Authorization") == "Bearer "+s.APIKey {
+			next(w, r)
+			return
+		}
+		if hasVerifiedCollectorCertificate(r) {
+			writeError(w, http.StatusForbidden, "collector certificate is not authorized for administrative endpoints")
+			return
+		}
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 	}
 }
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -199,6 +228,9 @@ func (s *Server) ingest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "invalid observation: "+err.Error())
 		return
 	}
+	// Match heartbeat and job-result identity binding: when mTLS proves a
+	// collector identity, never trust a different collector_id in the body.
+	e.CollectorID = collectorIdentity(r, e.CollectorID)
 	if err := validateObservation(e); err != nil {
 		writeError(w, 422, err.Error())
 		return
@@ -219,7 +251,7 @@ func (s *Server) createEnrollmentToken(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
-	s.recordAudit(r.Context(), "enrollment_token_issued", collectorIdentity(r, "api-key"), map[string]string{
+	s.recordAudit(r.Context(), "enrollment_token_issued", "api-key", map[string]string{
 		"token_fingerprint": tokenFingerprint(token),
 		"expires_at":        expiresAt.UTC().Format(time.RFC3339),
 	})
@@ -340,8 +372,8 @@ func (s *Server) rotate(w http.ResponseWriter, r *http.Request) {
 
 // heartbeat records a lightweight liveness signal, distinct from
 // observation delivery, so GET /v1/collectors can tell a collector is
-// alive between discovery scans. Wrapped in s.auth(), so it accepts either
-// the bearer API key or a verified mTLS client certificate.
+// alive between discovery scans. Wrapped in collectorAuth, so it accepts
+// either the bearer API key or a verified mTLS client certificate.
 func (s *Server) heartbeat(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxHeartbeatRequestBytes)
 	var req model.HeartbeatRequest
@@ -372,11 +404,9 @@ func (s *Server) collectors(w http.ResponseWriter, _ *http.Request) {
 }
 
 // createJob queues jobType for collectorID, to be picked up on that
-// collector's next GET /v1/jobs poll. Wrapped in s.auth() like every
-// other admin-style action in this project (POST /v1/enrollment-tokens
-// included) — the shared bearer key or any verified collector
-// certificate is treated as sufficient, matching existing precedent
-// rather than introducing a separate admin-only credential here.
+// collector's next GET /v1/jobs poll. This is an operator control-plane
+// action protected by adminAuth; an enrolled collector certificate alone
+// cannot queue work.
 func (s *Server) createJob(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxJobRequestBytes)
 	var req model.JobRequest
@@ -399,7 +429,7 @@ func (s *Server) createJob(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
-	s.recordAudit(r.Context(), "job_created", collectorIdentity(r, "api-key"), map[string]string{
+	s.recordAudit(r.Context(), "job_created", "api-key", map[string]string{
 		"collector_id": req.CollectorID,
 		"job_id":       job.JobID,
 		"job_type":     string(req.Type),

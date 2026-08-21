@@ -6,7 +6,7 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Before production readiness, Nischoy Topo requires per-device enrollment, short-lived mTLS certificates, rotation, persistent storage, and a tamper-evident audit log (all implemented — see [Collector enrollment](docs/enrollment.md) and [Persistent storage and the audit log](docs/storage.md)) plus revocation (still outstanding), encrypted persistent secrets, signed artifacts and plugin manifests, SBOM generation, and external penetration testing.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are now separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Before production readiness, Nischoy Topo still requires revocation, encrypted persistent secrets, signed artifacts and plugin manifests, SBOM generation, tested upgrades and backup/restore, and external penetration testing.
 
 ## Deployment guidance
 
@@ -24,6 +24,25 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Review ServiceNow IRE preview output before enabling destination writes,
   and configure identification/reconciliation rules for every CI class Topo
   emits; see [ServiceNow publishing](docs/servicenow.md).
+
+## Controller authorization boundary
+
+When `topo serve` is configured with `-api-key-ref`, the bearer key is the
+operator credential. It is required for inventory/audit reads, collector
+status reads, enrollment-token issuance, job creation/status reads, and all
+schedule operations. A verified enrolled certificate without the bearer key
+receives `403 Forbidden` from those endpoints. The same certificate can
+deliver observations, send heartbeats, poll and report its own jobs, and
+rotate itself; its subject binds the collector identity for each of those
+identity-bearing operations, including observation delivery.
+
+The bearer key remains accepted on collector endpoints for compatibility with
+agents that have not enrolled. It therefore still carries operator authority:
+do not distribute it to a collector when certificate-only least privilege is
+required. If no API key is configured, both endpoint classes retain the
+existing unauthenticated evaluation behavior; do not expose that mode to an
+untrusted network. `POST /v1/enroll` is authenticated by its one-time token,
+`POST /v1/rotate` is certificate-only, and `GET /healthz` is open.
 
 ## SSH discovery
 
@@ -125,12 +144,13 @@ or renewed while the process keeps running — collector certificate
 rotation, below, does not change that, since the server certificate is
 never persisted in the first place), and verifies client certificates
 presented against that CA. A request with a certificate verified during
-the TLS handshake reaches protected endpoints without the bearer API key.
+the TLS handshake reaches collector data-plane endpoints without the bearer
+API key; it does not gain operator authority.
 The TLS layer still accepts a handshake with no client certificate at all
 — a collector's first-ever request, `POST /v1/enroll`, has none to present
 yet, authenticating instead with its one-time enrollment token — so
-per-endpoint enforcement (a verified certificate or the bearer key)
-happens in application-layer middleware, not the TLS handshake itself.
+per-endpoint enforcement happens in application-layer middleware, not the
+TLS handshake itself.
 `topo agent enroll -controller-ca-cert` pins the controller's self-signed
 CA certificate (distributed out-of-band alongside the enrollment token) so
 the bootstrap enrollment request itself can complete against an `-mtls`
@@ -161,9 +181,9 @@ the controller no way to invalidate one early. See
 observation delivery, so the controller can tell a collector is alive
 without waiting on the discovery/delivery interval, which is often 15
 minutes or longer. Unlike `POST /v1/rotate`, it accepts either the bearer
-API key or a verified mTLS client certificate — the same `auth()`
-middleware every other data-plane endpoint uses — since a heartbeat only
-asserts liveness rather than getting new certificate material issued to
+API key or a verified mTLS client certificate — the collector data-plane
+authorization policy — since a heartbeat only asserts liveness rather than
+getting new certificate material issued to
 it, so there is no analogous "any bearer-key holder can impersonate any
 collector" risk to guard against. When a verified peer certificate is
 present, its subject still overrides whatever `collector_id` the request
@@ -171,8 +191,8 @@ body claims, matching the same identity rule as certificate rotation, so
 a collector authenticated by mTLS can never appear alive under a
 different collector's identity; a bearer-key-authenticated heartbeat has
 no such stronger signal and is recorded under whatever `collector_id` the
-body states. `GET /v1/collectors` lists every collector's most recent
-heartbeat and whether it falls within a fixed three-minute staleness
+body states. Operator-only `GET /v1/collectors` lists every collector's most
+recent heartbeat and whether it falls within a fixed three-minute staleness
 window. Heartbeat state is in-memory only, like the enrollment token
 store, and does not survive a controller restart. A failed heartbeat is
 logged and dropped — never spooled or retried the way a failed
@@ -199,11 +219,9 @@ or request body field, so a collector can only ever poll for and report
 its own jobs, never another collector's; a bearer-key-only request has no
 such stronger signal and uses the claimed value as-is, the same
 limitation heartbeats already have. `POST /v1/jobs` itself — queuing a
-job for a collector — uses the same `auth()` middleware as every other
-admin-style action in this project, including `POST /v1/enrollment-tokens`;
-the shared bearer key or any verified collector certificate is accepted,
-matching existing precedent rather than introducing a new admin-only
-credential tier here. There is exactly one job type, `discover`, since it
+job for a collector — and `GET /v1/jobs/{id}` are operator endpoints and
+require the configured bearer key; a collector certificate alone is not
+accepted. There is exactly one job type, `discover`, since it
 is the only real capability `topo agent run` has; a request for any
 other type is rejected at creation, not silently accepted and left
 unrunnable. Job state is in-memory only, like the enrollment token store
@@ -215,8 +233,9 @@ and heartbeat store, and does not survive a controller restart. See
 `POST /v1/schedules` lets an operator set a recurring `discover` cadence
 for a collector, upserted and keyed by `collector_id` (at most one
 schedule per collector); `GET /v1/schedules` lists every schedule, and
-`DELETE /v1/schedules/{collector_id}` removes one. All three use the same
-`auth()` middleware as every other admin-style action in this project.
+`DELETE /v1/schedules/{collector_id}` removes one. All three are operator
+endpoints and require the configured bearer key; a collector certificate
+alone is not accepted.
 `interval_seconds` is bounded to between 60 and 604800 (one week) — below
 the minimum a misconfigured schedule could hammer a collector on every
 poll, and there is no server-side rate limit protecting against that

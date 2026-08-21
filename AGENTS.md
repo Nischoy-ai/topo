@@ -37,6 +37,25 @@ assume access to an earlier chat.
 
 ## Current priority
 
+M2.5 — release readiness and security hardening — is current. Keep it staged
+as focused security/operations slices rather than one packaging mega-PR:
+
+1. **Current slice.** Separate the operator control plane from the collector
+   data plane. With an API key configured, inventory/audit/status reads and
+   token/job/schedule mutations require the bearer key; verified collector
+   certificates may deliver observations, send heartbeats, poll/report jobs,
+   and rotate themselves. Bind mTLS observation identity to the peer
+   certificate. Preserve bearer-key compatibility on collector endpoints and
+   the open no-key evaluation mode, and document that the bearer key still
+   carries operator authority.
+2. **Next.** Certificate revocation plus explicit compromise recovery and
+   safer rotation operations.
+3. **Then.** Tested backup/restore and schema upgrade/rollback procedures.
+4. **Then.** Reproducible signed artifacts, SBOMs, build provenance, and DEB,
+   RPM, MSI, Helm, and offline-bundle packaging.
+5. **Gate.** External security review and remediation before any production
+   claim.
+
 The credential-references milestone is complete:
 
 1. **Done.** A shared, bounded credential-reference contract with `env:` and
@@ -104,7 +123,7 @@ staged as separate slices:
    `RequireAndVerifyClientCert` — the TLS layer must still accept a
    connection with no client certificate at all, since a collector's first
    request, `POST /v1/enroll`, has none to present yet; per-endpoint
-   enforcement happens in `auth()` instead). `topo agent run
+   enforcement happens in application middleware instead). `topo agent run
    -mtls-cert-dir` presents the enrolled certificate on outbound requests
    instead of, or alongside, the bearer API key. `topo agent enroll
    -controller-ca-cert` pins the controller's self-signed CA certificate so

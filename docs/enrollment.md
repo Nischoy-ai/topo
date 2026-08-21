@@ -4,8 +4,9 @@ Collector enrollment gives every Topo collector (today, the Topo Agent) its
 own identity — a certificate — instead of every collector sharing the same
 bearer API key. That certificate now also authenticates live traffic: the
 controller can run a native mutual-TLS (mTLS) listener, and an enrolled
-agent can present its certificate on every outbound request instead of, or
-alongside, the bearer API key. Since a collector certificate is
+agent can present its certificate on collector data-plane requests instead
+of, or alongside, the bearer API key. It does not authorize operator reads
+or control-plane mutations. Since a collector certificate is
 deliberately short-lived (90 days), it can also be renewed before it
 expires, authenticated by itself rather than a new token. This is the
 first three of five slices of the milestone; the other two —
@@ -92,11 +93,11 @@ A collector's very first request, `POST /v1/enroll`, has no certificate to
 present yet — it authenticates with the one-time enrollment token instead.
 The controller's mTLS listener therefore accepts a TLS handshake with no
 client certificate at all (`tls.VerifyClientCertIfGiven`, not
-`tls.RequireAndVerifyClientCert`); the `auth()` middleware enforces the
-requirement per endpoint (a verified peer certificate or the bearer API
-key), not the TLS layer itself. A certificate that *is* presented is still
-verified against the CA during the handshake, and once verified it
-satisfies `auth()` without needing the bearer key at all — see
+`tls.RequireAndVerifyClientCert`); application middleware enforces the
+authorization policy per endpoint, not the TLS layer itself. A certificate
+that *is* presented is still verified against the CA during the handshake,
+and once verified it satisfies collector data-plane authorization without
+needing the bearer key. Operator endpoints still require the bearer key — see
 [`internal/controller/server.go`](../internal/controller/server.go).
 
 That same bootstrap step creates a chicken-and-egg problem for
@@ -134,7 +135,7 @@ Two things distinguish this from enrollment:
 
 - **No bearer-API-key fallback.** `POST /v1/rotate` is unreachable without
   a client certificate the TLS handshake has already verified against the
-  CA; unlike every other endpoint, presenting the correct bearer key
+  CA; unlike collector data-plane endpoints, presenting the correct bearer key
   instead does not work here. Accepting the shared bearer key would let
   anyone holding it mint a certificate for any collector ID, which defeats
   the entire point of per-collector identity — enrollment tokens are also
@@ -176,9 +177,8 @@ typically paired with a reload of whatever consumes its certificate.
   and signature verification.** A malformed enrollment request never
   consumes a valid token, so an operator does not need to mint a new one
   just because a request had a typo.
-- **Tokens are single-use and in-memory.** Like every other piece of
-  controller state today, the token store does not survive a restart;
-  persistent storage is a later, separately scoped milestone. Retry an
+- **Tokens are single-use and in-memory.** The token store does not survive a
+  restart even when discovery/audit/schedule persistence uses SQLite. Retry an
   in-flight enrollment with a freshly minted token after a controller
   restart.
 - **No revocation.** A compromised collector certificate is contained by
@@ -201,10 +201,16 @@ typically paired with a reload of whatever consumes its certificate.
 - **`-mtls` accepting connections with no client certificate
   (`tls.VerifyClientCertIfGiven`) is required for bootstrap, not a
   weakening of the trust model.** Enforcement still happens — every
-  protected endpoint requires either a certificate verified against the CA
-  during the TLS handshake, or the bearer API key — it just happens in the
-  `auth()` middleware instead of unconditionally in the TLS layer, because
+  protected endpoint is still authorized in application middleware —
+  collector endpoints accept a certificate verified against the CA or the
+  bearer key, while operator endpoints require the bearer key — because
   the TLS layer has no way to make an exception for `POST /v1/enroll`.
+- **Collector certificates are not administrator credentials.** They can
+  deliver observations, send heartbeats, poll/report jobs, and rotate their
+  own identity. Inventory/audit reads, collector-status reads, token issuance,
+  job creation/status, and schedule operations require the configured bearer
+  key. The bearer key remains accepted on collector endpoints for compatibility
+  and still carries operator authority.
 
 ## Current limitations
 
