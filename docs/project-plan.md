@@ -36,8 +36,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none yet. The current branch is
-  `agent/m25-release-supply-chain` for M2.5 slice 4.
+- **Open pull request:** M2.5 slice 4 (reproducible release artifacts and
+  supply-chain evidence) is <https://github.com/Nischoy-ai/topo/pull/29> from
+  `agent/m25-release-supply-chain`.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
