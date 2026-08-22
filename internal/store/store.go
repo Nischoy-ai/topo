@@ -48,6 +48,15 @@ type Repository interface {
 	// DeleteSchedule removes collectorID's schedule, if any. Deleting a
 	// schedule that does not exist is not an error.
 	DeleteSchedule(ctx context.Context, collectorID string) error
+
+	// RevokeCertificate records an immutable certificate-serial revocation.
+	// The first call for a serial returns created=true; later calls leave the
+	// original reason and timestamp unchanged and return created=false.
+	RevokeCertificate(context.Context, CertificateRevocation) (created bool, err error)
+	// ListCertificateRevocations returns every revocation ordered by serial.
+	ListCertificateRevocations(context.Context) ([]CertificateRevocation, error)
+	// IsCertificateRevoked reports whether serial has been revoked.
+	IsCertificateRevoked(ctx context.Context, serial string) (bool, error)
 }
 
 // Schedule is a collector's recurring discovery schedule. Since Topo Agent
@@ -64,6 +73,16 @@ type Schedule struct {
 	CreatedAt       time.Time     `json:"created_at"`
 	UpdatedAt       time.Time     `json:"updated_at"`
 }
+
+// CertificateRevocation is an immutable early-invalidity record for one
+// issued X.509 certificate. SerialNumber is the certificate serial encoded
+// as lowercase hexadecimal without separators or a 0x prefix.
+type CertificateRevocation struct {
+	SerialNumber string    `json:"serial_number"`
+	Reason       string    `json:"reason"`
+	RevokedAt    time.Time `json:"revoked_at"`
+}
+
 type ResolvedAsset struct {
 	ID                 string      `json:"id"`
 	Asset              model.Asset `json:"asset"`
@@ -92,6 +111,7 @@ type Memory struct {
 	relationships    map[string]ResolvedRelationship
 	auditEntries     []audit.Entry
 	schedules        map[string]Schedule
+	revocations      map[string]CertificateRevocation
 }
 
 func NewMemory() *Memory {
@@ -100,6 +120,7 @@ func NewMemory() *Memory {
 		assets:           map[string]ResolvedAsset{},
 		relationships:    map[string]ResolvedRelationship{},
 		schedules:        map[string]Schedule{},
+		revocations:      map[string]CertificateRevocation{},
 	}
 }
 
@@ -216,4 +237,32 @@ func (m *Memory) DeleteSchedule(_ context.Context, collectorID string) error {
 	defer m.mu.Unlock()
 	delete(m.schedules, collectorID)
 	return nil
+}
+
+func (m *Memory) RevokeCertificate(_ context.Context, revocation CertificateRevocation) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, exists := m.revocations[revocation.SerialNumber]; exists {
+		return false, nil
+	}
+	m.revocations[revocation.SerialNumber] = revocation
+	return true, nil
+}
+
+func (m *Memory) ListCertificateRevocations(_ context.Context) ([]CertificateRevocation, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]CertificateRevocation, 0, len(m.revocations))
+	for _, revocation := range m.revocations {
+		out = append(out, revocation)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SerialNumber < out[j].SerialNumber })
+	return out, nil
+}
+
+func (m *Memory) IsCertificateRevoked(_ context.Context, serial string) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	_, revoked := m.revocations[serial]
+	return revoked, nil
 }

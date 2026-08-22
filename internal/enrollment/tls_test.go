@@ -134,3 +134,33 @@ func TestCurrentCollectorIDMissingFile(t *testing.T) {
 		t.Fatal("expected a missing certificate file to be rejected")
 	}
 }
+
+func TestNormalizeCertificateSerial(t *testing.T) {
+	for input, want := range map[string]string{
+		"AB:CD:01": "abcd01",
+		"0x00FF":   "ff",
+		"0001":     "1",
+	} {
+		got, err := NormalizeCertificateSerial(input)
+		if err != nil || got != want {
+			t.Errorf("NormalizeCertificateSerial(%q) = %q, %v; want %q, nil", input, got, err, want)
+		}
+	}
+	for _, input := range []string{"", "0", "-1", "not-hex", "12345678901234567890123456789012345678901"} {
+		if _, err := NormalizeCertificateSerial(input); err == nil {
+			t.Errorf("NormalizeCertificateSerial(%q) unexpectedly succeeded", input)
+		}
+	}
+}
+
+func TestCurrentCertificateSerial(t *testing.T) {
+	dir := t.TempDir()
+	writeEnrollmentFiles(t, dir)
+	serial, err := CurrentCertificateSerial(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if serial == "" {
+		t.Fatal("CurrentCertificateSerial returned an empty serial")
+	}
+}

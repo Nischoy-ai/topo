@@ -137,7 +137,7 @@ func TestSQLiteMigratesExistingDatabaseFromV1ToLatestSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := v1.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules`); err != nil {
+	if _, err := v1.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules; DROP TABLE certificate_revocations`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v1.DB().Exec(`PRAGMA user_version = 1`); err != nil {
@@ -176,7 +176,7 @@ func TestSQLiteMigratesExistingDatabaseFromV2ToLatestSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := v2.DB().Exec(`DROP TABLE schedules`); err != nil {
+	if _, err := v2.DB().Exec(`DROP TABLE schedules; DROP TABLE certificate_revocations`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v2.DB().Exec(`PRAGMA user_version = 2`); err != nil {
@@ -194,6 +194,70 @@ func TestSQLiteMigratesExistingDatabaseFromV2ToLatestSchema(t *testing.T) {
 
 	if err := upgraded.UpsertSchedule(context.Background(), store.Schedule{CollectorID: "collector-1", JobType: "discover", IntervalSeconds: 60}); err != nil {
 		t.Fatalf("schedules table missing after upgrade: %v", err)
+	}
+}
+
+func TestSQLiteMigratesExistingDatabaseFromV3ToLatestSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+	v3, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v3.DB().Exec(`DROP TABLE certificate_revocations`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v3.DB().Exec(`PRAGMA user_version = 3`); err != nil {
+		t.Fatal(err)
+	}
+	if err := v3.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening a version-3 database with the current binary should upgrade it in place: %v", err)
+	}
+	defer upgraded.Close()
+	created, err := upgraded.RevokeCertificate(context.Background(), store.CertificateRevocation{
+		SerialNumber: "ab",
+		Reason:       "migration check",
+		RevokedAt:    time.Now().UTC(),
+	})
+	if err != nil || !created {
+		t.Fatalf("certificate_revocations table missing after upgrade: created %v, err %v", created, err)
+	}
+}
+
+func TestSQLiteCertificateRevocationsSurviveReopen(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+	revocation := store.CertificateRevocation{
+		SerialNumber: "deadbeef",
+		Reason:       "compromise recovery test",
+		RevokedAt:    time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC),
+	}
+	first, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created, err := first.RevokeCertificate(context.Background(), revocation); err != nil || !created {
+		t.Fatalf("RevokeCertificate = %v, %v", created, err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	second, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+	revoked, err := second.IsCertificateRevoked(context.Background(), revocation.SerialNumber)
+	if err != nil || !revoked {
+		t.Fatalf("revocation did not survive reopen: revoked %v, err %v", revoked, err)
+	}
+	items, err := second.ListCertificateRevocations(context.Background())
+	if err != nil || len(items) != 1 || items[0].Reason != revocation.Reason || !items[0].RevokedAt.Equal(revocation.RevokedAt) {
+		t.Fatalf("revocation round trip after reopen = %#v, %v", items, err)
 	}
 }
 

@@ -757,7 +757,7 @@ func agentEnroll(args []string) error {
 		return err
 	}
 
-	fmt.Printf("Enrolled collector %q; certificate expires %s. Certificate, key, and CA certificate written to %s\n", collectorID, result.ExpiresAt.Format(time.RFC3339), *certDir)
+	fmt.Printf("Enrolled collector %q with certificate serial %s; certificate expires %s. Certificate, key, and CA certificate written to %s\n", collectorID, result.SerialNumber, result.ExpiresAt.Format(time.RFC3339), *certDir)
 	return nil
 }
 
@@ -786,6 +786,10 @@ func agentRotate(args []string) error {
 	if err != nil {
 		return fmt.Errorf("determine current collector ID: %w", err)
 	}
+	oldSerial, err := enrollment.CurrentCertificateSerial(*certDir)
+	if err != nil {
+		return fmt.Errorf("determine current certificate serial: %w", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -798,7 +802,7 @@ func agentRotate(args []string) error {
 		return err
 	}
 
-	fmt.Printf("Rotated collector %q; new certificate expires %s. A running `topo agent run -mtls-cert-dir %s` must be restarted to pick it up.\n", collectorID, result.ExpiresAt.Format(time.RFC3339), *certDir)
+	fmt.Printf("Rotated collector %q from certificate serial %s to %s; new certificate expires %s. The old certificate remains valid until expiry or explicit revocation. A running `topo agent run -mtls-cert-dir %s` must be restarted to pick up the new certificate.\n", collectorID, oldSerial, result.SerialNumber, result.ExpiresAt.Format(time.RFC3339), *certDir)
 	return nil
 }
 

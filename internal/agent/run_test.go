@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
@@ -54,15 +55,24 @@ func (failingPlugin) Discover(context.Context, discovery.Request) (model.Observa
 	return model.ObservationEnvelope{}, errors.New("discovery unavailable")
 }
 
+type handlerTransport struct {
+	handler http.Handler
+}
+
+func (t handlerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	w := httptest.NewRecorder()
+	t.handler.ServeHTTP(w, r)
+	return w.Result(), nil
+}
+
 func TestRunDeliversWhileControllerReachable(t *testing.T) {
 	repo := store.NewMemory()
-	server := httptest.NewServer(controller.New(repo, slog.Default(), "").Handler())
-	defer server.Close()
-
-	sender, err := NewSender(server.URL, "", nil)
+	handler := controller.New(repo, slog.Default(), "").Handler()
+	sender, err := NewSender("http://controller.test", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	sender.httpClient.Transport = handlerTransport{handler: handler}
 	spool, err := NewSpool(t.TempDir(), testKey(t), 1<<20)
 	if err != nil {
 		t.Fatal(err)

@@ -24,10 +24,9 @@ import (
 
 // schemaVersion is tracked via SQLite's own PRAGMA user_version. A
 // dedicated migration framework is unwarranted complexity for this
-// project's single-controller deployment shape until there is more than
-// one schema revision to manage in practice; migrations (below) and
-// migrate are the seam a future migration would extend.
-const schemaVersion = 3
+// project's single-controller deployment shape and small sequential schema;
+// migrations (below) and migrate are the seam future revisions extend.
+const schemaVersion = 4
 
 const migrationV1 = `
 CREATE TABLE observations (
@@ -73,6 +72,14 @@ CREATE TABLE schedules (
 );
 `
 
+const migrationV4 = `
+CREATE TABLE certificate_revocations (
+	serial_number TEXT PRIMARY KEY,
+	reason        TEXT NOT NULL,
+	revoked_at    TEXT NOT NULL
+);
+`
+
 // migrations maps each schema version to the SQL that upgrades a database
 // from version-1 to that version. migrate applies every entry between the
 // database's current PRAGMA user_version and schemaVersion in order, so a
@@ -82,6 +89,7 @@ var migrations = map[int]string{
 	1: migrationV1,
 	2: migrationV2,
 	3: migrationV3,
+	4: migrationV4,
 }
 
 // Store implements store.Repository backed by a SQLite database.
@@ -448,4 +456,52 @@ func (s *Store) DeleteSchedule(ctx context.Context, collectorID string) error {
 		return fmt.Errorf("delete schedule: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) RevokeCertificate(ctx context.Context, revocation store.CertificateRevocation) (bool, error) {
+	result, err := s.db.ExecContext(ctx, `
+		INSERT INTO certificate_revocations (serial_number, reason, revoked_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT(serial_number) DO NOTHING
+	`, revocation.SerialNumber, revocation.Reason, revocation.RevokedAt.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return false, fmt.Errorf("revoke certificate: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("read revoke certificate result: %w", err)
+	}
+	return rows == 1, nil
+}
+
+func (s *Store) ListCertificateRevocations(ctx context.Context) ([]store.CertificateRevocation, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT serial_number, reason, revoked_at FROM certificate_revocations ORDER BY serial_number`)
+	if err != nil {
+		return nil, fmt.Errorf("list certificate revocations: %w", err)
+	}
+	defer rows.Close()
+	var out []store.CertificateRevocation
+	for rows.Next() {
+		var revocation store.CertificateRevocation
+		var revokedAt string
+		if err := rows.Scan(&revocation.SerialNumber, &revocation.Reason, &revokedAt); err != nil {
+			return nil, fmt.Errorf("scan certificate revocation: %w", err)
+		}
+		if revocation.RevokedAt, err = time.Parse(time.RFC3339Nano, revokedAt); err != nil {
+			return nil, fmt.Errorf("decode certificate revocation revoked_at: %w", err)
+		}
+		out = append(out, revocation)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list certificate revocations: %w", err)
+	}
+	return out, nil
+}
+
+func (s *Store) IsCertificateRevoked(ctx context.Context, serial string) (bool, error) {
+	var exists int
+	if err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM certificate_revocations WHERE serial_number = ?)`, serial).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check certificate revocation: %w", err)
+	}
+	return exists == 1, nil
 }

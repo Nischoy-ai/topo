@@ -8,12 +8,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-21
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed milestone:** persistent observation/audit storage and
-  scheduling — all three slices done (SQLite-backed `store.Repository`,
-  PR #23; a hash-chained audit log, PR #24; server-side recurring
-  discovery scheduling, PR #25). See "Completed milestone: persistent
-  observation/audit storage and scheduling" above for the full spec, and
-  `docs/storage.md`/`docs/scheduling.md`.
+- **Latest completed slice:** M2.5 operator-versus-collector authorization
+  boundary, merged in <https://github.com/Nischoy-ai/topo/pull/26>. The
+  persistent observation/audit storage and scheduling milestone immediately
+  before it completed across PRs #23, #24, and #25.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -38,10 +36,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/26> — M2.5
-  slice 1 on `agent/m25-authz-boundary`. It separates operator bearer-key
-  authorization from collector certificate authorization and binds mTLS
-  observations to the verified peer identity.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/27> — M2.5
+  slice 2 on `agent/m25-certificate-revocation`. It adds durable serial-specific
+  certificate revocation, fail-closed enforcement, deterministic
+  revocation/rotation ordering, and fresh-token compromise recovery.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -49,7 +47,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/23>; slice 2 (hash-chained
   audit log) in <https://github.com/Nischoy-ai/topo/pull/24>; slice 3
   (server-side recurring discovery scheduling) in
-  <https://github.com/Nischoy-ai/topo/pull/25>.
+  <https://github.com/Nischoy-ai/topo/pull/25>; M2.5 slice 1 (authorization
+  boundary) in <https://github.com/Nischoy-ai/topo/pull/26>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -63,20 +62,31 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slice 1 (current) is the operator-versus-collector authorization boundary;
-  slice 2 is certificate revocation and compromise recovery. Backup/restore
+  Slice 1 (authorization boundary) is merged; slice 2 (current) is durable
+  certificate revocation and compromise recovery. Backup/restore
   and upgrades, signed reproducible artifacts/SBOM/provenance, packaging, and
   an external security review follow in that order. See "Current milestone:
   M2.5" below.
-- **Verified in the current slice:** focused `internal/controller` tests pass
-  under Go 1.23, including the full endpoint authorization matrix, real TLS
-  tests for certificate-only collector access and certificate-only admin
-  rejection, bearer-plus-certificate operator access, evaluation-mode
-  compatibility, and mTLS observation identity binding. The full repository
-  gates also pass under Go 1.23: `gofmt -l .` (clean), `go vet ./...`, `go
-  test -race -coverprofile=coverage.out ./...`, `go build -trimpath
-  ./cmd/topo`, plus `GOOS=windows GOARCH=amd64 go vet ./...` and the Windows
-  cross-compile build.
+- **Verified in the current slice:** shared Memory/SQLite conformance
+  covers immutable, idempotent, concurrent serial revocation; SQLite tests
+  cover v1/v2/v3-to-v4 migration and revocation persistence across reopen;
+  controller tests cover canonicalization, operator authorization, one audit
+  event for an idempotent revoke, fail-closed lookup errors, denial of
+  collector traffic and rotation, independent bearer fallback without trusting
+  the revoked certificate identity, fresh-token re-enrollment recovery, and
+  deterministic rotation/revocation race ordering. Under Go 1.23,
+  `gofmt`, `git diff --check`, `go vet ./...`, `go test -race
+  -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` pass,
+  as do `GOOS=windows GOARCH=amd64 go vet ./...` and the Windows build. A live
+  smoke test created serial `abcd` through the authenticated API against a
+  file-backed SQLite controller, restarted the process against the same DB,
+  and confirmed both the immutable revocation and its hash-chained audit event
+  remained available. The race suite also exposed loopback-socket flakiness in
+  `TestRunDeliversWhileControllerReachable` under parallel package load; that
+  test now routes the real Sender request through the real controller handler
+  with an in-process HTTP transport while preserving its one-second,
+  multiple-delivery, and empty-spool assertions. Dedicated network and real-TLS
+  integration tests still exercise sockets separately.
 - **Verified in the previous slice (scheduling):** Under Go 1.23, `gofmt -l`
   (clean), `go vet ./...` (Linux and `GOOS=windows GOARCH=amd64`), `go
   test -race ./...`, `go build -trimpath ./cmd/topo`, and the Windows
@@ -123,9 +133,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   One agent instance per host (fixed systemd unit / Windows service name)
   is an intentional Agent MVP limitation, not tracked as a gap. Do not
   attempt to parse or assume ServiceNow's IRE response schema without a
-  real instance to verify it against. Certificate revocation was explicitly
-  out of scope for the completed enrollment/outbound-mTLS/rotation milestone
-  and is now the next M2.5 slice. Heartbeat
+  real instance to verify it against. Heartbeat
   and job state are in-memory only and do not survive a controller
   restart. SNMPv1/v2c, vendor MIBs, LLDP/CDP topology, and VMware
   datastore/network/resource-pool/folder/vApp inventory are real, scoped
@@ -628,9 +636,9 @@ PR, matching every other multi-part milestone in this project.
   must be restarted after rotation. In-process automatic renewal is a
   possible future refinement, not required to satisfy this slice's
   "renew before expiry" goal.
-- No revocation, still, as in slices 1 and 2 — rotation renews a
-  certificate but has no mechanism to invalidate one before its natural
-  expiry.
+- This completed milestone did not include revocation; M2.5 slice 2 now adds
+  serial-specific early invalidation without changing the historical rotation
+  contract described here.
 - No rotation of the controller's own `-mtls` server certificate; it is
   reissued fresh on every `topo serve -mtls` start regardless, so there is
   nothing to rotate mid-run.
@@ -1084,7 +1092,7 @@ security-review gaps. It does not add new discovery protocols.
 
 ### Slices
 
-1. **Current — operator versus collector authorization.** With
+1. **Done — operator versus collector authorization.** With
    `-api-key-ref` configured, the bearer key authorizes operator reads and
    control-plane mutations: assets, relationships, observations, audit,
    collector status, enrollment-token issuance, job creation/status, and all
@@ -1096,11 +1104,19 @@ security-review gaps. It does not add new discovery protocols.
    endpoints for compatibility, and an empty API key preserves evaluation
    mode. Consequently, the bearer key still carries operator authority and
    must not be distributed where certificate-only least privilege is desired.
-2. **Next — certificate revocation and compromise recovery.** Add durable,
-   auditable early invalidation for collector credentials plus explicit
-   operator and collector recovery flows; define behavior across controller
-   restarts and rotation races before implementation.
-3. **Backup/restore and upgrades.** Provide supported SQLite backup and
+2. **Current — certificate revocation and compromise recovery.** Revocation is
+   an immutable record keyed by the exact canonical X.509 serial, not a
+   collector-wide flag. Operator-only `POST /v1/certificate-revocations`
+   creates it idempotently and `GET` lists it. SQLite schema version 4 makes
+   the record survive restarts; the memory backend has identical semantics but
+   remains evaluation-only. Collector authorization and rotation fail closed
+   when the lookup is unavailable, and a revoked certificate receives 401.
+   Enrollment/rotation return serials; rotation retains the old certificate
+   until explicit revocation to prevent lost-response lockout. A controller
+   mutex linearizes rotation signing with revocation writes in the supported
+   single-controller process. Recovery is a fresh enrollment token and a new
+   key/serial for the same collector ID, never unrevoke.
+3. **Next — backup/restore and upgrades.** Provide supported SQLite backup and
    restore commands/procedures, migration testing from every supported schema,
    rollback/failure behavior, and recovery drills using real generated data.
 4. **Supply-chain release evidence.** Produce reproducible signed artifacts,
@@ -1135,10 +1151,48 @@ security-review gaps. It does not add new discovery protocols.
   administrative authority from collector certificates; bearer-only collectors
   still possess the operator key by definition and should migrate to mTLS where
   least privilege is required.
-- No certificate revocation in the same PR; it is the next slice and needs a
-  durable design rather than an in-memory denylist.
+- Certificate revocation intentionally did not share the slice-1 PR; slice 2
+  supplies the durable design rather than an in-memory denylist.
 - No removal of open evaluation mode or bearer compatibility. Tightening those
   defaults is a separately versioned compatibility decision.
+
+### Acceptance gates for slice 2
+
+- The repository contract is identical for Memory and SQLite: first revoke
+  wins, repeats are immutable/idempotent, concurrent repeats create one record,
+  and list/check operations agree.
+- SQLite upgrades supported version-1, version-2, and version-3 databases to
+  schema version 4 and preserves revocations across close/reopen.
+- Operator bearer authorization is required to create/list revocations; an
+  enrolled collector certificate alone receives 403.
+- A revoked certificate receives 401 from collector data-plane endpoints and
+  `POST /v1/rotate`. A storage-check failure returns 503 rather than allowing
+  the credential.
+- A valid bearer key remains an independent compatibility credential on
+  collector endpoints, but identity is not taken from a simultaneously
+  presented revoked certificate.
+- Fresh-token re-enrollment of the same collector ID produces a distinct serial
+  that works immediately while the old immutable record remains enforced.
+- Enrollment and rotation responses/CLI output expose canonical serials;
+  enrollment, rotation, and revocation audit detail references those serials.
+- Revocation and rotation have a tested linearizable order inside the supported
+  single-controller process; docs state that an already-authorized rotation can
+  finish first and its new serial may need separate revocation.
+- Full Go 1.23 formatting, vet, race/coverage, Linux build, Windows vet/build,
+  and a persistent-restart smoke test pass.
+
+### Deliberate non-goals for slice 2
+
+- No CRL or OCSP publication and no TLS-handshake rejection. Enforcement is at
+  Topo's application authorization layer after native mTLS verifies the peer.
+- No collector-ID-wide revocation, unrevoke endpoint, or automatic revocation
+  of the old serial during rotation. Explicit serials keep incident evidence
+  immutable and avoid lost-response lockout.
+- No HA/multi-controller coordination. The mutex defines races for the only
+  supported deployment shape; revisit atomic issuance/revocation across
+  processes when clustered controllers become real.
+- No removal of bearer compatibility. If the shared key was also exposed, the
+  operator must rotate it separately.
 
 ## Follow-on order
 

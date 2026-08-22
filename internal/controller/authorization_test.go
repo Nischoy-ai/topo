@@ -32,6 +32,8 @@ func TestCollectorCertificateIsForbiddenFromEveryAdminEndpoint(t *testing.T) {
 		{http.MethodGet, "/v1/audit"},
 		{http.MethodGet, "/v1/observations"},
 		{http.MethodPost, "/v1/enrollment-tokens"},
+		{http.MethodPost, "/v1/certificate-revocations"},
+		{http.MethodGet, "/v1/certificate-revocations"},
 		{http.MethodGet, "/v1/collectors"},
 		{http.MethodPost, "/v1/jobs"},
 		{http.MethodGet, "/v1/jobs/job-1"},

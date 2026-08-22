@@ -27,13 +27,14 @@ const maxEnrollResponseBytes = 64 << 10
 // requestTimeout bounds a single enrollment HTTP round trip.
 const requestTimeout = 30 * time.Second
 
-// Result holds what a successful enrollment produced: a signed
-// certificate, the private key generated for it, and the CA certificate
-// the collector should trust for the controller going forward.
+// Result holds what a successful enrollment produced: a signed certificate
+// and its canonical serial, the private key generated for it, and the CA
+// certificate the collector should trust for the controller going forward.
 type Result struct {
 	CertificatePEM   []byte
 	PrivateKeyPEM    []byte
 	CACertificatePEM []byte
+	SerialNumber     string
 	ExpiresAt        time.Time
 }
 
@@ -195,6 +196,16 @@ func submitCSR(ctx context.Context, httpClient *http.Client, requestURL string, 
 }
 
 func resultFromResponse(key *ecdsa.PrivateKey, decoded EnrollResponse) (Result, error) {
+	serial, err := CertificateSerialFromPEM([]byte(decoded.CertificatePEM))
+	if err != nil {
+		return Result{}, fmt.Errorf("decode issued certificate: %w", err)
+	}
+	if decoded.SerialNumber != "" {
+		normalized, err := NormalizeCertificateSerial(decoded.SerialNumber)
+		if err != nil || normalized != serial {
+			return Result{}, errors.New("controller response serial_number does not match the issued certificate")
+		}
+	}
 	keyDER, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
 		return Result{}, fmt.Errorf("marshal collector key: %w", err)
@@ -205,6 +216,7 @@ func resultFromResponse(key *ecdsa.PrivateKey, decoded EnrollResponse) (Result, 
 		CertificatePEM:   []byte(decoded.CertificatePEM),
 		PrivateKeyPEM:    keyPEM,
 		CACertificatePEM: []byte(decoded.CACertificatePEM),
+		SerialNumber:     serial,
 		ExpiresAt:        decoded.ExpiresAt,
 	}, nil
 }

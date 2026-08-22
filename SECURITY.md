@@ -6,7 +6,7 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are now separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Before production readiness, Nischoy Topo still requires revocation, encrypted persistent secrets, signed artifacts and plugin manifests, SBOM generation, tested upgrades and backup/restore, and external penetration testing.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed artifacts and plugin manifests, SBOM generation, tested upgrades and backup/restore, and external penetration testing.
 
 ## Deployment guidance
 
@@ -17,7 +17,7 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Require HTTPS with normal certificate and hostname verification for non-Lab WinRM targets. Production NTLMv2 never falls back to Basic authentication. Basic authentication and HTTP are restricted to the explicit loopback-only Topo Lab mode.
 - Require SNMPv3 `authPriv` with SHA authentication and AES privacy for non-Lab SNMP targets; there is no weaker fallback. `noAuthNoPriv` is restricted to the explicit loopback-only Topo Lab mode.
 - Require HTTPS with normal certificate verification for non-Lab VMware targets; there is no fallback. `-lab` (HTTP, skipped certificate verification) is restricted to loopback `vcsim` targets. Use a read-only vCenter role — the plugin never issues a configuration, power, or lifecycle operation.
-- For a persistent controller, use `-db-driver sqlite -db-dsn <path>` and restrict the database file's permissions to the Topo process identity; the default `-db-driver memory` loses all discovery data, audit log entries, and recurring discovery schedules on every restart. There is no encryption at rest yet — treat the database file itself as sensitive.
+- For a persistent controller, use `-db-driver sqlite -db-dsn <path>` and restrict the database file's permissions to the Topo process identity; the default `-db-driver memory` loses all discovery data, audit log entries, recurring discovery schedules, and certificate revocations on every restart. Losing revocations re-enables otherwise valid compromised certificates, so memory mode is not an operational compromise boundary. There is no encryption at rest yet — treat the database file itself as sensitive.
 - The audit log (`GET /v1/audit`) is tamper-evident, not tamper-proof: it detects an edited, reordered, or removed entry via `internal/audit.VerifyChain`, but does not prevent someone with direct database access from rewriting the whole chain undetected if they also have write access to `-db-dsn`. Treat database file access as equivalent to audit log access; export or forward `GET /v1/audit` to a separate, append-only sink if you need audit records to survive a compromise of the controller host itself.
 - Never place credentials in job options, labels, logs, or observation attributes.
 - Pass credential provider references, never credential values, as CLI arguments. Restrict credential-file permissions to the Topo process identity.
@@ -29,8 +29,8 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 
 When `topo serve` is configured with `-api-key-ref`, the bearer key is the
 operator credential. It is required for inventory/audit reads, collector
-status reads, enrollment-token issuance, job creation/status reads, and all
-schedule operations. A verified enrolled certificate without the bearer key
+status reads, enrollment-token issuance, certificate revocation/listing, job
+creation/status reads, and all schedule operations. A verified enrolled certificate without the bearer key
 receives `403 Forbidden` from those endpoints. The same certificate can
 deliver observations, send heartbeats, poll and report its own jobs, and
 rotate itself; its subject binds the collector identity for each of those
@@ -42,7 +42,9 @@ do not distribute it to a collector when certificate-only least privilege is
 required. If no API key is configured, both endpoint classes retain the
 existing unauthenticated evaluation behavior; do not expose that mode to an
 untrusted network. `POST /v1/enroll` is authenticated by its one-time token,
-`POST /v1/rotate` is certificate-only, and `GET /healthz` is open.
+`POST /v1/rotate` is certificate-only, and `GET /healthz` is open. Revoking a
+certificate does not revoke a separately possessed bearer key; rotate that
+key too when an incident may have exposed both credentials.
 
 ## SSH discovery
 
@@ -66,9 +68,9 @@ The VMware plugin creates a read-only property-collector container view scoped t
 
 ## Persistent storage and the audit log
 
-The controller's storage backend (`store.Repository`) is opt-in persistent: the default `-db-driver memory` keeps every prior release's behavior exactly (nothing survives a restart), and `-db-driver sqlite -db-dsn <path>` opts into a SQLite-backed store that does. There is no encryption at rest — the database file's confidentiality depends entirely on filesystem permissions, the same trust boundary this project already places on the enrollment CA's private key and Topo Agent's offline spool. Enrollment tokens, collector heartbeats, and one-off job state remain in-memory only regardless of `-db-driver`; a controller restart still invalidates outstanding enrollment tokens and loses heartbeat/job history — though the audit record that a token was issued, a collector enrolled, or a job created still persists, independent of that transient state. Recurring discovery schedules (see "Server-side recurring discovery scheduling" below) are the one exception that is itself persisted, not just audited. `SaveObservation` is idempotent by observation ID in both backends — a collector retrying a delivery whose response was lost replaces the existing record rather than creating a duplicate, so retried delivery cannot be used to inflate stored observation counts.
+The controller's storage backend (`store.Repository`) is opt-in persistent: the default `-db-driver memory` keeps every prior release's behavior exactly (nothing survives a restart), and `-db-driver sqlite -db-dsn <path>` opts into a SQLite-backed store that does. There is no encryption at rest — the database file's confidentiality depends entirely on filesystem permissions, the same trust boundary this project already places on the enrollment CA's private key and Topo Agent's offline spool. Enrollment tokens, collector heartbeats, and one-off job state remain in-memory only regardless of `-db-driver`; a controller restart still invalidates outstanding enrollment tokens and loses heartbeat/job history. Recurring discovery schedules and certificate revocations are persisted with SQLite because losing either is a silent policy/security change. `SaveObservation` is idempotent by observation ID in both backends — a collector retrying a delivery whose response was lost replaces the existing record rather than creating a duplicate, so retried delivery cannot be used to inflate stored observation counts.
 
-`GET /v1/audit` returns a hash-chained log of enrollment token issuance, collector enrollment, certificate rotation, and job creation. Each entry's hash covers its own content and the previous entry's hash, so `internal/audit.VerifyChain` detects an entry edited, reordered, or removed after the fact — a Merkle/hash-chain class guarantee, not cryptographic non-repudiation, and not protection against someone who can rewrite the underlying database file wholesale (see "Deployment guidance" above). Audit detail values are always short strings and never secret material: an enrollment token is referenced only by a truncated SHA-256 fingerprint, never the token itself. Appending an audit entry is best-effort with respect to the action it records — an audit-write failure is logged but does not undo or block the action that already completed, since none of those actions' effects are stored in `store.Repository` to roll back; this is not a fail-closed audit log. See [Persistent storage and the audit log](docs/storage.md).
+`GET /v1/audit` returns a hash-chained log of enrollment token issuance, collector enrollment, certificate rotation/revocation, job creation, and schedule changes. Each entry's hash covers its own content and the previous entry's hash, so `internal/audit.VerifyChain` detects an entry edited, reordered, or removed after the fact — a Merkle/hash-chain class guarantee, not cryptographic non-repudiation, and not protection against someone who can rewrite the underlying database file wholesale (see "Deployment guidance" above). Audit detail values are always short strings and never secret material: an enrollment token is referenced only by a truncated SHA-256 fingerprint, never the token itself. Appending the hash-chain entry is best-effort; the durable `certificate_revocations` row is the authoritative enforcement record even if its supplementary audit append fails. See [Persistent storage and the audit log](docs/storage.md).
 
 ## Credential references
 
@@ -131,10 +133,11 @@ malformed enrollment request is rejected before the token is redeemed, so
 it cannot burn a valid token. The CA's own private key is protected by
 filesystem permissions, matching every other private key in this project,
 not a second application-level encryption layer. The token store is
-in-memory only and does not survive a controller restart, matching every
-other piece of controller state today. There is no certificate revocation
-yet; a compromised collector certificate is contained only by its bounded
-lifetime. Enrollment is opt-in and does not change any existing
+in-memory only and does not survive a controller restart. A collector
+certificate can be revoked early by its exact serial through operator-only
+`POST /v1/certificate-revocations`; `GET /v1/certificate-revocations` lists
+the immutable records. With SQLite, these records survive controller restarts;
+the memory backend loses them and is evaluation-only. Enrollment is opt-in and does not change any existing
 bearer-key-authenticated behavior when `-ca-dir` is not set.
 
 The issued certificate now authenticates live traffic: `topo serve -mtls`
@@ -170,10 +173,26 @@ not just a fresh certificate for the existing key. `topo agent rotate` is
 the collector-side command; it overwrites the same certificate directory
 `topo agent enroll` wrote, and a running `topo agent run` must be
 restarted afterward to pick up the renewed certificate — it is loaded once
-at startup, not reloaded live. There is still no certificate revocation;
-rotation renews a certificate on the collector's own initiative but gives
-the controller no way to invalidate one early. See
+at startup, not reloaded live. Rotation leaves the old certificate valid to
+avoid a lost-response lockout; after verifying the new serial, the operator
+should explicitly revoke the old one. A revoked certificate cannot rotate.
+Revocation-versus-rotation races are linearized within Topo's supported
+single-controller process: a rotation already authorized finishes before a
+competing revocation returns, while a revocation that wins first makes the
+rotation return 401. See
 [Collector enrollment](docs/enrollment.md).
+
+Revocation is enforced in application authorization after the CA-verifying TLS
+handshake: a revoked serial receives 401 on collector certificate endpoints,
+including rotation, and a revocation-store lookup failure fails closed with
+503. Topo does not publish a CRL or OCSP responder, so the TLS handshake itself
+can still succeed. Native `topo serve -mtls` must receive the peer certificate;
+a TLS-terminating reverse proxy that does not forward a cryptographically
+trustworthy identity cannot enforce this boundary. Revocations are immutable
+and serial-specific. Compromise recovery is a fresh one-time token and
+re-enrollment of the same collector ID, producing a fresh key and serial; there
+is deliberately no unrevoke operation. See
+[Revoking and recovering a certificate](docs/enrollment.md#revoking-and-recovering-a-certificate).
 
 ## Collector heartbeats
 
