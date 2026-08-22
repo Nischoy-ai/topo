@@ -65,10 +65,12 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 
 - **Implemented (authorization boundary):** operator reads and control-plane mutations require the configured bearer API key; verified collector certificates are limited to observation delivery, heartbeats, job polling/results, and certificate rotation. mTLS observations are bound to the peer certificate identity. The bearer key remains accepted on collector endpoints for backward compatibility, and leaving it unset preserves evaluation mode.
 - **Implemented (certificate revocation and compromise recovery):** operator-only `POST /v1/certificate-revocations` immutably revokes one canonical certificate serial; `GET /v1/certificate-revocations` lists the records. SQLite schema version 4 persists revocations across restarts, application authorization fails closed on lookup errors, revoked certificates cannot use collector endpoints or rotate, and fresh-token re-enrollment recovers the same collector identity with a new key and serial. Rotation surfaces old/new serials and is linearized against revocation in the supported single-controller process. See [docs/enrollment.md](docs/enrollment.md#revoking-and-recovering-a-certificate).
-- **Current:** backup/restore and upgrade tooling with verified, non-overwriting
+- **Implemented:** backup/restore and upgrade tooling with verified, non-overwriting
   recovery; tested migration from every supported schema; and transaction-wide
-  rollback on migration failure.
-- Reproducible signed artifacts, SBOMs, and build provenance.
+  rollback on migration failure. See [docs/storage.md](docs/storage.md#backup-and-restore).
+- **Current:** byte-reproducible Linux/macOS/Windows amd64/arm64 archives,
+  SHA-256 manifests, SPDX SBOMs, keyless Sigstore checksum signatures, and
+  signed GitHub build/SBOM attestations. See [docs/releases.md](docs/releases.md).
 - DEB, RPM, MSI/MSIX, Helm, raw archive, and offline-bundle packaging from the
   same immutable release artifacts.
 - Package-manager distribution: signed Nischoy APT and RPM repositories, an

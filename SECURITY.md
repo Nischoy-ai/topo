@@ -6,7 +6,7 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed artifacts and plugin manifests, SBOM generation, tested upgrades and backup/restore, and external penetration testing.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, native package/repository signing, completed packaging/distribution, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance, but that evidence does not close those remaining gates.
 
 ## Deployment guidance
 
@@ -24,6 +24,33 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Review ServiceNow IRE preview output before enabling destination writes,
   and configure identification/reconciliation rules for every CI class Topo
   emits; see [ServiceNow publishing](docs/servicenow.md).
+- Before installing a downloaded raw release, verify both its `SHA256SUMS`
+  keyless Sigstore bundle and its GitHub artifact attestation; checking an
+  unsigned digest alone detects corruption but not an attacker who replaced
+  both the artifact and digest. See [release artifacts and
+  verification](docs/releases.md#verify-a-downloaded-release).
+
+## Release supply chain
+
+Semantic release tags must resolve to a commit already reachable from `main`.
+The tag workflow uses exact Go 1.23.12, CGO disabled, path/VCS stamping removed,
+fixed archive metadata, and two independent source paths; any byte difference
+blocks publication. Release actions are pinned to immutable commit digests.
+`SHA256SUMS` is signed keylessly by the tag workflow's GitHub OIDC identity, and
+GitHub stores signed SLSA provenance and SPDX SBOM attestations for the archive
+digests. The workflow verifies both signature and provenance before it creates
+the GitHub Release, and no long-lived general artifact-signing secret is stored
+in Actions.
+
+Consumers must constrain Sigstore verification to the exact Nischoy Topo
+release workflow identity and GitHub Actions OIDC issuer, then verify the
+individual archive against the authenticated checksum manifest. GitHub
+attestation verification independently binds its digest to this repository,
+commit, tag event, and workflow. Release evidence is additive: it does not
+replace APT/RPM repository OpenPGP keys, Windows Authenticode, macOS code
+signing/notarization, or their key-rotation processes. Those native mechanisms
+remain mandatory in the package/distribution slices. See
+[release artifacts and verification](docs/releases.md).
 
 ## Controller authorization boundary
 

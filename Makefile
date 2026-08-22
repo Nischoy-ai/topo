@@ -1,4 +1,4 @@
-.PHONY: test build run smoke lab-test
+.PHONY: test build run smoke lab-test release-snapshot
 
 test:
 	go test ./...
@@ -15,3 +15,6 @@ smoke:
 
 lab-test: build
 	go test -run TestDiscoverFiveHundredHostsAndIdempotentResolution ./pkg/lab
+
+release-snapshot:
+	scripts/build-release.sh v0.0.0-dev dev dist
