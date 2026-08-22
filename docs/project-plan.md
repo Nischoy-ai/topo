@@ -36,8 +36,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Work in progress:** M2.5 slice 2 on
-  `agent/m25-certificate-revocation`. It adds durable serial-specific
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/27> — M2.5
+  slice 2 on `agent/m25-certificate-revocation`. It adds durable serial-specific
   certificate revocation, fail-closed enforcement, deterministic
   revocation/rotation ordering, and fresh-token compromise recovery.
 - **Merged pull requests:** SNMP discovery in
