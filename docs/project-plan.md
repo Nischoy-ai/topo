@@ -36,8 +36,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none yet. The current branch is
-  `agent/m25-backup-upgrade-safety` for M2.5 slice 3.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/28> — M2.5
+  slice 3 on `agent/m25-backup-upgrade-safety`, adding verified,
+  non-overwriting SQLite backup/restore and transaction-wide migration
+  rollback with schema v1-v4 recovery drills.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
