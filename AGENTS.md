@@ -48,17 +48,29 @@ as focused security/operations slices rather than one packaging mega-PR:
    certificate. Preserve bearer-key compatibility on collector endpoints and
    the open no-key evaluation mode, and document that the bearer key still
    carries operator authority.
-2. **Current slice.** Certificate revocation plus explicit compromise recovery
+2. **Done.** Certificate revocation plus explicit compromise recovery
    and safer rotation operations. Persist immutable serial-specific records in
    SQLite, fail closed during authorization, block rotation by a revoked
    certificate, surface old/new serials, and recover through fresh-token
    re-enrollment of the same collector identity. Keep the memory backend
    evaluation-only and define rotation-race ordering for the supported
    single-controller process.
-3. **Next.** Tested backup/restore and schema upgrade/rollback procedures.
-4. **Then.** Reproducible signed artifacts, SBOMs, build provenance, and DEB,
-   RPM, MSI, Helm, and offline-bundle packaging.
-5. **Gate.** External security review and remediation before any production
+3. **Current slice.** Tested backup/restore and schema upgrade/rollback
+   procedures. Backups and restores must be verified and non-overwriting;
+   every supported SQLite schema must retain real data through restore and
+   forward migration; all pending migrations must roll back together on a
+   failure. Rollback means restoring the pre-upgrade backup to a new path,
+   never reverse-migrating or overwriting the failed database in place.
+4. **Then.** Reproducible signed artifacts, SBOMs, checksums, and build
+   provenance.
+5. **Then.** DEB, RPM, MSI/MSIX, Helm, raw archives, and offline-bundle
+   packaging from the same verified release artifacts.
+6. **Then.** Publish those artifacts through a signed Nischoy APT repository,
+   a signed Nischoy RPM repository, `Nischoy-ai/homebrew-tap`, Microsoft's
+   WinGet catalog, and an OCI Helm registry. Keep stable/beta promotion,
+   repository-native signing/key rotation, and clean-machine install/upgrade/
+   uninstall tests in scope; additional package managers follow demand.
+7. **Gate.** External security review and remediation before any production
    claim.
 
 The credential-references milestone is complete:

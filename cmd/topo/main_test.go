@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Nischoy-ai/topo/internal/store/sqlite"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 )
 
@@ -119,5 +120,55 @@ func TestAgentInstallAndUninstallAreWindowsOnly(t *testing.T) {
 	}
 	if err := agentUninstall(nil); err == nil || !strings.Contains(err.Error(), "Windows service management is only supported on windows") {
 		t.Fatalf("error = %v, want a Windows-only error on this platform", err)
+	}
+}
+
+func TestStorageBackupRestoreCommands(t *testing.T) {
+	directory := t.TempDir()
+	source := filepath.Join(directory, "source.db")
+	backup := filepath.Join(directory, "backup.db")
+	restored := filepath.Join(directory, "restored.db")
+	db, err := sqlite.Open(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runStorage([]string{"backup", "-db-dsn", source, "-out", backup}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runStorage([]string{"restore", "-from", backup, "-db-dsn", restored}); err != nil {
+		t.Fatal(err)
+	}
+	opened, err := sqlite.Open(restored)
+	if err != nil {
+		t.Fatalf("open database restored through CLI: %v", err)
+	}
+	if err := opened.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStorageCommandsRequirePaths(t *testing.T) {
+	for _, args := range [][]string{
+		{"backup"},
+		{"backup", "-db-dsn", "source.db"},
+		{"restore"},
+		{"restore", "-from", "backup.db"},
+	} {
+		if err := runStorage(args); err == nil {
+			t.Fatalf("runStorage(%q) accepted missing paths", args)
+		}
+	}
+}
+
+func TestStorageBackupDoesNotCreateMissingSource(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.db")
+	if err := runStorage([]string{"backup", "-db-dsn", missing, "-out", missing + ".backup"}); err == nil {
+		t.Fatal("storage backup accepted a missing source database")
+	}
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("storage backup created its missing source: %v", err)
 	}
 }

@@ -2,7 +2,10 @@ package sqlite_test
 
 import (
 	"context"
+	"database/sql"
+	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -323,5 +326,247 @@ func TestSQLiteRejectsNewerSchemaVersion(t *testing.T) {
 
 	if _, err := sqlite.Open(dbPath); err == nil {
 		t.Fatal("expected an error opening a database with a newer schema version than this binary supports")
+	}
+}
+
+func TestSQLiteBackupRestoreRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	directory := t.TempDir()
+	dbPath := filepath.Join(directory, "topo.db")
+	backupPath := filepath.Join(directory, "topo.backup.db")
+	restoredPath := filepath.Join(directory, "topo.restored.db")
+	db, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope := model.ObservationEnvelope{
+		SchemaVersion: model.SchemaVersion,
+		ObservationID: "backup-observation",
+		SiteID:        "recovery-drill",
+		CollectorID:   "collector-1",
+		Plugin:        "test",
+		ObservedAt:    time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC),
+		Assets:        []model.Asset{{Type: model.AssetHost, NativeID: "backup-host", Name: "backup-host"}},
+	}
+	if err := db.SaveObservation(ctx, envelope); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.AppendAuditEvent(ctx, audit.Event{Action: "recovery_drill", Actor: "test"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpsertSchedule(ctx, store.Schedule{CollectorID: "collector-1", JobType: "discover", IntervalSeconds: 60}); err != nil {
+		t.Fatal(err)
+	}
+	if created, err := db.RevokeCertificate(ctx, store.CertificateRevocation{SerialNumber: "deadbeef", Reason: "recovery drill"}); err != nil || !created {
+		t.Fatalf("RevokeCertificate = %v, %v", created, err)
+	}
+	backup, err := db.Backup(ctx, backupPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if backup.SchemaVersion != 4 {
+		t.Fatalf("backup schema version = %d, want 4", backup.SchemaVersion)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	restored, err := sqlite.Restore(ctx, backupPath, restoredPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.SchemaVersion != backup.SchemaVersion {
+		t.Fatalf("restored schema version = %d, want %d", restored.SchemaVersion, backup.SchemaVersion)
+	}
+	opened, err := sqlite.Open(restoredPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer opened.Close()
+	observations, err := opened.ListObservations(ctx)
+	if err != nil || len(observations) != 1 || observations[0].ObservationID != envelope.ObservationID {
+		t.Fatalf("restored observations = %#v, %v", observations, err)
+	}
+	entries, err := opened.ListAuditEntries(ctx)
+	if err != nil || len(entries) != 1 || audit.VerifyChain(entries) != nil {
+		t.Fatalf("restored audit entries = %#v, %v", entries, err)
+	}
+	if _, err := opened.GetSchedule(ctx, "collector-1"); err != nil {
+		t.Fatalf("restored schedule: %v", err)
+	}
+	revoked, err := opened.IsCertificateRevoked(ctx, "deadbeef")
+	if err != nil || !revoked {
+		t.Fatalf("restored revocation = %v, %v", revoked, err)
+	}
+}
+
+func TestSQLiteRestoreAndUpgradeEverySupportedSchema(t *testing.T) {
+	for version := 1; version <= 4; version++ {
+		t.Run(strconv.Itoa(version), func(t *testing.T) {
+			ctx := context.Background()
+			directory := t.TempDir()
+			sourcePath := filepath.Join(directory, "source.db")
+			restoredPath := filepath.Join(directory, "restored.db")
+			source, err := sqlite.Open(sourcePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			envelope := model.ObservationEnvelope{
+				SchemaVersion: model.SchemaVersion,
+				ObservationID: "schema-recovery-observation",
+				CollectorID:   "collector-1",
+				ObservedAt:    time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC),
+				Assets: []model.Asset{
+					{Type: model.AssetHost, NativeID: "schema-host", Name: "schema-host"},
+					{Type: model.AssetNetworkInterface, NativeID: "schema-host:interface:1", Name: "eth0"},
+				},
+				Relationships: []model.Relationship{{Type: "host_has_interface", FromNativeID: "schema-host", ToNativeID: "schema-host:interface:1"}},
+			}
+			if err := source.SaveObservation(ctx, envelope); err != nil {
+				t.Fatal(err)
+			}
+			if version >= 2 {
+				if _, err := source.AppendAuditEvent(ctx, audit.Event{Action: "schema_recovery", Actor: "test"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if version >= 3 {
+				if err := source.UpsertSchedule(ctx, store.Schedule{CollectorID: "collector-1", JobType: "discover", IntervalSeconds: 60}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if version >= 4 {
+				if _, err := source.RevokeCertificate(ctx, store.CertificateRevocation{SerialNumber: "a4", Reason: "schema recovery"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for droppedVersion, table := range map[int]string{2: "audit_entries", 3: "schedules", 4: "certificate_revocations"} {
+				if version < droppedVersion {
+					if _, err := source.DB().Exec(`DROP TABLE ` + table); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if _, err := source.DB().Exec(`PRAGMA user_version = ` + strconv.Itoa(version)); err != nil {
+				t.Fatal(err)
+			}
+			if err := source.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			info, err := sqlite.Restore(ctx, sourcePath, restoredPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.SchemaVersion != version {
+				t.Fatalf("restored schema version = %d, want %d", info.SchemaVersion, version)
+			}
+			upgraded, err := sqlite.Open(restoredPath)
+			if err != nil {
+				t.Fatalf("upgrade restored version %d database: %v", version, err)
+			}
+			defer upgraded.Close()
+			observations, err := upgraded.ListObservations(ctx)
+			if err != nil || len(observations) != 1 || observations[0].ObservationID != envelope.ObservationID {
+				t.Fatalf("version %d observations after restore/upgrade = %#v, %v", version, observations, err)
+			}
+			relationships, err := upgraded.ListRelationships(ctx)
+			if err != nil || len(relationships) != 1 || relationships[0].Relationship.Type != "host_has_interface" {
+				t.Fatalf("version %d relationships after restore/upgrade = %#v, %v", version, relationships, err)
+			}
+			if version >= 2 {
+				entries, err := upgraded.ListAuditEntries(ctx)
+				if err != nil || len(entries) != 1 || audit.VerifyChain(entries) != nil {
+					t.Fatalf("version %d audit after restore/upgrade = %#v, %v", version, entries, err)
+				}
+			}
+			if version >= 3 {
+				if _, err := upgraded.GetSchedule(ctx, "collector-1"); err != nil {
+					t.Fatalf("version %d schedule after restore/upgrade: %v", version, err)
+				}
+			}
+			if version >= 4 {
+				revoked, err := upgraded.IsCertificateRevoked(ctx, "a4")
+				if err != nil || !revoked {
+					t.Fatalf("version %d revocation after restore/upgrade = %v, %v", version, revoked, err)
+				}
+			}
+		})
+	}
+}
+
+func TestSQLiteMigrationFailureRollsBackEveryPendingVersion(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+	db, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules; DROP TABLE certificate_revocations; CREATE TABLE schedules (conflict TEXT); PRAGMA user_version = 1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sqlite.Open(dbPath); err == nil {
+		t.Fatal("expected migration failure from conflicting schedules table")
+	}
+
+	raw, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	var version int
+	if err := raw.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if version != 1 {
+		t.Fatalf("schema version after failed multi-version migration = %d, want 1", version)
+	}
+	var auditTables int
+	if err := raw.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'audit_entries'`).Scan(&auditTables); err != nil {
+		t.Fatal(err)
+	}
+	if auditTables != 0 {
+		t.Fatal("version-2 audit_entries table survived a later migration failure")
+	}
+}
+
+func TestSQLiteBackupAndRestoreRefuseOverwrite(t *testing.T) {
+	ctx := context.Background()
+	directory := t.TempDir()
+	db, err := sqlite.Open(filepath.Join(directory, "topo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	backupPath := filepath.Join(directory, "backup.db")
+	if _, err := db.Backup(ctx, backupPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Backup(ctx, backupPath); err == nil {
+		t.Fatal("backup overwrote an existing destination")
+	}
+	restoredPath := filepath.Join(directory, "restored.db")
+	if _, err := sqlite.Restore(ctx, backupPath, restoredPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sqlite.Restore(ctx, backupPath, restoredPath); err == nil {
+		t.Fatal("restore overwrote an existing destination")
+	}
+}
+
+func TestSQLiteRestoreRejectsCorruptBackup(t *testing.T) {
+	directory := t.TempDir()
+	backupPath := filepath.Join(directory, "corrupt.db")
+	if err := os.WriteFile(backupPath, []byte("not a sqlite database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(directory, "restored.db")
+	if _, err := sqlite.Restore(context.Background(), backupPath, destination); err == nil {
+		t.Fatal("restore accepted a corrupt backup")
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatalf("failed restore left destination behind: %v", err)
 	}
 }
