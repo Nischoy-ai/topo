@@ -147,28 +147,33 @@ func (s *Store) migrate(ctx context.Context) error {
 	if version > schemaVersion {
 		return fmt.Errorf("database schema version %d is newer than this binary supports (%d); upgrade Topo before opening this database", version, schemaVersion)
 	}
-	for v := version + 1; v <= schemaVersion; v++ {
-		if err := s.applyMigration(ctx, v); err != nil {
-			return err
-		}
+	if version == schemaVersion {
+		return nil
 	}
-	return nil
-}
 
-func (s *Store) applyMigration(ctx context.Context, version int) error {
+	// All pending versions share one transaction. An upgrade from an old
+	// schema therefore either reaches schemaVersion completely or leaves the
+	// database at its original version; a failure cannot strand a partially
+	// upgraded database between two released versions.
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin schema migration to version %d: %w", version, err)
+		return fmt.Errorf("begin schema migration from version %d: %w", version, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, migrations[version]); err != nil {
-		return fmt.Errorf("apply schema migration to version %d: %w", version, err)
-	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, version)); err != nil {
-		return fmt.Errorf("set schema version to %d: %w", version, err)
+	for v := version + 1; v <= schemaVersion; v++ {
+		migration, ok := migrations[v]
+		if !ok {
+			return fmt.Errorf("schema migration to version %d is missing", v)
+		}
+		if _, err := tx.ExecContext(ctx, migration); err != nil {
+			return fmt.Errorf("apply schema migration to version %d: %w", v, err)
+		}
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, v)); err != nil {
+			return fmt.Errorf("set schema version to %d: %w", v, err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit schema migration to version %d: %w", version, err)
+		return fmt.Errorf("commit schema migration to version %d: %w", schemaVersion, err)
 	}
 	return nil
 }

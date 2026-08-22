@@ -26,7 +26,7 @@ This is a capacity decision, not permanent architecture lock-in. The `Repository
 
 Six tables: `observations` (one row per observation, storing the full envelope as JSON alongside a few indexed metadata columns), `assets` and `relationships` (one row each per *resolved* entity, keyed by a stable, content-derived ID rather than an autoincrement counter), `audit_entries` (one row per audit log entry, described below), `schedules` (one row per collector with a recurring schedule), and `certificate_revocations` (one immutable row per canonical hexadecimal certificate serial). An asset's ID is `model.StableAssetID` — a hash of its type, native ID, and identifiers, deliberately excluding attributes and evidence so a value change does not change identity. A relationship's ID is `model.StableRelationshipID`, the same idea applied to (type, from, to). Saving an observation is an upsert keyed by these IDs; `SaveObservation` is also idempotent by `ObservationID`. A schedule is likewise an upsert keyed by `collector_id`. Revocation is different: the first reason and timestamp win, and repeating the same serial never mutates the incident record.
 
-Schema versioning uses SQLite's own `PRAGMA user_version` plus a small in-code migration table. `migrate` applies every pending version in order: version 1 introduced discovery data, version 2 `audit_entries`, version 3 `schedules`, and version 4 `certificate_revocations`. Tests upgrade real-shaped v1, v2, and v3 schemas to the latest version and prove revocations survive reopen. Opening a database written by a newer Topo version than the running binary understands still fails loudly rather than silently misinterpreting the schema.
+Schema versioning uses SQLite's own `PRAGMA user_version` plus a small in-code migration table. `migrate` applies every pending version in order: version 1 introduced discovery data, version 2 `audit_entries`, version 3 `schedules`, and version 4 `certificate_revocations`. All pending versions run in one transaction: if any later migration fails, both the schema version and every earlier change from that upgrade roll back to their exact starting state. Recovery tests restore real data shaped as each supported v1, v2, v3, and v4 database and then upgrade it with the current binary. Opening a database written by a newer Topo version than the running binary understands still fails loudly rather than silently misinterpreting the schema.
 
 ## Audit log
 
@@ -49,10 +49,69 @@ Appending an entry is best-effort with respect to the action it records: if `App
 
 - WAL journal mode is enabled for file-backed databases (not for the `:memory:` test-only mode), and `busy_timeout` is set so a momentarily-locked database retries rather than failing immediately.
 - The connection pool is capped at one connection. SQLite serializes writers regardless of connection count, so this avoids `SQLITE_BUSY` contention outright rather than relying on `busy_timeout` to paper over it, and keeps a `:memory:` database (private per connection in SQLite's own semantics) coherent across calls.
-- `internal/store/sqlite.Store.DB()` exposes the underlying `*sql.DB` for operational needs `store.Repository` deliberately does not cover — taking a consistent backup with SQLite's own `.backup`/`VACUUM INTO` tooling, or direct inspection during an incident. Prefer the `Repository` methods for anything already covered.
+- `internal/store/sqlite.Store.DB()` exposes the underlying `*sql.DB` for direct inspection during development or an incident. Supported backups use the commands below; prefer the `Repository` methods for anything already covered.
 - `internal/store/storetest` is a shared black-box conformance test suite: both `Memory` and the SQLite backend run the exact same assertions through the `Repository` interface alone, including immutable/idempotent and concurrent revocation behavior, so the two implementations cannot silently diverge in observable behavior.
 - Appending an audit entry reads the last entry and inserts the next one inside a single transaction; combined with the single-connection pool above, this serializes concurrent appends the same way `SaveObservation` is already serialized, so `sequence`/`prev_hash` can never be assigned from a stale read.
 
+## Backup and restore
+
+Create a backup before every Topo binary or package upgrade and on the operator's
+normal retention schedule:
+
+```sh
+topo storage backup \
+  -db-dsn /var/lib/topo/topo.db \
+  -out /var/backups/topo/topo-2026-08-22.db
+```
+
+The command opens the database with the current binary, uses SQLite `VACUUM
+INTO` to capture one transactionally consistent snapshot (including committed
+WAL data), sets owner-only file permissions, runs `PRAGMA quick_check`, syncs
+the file, and only then publishes the requested destination. It refuses an
+existing destination. A backup can run while the controller is serving, but
+run it with the currently installed binary *before* replacing that binary so
+the backup represents the pre-upgrade schema.
+
+Restore always writes a new path:
+
+```sh
+# Stop the controller service/process before cutover.
+topo storage restore \
+  -from /var/backups/topo/topo-2026-08-22.db \
+  -db-dsn /var/lib/topo/topo-restored.db
+topo serve -db-driver sqlite -db-dsn /var/lib/topo/topo-restored.db
+```
+
+`restore` opens the backup read-only, validates its integrity and supported
+schema version, copies it with owner-only permissions, validates and syncs the
+copy, and atomically publishes it without overwriting anything. The source
+backup and old operational database remain unchanged. Stop the controller for
+the restore/cutover itself; starting against the restored path applies any
+required forward migration.
+
+After restart, verify `/healthz` and the operator views for observations,
+assets, relationships, audit entries, schedules, and revocations before
+retiring the old path. Keep both the pre-upgrade backup and the old operational
+file until that validation and the retention window pass. Copy snapshots to an
+encrypted, access-controlled backup system: Topo protects local files with
+permissions but does not encrypt database backups itself.
+
+### Upgrade and rollback drill
+
+1. With the old binary still installed, create and retain a verified backup.
+2. Install the new binary, stop the controller, and start it against the normal
+   database path. Pending schema versions commit as one transaction.
+3. Run health and persisted-state checks before declaring the upgrade complete.
+4. If validation fails, stop the new controller. Restore the pre-upgrade backup
+   to a new database path, then start the old binary against that new path.
+5. Preserve the failed/upgraded database for diagnosis; do not copy the backup
+   over it and do not attempt a reverse migration.
+
+A migration error itself leaves the original database at its starting schema,
+but the same restore-to-new-path drill is the supported recovery procedure so
+the original remains available as evidence. `storage restore` deliberately has
+no force or overwrite flag.
+
 ## Current limitations
 
-Enrollment tokens, heartbeats, and job state remain in-memory only (see above). There is no backup/restore tooling beyond SQLite's own file-level tools, and no encryption at rest. The audit log is tamper-evident, not tamper-proof — see "Audit log" above for exactly what that guarantee does and does not cover, and note `GET /v1/audit` does not itself re-verify the chain. **This completes the "persistent observation/audit storage and scheduling" milestone** — all three slices (persistent storage, the audit log, and server-side recurring discovery scheduling) are implemented. See `docs/project-plan.md` for what comes after, and [Server-side recurring discovery scheduling](scheduling.md) for that slice's own current limitations.
+Enrollment tokens, heartbeats, and individual queued/in-flight job state remain in-memory only (see above), so no SQLite backup can preserve them. Topo does not schedule backups, manage remote retention, or encrypt backup files; those remain deployment responsibilities. The audit log is tamper-evident, not tamper-proof — see "Audit log" above for exactly what that guarantee does and does not cover, and note `GET /v1/audit` does not itself re-verify the chain. See `docs/project-plan.md` for the release-readiness work that follows, and [Server-side recurring discovery scheduling](scheduling.md) for that slice's own current limitations.

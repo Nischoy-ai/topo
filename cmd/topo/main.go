@@ -66,6 +66,8 @@ func run(args []string) error {
 		return discover(args[1:])
 	case "agent":
 		return runAgent(args[1:])
+	case "storage":
+		return runStorage(args[1:])
 	case "lab":
 		return runLab(args[1:])
 	case "version":
@@ -76,8 +78,72 @@ func run(args []string) error {
 	}
 }
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|lab|version>")
+	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|storage|lab|version>")
 	return errors.New("command required")
+}
+
+func runStorage(args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: topo storage <backup|restore>")
+	}
+	switch args[0] {
+	case "backup":
+		return storageBackup(args[1:])
+	case "restore":
+		return storageRestore(args[1:])
+	default:
+		return fmt.Errorf("unknown storage command %q", args[0])
+	}
+}
+
+func storageBackup(args []string) error {
+	fs := flag.NewFlagSet("storage backup", flag.ContinueOnError)
+	dbDSN := fs.String("db-dsn", "", "SQLite database file to back up")
+	out := fs.String("out", "", "new backup file path (must not already exist)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *dbDSN == "" {
+		return errors.New("-db-dsn is required")
+	}
+	if *out == "" {
+		return errors.New("-out is required")
+	}
+	if _, err := sqlite.Inspect(context.Background(), *dbDSN); err != nil {
+		return fmt.Errorf("verify SQLite database before backup: %w", err)
+	}
+	db, err := sqlite.Open(*dbDSN)
+	if err != nil {
+		return fmt.Errorf("open SQLite database: %w", err)
+	}
+	defer db.Close()
+	info, err := db.Backup(context.Background(), *out)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("backup created: %s (schema version %d)\n", info.Path, info.SchemaVersion)
+	return nil
+}
+
+func storageRestore(args []string) error {
+	fs := flag.NewFlagSet("storage restore", flag.ContinueOnError)
+	from := fs.String("from", "", "verified SQLite backup file")
+	dbDSN := fs.String("db-dsn", "", "new restored database file path (must not already exist)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *from == "" {
+		return errors.New("-from is required")
+	}
+	if *dbDSN == "" {
+		return errors.New("-db-dsn is required")
+	}
+	info, err := sqlite.Restore(context.Background(), *from, *dbDSN)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("database restored: %s (schema version %d)\n", info.Path, info.SchemaVersion)
+	return nil
 }
 
 func runLab(args []string) error {

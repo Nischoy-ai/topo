@@ -6,12 +6,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-21
+- **Updated:** 2026-08-22
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** M2.5 operator-versus-collector authorization
-  boundary, merged in <https://github.com/Nischoy-ai/topo/pull/26>. The
-  persistent observation/audit storage and scheduling milestone immediately
-  before it completed across PRs #23, #24, and #25.
+- **Latest completed slice:** M2.5 certificate revocation and compromise
+  recovery, merged in <https://github.com/Nischoy-ai/topo/pull/27>. The
+  operator-versus-collector authorization boundary immediately before it
+  merged in <https://github.com/Nischoy-ai/topo/pull/26>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -36,10 +36,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/27> — M2.5
-  slice 2 on `agent/m25-certificate-revocation`. It adds durable serial-specific
-  certificate revocation, fail-closed enforcement, deterministic
-  revocation/rotation ordering, and fresh-token compromise recovery.
+- **Open pull request:** <https://github.com/Nischoy-ai/topo/pull/28> — M2.5
+  slice 3 on `agent/m25-backup-upgrade-safety`, adding verified,
+  non-overwriting SQLite backup/restore and transaction-wide migration
+  rollback with schema v1-v4 recovery drills.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -48,7 +48,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   audit log) in <https://github.com/Nischoy-ai/topo/pull/24>; slice 3
   (server-side recurring discovery scheduling) in
   <https://github.com/Nischoy-ai/topo/pull/25>; M2.5 slice 1 (authorization
-  boundary) in <https://github.com/Nischoy-ai/topo/pull/26>.
+  boundary) in <https://github.com/Nischoy-ai/topo/pull/26>; M2.5 slice 2
+  (certificate revocation and compromise recovery) in
+  <https://github.com/Nischoy-ai/topo/pull/27>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -62,12 +64,24 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slice 1 (authorization boundary) is merged; slice 2 (current) is durable
-  certificate revocation and compromise recovery. Backup/restore
-  and upgrades, signed reproducible artifacts/SBOM/provenance, packaging, and
-  an external security review follow in that order. See "Current milestone:
-  M2.5" below.
-- **Verified in the current slice:** shared Memory/SQLite conformance
+  Slices 1 and 2 are merged; slice 3 (current) is backup/restore and schema
+  upgrade/rollback safety. Supply-chain evidence, package artifacts,
+  package-manager distribution, and an external security review follow in
+  that order. See "Current milestone: M2.5" below.
+- **Verified in the current slice:** `topo storage backup` creates a compact,
+  transactionally consistent SQLite snapshot, protects and verifies it, and
+  publishes without overwriting; `topo storage restore` read-only validates a
+  backup and publishes a separately verified owner-only copy at a new path.
+  File-backed recovery drills retain generated observations/assets/
+  relationships and every audit/schedule/revocation table available across
+  supported schema versions 1 through 4, then forward-migrate the restored
+  copy. A forced version-3 migration conflict proves the entire v1-to-v4
+  sequence rolls back to v1 without leaving the version-2 table behind.
+  Corrupt input and existing destinations fail safely. Under Go 1.23,
+  `gofmt`, `git diff --check`, `go vet ./...`, `go test -race
+  -coverprofile=coverage.out ./...`, and `go build -trimpath ./cmd/topo` pass,
+  as do `GOOS=windows GOARCH=amd64 go vet ./...` and the Windows build.
+- **Verified in the previous slice (certificate revocation):** shared Memory/SQLite conformance
   covers immutable, idempotent, concurrent serial revocation; SQLite tests
   cover v1/v2/v3-to-v4 migration and revocation persistence across reopen;
   controller tests cover canonicalization, operator authorization, one audit
@@ -1087,8 +1101,8 @@ what comes next.
 
 Turn the implemented discovery/controller capabilities into a system that can
 be operated and distributed safely. This milestone closes trust-boundary,
-compromise-recovery, upgrade/restore, supply-chain, packaging, and independent
-security-review gaps. It does not add new discovery protocols.
+compromise-recovery, upgrade/restore, supply-chain, packaging, distribution,
+and independent security-review gaps. It does not add new discovery protocols.
 
 ### Slices
 
@@ -1104,7 +1118,7 @@ security-review gaps. It does not add new discovery protocols.
    endpoints for compatibility, and an empty API key preserves evaluation
    mode. Consequently, the bearer key still carries operator authority and
    must not be distributed where certificate-only least privilege is desired.
-2. **Current — certificate revocation and compromise recovery.** Revocation is
+2. **Done — certificate revocation and compromise recovery.** Revocation is
    an immutable record keyed by the exact canonical X.509 serial, not a
    collector-wide flag. Operator-only `POST /v1/certificate-revocations`
    creates it idempotently and `GET` lists it. SQLite schema version 4 makes
@@ -1116,15 +1130,34 @@ security-review gaps. It does not add new discovery protocols.
    mutex linearizes rotation signing with revocation writes in the supported
    single-controller process. Recovery is a fresh enrollment token and a new
    key/serial for the same collector ID, never unrevoke.
-3. **Next — backup/restore and upgrades.** Provide supported SQLite backup and
-   restore commands/procedures, migration testing from every supported schema,
-   rollback/failure behavior, and recovery drills using real generated data.
+3. **Current — backup/restore and upgrades.** Provide `topo storage backup`
+   and `topo storage restore` for verified SQLite snapshots. Neither command
+   overwrites an existing destination. Exercise restore plus forward migration
+   from every supported schema with retained observation/security/policy data,
+   and make all pending migrations one transaction so any failure returns the
+   database to its exact pre-upgrade schema. The supported downgrade procedure
+   is to stop the controller and restore a pre-upgrade backup to a new path;
+   Topo never attempts a lossy reverse migration or overwrites the failed
+   database in place.
 4. **Supply-chain release evidence.** Produce reproducible signed artifacts,
    SBOMs, checksums, and build provenance from CI without weakening the Go 1.23
    and Windows cross-compile gates.
-5. **Packaging.** Ship DEB, RPM, MSI, Helm, and an offline bundle using the
-   same verified artifacts and documented upgrade/rollback paths.
-6. **External security review.** Commission an independent review, remediate
+5. **Package artifacts.** Ship raw archives, DEB, RPM, MSI/MSIX, Helm, and an
+   offline bundle using the same immutable verified artifacts and documented
+   upgrade/rollback paths. The host package installs one `topo` binary and
+   platform service definitions without embedding credentials or silently
+   starting an unconfigured service.
+6. **Package-manager distribution.** Promote the package artifacts through a
+   signed Nischoy-hosted APT repository, a signed Nischoy-hosted RPM repository,
+   `Nischoy-ai/homebrew-tap`, Microsoft's `winget-pkgs` catalog, and an OCI Helm
+   registry. GitHub Releases remain the immutable artifact source of truth;
+   repository/catalog metadata must reference those exact artifacts and
+   checksums rather than rebuilding per channel. Maintain stable and beta
+   promotion, native repository signing/key rotation, and clean-machine fresh
+   install, N-1-to-N upgrade, configuration preservation, uninstall/purge, and
+   rollback tests. Additional ecosystems (Chocolatey, Scoop, AUR, Snap) follow
+   demonstrated demand rather than blocking these initial native channels.
+7. **External security review.** Commission an independent review, remediate
    findings, and retain evidence before any production-readiness claim.
 
 ### Acceptance gates for slice 1
@@ -1193,6 +1226,80 @@ security-review gaps. It does not add new discovery protocols.
   processes when clustered controllers become real.
 - No removal of bearer compatibility. If the shared key was also exposed, the
   operator must rotate it separately.
+
+### Acceptance gates for slice 3
+
+- `topo storage backup -db-dsn <database> -out <backup>` uses SQLite's
+  transactionally consistent snapshot operation, verifies the completed file
+  with `PRAGMA quick_check`, reports its schema version, and publishes it only
+  after syncing it to durable storage.
+- `topo storage restore -from <backup> -db-dsn <new-database>` validates the
+  source read-only, copies it with owner-only permissions, verifies the copy,
+  and never replaces an existing destination or modifies the source backup.
+- Recovery drills restore real persisted observations/assets/relationships and
+  the audit/schedule/revocation state available in each of schema versions 1,
+  2, 3, and 4, then open the restored file with the current binary and retain
+  the data through forward migration.
+- Every pending schema migration is committed in one transaction. A failure in
+  any later version leaves both `PRAGMA user_version` and every earlier schema
+  object at the exact pre-upgrade state.
+- Documentation covers backup before binary/package upgrade, controller
+  shutdown for restore/cutover, forward upgrade, validation, rollback to a new
+  database path with the old binary, retention, filesystem permissions, and
+  the in-memory state that backups cannot preserve.
+- Full Go 1.23 formatting, vet, race/coverage, Linux build, Windows vet/build,
+  CLI smoke, and file-backed recovery-drill gates pass.
+
+### Deliberate non-goals for slice 3
+
+- No reverse/down migration. Restoring the pre-upgrade file is safer and keeps
+  the failed/upgraded database available for diagnosis.
+- No overwrite/`--force` mode and no live restore into a running controller.
+  Cutover is an explicit stop, restore-to-new-path, start, and verify operation.
+- No remote backup destination, scheduler, retention daemon, encryption layer,
+  or PostgreSQL tooling. Operators may copy the verified owner-only snapshot to
+  encrypted managed storage under their own retention policy.
+- SQLite backup covers persisted repository state only. Enrollment tokens,
+  heartbeats, and individual queued/in-flight jobs remain in memory and cannot
+  be recovered from the database.
+
+### Distribution model for slices 4-6
+
+One tagged CI release builds and tests the platform matrix once, then publishes
+immutable GitHub Release artifacts: Linux/macOS/Windows archives, DEB, RPM,
+MSI/MSIX, Helm chart, offline bundle, checksums, SBOM, signatures, and build
+provenance. Package-manager automation promotes those exact bytes; it never
+performs an independent rebuild. Native repository trust remains separate from
+CI provenance: GitHub/Sigstore-style attestations do not replace the persistent
+OpenPGP keys and rotation procedure required by APT/RPM, or Authenticode and
+macOS signing/notarization where those platforms require them.
+
+- **Debian/Ubuntu:** publish `.deb` files plus signed `Packages` and
+  `InRelease` metadata under a Nischoy-controlled HTTPS APT repository. Provide
+  a repository-specific key installed under `/etc/apt/keyrings` and a
+  `Signed-By` source definition; never instruct users to trust a global
+  `apt-key`. Initial command after one-time repository setup:
+  `sudo apt install topo`.
+- **Fedora/RHEL-compatible:** sign each RPM, generate repository metadata,
+  sign `repodata/repomd.xml`, publish a `.repo` definition with package and
+  metadata verification enabled, then support `sudo dnf install topo`.
+- **macOS and Homebrew Linux:** maintain `Nischoy-ai/homebrew-tap`; its formula
+  references immutable release archives/bottles and checksums. Initial command:
+  `brew install nischoy-ai/tap/topo`. Submission to `homebrew/core` is a later
+  adoption/eligibility step, not the launch dependency.
+- **Windows:** publish a signed, silent-installable and uninstallable MSI/MSIX
+  at an immutable publisher URL, then submit/update the `Nischoy.Topo` manifest
+  in Microsoft's `winget-pkgs` repository so users can run
+  `winget install Nischoy.Topo`.
+- **Kubernetes:** publish the Helm chart to an OCI registry and test install,
+  upgrade, rollback, and uninstall against the same application artifacts.
+
+APT/RPM hosting may begin as either static Nischoy-controlled object storage
+plus CDN and standard repository tools, or a managed repository service if its
+operational cost is lower; that hosting decision does not change the signing,
+promotion, or acceptance gates. Repository signing keys must be isolated from
+ordinary build jobs. Stable and beta are explicit promotion channels, and only
+stable passes after the full install/upgrade/rollback matrix succeeds.
 
 ## Follow-on order
 
