@@ -40,7 +40,7 @@ assume access to an earlier chat.
 M2.5 — release readiness and security hardening — is current. Keep it staged
 as focused security/operations slices rather than one packaging mega-PR:
 
-1. **Current slice.** Separate the operator control plane from the collector
+1. **Done.** Separate the operator control plane from the collector
    data plane. With an API key configured, inventory/audit/status reads and
    token/job/schedule mutations require the bearer key; verified collector
    certificates may deliver observations, send heartbeats, poll/report jobs,
@@ -48,9 +48,14 @@ as focused security/operations slices rather than one packaging mega-PR:
    certificate. Preserve bearer-key compatibility on collector endpoints and
    the open no-key evaluation mode, and document that the bearer key still
    carries operator authority.
-2. **Next.** Certificate revocation plus explicit compromise recovery and
-   safer rotation operations.
-3. **Then.** Tested backup/restore and schema upgrade/rollback procedures.
+2. **Current slice.** Certificate revocation plus explicit compromise recovery
+   and safer rotation operations. Persist immutable serial-specific records in
+   SQLite, fail closed during authorization, block rotation by a revoked
+   certificate, surface old/new serials, and recover through fresh-token
+   re-enrollment of the same collector identity. Keep the memory backend
+   evaluation-only and define rotation-race ordering for the supported
+   single-controller process.
+3. **Next.** Tested backup/restore and schema upgrade/rollback procedures.
 4. **Then.** Reproducible signed artifacts, SBOMs, build provenance, and DEB,
    RPM, MSI, Helm, and offline-bundle packaging.
 5. **Gate.** External security review and remediation before any production

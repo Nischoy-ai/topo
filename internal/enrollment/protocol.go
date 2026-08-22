@@ -15,6 +15,7 @@ type EnrollRequest struct {
 type EnrollResponse struct {
 	CertificatePEM   string    `json:"certificate"`
 	CACertificatePEM string    `json:"ca_certificate"`
+	SerialNumber     string    `json:"serial_number"`
 	ExpiresAt        time.Time `json:"expires_at"`
 }
 

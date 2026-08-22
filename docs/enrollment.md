@@ -8,8 +8,9 @@ agent can present its certificate on collector data-plane requests instead
 of, or alongside, the bearer API key. It does not authorize operator reads
 or control-plane mutations. Since a collector certificate is
 deliberately short-lived (90 days), it can also be renewed before it
-expires, authenticated by itself rather than a new token. This is the
-first three of five slices of the milestone; the other two —
+expires, authenticated by itself rather than a new token, or revoked by
+serial number before expiry after a suspected compromise. This is the
+certificate lifecycle foundation used by the other collector capabilities —
 [Collector heartbeats](heartbeats.md) and [job delivery](jobs.md) — are
 separate capabilities that do not require enrollment or mTLS. See
 [project plan](project-plan.md) for the full staged plan.
@@ -54,7 +55,9 @@ TOPO_AGENT_ENROLLMENT_TOKEN='<token from above>' ./bin/topo agent enroll \
 `ca-cert.pem` to `-cert-dir` (`0700`). Pass that directory to
 `topo agent run -mtls-cert-dir` to authenticate outbound requests with the
 enrolled certificate — see [Running as native mTLS](#running-as-native-mtls)
-below.
+below. Enrollment and rotation output includes the issued certificate's
+canonical lowercase hexadecimal serial number; retain that output or recover
+the value later with `openssl x509 -in client-cert.pem -noout -serial`.
 
 | Flag | Command | Purpose |
 | --- | --- | --- |
@@ -164,6 +167,71 @@ effect. Point a systemd timer or equivalent scheduler at
 of the `agent run` service, the same way a `certbot renew` timer is
 typically paired with a reload of whatever consumes its certificate.
 
+Rotation deliberately does not revoke the old serial automatically. This
+avoids locking out a collector when the rotation response or subsequent file
+write is lost. The command prints both old and new serials; after restarting
+the agent and verifying the new certificate works, explicitly revoke the old
+serial using the procedure below.
+
+## Revoking and recovering a certificate
+
+The operator can invalidate one exact collector certificate before its normal
+expiry. Revocation is serial-specific: it does not disable the collector ID,
+the CA, or a newly enrolled certificate for the same collector.
+
+```sh
+curl -s -X POST \
+  -H "Authorization: Bearer $TOPO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"serial_number":"<hex serial>","reason":"collector laptop stolen"}' \
+  https://topo-hub.internal:8443/v1/certificate-revocations
+
+curl -s -H "Authorization: Bearer $TOPO_API_KEY" \
+  https://topo-hub.internal:8443/v1/certificate-revocations
+```
+
+`POST /v1/certificate-revocations` requires the operator bearer credential,
+accepts common copied forms (`0x` prefix, uppercase, and colon separators),
+and stores a canonical lowercase serial. The first request returns `201`; a
+repeat for the same serial returns `200` with the original reason and
+timestamp. Records are immutable and there is intentionally no "unrevoke"
+endpoint. The authoritative record and a `certificate_revoked` audit event
+include the reason but never certificate private-key material.
+
+Application authorization checks the revocation repository after the TLS
+handshake. A revoked certificate receives `401` on observation delivery,
+heartbeats, job polling/results, and `POST /v1/rotate`; a repository lookup
+failure returns `503` rather than accepting the credential. The TLS handshake
+can still succeed because Topo does not publish a CRL or OCSP responder. This
+enforcement therefore requires Topo's native `-mtls` listener to receive the
+verified peer certificate; a reverse proxy that terminates mTLS without
+forwarding a cryptographically trustworthy peer identity cannot provide this
+boundary.
+
+For compromise recovery:
+
+1. Revoke the exposed serial using the operator bearer credential.
+2. Mint a fresh single-use enrollment token.
+3. Re-run `topo agent enroll` for the same collector ID. It creates a fresh
+   key and a different serial; the old immutable revocation does not block it.
+4. Restart `topo agent run` and verify heartbeats or delivery with the new
+   certificate.
+
+A revoked certificate cannot use rotation as a recovery path. Revocation and
+rotation are linearized inside the single supported controller process: a
+rotation already authorized completes before a competing revocation returns;
+if the revocation wins first, rotation returns `401`. Serial values for both
+certificates are returned and audited, so the operator can revoke the newly
+issued serial too if incident timing shows that a rotation completed first.
+
+Use `-db-driver sqlite` for an operational controller. Revocations then live
+in schema version 4 and survive restarts. The default in-memory evaluation
+backend implements identical request semantics but loses revocations on
+restart, along with its other state; it is not a durable compromise boundary.
+The separately possessed bearer key remains an independent compatibility
+credential on collector endpoints, so revoke or rotate that key too if it may
+also have been exposed.
+
 ## Design choices worth knowing
 
 - **The CA's private key is protected by filesystem permissions (`0600`),
@@ -181,11 +249,11 @@ typically paired with a reload of whatever consumes its certificate.
   restart even when discovery/audit/schedule persistence uses SQLite. Retry an
   in-flight enrollment with a freshly minted token after a controller
   restart.
-- **No revocation.** A compromised collector certificate is contained by
-  its bounded 90-day lifetime (or less, if rotated more often), not by a
-  revocation list. Rotation renews a certificate; it does not let the
-  controller invalidate one early. If that proves insufficient, a
-  revocation list is a future, separately scoped addition.
+- **Revocation is application-layer and serial-specific.** Topo does not
+  publish a CRL/OCSP responder or revoke every certificate ever issued for a
+  collector ID. This keeps recovery explicit and permits immediate
+  re-enrollment with a fresh key while retaining immutable evidence for the
+  compromised serial.
 - **The controller's own server certificate is issued fresh on every
   `topo serve -mtls` start and is not persisted or rotated while the
   process runs.** Its 1-year TTL (`enrollment.DefaultServerCertificateTTL`)
@@ -217,7 +285,7 @@ typically paired with a reload of whatever consumes its certificate.
 - **Heartbeats and job delivery exist, but as independent capabilities
   not covered by this document** — see [Collector heartbeats](heartbeats.md)
   and [job delivery](jobs.md). Neither requires enrollment or mTLS.
-- **No revocation**, as above.
+- **No CRL/OCSP distribution or automatic old-serial revocation**, as above.
 - **`-mtls-cert-dir` and `-api-key-ref` are independent flags on
   `topo agent run`; neither one currently causes the other to be skipped
   automatically.** Set only the credential you intend to use for a given

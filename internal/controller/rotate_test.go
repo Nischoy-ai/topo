@@ -141,6 +141,9 @@ func TestRotateIgnoresCSRCommonNameInFavorOfPeerCertificate(t *testing.T) {
 	if newCert.Subject.CommonName != "collector-1" {
 		t.Fatalf("issued certificate common name = %q, want collector-1 (the verified peer identity), not the CSR's requested identity", newCert.Subject.CommonName)
 	}
+	if decoded.SerialNumber != enrollment.CertificateSerial(newCert) {
+		t.Fatalf("response serial = %q, certificate serial = %q", decoded.SerialNumber, enrollment.CertificateSerial(newCert))
+	}
 }
 
 func TestRotateReturns501WhenEnrollmentDisabled(t *testing.T) {

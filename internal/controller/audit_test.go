@@ -149,6 +149,9 @@ func TestRotateIsAudited(t *testing.T) {
 	if len(body.Items) != 1 || body.Items[0].Action != "certificate_rotated" || body.Items[0].Actor != "collector-1" {
 		t.Fatalf("got audit entries %#v, want a single certificate_rotated entry for collector-1", body.Items)
 	}
+	if body.Items[0].Detail["previous_serial_number"] == "" || body.Items[0].Detail["serial_number"] == "" {
+		t.Fatalf("rotation audit entry does not identify both certificate serials: %#v", body.Items[0].Detail)
+	}
 }
 
 func TestJobCreationIsAudited(t *testing.T) {

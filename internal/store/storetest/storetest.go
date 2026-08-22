@@ -38,6 +38,8 @@ func Run(t *testing.T, newRepo func(t *testing.T) store.Repository) {
 	t.Run("GetScheduleUnknownCollectorReturnsErrNotFound", func(t *testing.T) { testScheduleNotFound(t, newRepo(t)) })
 	t.Run("DeleteScheduleRemovesIt", func(t *testing.T) { testScheduleDelete(t, newRepo(t)) })
 	t.Run("ListSchedulesReturnsEveryCollector", func(t *testing.T) { testScheduleList(t, newRepo(t)) })
+	t.Run("CertificateRevocationRoundTripsAndIsImmutable", func(t *testing.T) { testCertificateRevocationRoundTrip(t, newRepo(t)) })
+	t.Run("ConcurrentCertificateRevocationIsIdempotent", func(t *testing.T) { testConcurrentCertificateRevocation(t, newRepo(t)) })
 }
 
 func testEmpty(t *testing.T, repo store.Repository) {
@@ -62,6 +64,97 @@ func testEmpty(t *testing.T, repo store.Repository) {
 	schedules, err := repo.ListSchedules(ctx)
 	if err != nil || len(schedules) != 0 {
 		t.Fatalf("ListSchedules on empty repo: %v, %v", schedules, err)
+	}
+	revocations, err := repo.ListCertificateRevocations(ctx)
+	if err != nil || len(revocations) != 0 {
+		t.Fatalf("ListCertificateRevocations on empty repo: %v, %v", revocations, err)
+	}
+	revoked, err := repo.IsCertificateRevoked(ctx, "1")
+	if err != nil || revoked {
+		t.Fatalf("IsCertificateRevoked on empty repo: %v, %v", revoked, err)
+	}
+}
+
+func testCertificateRevocationRoundTrip(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	first := store.CertificateRevocation{
+		SerialNumber: "a1",
+		Reason:       "collector credential copied from disk",
+		RevokedAt:    time.Date(2026, 8, 21, 12, 0, 0, 123, time.UTC),
+	}
+	created, err := repo.RevokeCertificate(ctx, first)
+	if err != nil || !created {
+		t.Fatalf("first RevokeCertificate = created %v, err %v; want true, nil", created, err)
+	}
+	revoked, err := repo.IsCertificateRevoked(ctx, first.SerialNumber)
+	if err != nil || !revoked {
+		t.Fatalf("IsCertificateRevoked = %v, %v; want true, nil", revoked, err)
+	}
+
+	replacement := first
+	replacement.Reason = "must not replace the first reason"
+	replacement.RevokedAt = first.RevokedAt.Add(time.Hour)
+	created, err = repo.RevokeCertificate(ctx, replacement)
+	if err != nil || created {
+		t.Fatalf("repeat RevokeCertificate = created %v, err %v; want false, nil", created, err)
+	}
+	if _, err := repo.RevokeCertificate(ctx, store.CertificateRevocation{SerialNumber: "02", Reason: "second", RevokedAt: first.RevokedAt}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repo.ListCertificateRevocations(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].SerialNumber != "02" || got[1].SerialNumber != "a1" {
+		t.Fatalf("revocations not sorted by serial: %#v", got)
+	}
+	if got[1].Reason != first.Reason || !got[1].RevokedAt.Equal(first.RevokedAt) {
+		t.Fatalf("repeat revoke changed immutable record: got %#v, want %#v", got[1], first)
+	}
+}
+
+func testConcurrentCertificateRevocation(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	const workers = 16
+	created := make(chan bool, workers)
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			ok, err := repo.RevokeCertificate(ctx, store.CertificateRevocation{
+				SerialNumber: "ff",
+				Reason:       "worker " + string(rune('a'+i)),
+				RevokedAt:    time.Date(2026, 8, 21, 12, 0, i, 0, time.UTC),
+			})
+			created <- ok
+			errs <- err
+		}(i)
+	}
+	wg.Wait()
+	close(created)
+	close(errs)
+	createdCount := 0
+	for ok := range created {
+		if ok {
+			createdCount++
+		}
+	}
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if createdCount != 1 {
+		t.Fatalf("created count = %d, want exactly 1", createdCount)
+	}
+	items, err := repo.ListCertificateRevocations(ctx)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("revocations = %#v, %v; want one item", items, err)
 	}
 }
 

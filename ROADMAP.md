@@ -64,8 +64,8 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 ## M2.5 — release readiness and security hardening
 
 - **Implemented (authorization boundary):** operator reads and control-plane mutations require the configured bearer API key; verified collector certificates are limited to observation delivery, heartbeats, job polling/results, and certificate rotation. mTLS observations are bound to the peer certificate identity. The bearer key remains accepted on collector endpoints for backward compatibility, and leaving it unset preserves evaluation mode.
-- **Next:** certificate revocation and safer rotation/recovery operations.
-- Backup/restore and upgrade tooling with tested rollback and migration paths.
+- **Implemented (certificate revocation and compromise recovery):** operator-only `POST /v1/certificate-revocations` immutably revokes one canonical certificate serial; `GET /v1/certificate-revocations` lists the records. SQLite schema version 4 persists revocations across restarts, application authorization fails closed on lookup errors, revoked certificates cannot use collector endpoints or rotate, and fresh-token re-enrollment recovers the same collector identity with a new key and serial. Rotation surfaces old/new serials and is linearized against revocation in the supported single-controller process. See [docs/enrollment.md](docs/enrollment.md#revoking-and-recovering-a-certificate).
+- **Next:** backup/restore and upgrade tooling with tested rollback and migration paths.
 - Reproducible signed artifacts, SBOMs, and build provenance.
 - DEB, RPM, MSI, Helm, and offline bundle packaging.
 - External security review and remediation before any production claim.

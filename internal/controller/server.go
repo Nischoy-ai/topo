@@ -11,7 +11,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+	"unicode"
 
 	"github.com/Nischoy-ai/topo/internal/audit"
 	"github.com/Nischoy-ai/topo/internal/enrollment"
@@ -32,6 +34,12 @@ const maxHeartbeatRequestBytes = 4 << 10
 // maxJobRequestBytes bounds POST /v1/jobs and POST /v1/jobs/{id}/result
 // request bodies, both small fixed-shape objects.
 const maxJobRequestBytes = 4 << 10
+
+// maxCertificateRevocationRequestBytes bounds the small fixed-shape
+// certificate revocation request.
+const maxCertificateRevocationRequestBytes = 4 << 10
+
+type collectorIdentityContextKey struct{}
 
 type Server struct {
 	Store  store.Repository
@@ -56,6 +64,12 @@ type Server struct {
 	// Always populated by New, for the same reason as Heartbeats.
 	Jobs    *JobStore
 	started time.Time
+
+	// certificateMu linearizes rotation authorization with revocation writes.
+	// A rotation already holding the read lock completes before a competing
+	// revocation; a revocation holding the write lock makes every later
+	// rotation observe the old certificate as revoked.
+	certificateMu sync.RWMutex
 }
 
 func New(repo store.Repository, logger *slog.Logger, apiKey string) *Server {
@@ -82,6 +96,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/enrollment-tokens", s.adminAuth(s.createEnrollmentToken))
 	mux.HandleFunc("POST /v1/enroll", s.enroll)
 	mux.HandleFunc("POST /v1/rotate", s.rotate)
+	mux.HandleFunc("POST /v1/certificate-revocations", s.adminAuth(s.createCertificateRevocation))
+	mux.HandleFunc("GET /v1/certificate-revocations", s.adminAuth(s.listCertificateRevocations))
 	mux.HandleFunc("POST /v1/heartbeats", s.collectorAuth(s.heartbeat))
 	mux.HandleFunc("GET /v1/collectors", s.adminAuth(s.collectors))
 	mux.HandleFunc("POST /v1/jobs", s.adminAuth(s.createJob))
@@ -99,12 +115,13 @@ func (s *Server) Handler() http.Handler {
 // POST /v1/jobs/{id}/result). A verified mTLS peer certificate's subject
 // always wins over fallback (whatever the caller claims via a request
 // body field or query parameter), exactly as for POST /v1/rotate, so a
-// collector can never act as a different one. fallback is used only when
-// there is no verified peer certificate, since a bearer-key-authenticated
-// request carries no identity of its own.
+// collector can never act as a different one. collectorAuth installs this
+// context value only after proving the certificate is not revoked. fallback
+// is used for bearer-key authorization, including when a revoked certificate
+// was presented alongside that independent compatibility credential.
 func collectorIdentity(r *http.Request, fallback string) string {
-	if hasVerifiedCollectorCertificate(r) {
-		return r.TLS.PeerCertificates[0].Subject.CommonName
+	if identity, ok := r.Context().Value(collectorIdentityContextKey{}).(string); ok {
+		return identity
 	}
 	return fallback
 }
@@ -117,13 +134,35 @@ func hasVerifiedCollectorCertificate(r *http.Request) bool {
 }
 
 // collectorAuth protects the collector data plane. An enrolled certificate
-// is preferred because it carries a per-collector identity; the shared bearer
-// key remains accepted so existing agents and evaluation deployments do not
+// is preferred because it carries a per-collector identity, but only after a
+// fail-closed revocation lookup. The shared bearer key remains accepted as an
+// independent credential so existing agents and evaluation deployments do not
 // break while certificate enrollment stays opt-in.
 func (s *Server) collectorAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if hasVerifiedCollectorCertificate(r) {
-			next(w, r)
+			cert := r.TLS.PeerCertificates[0]
+			s.certificateMu.RLock()
+			revoked, err := s.Store.IsCertificateRevoked(r.Context(), enrollment.CertificateSerial(cert))
+			s.certificateMu.RUnlock()
+			if err != nil {
+				s.Logger.Error("check certificate revocation failed", "err", err)
+				writeError(w, http.StatusServiceUnavailable, "certificate revocation check unavailable")
+				return
+			}
+			if revoked {
+				// The shared bearer key remains an independent compatibility
+				// credential. Do not bind identity to the revoked certificate
+				// when that credential is what authorizes the request.
+				if s.APIKey != "" && r.Header.Get("Authorization") == "Bearer "+s.APIKey {
+					next(w, r)
+					return
+				}
+				writeError(w, http.StatusUnauthorized, "certificate revoked")
+				return
+			}
+			ctx := context.WithValue(r.Context(), collectorIdentityContextKey{}, cert.Subject.CommonName)
+			next(w, r.WithContext(ctx))
 			return
 		}
 		if s.APIKey != "" && r.Header.Get("Authorization") != "Bearer "+s.APIKey {
@@ -132,6 +171,87 @@ func (s *Server) collectorAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+type certificateRevocationRequest struct {
+	SerialNumber string `json:"serial_number"`
+	Reason       string `json:"reason"`
+}
+
+func validRevocationReason(reason string) bool {
+	if reason == "" || len(reason) > 512 || strings.TrimSpace(reason) != reason {
+		return false
+	}
+	for _, r := range reason {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Server) createCertificateRevocation(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxCertificateRevocationRequestBytes)
+	var req certificateRevocationRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid certificate revocation request: "+err.Error())
+		return
+	}
+	serial, err := enrollment.NormalizeCertificateSerial(req.SerialNumber)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !validRevocationReason(req.Reason) {
+		writeError(w, http.StatusBadRequest, "reason must be 1 to 512 bytes, have no surrounding whitespace, and contain no control characters")
+		return
+	}
+
+	revocation := store.CertificateRevocation{
+		SerialNumber: serial,
+		Reason:       req.Reason,
+		RevokedAt:    time.Now().UTC(),
+	}
+	s.certificateMu.Lock()
+	created, err := s.Store.RevokeCertificate(r.Context(), revocation)
+	if err == nil && created {
+		s.recordAudit(r.Context(), "certificate_revoked", "api-key", map[string]string{
+			"serial_number": serial,
+			"reason":        req.Reason,
+		})
+	}
+	s.certificateMu.Unlock()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !created {
+		items, listErr := s.Store.ListCertificateRevocations(r.Context())
+		if listErr != nil {
+			writeError(w, http.StatusInternalServerError, listErr.Error())
+			return
+		}
+		for _, existing := range items {
+			if existing.SerialNumber == serial {
+				writeJSON(w, http.StatusOK, existing)
+				return
+			}
+		}
+		writeError(w, http.StatusInternalServerError, "certificate revocation was not found after idempotent write")
+		return
+	}
+	writeJSON(w, http.StatusCreated, revocation)
+}
+
+func (s *Server) listCertificateRevocations(w http.ResponseWriter, r *http.Request) {
+	items, err := s.Store.ListCertificateRevocations(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "count": len(items)})
 }
 
 // adminAuth protects operator reads and control-plane mutations. Collector
@@ -298,13 +418,20 @@ func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, err.Error())
 		return
 	}
+	serial, err := enrollment.CertificateSerialFromPEM(certPEM)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
 	expiresAt := time.Now().Add(enrollment.DefaultCertificateTTL)
 	s.recordAudit(r.Context(), "collector_enrolled", req.CollectorID, map[string]string{
-		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+		"serial_number": serial,
+		"expires_at":    expiresAt.UTC().Format(time.RFC3339),
 	})
 	writeJSON(w, http.StatusOK, enrollment.EnrollResponse{
 		CertificatePEM:   string(certPEM),
 		CACertificatePEM: string(s.CA.CACertPEM()),
+		SerialNumber:     serial,
 		ExpiresAt:        expiresAt,
 	})
 }
@@ -354,18 +481,43 @@ func (s *Server) rotate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldSerial := enrollment.CertificateSerial(r.TLS.PeerCertificates[0])
+	// Keep authorization, signing, and the response on one side of a
+	// competing revocation write. Whichever operation takes the lock first
+	// defines the observable ordering of the race.
+	s.certificateMu.RLock()
+	defer s.certificateMu.RUnlock()
+	revoked, err := s.Store.IsCertificateRevoked(r.Context(), oldSerial)
+	if err != nil {
+		s.Logger.Error("check certificate revocation before rotation failed", "err", err)
+		writeError(w, http.StatusServiceUnavailable, "certificate revocation check unavailable")
+		return
+	}
+	if revoked {
+		writeError(w, http.StatusUnauthorized, "certificate revoked")
+		return
+	}
+
 	certPEM, err := s.CA.Sign(csr, collectorID, enrollment.DefaultCertificateTTL)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	newSerial, err := enrollment.CertificateSerialFromPEM(certPEM)
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return
 	}
 	expiresAt := time.Now().Add(enrollment.DefaultCertificateTTL)
 	s.recordAudit(r.Context(), "certificate_rotated", collectorID, map[string]string{
-		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+		"previous_serial_number": oldSerial,
+		"serial_number":          newSerial,
+		"expires_at":             expiresAt.UTC().Format(time.RFC3339),
 	})
 	writeJSON(w, http.StatusOK, enrollment.EnrollResponse{
 		CertificatePEM:   string(certPEM),
 		CACertificatePEM: string(s.CA.CACertPEM()),
+		SerialNumber:     newSerial,
 		ExpiresAt:        expiresAt,
 	})
 }

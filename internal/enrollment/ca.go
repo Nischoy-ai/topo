@@ -30,9 +30,8 @@ const (
 	caValidity = 10 * 365 * 24 * time.Hour
 
 	// DefaultCertificateTTL bounds an issued or rotated collector
-	// certificate's lifetime. A bounded TTL limits how long a compromised
-	// collector key remains trusted, since Topo does not implement
-	// revocation yet; `topo agent rotate` renews it before it expires.
+	// certificate's lifetime. A bounded TTL remains defense in depth beside
+	// serial-specific revocation; `topo agent rotate` renews it before expiry.
 	DefaultCertificateTTL = 90 * 24 * time.Hour
 
 	// DefaultServerCertificateTTL bounds the controller's own TLS server

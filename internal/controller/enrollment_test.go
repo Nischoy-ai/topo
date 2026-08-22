@@ -122,6 +122,9 @@ func TestEnrollFullFlow(t *testing.T) {
 	if cert.Subject.CommonName != "collector-1" {
 		t.Fatalf("common name = %q", cert.Subject.CommonName)
 	}
+	if resp.SerialNumber != enrollment.CertificateSerial(cert) {
+		t.Fatalf("response serial = %q, certificate serial = %q", resp.SerialNumber, enrollment.CertificateSerial(cert))
+	}
 	if _, err := cert.Verify(x509.VerifyOptions{Roots: pool, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}}); err != nil {
 		t.Fatalf("issued certificate does not verify: %v", err)
 	}
