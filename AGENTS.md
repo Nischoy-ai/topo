@@ -55,14 +55,18 @@ as focused security/operations slices rather than one packaging mega-PR:
    re-enrollment of the same collector identity. Keep the memory backend
    evaluation-only and define rotation-race ordering for the supported
    single-controller process.
-3. **Current slice.** Tested backup/restore and schema upgrade/rollback
+3. **Done.** Tested backup/restore and schema upgrade/rollback
    procedures. Backups and restores must be verified and non-overwriting;
    every supported SQLite schema must retain real data through restore and
    forward migration; all pending migrations must roll back together on a
    failure. Rollback means restoring the pre-upgrade backup to a new path,
    never reverse-migrating or overwriting the failed database in place.
-4. **Then.** Reproducible signed artifacts, SBOMs, checksums, and build
-   provenance.
+4. **Current slice.** Reproducible signed artifacts, SBOMs, checksums, and
+   build provenance. Build Linux/macOS/Windows amd64/arm64 archives twice from
+   different paths with exact Go 1.23.12, reject any byte drift, sign the
+   checksum manifest keylessly, generate signed GitHub provenance and SBOM
+   attestations, pin release actions by commit, verify evidence before a tag
+   can create a GitHub Release, and document independent consumer verification.
 5. **Then.** DEB, RPM, MSI/MSIX, Helm, raw archives, and offline-bundle
    packaging from the same verified release artifacts.
 6. **Then.** Publish those artifacts through a signed Nischoy APT repository,

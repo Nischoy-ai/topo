@@ -1,0 +1,141 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up the pinned release toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+
+      - name: Validate release input
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$GITHUB_REF_NAME"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "invalid semantic release tag: $version" >&2
+            exit 1
+          fi
+          if [[ "$(go env GOVERSION)" != "go1.23.12" ]]; then
+            echo "release requires exactly go1.23.12" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "filename_version=${version#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build twice and require byte-for-byte reproduction
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: scripts/build-release.sh "$VERSION" "$GITHUB_SHA" dist
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          file: dist/topo_${{ steps.release.outputs.filename_version }}_linux_amd64.tar.gz
+          format: spdx-json
+          output-file: dist/topo_${{ steps.release.outputs.filename_version }}_sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Install the pinned Cosign client
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign the checksum manifest with keyless Sigstore
+        env:
+          VERSION: ${{ steps.release.outputs.filename_version }}
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --bundle "dist/topo_${VERSION}_checksums.sigstore.json" \
+            dist/SHA256SUMS
+
+      - name: Generate signed SLSA build provenance
+        id: provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-checksums: dist/SHA256SUMS
+
+      - name: Preserve the provenance bundle with the release
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          VERSION: ${{ steps.release.outputs.filename_version }}
+        run: cp "$BUNDLE" "dist/topo_${VERSION}_provenance.sigstore.json"
+
+      - name: Generate signed SBOM attestation
+        id: sbom-attestation
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-checksums: dist/SHA256SUMS
+          sbom-path: dist/topo_${{ steps.release.outputs.filename_version }}_sbom.spdx.json
+
+      - name: Preserve the SBOM attestation bundle with the release
+        env:
+          BUNDLE: ${{ steps.sbom-attestation.outputs.bundle-path }}
+          VERSION: ${{ steps.release.outputs.filename_version }}
+        run: cp "$BUNDLE" "dist/topo_${VERSION}_sbom-attestation.sigstore.json"
+
+      - name: Verify signatures and provenance before publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.filename_version }}
+        run: |
+          set -euo pipefail
+          cosign verify-blob \
+            --bundle "dist/topo_${VERSION}_checksums.sigstore.json" \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            dist/SHA256SUMS
+          gh attestation verify "dist/topo_${VERSION}_linux_amd64.tar.gz" \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Retain release evidence as a workflow artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-${{ steps.release.outputs.filename_version }}-release-evidence
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish immutable GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          prerelease=()
+          if [[ "$VERSION" == *-* ]]; then
+            prerelease+=(--prerelease)
+          fi
+          gh release create "$VERSION" dist/* \
+            --verify-tag \
+            --title "Topo $VERSION" \
+            --generate-notes \
+            "${prerelease[@]}"
