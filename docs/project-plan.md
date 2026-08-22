@@ -68,6 +68,18 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   artifacts and supply-chain evidence. Package artifacts, package-manager
   distribution, and an external security review follow in that order. See
   "Current milestone: M2.5" below.
+- **Verified in the current slice (release supply chain):** the committed tree
+  builds the Linux, macOS, and Windows amd64/arm64 matrix twice from different
+  absolute source paths and reproduces every archive, checksum, and metadata
+  byte-for-byte. Archive tests independently cover deterministic tar.gz/ZIP
+  contents, executable modes, semantic release/pre-release validation, and
+  rejection of version/commit injection. A locally extracted macOS arm64
+  binary reports the embedded `v0.0.0-dev` version. Under exact Go 1.23.12,
+  `gofmt`, `git diff --check`, `go vet ./...`, `go test -race
+  -coverprofile=coverage.out ./...`, and Linux `go build -trimpath` pass, as
+  do Windows amd64 vet/build and the full six-target reproducibility proof.
+  The tag-only OIDC signing, attestation, and publication path deliberately
+  remains untriggered until a reviewed `main` commit is intentionally tagged.
 - **Verified in the previous slice (backup/restore):** `topo storage backup` creates a compact,
   transactionally consistent SQLite snapshot, protects and verifies it, and
   publishes without overwriting; `topo storage restore` read-only validates a
