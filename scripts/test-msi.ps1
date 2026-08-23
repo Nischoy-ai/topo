@@ -67,9 +67,12 @@ if ($upgrade.ExitCode -ne 0) {
     Get-Content -LiteralPath $upgradeLog
     throw "MSI upgrade failed with exit code $($upgrade.ExitCode)"
 }
-$registrations = Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" |
-    Where-Object { $_.DisplayName -eq "Nischoy Topo" }
-if (@($registrations).Count -ne 1 -or $registrations.DisplayVersion -ne "0.0.1.0") {
+$registrations = @(Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" |
+    Where-Object {
+        $null -ne $_.PSObject.Properties["DisplayName"] -and
+        $_.DisplayName -eq "Nischoy Topo"
+    })
+if ($registrations.Count -ne 1 -or $registrations[0].DisplayVersion -ne "0.0.1.0") {
     throw "MSI major upgrade did not replace the prior product registration"
 }
 
