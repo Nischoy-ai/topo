@@ -205,7 +205,7 @@ func TestEnrollClientTrustsPinnedBootstrapCACertificate(t *testing.T) {
 	server.StartTLS()
 	t.Cleanup(server.Close)
 
-	token := mintToken(t, s.Handler())
+	token := mintToken(t, s.Handler(), "collector-bootstrap")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -237,7 +237,7 @@ func TestEnrollClientRejectsUntrustedServerWithoutBootstrapCACert(t *testing.T) 
 	server.StartTLS()
 	t.Cleanup(server.Close)
 
-	token := mintToken(t, s.Handler())
+	token := mintToken(t, s.Handler(), "collector-bootstrap")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

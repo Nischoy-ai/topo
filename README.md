@@ -124,9 +124,13 @@ controller's bearer API key:
 
 ```sh
 ./bin/topo serve -api-key-ref env:TOPO_API_KEY -ca-dir /var/lib/topo-hub/ca
-curl -s -X POST -H "Authorization: Bearer $TOPO_API_KEY" http://localhost:8080/v1/enrollment-tokens
+curl -s -X POST -H "Authorization: Bearer $TOPO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"collector_id":"collector-1"}' \
+  http://localhost:8080/v1/enrollment-tokens
 TOPO_AGENT_ENROLLMENT_TOKEN='<token from above>' ./bin/topo agent enroll \
-  -controller-url http://localhost:8080 -cert-dir /etc/topo-agent/enrollment
+  -controller-url http://localhost:8080 -collector-id collector-1 \
+  -cert-dir /etc/topo-agent/enrollment
 ```
 
 See [Collector enrollment](docs/enrollment.md). The issued certificate now
@@ -181,7 +185,7 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are resolved through bounded `env:`, `file:`, `vault:`, or `k8s:` references and never serialized into observations, CLI arguments, or logs.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
-- Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
+- Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token bound to that collector ID at issuance; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 - Outbound mTLS (opt-in via `-mtls`, requires `-ca-dir`) lets the controller terminate TLS natively and authenticate collectors by their enrolled certificate instead of the bearer API key; a client presenting no certificate at all still reaches `POST /v1/enroll` (authenticated by its one-time token). A verified collector certificate authorizes collector data-plane endpoints but not operator endpoints. See [Running as native mTLS](docs/enrollment.md#running-as-native-mtls).
 - Certificate rotation (`topo agent rotate`) renews a collector's certificate before its 90-day expiry, authenticated by the current certificate itself over mTLS rather than a new token, with no bearer-API-key fallback and no way to request a certificate for any identity but the one already proven. See [Renewing a certificate](docs/enrollment.md#renewing-a-certificate).
 - Certificate revocation (`POST /v1/certificate-revocations`) immutably invalidates one exact serial; SQLite persists the record across restarts, revoked certificates cannot rotate, and compromise recovery re-enrolls the same collector ID with a fresh key. Revocation lookup failures fail closed. See [Revoking and recovering a certificate](docs/enrollment.md#revoking-and-recovering-a-certificate).

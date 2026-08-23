@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,9 +46,13 @@ func newEnrollmentTestServer(t *testing.T) *Server {
 	return s
 }
 
-func mintToken(t *testing.T, h http.Handler) string {
+func mintToken(t *testing.T, h http.Handler, collectorID string) string {
 	t.Helper()
-	r := httptest.NewRequest(http.MethodPost, "/v1/enrollment-tokens", nil)
+	body, err := json.Marshal(enrollment.TokenRequest{CollectorID: collectorID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodPost, "/v1/enrollment-tokens", bytes.NewReader(body))
 	r.Header.Set("Authorization", "Bearer secret")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
@@ -57,6 +62,9 @@ func mintToken(t *testing.T, h http.Handler) string {
 	var resp enrollment.TokenResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
+	}
+	if resp.CollectorID != collectorID {
+		t.Fatalf("token response collector_id = %q, want %q", resp.CollectorID, collectorID)
 	}
 	return resp.Token
 }
@@ -90,10 +98,36 @@ func TestCreateEnrollmentTokenRequiresAuth(t *testing.T) {
 	}
 }
 
+func TestCreateEnrollmentTokenRejectsInvalidRequest(t *testing.T) {
+	h := newEnrollmentTestServer(t).Handler()
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "empty body"},
+		{name: "empty collector", body: `{"collector_id":""}`},
+		{name: "control character", body: `{"collector_id":"collector\u0000one"}`},
+		{name: "unknown field", body: `{"collector_id":"collector-1","extra":true}`},
+		{name: "multiple objects", body: `{"collector_id":"collector-1"}{"collector_id":"collector-2"}`},
+		{name: "oversized", body: strings.Repeat(" ", maxEnrollmentTokenRequestBytes) + `{"collector_id":"collector-1"}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/v1/enrollment-tokens", bytes.NewBufferString(test.body))
+			r.Header.Set("Authorization", "Bearer secret")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
 func TestEnrollFullFlow(t *testing.T) {
 	s := newEnrollmentTestServer(t)
 	h := s.Handler()
-	token := mintToken(t, h)
+	token := mintToken(t, h, "collector-1")
 
 	body, _ := json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "collector-1", CSR: testCSRBase64(t, "collector-1")})
 	r := httptest.NewRequest(http.MethodPost, "/v1/enroll", bytes.NewReader(body))
@@ -142,7 +176,7 @@ func TestEnrollFullFlow(t *testing.T) {
 func TestEnrollRejectsMalformedCSRWithoutBurningToken(t *testing.T) {
 	s := newEnrollmentTestServer(t)
 	h := s.Handler()
-	token := mintToken(t, h)
+	token := mintToken(t, h, "collector-1")
 
 	body, _ := json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "collector-1", CSR: "not-valid-base64!!"})
 	r := httptest.NewRequest(http.MethodPost, "/v1/enroll", bytes.NewReader(body))
@@ -175,12 +209,56 @@ func TestEnrollRejectsInvalidToken(t *testing.T) {
 	}
 }
 
+func TestEnrollRejectsCollectorMismatchWithoutBurningToken(t *testing.T) {
+	s := newEnrollmentTestServer(t)
+	h := s.Handler()
+	token := mintToken(t, h, "collector-1")
+
+	body, err := json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "collector-2", CSR: testCSRBase64(t, "collector-2")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodPost, "/v1/enroll", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("mismatched enrollment status = %d, want 401: %s", w.Code, w.Body.String())
+	}
+	var rejected map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &rejected); err != nil {
+		t.Fatal(err)
+	}
+	if rejected["error"] != enrollment.ErrInvalidToken.Error() {
+		t.Fatalf("mismatch error = %q, want generic invalid-token error", rejected["error"])
+	}
+	if strings.Contains(w.Body.String(), "collector-1") {
+		t.Fatal("mismatch response disclosed the token's bound collector identity")
+	}
+
+	// A mismatched request does not consume the token. The intended collector
+	// can still use it once with a valid CSR.
+	body, err = json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "collector-1", CSR: testCSRBase64(t, "collector-1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r = httptest.NewRequest(http.MethodPost, "/v1/enroll", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("bound collector enrollment status = %d, want 200: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestEnrollClientEndToEnd(t *testing.T) {
 	s := newEnrollmentTestServer(t)
 	httpServer := httptest.NewServer(s.Handler())
 	defer httpServer.Close()
 
-	tokenRequest := httptest.NewRequest(http.MethodPost, "/v1/enrollment-tokens", nil)
+	tokenBody, err := json.Marshal(enrollment.TokenRequest{CollectorID: "collector-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenRequest := httptest.NewRequest(http.MethodPost, "/v1/enrollment-tokens", bytes.NewReader(tokenBody))
 	tokenRequest.Header.Set("Authorization", "Bearer secret")
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, tokenRequest)
@@ -237,7 +315,7 @@ func TestEnrollClientRejectsNonHTTPURL(t *testing.T) {
 func TestEnrollRejectsInvalidCollectorID(t *testing.T) {
 	s := newEnrollmentTestServer(t)
 	h := s.Handler()
-	token := mintToken(t, h)
+	token := mintToken(t, h, "collector-1")
 	body, _ := json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "", CSR: testCSRBase64(t, "collector-1")})
 	r := httptest.NewRequest(http.MethodPost, "/v1/enroll", bytes.NewReader(body))
 	w := httptest.NewRecorder()

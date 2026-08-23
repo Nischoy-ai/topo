@@ -174,8 +174,10 @@ applied to WinRM real-host compatibility.
 The controller can act as its own certificate authority (ECDSA P-256,
 self-signed, `-ca-dir`) and issue collectors short-lived (90-day) client
 certificates through `POST /v1/enrollment-tokens` (existing bearer-key
-auth, mints a single-use one-hour token) and `POST /v1/enroll` (redeems the
-token and signs a submitted CSR). The private key is generated on the
+auth, mints a single-use one-hour token bound to an operator-selected
+collector ID) and `POST /v1/enroll` (redeems the token only for that identity
+and signs a submitted CSR). A request for another collector identity is
+rejected without consuming the token. The private key is generated on the
 collector and never transmitted; only the CSR — a public key plus a
 signature proving possession of the private key — crosses the network. A
 malformed enrollment request is rejected before the token is redeemed, so

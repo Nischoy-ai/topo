@@ -25,8 +25,9 @@ Enrollment and mTLS are entirely opt-in and additive. `topo serve` without
    `topo serve -ca-dir /path/to/ca` loads a CA persisted at that path, or
    generates and persists a new one (ECDSA P-256, self-signed, 10-year
    validity) if none exists yet.
-2. An administrator mints a single-use, one-hour enrollment token using the
-   controller's existing bearer API key, and gives it to the collector
+2. An administrator selects the intended collector ID and mints a single-use,
+   one-hour enrollment token bound to that exact identity using the
+   controller's existing bearer API key, then gives it to the collector
    out-of-band (for example, baked into the collector's deployment
    configuration via the same credential-reference contract as every other
    Topo secret).
@@ -34,20 +35,24 @@ Enrollment and mTLS are entirely opt-in and additive. `topo serve` without
    a CSR from it — **the private key never leaves the collector**; only the
    CSR (the public key plus a signature proving possession of the private
    key) is sent to the controller.
-4. The controller validates the CSR's self-signature, then redeems the
-   token, then signs a 90-day client-authentication certificate and returns
-   it along with the CA's own certificate.
+4. The controller validates the CSR's self-signature, rejects an enrollment
+   identity that does not match the token without consuming it, then redeems
+   the token and signs a 90-day client-authentication certificate for that
+   identity. It returns the certificate along with the CA's own certificate.
 
 ```sh
 # On the controller:
 ./bin/topo serve -api-key-ref env:TOPO_API_KEY -ca-dir /var/lib/topo-hub/ca
 curl -s -X POST -H "Authorization: Bearer $TOPO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"collector_id":"collector-1"}' \
   https://topo-hub.internal:8443/v1/enrollment-tokens
-# {"token":"...","expires_at":"..."}
+# {"token":"...","collector_id":"collector-1","expires_at":"..."}
 
 # On the collector:
 TOPO_AGENT_ENROLLMENT_TOKEN='<token from above>' ./bin/topo agent enroll \
   -controller-url https://topo-hub.internal:8443 \
+  -collector-id collector-1 \
   -cert-dir /etc/topo-agent/enrollment
 ```
 
@@ -245,6 +250,10 @@ also have been exposed.
   and signature verification.** A malformed enrollment request never
   consumes a valid token, so an operator does not need to mint a new one
   just because a request had a typo.
+- **Every token is bound to one collector ID when it is issued.** An
+  enrollment request naming another identity receives the same generic error
+  as an unknown, expired, or used token and does not consume the token. The
+  intended collector can correct its configuration and retry once.
 - **Tokens are single-use and in-memory.** The token store does not survive a
   restart even when discovery/audit/schedule persistence uses SQLite. Retry an
   in-flight enrollment with a freshly minted token after a controller

@@ -32,7 +32,7 @@ Schema versioning uses SQLite's own `PRAGMA user_version` plus a small in-code m
 
 `GET /v1/audit` (operator bearer key required) returns an append-only, hash-chained log of admin/security-relevant controller actions:
 
-- `enrollment_token_issued` — actor is `api-key`; detail carries `token_fingerprint` (a SHA-256 fingerprint, never the raw token — see below) and `expires_at`.
+- `enrollment_token_issued` — actor is `api-key`; detail carries the intended `collector_id`, `token_fingerprint` (a SHA-256 fingerprint, never the raw token — see below), and `expires_at`.
 - `collector_enrolled` — actor is the enrolling collector's ID; detail carries `serial_number` and `expires_at`.
 - `certificate_rotated` — actor is the collector's verified peer-certificate identity; detail carries the previous and new serials plus `expires_at`.
 - `certificate_revoked` — actor is `api-key`; detail carries the canonical `serial_number` and bounded operator-supplied `reason`. The durable revocation row is authoritative; this audit append follows the same best-effort policy as other actions.
