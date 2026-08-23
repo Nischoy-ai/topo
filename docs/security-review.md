@@ -115,14 +115,43 @@ response and does not consume the token. Regression coverage includes the token
 store, the real controller API, concurrent correct/mismatched redemption,
 bounded request parsing, response identity, and audit redaction/identity.
 The implementation is commit `0e61e03` in
-<https://github.com/Nischoy-ai/topo/pull/35>; the complete pinned
+<https://github.com/Nischoy-ai/topo/pull/35>, merged to `main` as `30faccb`;
+the complete pinned
 `scripts/security-review-checks.sh` gate passes under exact Go 1.25.13 with
 zero reachable vulnerabilities.
 
-This is maintainer triage and remediation, not independent verification. The
-finding remains open for independent retest, the other maintainer-audit findings
-remain to be remediated or dispositioned under the protocol below, and the M2.5
-gate remains open.
+The same audit identified `TSR-2026-002`: under a normal process umask, SQLite
+created the live database with default mode `0644`, exposing observations,
+resolved state, audit entries, schedules, and revocations to other local users.
+The focused fix accepts a filesystem path rather than a SQLite URI, exclusively
+pre-creates a missing file and applies mode `0600` before SQLite can open it,
+tightens an existing regular file to the same mode, rejects final database and
+sidecar symlinks, and opens with SQLite `mode=rw` so deletion cannot trigger an
+unprotected recreation. WAL, shared-memory, and rollback-journal sidecars are
+protected before and after open; SQLite-created sidecars inherit the main-file
+mode.
+
+It also fixes the same root cause in `TSR-2026-009`: `VACUUM INTO` previously
+created a complete backup beside its destination and Topo applied mode `0600`
+only after the copy finished. Backup and restore staging now occurs beneath a
+fresh mode-`0700` directory created before SQLite receives the path. The
+completed snapshot is still changed to `0600`, integrity-checked, synced, and
+hard-linked without overwrite to its final destination, after which the private
+directory is removed. Regression tests set process umask to `0000`, require
+`0600` for the live database, WAL/SHM sidecars, and published backup, require
+`0700` throughout unpublished staging, verify cleanup, tighten a pre-existing
+`0644` database, and reject database/sidecar symlinks. Existing round-trip,
+every-schema recovery, migration rollback, corruption, and non-overwrite tests
+remain unchanged and passing. The complete pinned
+`scripts/security-review-checks.sh` gate passes under exact Go 1.25.13 with
+zero reachable `govulncheck` findings, the full race/coverage suite, Linux
+vet/build, and Windows amd64 vet/build. The implementation is commit `da08ab3`
+in <https://github.com/Nischoy-ai/topo/pull/37>.
+
+These are maintainer triage and remediations, not independent verification.
+`TSR-2026-001`, `TSR-2026-002`, and `TSR-2026-009` remain open for independent
+retest, the other maintainer-audit findings remain to be remediated or
+dispositioned under the protocol below, and the M2.5 gate remains open.
 
 ## Reproducing the baseline
 

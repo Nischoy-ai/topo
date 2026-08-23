@@ -87,8 +87,10 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   pre-review reachable toolchain/dependency findings plus plaintext external
   secret-provider transport were remediated. Maintainer-audit finding
   `TSR-2026-001` is remediated by binding every enrollment token to its intended
-  collector ID; the remaining findings, an independent review, and independent
-  retest remain required before any production claim. See
+  collector ID; `TSR-2026-002` and `TSR-2026-009` are remediated by protecting
+  live SQLite files before open and backup snapshots throughout creation. All
+  remain open for independent retest, and the other findings plus the full
+  independent review remain required before any production claim. See
   [docs/security-review.md](docs/security-review.md).
 
 ## M3 — hybrid release candidate

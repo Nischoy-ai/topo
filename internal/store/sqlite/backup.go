@@ -152,19 +152,19 @@ func reserveTemporaryPath(destination string) (string, func(), error) {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", nil, fmt.Errorf("inspect destination: %w", err)
 	}
-	file, err := os.CreateTemp(filepath.Dir(destination), ".topo-restore-*.tmp")
+	// VACUUM INTO must receive an absent path, so Topo cannot chmod the
+	// snapshot itself until SQLite finishes creating it. Put that entire
+	// creation window behind a private directory instead.
+	directory, err := os.MkdirTemp(filepath.Dir(destination), ".topo-database-*")
 	if err != nil {
-		return "", nil, fmt.Errorf("reserve temporary database path: %w", err)
+		return "", nil, fmt.Errorf("create private temporary database directory: %w", err)
 	}
-	temporary := file.Name()
-	if err := file.Close(); err != nil {
-		_ = os.Remove(temporary)
-		return "", nil, fmt.Errorf("close temporary database path: %w", err)
+	cleanup := func() { _ = os.RemoveAll(directory) }
+	if err := os.Chmod(directory, 0o700); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("protect private temporary database directory: %w", err)
 	}
-	if err := os.Remove(temporary); err != nil {
-		return "", nil, fmt.Errorf("prepare temporary database path: %w", err)
-	}
-	return temporary, func() { _ = os.Remove(temporary) }, nil
+	return filepath.Join(directory, "database.db"), cleanup, nil
 }
 
 func publishWithoutOverwrite(temporary, destination string) error {
