@@ -61,13 +61,13 @@ as focused security/operations slices rather than one packaging mega-PR:
    forward migration; all pending migrations must roll back together on a
    failure. Rollback means restoring the pre-upgrade backup to a new path,
    never reverse-migrating or overwriting the failed database in place.
-4. **Current slice.** Reproducible signed artifacts, SBOMs, checksums, and
+4. **Done.** Reproducible signed artifacts, SBOMs, checksums, and
    build provenance. Build Linux/macOS/Windows amd64/arm64 archives twice from
    different paths with exact Go 1.23.12, reject any byte drift, sign the
    checksum manifest keylessly, generate signed GitHub provenance and SBOM
    attestations, pin release actions by commit, verify evidence before a tag
    can create a GitHub Release, and document independent consumer verification.
-5. **Then.** DEB, RPM, MSI/MSIX, Helm, raw archives, and offline-bundle
+5. **Current slice.** DEB, RPM, MSI, Helm, raw archives, and offline-bundle
    packaging from the same verified release artifacts.
 6. **Then.** Publish those artifacts through a signed Nischoy APT repository,
    a signed Nischoy RPM repository, `Nischoy-ai/homebrew-tap`, Microsoft's

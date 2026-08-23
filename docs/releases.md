@@ -6,16 +6,21 @@ optional prerelease suffix) whose commit is already reachable from `main`.
 commit-pinned actions. It creates one GitHub Release containing:
 
 - deterministic raw archives for Linux, macOS, and Windows on amd64 and arm64;
+- DEB/RPM packages for Linux amd64/arm64, Authenticode-signed MSI installers
+  for Windows amd64/arm64, a Helm chart, and a deterministic offline bundle;
 - `release-metadata.json`, recording the source commit, toolchain, build flags,
   target matrix, and each archive's SHA-256 digest;
-- `SHA256SUMS` for every archive and the release metadata;
-- an SPDX JSON software bill of materials generated with Syft;
+- `package-metadata.json`, binding native package payloads to their source
+  archive binary digests;
+- `SHA256SUMS` for every raw and package artifact plus release metadata;
+- a release-wide SPDX JSON software bill of materials generated with Syft;
 - a keyless Sigstore signature bundle for `SHA256SUMS`;
 - signed GitHub SLSA provenance and SBOM-attestation bundles.
 
-These raw archives are the immutable inputs for the later DEB, RPM, MSI/MSIX,
-Homebrew, Helm, offline-bundle, and package-repository slices. Those channels
-must promote the same bytes and checksums rather than rebuild Topo themselves.
+The raw archives are the immutable inputs for package assembly, which never
+invokes `go build`. Package-manager channels must promote the resulting package
+bytes and checksums rather than rebuilding Topo themselves. See
+[package artifacts and lifecycle](packages.md).
 
 ## Reproducible build contract
 
@@ -94,8 +99,10 @@ for the trust semantics of those commands.
 2. Create and push one immutable semantic tag at that exact `main` commit.
 3. Confirm the tagged commit's `main` CI run is green. The tag workflow verifies
    the commit is reachable from `origin/main`, reproduces the release archive
-   set, creates the SBOM/signatures/attestations, verifies them, and only then
-   creates the GitHub Release with all evidence in one upload.
+   and package sets, exercises native package lifecycles, requires and verifies
+   Authenticode signatures on both MSIs, creates the SBOM/signatures/
+   attestations, verifies them, and only then creates the GitHub Release with
+   all evidence in one upload.
 4. Verify one archive independently with both commands above before promoting
    the release to any package repository.
 
@@ -105,9 +112,9 @@ or tag-protection rules should restrict who may create release tags.
 
 ## Scope boundary
 
-The Sigstore checksum signature and GitHub attestations authenticate the raw
-release artifacts across platforms. They do not replace native repository or
-installer trust: APT/RPM OpenPGP keys, macOS code signing/notarization, Windows
-Authenticode, and repository key-rotation procedures belong to the package and
-distribution slices that consume these archives. No production-readiness claim
-is made by this release-evidence slice alone.
+The Sigstore checksum signature and GitHub attestations authenticate the full
+release artifact set across platforms. Windows MSI publication additionally
+requires verified Authenticode signatures. That evidence does not replace
+APT/RPM repository OpenPGP keys, macOS code signing/notarization, or repository
+key-rotation procedures; those remain distribution-slice gates. No production-
+readiness claim is made before those gates and the external security review.

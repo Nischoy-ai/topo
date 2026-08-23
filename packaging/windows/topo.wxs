@@ -1,0 +1,45 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Id="$(ProductCode)"
+    Name="Nischoy Topo"
+    Manufacturer="Nischoy"
+    Version="$(PackageVersion)"
+    UpgradeCode="$(UpgradeCode)"
+    Scope="perMachine">
+    <SummaryInformation Description="Nischoy Topo infrastructure discovery data plane" />
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of Nischoy Topo is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="NischoyFolder" Name="Nischoy">
+        <Directory Id="INSTALLFOLDER" Name="Topo">
+          <Component Id="TopoBinaryComponent" Guid="$(ComponentCode)">
+            <File Id="TopoExecutable" Source="$(BinaryPath)" Name="topo.exe" KeyPath="yes" />
+            <Environment
+              Id="TopoPath"
+              Name="PATH"
+              Value="[INSTALLFOLDER]"
+              Action="set"
+              Part="last"
+              System="yes"
+              Permanent="no" />
+          </Component>
+          <Component Id="TopoLicenseComponent" Guid="$(LicenseComponentCode)">
+            <File Id="TopoLicense" Source="$(LicensePath)" Name="LICENSE" KeyPath="yes" />
+          </Component>
+          <Component Id="TopoReadmeComponent" Guid="$(ReadmeComponentCode)">
+            <File Id="TopoReadme" Source="$(ReadmePath)" Name="README.md" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Complete" Title="Nischoy Topo" Level="1">
+      <ComponentRef Id="TopoBinaryComponent" />
+      <ComponentRef Id="TopoLicenseComponent" />
+      <ComponentRef Id="TopoReadmeComponent" />
+    </Feature>
+  </Package>
+</Wix>

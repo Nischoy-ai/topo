@@ -6,7 +6,7 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, native package/repository signing, completed packaging/distribution, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance, but that evidence does not close those remaining gates.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, native repository/macOS signing, completed distribution, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and MSI publication fails closed without verified Authenticode signatures. That evidence does not close the remaining repository, macOS, and review gates.
 
 ## Deployment guidance
 
@@ -48,9 +48,11 @@ individual archive against the authenticated checksum manifest. GitHub
 attestation verification independently binds its digest to this repository,
 commit, tag event, and workflow. Release evidence is additive: it does not
 replace APT/RPM repository OpenPGP keys, Windows Authenticode, macOS code
-signing/notarization, or their key-rotation processes. Those native mechanisms
-remain mandatory in the package/distribution slices. See
-[release artifacts and verification](docs/releases.md).
+signing/notarization, or their key-rotation processes. MSI publication now
+requires Authenticode; repository keys and macOS signing/notarization remain
+mandatory distribution gates. See
+[release artifacts and verification](docs/releases.md) and
+[package artifacts and lifecycle](docs/packages.md).
 
 ## Controller authorization boundary
 

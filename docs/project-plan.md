@@ -8,10 +8,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-22
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** M2.5 backup/restore and schema upgrade/rollback
-  safety, merged in <https://github.com/Nischoy-ai/topo/pull/28>. Certificate
-  revocation and compromise recovery immediately before it merged in
-  <https://github.com/Nischoy-ai/topo/pull/27>.
+- **Latest completed slice:** M2.5 reproducible release artifacts and
+  supply-chain evidence, merged in <https://github.com/Nischoy-ai/topo/pull/29>.
+  Backup/restore and schema upgrade/rollback safety immediately before it
+  merged in <https://github.com/Nischoy-ai/topo/pull/28>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -36,9 +36,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M2.5 slice 4 (reproducible release artifacts and
-  supply-chain evidence) is <https://github.com/Nischoy-ai/topo/pull/29> from
-  `agent/m25-release-supply-chain`.
+- **Open pull request:** none yet. The current branch is
+  `agent/m25-package-artifacts` for M2.5 slice 5.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -51,7 +50,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   (certificate revocation and compromise recovery) in
   <https://github.com/Nischoy-ai/topo/pull/27>; M2.5 slice 3 (backup/restore
   and schema upgrade/rollback safety) in
-  <https://github.com/Nischoy-ai/topo/pull/28>.
+  <https://github.com/Nischoy-ai/topo/pull/28>; M2.5 slice 4 (reproducible
+  release artifacts and supply-chain evidence) in
+  <https://github.com/Nischoy-ai/topo/pull/29>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -65,11 +66,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slices 1 through 3 are merged; slice 4 (current) is reproducible release
-  artifacts and supply-chain evidence. Package artifacts, package-manager
-  distribution, and an external security review follow in that order. See
-  "Current milestone: M2.5" below.
-- **Verified in the current slice (release supply chain):** the committed tree
+  Slices 1 through 4 are merged; slice 5 (current) is package artifacts.
+  Package-manager distribution and an external security review follow in that
+  order. See "Current milestone: M2.5" below.
+- **Verified in the previous slice (release supply chain):** the committed tree
   builds the Linux, macOS, and Windows amd64/arm64 matrix twice from different
   absolute source paths and reproduces every archive, checksum, and metadata
   byte-for-byte. Archive tests independently cover deterministic tar.gz/ZIP
@@ -1152,7 +1152,7 @@ and independent security-review gaps. It does not add new discovery protocols.
    is to stop the controller and restore a pre-upgrade backup to a new path;
    Topo never attempts a lossy reverse migration or overwrites the failed
    database in place.
-4. **Current — supply-chain release evidence.** Build deterministic raw
+4. **Done — supply-chain release evidence.** Build deterministic raw
    archives for Linux, macOS, and Windows on amd64 and arm64 with exact Go
    1.23.12, `CGO_ENABLED=0`, trimmed paths, no implicit VCS stamp, and fixed
    archive metadata. Build twice from different absolute source paths and fail
@@ -1161,7 +1161,7 @@ and independent security-review gaps. It does not add new discovery protocols.
    manifest, and signed GitHub SLSA build/SBOM attestations. Pin every release
    action by immutable commit, verify signature and provenance before a tag can
    create a GitHub Release, and document independent consumer verification.
-5. **Package artifacts.** Ship raw archives, DEB, RPM, MSI/MSIX, Helm, and an
+5. **Current — package artifacts.** Ship raw archives, DEB, RPM, MSI, Helm, and an
    offline bundle using the same immutable verified artifacts and documented
    upgrade/rollback paths. The host package installs one `topo` binary and
    platform service definitions without embedding credentials or silently
@@ -1324,12 +1324,72 @@ and independent security-review gaps. It does not add new discovery protocols.
   native repository/installer keys are introduced only with their scoped
   storage and rotation design.
 - No claim that generic artifact evidence satisfies operating-system trust.
-  Authenticode and macOS signing/notarization remain package-slice gates, and
-  APT/RPM OpenPGP signatures remain distribution-slice gates.
+  Authenticode remains a Windows package gate; macOS signing/notarization and
+  APT/RPM OpenPGP signatures remain native distribution-slice gates.
 - No first public version tag is created by this implementation PR. The release
   workflow is exercised by pull-request reproducibility checks; maintainers tag
   a reviewed `main` commit separately when release contents are intentionally
   frozen.
+
+### Acceptance gates for slice 5
+
+- Package assembly consumes the already-verified raw archives and never invokes
+  `go build`. The `topo` payload extracted from every DEB, RPM, and MSI must
+  match the corresponding raw-archive binary digest exactly.
+- Linux amd64 and arm64 each receive a DEB and RPM containing `/usr/bin/topo`,
+  the license/readme, and the hardened `topo-agent.service` definition. Package
+  install scripts may create the dedicated system identity and reload systemd,
+  but must never embed credentials, create an active configuration, enable, or
+  start the unconfigured service.
+- Windows amd64 and arm64 receive MSI packages with one stable upgrade identity,
+  per-version product identities, machine-wide PATH registration, and no
+  automatic Topo Agent service registration. The amd64 installer is exercised
+  on a Windows runner through silent install, version check, upgrade, and silent
+  uninstall; arm64 is structurally validated because hosted arm64 Windows test
+  execution is not available.
+- The release path Authenticode-signs each MSI with a protected release
+  certificate and verifies the signature before publication. It fails closed
+  when signing material is absent. Pull-request tests use no production key and
+  make no native-trust claim.
+- The Helm chart renders a non-root, read-only-root-filesystem controller with
+  explicit resource limits and requires an existing Kubernetes Secret for the
+  operator API key. The chart contains no credential value and passes lint,
+  template, install, upgrade, rollback, and uninstall tests against an ephemeral
+  cluster without rebuilding the application image.
+- One deterministic offline bundle contains the raw archives, native packages,
+  Helm chart, release metadata, documentation, and its own sorted checksum
+  manifest. Every referenced payload verifies without network access after the
+  bundle has been downloaded.
+- Package artifacts and package metadata are incorporated into the release-wide
+  sorted `SHA256SUMS`, SBOM/provenance subjects, signature verification, and
+  GitHub Release only after package-content tests pass.
+- Upgrade and rollback documentation requires a verified SQLite backup before
+  replacing the binary/package, preserves operator-created configuration and
+  state on ordinary uninstall/upgrade, and restores the backup with the old
+  binary for database rollback rather than reverse-migrating in place.
+- The full Go 1.23 Linux/Windows gates, raw-archive reproducibility proof,
+  package-content tests, package-assembly reproducibility proof, and GitHub CI
+  pass.
+
+### Deliberate non-goals for slice 5
+
+- MSI is the initial Windows installer; MSIX is not produced in parallel. One
+  tested native format is preferable to two partially tested identities, and
+  WinGet accepts MSI installers. Add MSIX only if Store/containerized-app
+  requirements justify its separate identity and execution-alias design.
+- No APT `Packages`/`InRelease`, RPM repository metadata, Homebrew formula,
+  WinGet manifest, or Helm registry publication. Slice 6 promotes the exact
+  package bytes and adds repository/catalog-native signatures and key rotation.
+- No automatic service enrollment or generated credentials. Installing a host
+  package makes the binary and dormant service definition available; an
+  operator must supply configuration/secrets and explicitly enable the agent.
+- macOS remains the signed raw archive consumed by Homebrew rather than gaining
+  a separate PKG/DMG format. Developer ID signing/notarization is coupled to the
+  Homebrew publication path in slice 6; the raw archive continues to carry the
+  slice-4 Sigstore/GitHub evidence until that native distribution gate exists.
+- Clean-machine channel promotion tests across every supported distribution and
+  a real N-1 stable release remain slice-6 gates. Slice 5 tests package
+  semantics directly with synthetic versions and native package tools.
 
 ### Distribution model for slices 4-6
 

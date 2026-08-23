@@ -8,6 +8,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -21,4 +22,115 @@ jobs:
       - name: Cross-compile check (Windows agent service code)
         run: GOOS=windows GOARCH=amd64 go vet ./... && GOOS=windows GOARCH=amd64 go build -trimpath -o /dev/null ./cmd/topo
       - name: Reproduce release archives from two source paths
-        run: scripts/build-release.sh v0.0.0-ci "$GITHUB_SHA" "$RUNNER_TEMP/topo-release"
+        run: scripts/build-release.sh v0.0.0-ci "$GITHUB_SHA" "$RUNNER_TEMP/topo-raw"
+      - name: Reproduce Linux and Helm packages from verified archives
+        run: scripts/build-packages.sh v0.0.0-ci "$RUNNER_TEMP/topo-raw" "$RUNNER_TEMP/topo-packages"
+      - name: Exercise DEB and RPM install/uninstall semantics
+        run: scripts/test-linux-packages.sh "$RUNNER_TEMP/topo-packages" v0.0.0-ci
+      - name: Share verified package inputs with platform jobs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-ci-packages
+          path: ${{ runner.temp }}/topo-packages/
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    needs: test
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Download verified raw release inputs
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-packages
+          path: ${{ runner.temp }}/topo-packages
+      - name: Install pinned WiX Toolset
+        shell: pwsh
+        run: dotnet tool install --tool-path "$env:RUNNER_TEMP/wix" wix --version 6.0.2
+      - name: Exercise MSI install, upgrade, and uninstall
+        shell: pwsh
+        run: >-
+          scripts/test-msi.ps1
+          -ArtifactDirectory "$env:RUNNER_TEMP/topo-packages"
+          -Version v0.0.0-ci
+          -WixPath "$env:RUNNER_TEMP/wix/wix.exe"
+          -OutputDirectory "$env:RUNNER_TEMP/topo-msi"
+      - name: Retain validated MSI artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-ci-msi
+          path: ${{ runner.temp }}/topo-msi/
+          if-no-files-found: error
+          retention-days: 1
+
+  offline-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test, windows-package]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-packages
+          path: ${{ runner.temp }}/dist
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-msi
+          path: ${{ runner.temp }}/dist
+      - name: Build and verify the disconnected bundle
+        run: |
+          go run ./internal/packagetool -mode finalize -out "$RUNNER_TEMP/dist"
+          go run ./internal/packagetool -mode bundle -root . -raw "$RUNNER_TEMP/dist" \
+            -out "$RUNNER_TEMP/dist/topo_0.0.0-ci_offline.tar.gz" -version v0.0.0-ci
+          go run ./internal/packagetool -mode finalize -out "$RUNNER_TEMP/dist"
+          (cd "$RUNNER_TEMP/dist" && sha256sum --check SHA256SUMS)
+          mkdir "$RUNNER_TEMP/offline"
+          tar -xzf "$RUNNER_TEMP/dist/topo_0.0.0-ci_offline.tar.gz" -C "$RUNNER_TEMP/offline"
+          (cd "$RUNNER_TEMP/offline/topo_0.0.0-ci_offline" && sha256sum --check OFFLINE-SHA256SUMS)
+
+  helm-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install pinned Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.21.4
+      - name: Create an ephemeral Kubernetes cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          version: v0.31.0
+          kubectl_version: v1.35.0
+      - name: Lint and require an external API-key Secret
+        run: |
+          if helm template topo packaging/helm/topo >/dev/null 2>&1; then
+            echo "chart rendered without required apiKeySecret.name" >&2
+            exit 1
+          fi
+          helm lint packaging/helm/topo --set apiKeySecret.name=topo-api-key
+      - name: Exercise install, upgrade, rollback, and uninstall
+        run: |
+          docker build -t topo:ci .
+          kind load docker-image topo:ci --name chart-testing
+          kubectl create secret generic topo-api-key --from-literal=api-key=test-key
+          helm package packaging/helm/topo --destination "$RUNNER_TEMP" \
+            --version 0.0.0-ci --app-version v0.0.0-ci
+          helm install topo "$RUNNER_TEMP/topo-0.0.0-ci.tgz" \
+            --set apiKeySecret.name=topo-api-key \
+            --set image.repository=topo --set image.tag=ci \
+            --set image.pullPolicy=Never --set persistence.enabled=false \
+            --wait --timeout 2m
+          helm upgrade topo "$RUNNER_TEMP/topo-0.0.0-ci.tgz" \
+            --set apiKeySecret.name=topo-api-key \
+            --set image.repository=topo --set image.tag=ci \
+            --set image.pullPolicy=Never --set persistence.enabled=false \
+            --set service.port=8081 --wait --timeout 2m
+          helm rollback topo 1 --wait --timeout 2m
+          helm uninstall topo --wait
