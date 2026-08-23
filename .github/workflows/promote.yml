@@ -107,7 +107,7 @@ jobs:
           gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_amd64.deb" --repo "$GITHUB_REPOSITORY"
           gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_windows_amd64.msi" --repo "$GITHUB_REPOSITORY"
           install -d "$RUNNER_TEMP/rpmdb"
-          rpm --dbpath "$RUNNER_TEMP/rpmdb" --import "$RUNNER_TEMP/dist/nischoy-topo-archive.gpg"
+          rpm --dbpath "$RUNNER_TEMP/rpmdb" --import "$RUNNER_TEMP/dist/nischoy-topo-archive.asc"
           for package in "$RUNNER_TEMP"/dist/*.rpm; do
             rpm --dbpath "$RUNNER_TEMP/rpmdb" --checksig --verbose "$package" | grep 'Signature.*: OK'
           done
@@ -218,9 +218,9 @@ jobs:
             -v "$RUNNER_TEMP/previous:/previous:ro" \
             fedora@sha256:99e203734f0c44913163c0de9ea700c92b60b93fbb76c143728d757c5558c5ca \
             bash -euc '
-              rpm --import /repo/keys/nischoy-topo-archive.gpg
-              if [ -f /previous/nischoy-topo-archive.gpg ]; then
-                rpm --import /previous/nischoy-topo-archive.gpg
+              rpm --import /repo/keys/nischoy-topo-archive.asc
+              if [ -f /previous/nischoy-topo-archive.asc ]; then
+                rpm --import /previous/nischoy-topo-archive.asc
               fi
               if compgen -G "/previous/*.x86_64.rpm" >/dev/null; then dnf install -y /previous/*.x86_64.rpm; fi
               mkdir -p /etc/topo-agent
@@ -233,7 +233,7 @@ jobs:
               enabled=1
               gpgcheck=1
               repo_gpgcheck=1
-              gpgkey=file:///repo/keys/nischoy-topo-archive.gpg
+              gpgkey=file:///repo/keys/nischoy-topo-archive.asc
               EOF
               dnf install -y topo
               test "$(topo version)" = "$VERSION"
@@ -379,7 +379,9 @@ jobs:
           cp -R "$RUNNER_TEMP/distribution/rpm/$CHANNEL" "$RUNNER_TEMP/topo-packages/rpm/$CHANNEL"
           cp "$RUNNER_TEMP/distribution"/apt/*.sources "$RUNNER_TEMP/topo-packages/apt/"
           cp "$RUNNER_TEMP/distribution"/rpm/*.repo "$RUNNER_TEMP/topo-packages/rpm/"
-          cp "$RUNNER_TEMP/distribution/keys/nischoy-topo-archive.gpg" "$RUNNER_TEMP/topo-packages/keys/"
+          cp "$RUNNER_TEMP/distribution/keys/nischoy-topo-archive.gpg" \
+            "$RUNNER_TEMP/distribution/keys/nischoy-topo-archive.asc" \
+            "$RUNNER_TEMP/topo-packages/keys/"
           cd "$RUNNER_TEMP/topo-packages"
           git add --all
           if ! git diff --cached --quiet; then

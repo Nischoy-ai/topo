@@ -103,7 +103,8 @@ sudo apt install topo
 ```
 
 Fedora/RHEL-compatible systems verify both RPM packages and repository
-metadata:
+metadata. The `.repo` file references the ASCII-armored copy of the same trust
+root that APT receives as a binary scoped keyring:
 
 ```sh
 sudo curl -fsSLo /etc/yum.repos.d/nischoy-topo.repo \

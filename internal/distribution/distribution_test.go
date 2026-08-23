@@ -65,6 +65,10 @@ func TestBuildIsDeterministicAndPreservesArtifacts(t *testing.T) {
 		if !strings.Contains(installer, "InstallerType: msi") || !strings.Contains(installer, "Architecture: arm64") {
 			t.Fatalf("WinGet installer manifest is incomplete: %s", installer)
 		}
+		repo := string(files["rpm/nischoy-topo-stable.repo"])
+		if !strings.Contains(repo, "gpgkey=https://packages.nischoy.com/topo/keys/nischoy-topo-archive.asc") {
+			t.Fatalf("RPM repository does not reference its armored scoped key: %s", repo)
+		}
 	}
 }
 

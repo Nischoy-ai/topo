@@ -125,6 +125,7 @@ jobs:
           test "${#fingerprint}" -eq 40
           scripts/sign-rpms.sh "$RUNNER_TEMP/dist" "$fingerprint"
           gpg --batch --export "$fingerprint" > "$RUNNER_TEMP/dist/nischoy-topo-archive.gpg"
+          gpg --batch --armor --export "$fingerprint" > "$RUNNER_TEMP/dist/nischoy-topo-archive.asc"
           echo "fingerprint=$fingerprint" >> "$GITHUB_ENV"
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
       - name: Reproduce package-manager promotion inputs

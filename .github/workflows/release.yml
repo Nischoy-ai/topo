@@ -106,7 +106,10 @@ jobs:
           scripts/sign-rpms.sh "$RUNNER_TEMP/topo-native" "$RPM_SIGNING_FINGERPRINT"
           gpg --batch --export "$RPM_SIGNING_FINGERPRINT" > \
             "$RUNNER_TEMP/topo-native/nischoy-topo-archive.gpg"
+          gpg --batch --armor --export "$RPM_SIGNING_FINGERPRINT" > \
+            "$RUNNER_TEMP/topo-native/nischoy-topo-archive.asc"
           test -s "$RUNNER_TEMP/topo-native/nischoy-topo-archive.gpg"
+          test -s "$RUNNER_TEMP/topo-native/nischoy-topo-archive.asc"
           go run ./internal/packagetool -mode finalize -out "$RUNNER_TEMP/topo-native"
           (cd "$RUNNER_TEMP/topo-native" && sha256sum --check SHA256SUMS)
           rm -rf "$GNUPGHOME"

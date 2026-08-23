@@ -23,10 +23,10 @@ fi
 gpg --batch --list-secret-keys "$fingerprint" >/dev/null
 verification=$(mktemp -d "${TMPDIR:-/tmp}/topo-rpm-verification.XXXXXX")
 trap 'rm -rf "$verification"' EXIT HUP INT TERM
-gpg --batch --export "$fingerprint" > "$verification/public-key.gpg"
-test -s "$verification/public-key.gpg"
+gpg --batch --armor --export "$fingerprint" > "$verification/public-key.asc"
+test -s "$verification/public-key.asc"
 rpm --dbpath "$verification/rpmdb" --initdb
-rpm --dbpath "$verification/rpmdb" --import "$verification/public-key.gpg"
+rpm --dbpath "$verification/rpmdb" --import "$verification/public-key.asc"
 found=0
 for package in "$artifact_dir"/*.rpm; do
   if [ ! -f "$package" ]; then

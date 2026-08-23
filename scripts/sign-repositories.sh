@@ -51,6 +51,14 @@ if [ ! -s "$root/keys/nischoy-topo-archive.gpg" ]; then
   echo "failed to export repository public key" >&2
   exit 1
 fi
+# RPM requires an armored key while APT's .gpg Signed-By path requires the
+# binary keyring above. Both files contain the same validated identities.
+# shellcheck disable=SC2086
+gpg --batch --armor --export $export_fingerprints > "$root/keys/nischoy-topo-archive.asc"
+if [ ! -s "$root/keys/nischoy-topo-archive.asc" ]; then
+  echo "failed to export armored repository public key" >&2
+  exit 1
+fi
 
 if [ -n "${TOPO_GPG_PASSPHRASE_FILE:-}" ]; then
   if [ ! -f "$TOPO_GPG_PASSPHRASE_FILE" ]; then

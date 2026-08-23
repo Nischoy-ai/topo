@@ -310,7 +310,7 @@ func writeRPM(options Options, version string) error {
 			return err
 		}
 	}
-	repo := fmt.Sprintf("[nischoy-topo-%s]\nname=Nischoy Topo (%s)\nbaseurl=%s/rpm/%s/$basearch\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=%s/keys/nischoy-topo-archive.gpg\n", options.Channel, options.Channel, strings.TrimRight(options.RepositoryBaseURL, "/"), options.Channel, strings.TrimRight(options.RepositoryBaseURL, "/"))
+	repo := fmt.Sprintf("[nischoy-topo-%s]\nname=Nischoy Topo (%s)\nbaseurl=%s/rpm/%s/$basearch\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=%s/keys/nischoy-topo-archive.asc\n", options.Channel, options.Channel, strings.TrimRight(options.RepositoryBaseURL, "/"), options.Channel, strings.TrimRight(options.RepositoryBaseURL, "/"))
 	return writeFile(filepath.Join(options.OutputDir, "rpm", "nischoy-topo-"+options.Channel+".repo"), []byte(repo))
 }
 
