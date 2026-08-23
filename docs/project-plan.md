@@ -70,6 +70,25 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   Slices 1 through 4 are merged; slice 5 (current) is package artifacts.
   Package-manager distribution and an external security review follow in that
   order. See "Current milestone: M2.5" below.
+- **Verified in the current slice (package artifacts):** package assembly uses
+  the verified raw archives without rebuilding Topo and reproduces the DEB,
+  RPM, and Helm outputs byte-for-byte from different absolute paths. CI
+  installs/removes the amd64 DEB and RPM on Ubuntu and Fedora, verifies the
+  exact raw-release payload, and proves the dormant service definition neither
+  starts nor enables itself and leaves operator state intact. The Windows job
+  builds amd64/arm64 MSI packages, then silently installs, payload-verifies,
+  upgrades, and uninstalls amd64 while checking machine PATH, product identity,
+  absence of automatic service registration, and state preservation. The Helm
+  job requires an existing Secret and passes lint, install, upgrade, rollback,
+  and uninstall in Kind under the hardened pod defaults. The final offline
+  bundle is assembled from those verified artifacts and validates its own
+  checksum manifest after extraction. Full Go/race, raw-release reproduction,
+  native-package, Windows, Helm, and offline-bundle checks passed in GitHub CI
+  run <https://github.com/Nischoy-ai/topo/actions/runs/32611267455>.
+  Production Authenticode signing is implemented as a fail-closed tag-release
+  gate but remains deliberately untriggered until signing secrets are
+  configured and a reviewed `main` commit is intentionally tagged; pull-request
+  CI makes no native-trust claim.
 - **Verified in the previous slice (release supply chain):** the committed tree
   builds the Linux, macOS, and Windows amd64/arm64 matrix twice from different
   absolute source paths and reproduces every archive, checksum, and metadata
