@@ -36,7 +36,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none yet. M2.5 slice 6 is being implemented on
+- **Open pull request:** M2.5 slice 6 (package-manager distribution) is under
+  review in <https://github.com/Nischoy-ai/topo/pull/31> from
   `agent/m25-package-manager-distribution`.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
@@ -79,7 +80,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   now isolates RPM, Authenticode, Developer ID, and Apple notarization keys and
   refreshes evidence over the final native-signed bytes. The protected manual
   promotion workflow verifies release identity/provenance, signs repository
-  metadata, gates stable on a real N-1 tag, exercises Ubuntu/Fedora/Homebrew/
+  metadata, gates stable on an authenticated real N-1 tag, exercises actual
+  N-1-to-N upgrade and N-to-N-1-to-N rollback on Ubuntu/Fedora plus Homebrew/
   WinGet/OCI paths, and mutates external channels only after every test passes.
   The required organization repositories, production keys, first beta tag,
   and real N-1 stable tag do not exist yet; production signing, external
