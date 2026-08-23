@@ -47,6 +47,14 @@ Appending an entry is best-effort with respect to the action it records: if `App
 
 ## Operational notes
 
+- `-db-dsn` is a filesystem path, not a SQLite URI. Before SQLite opens a
+  file-backed database, Topo creates a missing path exclusively and applies
+  mode `0600`, or verifies that an existing path is a regular non-symlink file
+  and tightens it to `0600`. SQLite then receives `mode=rw`, so it cannot
+  silently recreate a removed path with its default permissions. Existing
+  WAL, shared-memory, and rollback-journal sidecars are checked the same way;
+  newly created sidecars inherit the protected main-file mode and are
+  rechecked before `Open` returns.
 - WAL journal mode is enabled for file-backed databases (not for the `:memory:` test-only mode), and `busy_timeout` is set so a momentarily-locked database retries rather than failing immediately.
 - The connection pool is capped at one connection. SQLite serializes writers regardless of connection count, so this avoids `SQLITE_BUSY` contention outright rather than relying on `busy_timeout` to paper over it, and keeps a `:memory:` database (private per connection in SQLite's own semantics) coherent across calls.
 - `internal/store/sqlite.Store.DB()` exposes the underlying `*sql.DB` for direct inspection during development or an incident. Supported backups use the commands below; prefer the `Repository` methods for anything already covered.
@@ -64,13 +72,16 @@ topo storage backup \
   -out /var/backups/topo/topo-2026-08-22.db
 ```
 
-The command opens the database with the current binary, uses SQLite `VACUUM
-INTO` to capture one transactionally consistent snapshot (including committed
-WAL data), sets owner-only file permissions, runs `PRAGMA quick_check`, syncs
-the file, and only then publishes the requested destination. It refuses an
-existing destination. A backup can run while the controller is serving, but
-run it with the currently installed binary *before* replacing that binary so
-the backup represents the pre-upgrade schema.
+The command opens the database with the current binary, creates a mode-`0700`
+private staging directory before SQLite starts, and runs `VACUUM INTO` there to
+capture one transactionally consistent snapshot (including committed WAL
+data). This keeps the snapshot inaccessible to other local users even during
+the copy, before Topo can apply mode `0600` to the completed file. Topo then
+runs `PRAGMA quick_check`, syncs the file, and only then publishes the requested
+destination. It refuses an existing destination and removes the private
+staging directory afterward. A backup can run while the controller is serving,
+but run it with the currently installed binary *before* replacing that binary
+so the backup represents the pre-upgrade schema.
 
 Restore always writes a new path:
 
@@ -88,6 +99,12 @@ copy, and atomically publishes it without overwriting anything. The source
 backup and old operational database remain unchanged. Stop the controller for
 the restore/cutover itself; starting against the restored path applies any
 required forward migration.
+
+On POSIX filesystems these modes provide the stated owner-only boundary. On
+Windows, Go file modes do not replace NTFS ACLs; restrict the database and
+backup directories to the Topo service identity and administrators. On every
+platform, keep those directories non-writable by untrusted local users so path
+replacement cannot bypass file-level checks.
 
 After restart, verify `/healthz` and the operator views for observations,
 assets, relationships, audit entries, schedules, and revocations before

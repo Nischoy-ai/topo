@@ -8,12 +8,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-23
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Current implementation slice:** M2.5 external-review remediation 1,
-  collector-scoped enrollment tokens (`TSR-2026-001`), proposed in
-  <https://github.com/Nischoy-ai/topo/pull/35>. The latest merged slice is the
-  external-security-review preparation and pre-review remediation in
-  <https://github.com/Nischoy-ai/topo/pull/33>; package-manager distribution
-  immediately before it merged in <https://github.com/Nischoy-ai/topo/pull/31>.
+- **Current implementation slice:** M2.5 external-review remediation 2,
+  owner-only live SQLite creation plus private backup staging
+  (`TSR-2026-002`/`TSR-2026-009`). The latest merged slice is collector-scoped
+  enrollment tokens (`TSR-2026-001`) in
+  <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
+  preparation and pre-review remediation merged immediately before it in
+  <https://github.com/Nischoy-ai/topo/pull/33>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -38,8 +39,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** collector-scoped enrollment-token remediation in
-  <https://github.com/Nischoy-ai/topo/pull/35>.
+- **Open pull request:** none yet; the current SQLite-permissions remediation is
+  on `agent/m25-remediate-sqlite-permissions` pending final verification.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -57,7 +58,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/29>; M2.5 slice 5 (native package
   artifacts) in <https://github.com/Nischoy-ai/topo/pull/30>; M2.5 slice 6
   (package-manager distribution) in
-  <https://github.com/Nischoy-ai/topo/pull/31>.
+  <https://github.com/Nischoy-ai/topo/pull/31>; external-review preparation in
+  <https://github.com/Nischoy-ai/topo/pull/33>; collector-scoped enrollment-
+  token remediation in <https://github.com/Nischoy-ai/topo/pull/35>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -78,7 +81,26 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   operational evidence before any production claim and are explicitly deferred
   until the user authorizes external repository and production signing-key
   provisioning. See "Current milestone: M2.5" below.
-- **Verified in the current remediation slice:** enrollment-token issuance now
+- **Verified in the current remediation slice:** a missing SQLite database is
+  exclusively pre-created and changed to POSIX mode `0600` before SQLite can
+  open it, while an existing regular file is tightened before use and a final
+  database or sidecar symlink is rejected. SQLite receives a filesystem path
+  encoded as a URI with `mode=rw`, preventing it from recreating a removed path
+  with default permissions. Existing WAL/shared-memory/rollback-journal files
+  are protected before open and newly created WAL/SHM files inherit and are
+  rechecked against the main-file mode. `VACUUM INTO` now writes beneath a
+  fresh mode-`0700` staging directory, so a snapshot remains inaccessible to
+  other local users during the full copy before the completed file is changed
+  to `0600`, verified, synced, and atomically published without overwrite.
+  Regression tests deliberately set umask `0000`, verify main/WAL/SHM/final-
+  backup modes, exercise the unpublished staging window and cleanup, tighten a
+  pre-existing `0644` database, and reject main/WAL symlinks. This remediates
+  maintainer-audit findings `TSR-2026-002` and `TSR-2026-009` for independent
+  retest. The complete pinned `scripts/security-review-checks.sh` gate passes
+  under exact Go 1.25.13, including zero reachable `govulncheck` findings, the
+  full race/coverage suite, Linux vet/build, and Windows amd64 vet/build. This
+  does not independently close either finding or the M2.5 gate.
+- **Verified in the previous remediation slice:** enrollment-token issuance now
   requires a bounded `collector_id`; `TokenStore` stores that identity and
   returns the same generic invalid-token error for a mismatch without consuming
   the token. The response and audit detail identify the intended collector but
@@ -1290,9 +1312,11 @@ and independent security-review gaps. It does not add new discovery protocols.
    The first maintainer-audit remediation (`TSR-2026-001`) binds every
    enrollment token to its operator-selected collector ID at issuance and
    rejects a different enrollment identity without consuming the token. It is
-   ready for independent retest after merge, not independently verified; the
-   remaining findings still require remediation or a protocol-compliant
-   disposition.
+   ready for independent retest after merge, not independently verified.
+   `TSR-2026-002` and `TSR-2026-009` protect the live SQLite file before open
+   and keep an in-progress backup snapshot beneath a private staging directory;
+   they likewise require merge and independent retest. The remaining findings
+   still require remediation or a protocol-compliant disposition.
 
 ### Acceptance gates for slice 1
 

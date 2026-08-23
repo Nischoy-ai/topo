@@ -12,7 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
+	"net/url"
+	"os"
+	"path/filepath"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -105,14 +107,28 @@ type Store struct {
 // persistence.
 func Open(dsn string) (*Store, error) {
 	source := dsn
+	databasePath := ""
 	pragmas := "_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	if dsn != ":memory:" {
-		if !strings.HasPrefix(dsn, "file:") {
-			source = "file:" + dsn
+		path, err := cleanFilePath(dsn, "database path")
+		if err != nil {
+			return nil, err
 		}
+		if err := prepareDatabaseFiles(path); err != nil {
+			return nil, err
+		}
+		u := &url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
 		pragmas += "&_pragma=journal_mode(WAL)"
+		// prepareDatabaseFiles creates the path first. mode=rw keeps SQLite
+		// from falling back to its default create permissions if that path is
+		// removed before this connection is established.
+		u.RawQuery = "mode=rw&" + pragmas
+		source = u.String()
+		databasePath = path
+	} else {
+		source += "?" + pragmas
 	}
-	db, err := sql.Open("sqlite", source+"?"+pragmas)
+	db, err := sql.Open("sqlite", source)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
@@ -126,7 +142,84 @@ func Open(dsn string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if databasePath != "" {
+		if err := protectDatabaseSidecars(databasePath); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+	}
 	return s, nil
+}
+
+func prepareDatabaseFiles(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		// O_EXCL refuses a concurrently introduced file or symlink. Chmod is
+		// still required after creation so the final mode is exactly 0600 even
+		// when the process umask removes owner bits.
+		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			return fmt.Errorf("create SQLite database securely: %w", err)
+		}
+		if err := file.Chmod(0o600); err != nil {
+			_ = file.Close()
+			return fmt.Errorf("protect SQLite database: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("close new SQLite database: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("inspect SQLite database: %w", err)
+	} else if err := protectExistingSQLiteFile(path, info); err != nil {
+		return err
+	}
+	return protectDatabaseSidecars(path)
+}
+
+func protectDatabaseSidecars(path string) error {
+	for _, suffix := range []string{"-wal", "-shm", "-journal"} {
+		sidecar := path + suffix
+		info, err := os.Lstat(sidecar)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("inspect SQLite sidecar %s: %w", suffix, err)
+		}
+		if err := protectExistingSQLiteFile(sidecar, info); err != nil {
+			return fmt.Errorf("protect SQLite sidecar %s: %w", suffix, err)
+		}
+	}
+	return nil
+}
+
+func protectExistingSQLiteFile(path string, before os.FileInfo) error {
+	if before.Mode()&os.ModeSymlink != 0 || !before.Mode().IsRegular() {
+		return fmt.Errorf("SQLite file path must be a regular file: %s", path)
+	}
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return fmt.Errorf("open SQLite database file for protection: %w", err)
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("inspect opened SQLite database file: %w", err)
+	}
+	if !opened.Mode().IsRegular() || !os.SameFile(before, opened) {
+		return fmt.Errorf("SQLite database path changed while opening: %s", path)
+	}
+	if err := file.Chmod(0o600); err != nil {
+		return fmt.Errorf("protect SQLite database file: %w", err)
+	}
+	after, err := os.Lstat(path)
+	if err != nil {
+		return fmt.Errorf("reinspect SQLite database file: %w", err)
+	}
+	if after.Mode()&os.ModeSymlink != 0 || !after.Mode().IsRegular() || !os.SameFile(opened, after) {
+		return fmt.Errorf("SQLite database path changed while protecting: %s", path)
+	}
+	return nil
 }
 
 // Close releases the underlying database connection.
