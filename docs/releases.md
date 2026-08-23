@@ -2,7 +2,7 @@
 
 Topo releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
 optional prerelease suffix) whose commit is already reachable from `main`.
-`.github/workflows/release.yml` uses the exact Go 1.23.12 toolchain and
+`.github/workflows/release.yml` uses the exact Go 1.25.13 toolchain and
 commit-pinned actions. It creates one GitHub Release containing:
 
 - deterministic raw archives for Linux, macOS, and Windows on amd64 and arm64;
@@ -45,7 +45,7 @@ To reproduce a release locally:
 
 ```sh
 git checkout v0.1.0
-GOTOOLCHAIN=go1.23.12 scripts/build-release.sh \
+GOTOOLCHAIN=go1.25.13 scripts/build-release.sh \
   v0.1.0 "$(git rev-parse HEAD)" dist-local
 ```
 

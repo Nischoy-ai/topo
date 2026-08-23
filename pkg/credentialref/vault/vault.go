@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,12 +60,9 @@ type Config struct {
 // variables: VAULT_ADDR, VAULT_NAMESPACE, VAULT_MOUNT, VAULT_TOKEN,
 // VAULT_TOKEN_FILE, and VAULT_CACERT.
 func ConfigFromEnvironment() (Config, error) {
-	address := strings.TrimSpace(os.Getenv("VAULT_ADDR"))
-	if address == "" {
-		return Config{}, errors.New("VAULT_ADDR is not set")
-	}
-	if !strings.HasPrefix(address, "https://") && !strings.HasPrefix(address, "http://") {
-		return Config{}, errors.New("VAULT_ADDR must be an http:// or https:// URL")
+	address, err := validateHTTPSAddress(strings.TrimSpace(os.Getenv("VAULT_ADDR")))
+	if err != nil {
+		return Config{}, err
 	}
 
 	token, err := tokenFromEnvironment()
@@ -78,7 +76,7 @@ func ConfigFromEnvironment() (Config, error) {
 	}
 
 	return Config{
-		Address:    strings.TrimRight(address, "/"),
+		Address:    address,
 		Namespace:  strings.TrimSpace(os.Getenv("VAULT_NAMESPACE")),
 		Mount:      strings.Trim(mount, "/"),
 		Token:      token,
@@ -119,15 +117,17 @@ type Client struct {
 }
 
 // NewClient builds a Client from Config. Server identity is verified using
-// the system trust store, plus CACertPath when set; TLS verification is
-// never disabled.
+// the system trust store, plus CACertPath when set; TLS verification is never
+// disabled, plaintext HTTP is rejected, and redirects are not followed.
 func NewClient(config Config) (*Client, error) {
-	if config.Address == "" {
-		return nil, errors.New("vault config requires an address")
+	address, err := validateHTTPSAddress(config.Address)
+	if err != nil {
+		return nil, err
 	}
 	if config.Token == "" {
 		return nil, errors.New("vault config requires a token")
 	}
+	config.Address = address
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if config.CACertPath != "" {
@@ -147,8 +147,25 @@ func NewClient(config Config) (*Client, error) {
 		httpClient: &http.Client{
 			Transport: transport,
 			Timeout:   requestTimeout,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 	}, nil
+}
+
+func validateHTTPSAddress(address string) (string, error) {
+	if address == "" {
+		return "", errors.New("VAULT_ADDR is not set")
+	}
+	parsed, err := url.Parse(address)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return "", errors.New("VAULT_ADDR must be an absolute https:// URL")
+	}
+	if parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.ForceQuery || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", errors.New("VAULT_ADDR must not contain credentials, a path, query parameters, or a fragment")
+	}
+	return strings.TrimRight(address, "/"), nil
 }
 
 // Resolve reads one field from the KV version 2 secret at path, within the

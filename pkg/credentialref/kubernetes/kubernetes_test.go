@@ -4,26 +4,33 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func newTestServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, Config) {
 	t.Helper()
-	server := httptest.NewServer(handler)
+	server := httptest.NewTLSServer(handler)
 	t.Cleanup(server.Close)
 
 	tokenPath := filepath.Join(t.TempDir(), "token")
 	if err := os.WriteFile(tokenPath, []byte("test-token\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return server, Config{APIServer: server.URL, DefaultNamespace: "topo", TokenPath: tokenPath}
+	caPath := filepath.Join(t.TempDir(), "kubernetes-test-ca.pem")
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return server, Config{APIServer: server.URL, DefaultNamespace: "topo", TokenPath: tokenPath, CACertPath: caPath}
 }
 
 func TestClientResolveReadsField(t *testing.T) {
@@ -206,6 +213,31 @@ func TestClientResolveHonorsContextCancellation(t *testing.T) {
 	}
 }
 
+func TestClientDoesNotFollowRedirects(t *testing.T) {
+	var redirected atomic.Bool
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirected.Store(true)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(destination.Close)
+
+	server, config := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, destination.URL, http.StatusTemporaryRedirect)
+	})
+	defer server.Close()
+
+	client, err := NewClient(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Resolve(context.Background(), "", "ssh-credentials", "password"); err == nil {
+		t.Fatal("expected redirected Kubernetes response to fail")
+	}
+	if redirected.Load() {
+		t.Fatal("Kubernetes client followed a redirect and risked forwarding its token")
+	}
+}
+
 func TestClientResolveRereadsTokenEveryRequest(t *testing.T) {
 	var gotTokens []string
 	server, config := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -237,6 +269,20 @@ func TestClientResolveRereadsTokenEveryRequest(t *testing.T) {
 func TestConfigFromEnvironmentRequiresAPIServer(t *testing.T) {
 	clearKubernetesEnvironment(t)
 	if _, err := ConfigFromEnvironment(); err == nil || !strings.Contains(err.Error(), "KUBERNETES_SERVICE_HOST") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestConfigFromEnvironmentRejectsPlainHTTP(t *testing.T) {
+	clearKubernetesEnvironment(t)
+	t.Setenv("TOPO_KUBERNETES_API_SERVER", "http://k8s.example.test")
+	if _, err := ConfigFromEnvironment(); err == nil || !strings.Contains(err.Error(), "https://") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestNewClientRejectsPlainHTTP(t *testing.T) {
+	if _, err := NewClient(Config{APIServer: "http://k8s.example.test", TokenPath: defaultTokenPath}); err == nil || !strings.Contains(err.Error(), "https://") {
 		t.Fatalf("error = %v", err)
 	}
 }

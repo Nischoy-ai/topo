@@ -63,19 +63,26 @@ as focused security/operations slices rather than one packaging mega-PR:
    never reverse-migrating or overwriting the failed database in place.
 4. **Done.** Reproducible signed artifacts, SBOMs, checksums, and
    build provenance. Build Linux/macOS/Windows amd64/arm64 archives twice from
-   different paths with exact Go 1.23.12, reject any byte drift, sign the
+   different paths with exact Go 1.25.13, reject any byte drift, sign the
    checksum manifest keylessly, generate signed GitHub provenance and SBOM
    attestations, pin release actions by commit, verify evidence before a tag
    can create a GitHub Release, and document independent consumer verification.
 5. **Done.** DEB, RPM, MSI, Helm, raw archives, and offline-bundle
    packaging from the same verified release artifacts.
-6. **Current slice.** Publish those artifacts through a signed Nischoy APT repository,
+6. **Done — automation; operational evidence deferred.** Publish those
+   artifacts through a signed Nischoy APT repository,
    a signed Nischoy RPM repository, `Nischoy-ai/homebrew-tap`, Microsoft's
    WinGet catalog, and an OCI Helm registry. Keep stable/beta promotion,
    repository-native signing/key rotation, and clean-machine install/upgrade/
-   uninstall tests in scope; additional package managers follow demand.
-7. **Gate.** External security review and remediation before any production
-   claim.
+   uninstall tests in scope; additional package managers follow demand. The
+   first real beta and N-1 stable promotions remain required, explicitly
+   deferred until the user authorizes external repository and production-key
+   provisioning.
+7. **Current gate.** Prepare and commission an external security review,
+   remediate findings, and retain independent retest evidence before any
+   production claim. Preparation must include a reviewer scope/threat model, a
+   supported vulnerability-free build baseline, and explicit findings/closure
+   rules; preparation is not itself an independent review.
 
 The credential-references milestone is complete:
 
@@ -198,9 +205,9 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
    implements the existing `discovery.Plugin` interface, querying MIB-II
    (`system`: `sysDescr`/`sysObjectID`/`sysUpTime`/`sysName`, and
    `interfaces`: `ifDescr`/`ifPhysAddress` via GETBULK) over SNMPv3 using
-   `github.com/gosnmp/gosnmp`, pinned to `v1.42.1` — the last version
-   declaring `go 1.22` compatibility with this project's pinned `go
-   1.23.0` toolchain. Production requires `authPriv` with SHA
+   `github.com/gosnmp/gosnmp`, pinned to `v1.42.1` — selected under the
+   project's earlier Go 1.23 baseline and retained under the current Go 1.25
+   security baseline. Production requires `authPriv` with SHA
    authentication and AES privacy, with no weaker fallback, mirroring how
    WinRM's production path requires NTLM+HTTPS. Asset identity is the
    SNMPv3 engine ID discovered during the USM handshake, not an IP
@@ -217,8 +224,9 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
    `HostSystem`/`VirtualMachine` objects read-only over the vSphere API
    (a bounded property-collector container view; no configuration, power,
    or lifecycle operation is ever issued) using `github.com/vmware/govmomi`,
-   pinned to `v0.52.0` — the last release declaring `go 1.23.0`
-   compatibility. Asset identity is a host's hardware UUID or a VM's
+   pinned to `v0.52.0` — selected under the earlier Go 1.23 baseline and
+   retained under the current Go 1.25 security baseline. Asset identity is a
+   host's hardware UUID or a VM's
    VC-managed instance UUID (falling back to its BIOS UUID for standalone
    ESXi hosts with no vCenter to assign one), never an IP address or
    inventory path; `vm_runs_on_host`, `host_has_interface`, and
@@ -243,7 +251,8 @@ complete (all three slices). Slice 1 (persistent storage): `internal/store/sqlit
 implements the existing `store.Repository` interface using
 `modernc.org/sqlite` (pure-Go, no cgo — required for this project's
 `GOOS=windows` cross-compile CI check to keep working) pinned to `v1.39.0`,
-the last release declaring `go 1.23.0` compatibility. PostgreSQL is
+selected under the earlier Go 1.23 baseline and retained under the current Go
+1.25 security baseline. PostgreSQL is
 deliberately not used: this project has no HA/clustered-controller story
 yet, so a client-server database is not yet justified over a single
 embedded file — see "Storage technology decision" under "Current
@@ -308,13 +317,18 @@ The complete scope, acceptance gates, and follow-on order are in
 
 ## Engineering workflow
 
-- Use Go 1.23 compatibility until the roadmap explicitly changes it.
+- Use Go 1.25 compatibility and exact Go 1.25.13 for release/security evidence
+  until the roadmap explicitly changes it. The M2.5 external-review preparation
+  slice raised this baseline from Go 1.23 after `govulncheck` found reachable
+  vulnerabilities with no supported 1.23 fix.
 - Prefer standard-library components and narrowly scoped dependencies.
 - Run `gofmt -w` on changed Go files, `go vet ./...`, `go test -race ./...`,
   and `go build -trimpath ./cmd/topo` before publishing. Files behind a
   `windows` build tag (Windows service integration) also need
   `GOOS=windows GOARCH=amd64 go vet ./...` and `go build`, matching the CI
   cross-compile check; there is no way to execute them on Linux CI.
+- Run the pinned `govulncheck` gate through
+  `scripts/security-review-checks.sh` for security-sensitive or release work.
 - New protocol plugins need parser tests, configuration validation, connection
   and timeout tests, arbitrary-operation rejection tests, fault isolation, and
   repeat-scan identity tests.

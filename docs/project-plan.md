@@ -8,10 +8,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-23
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed implementation slice:** M2.5 package-manager distribution,
-  merged in <https://github.com/Nischoy-ai/topo/pull/31>. Native package
-  artifacts immediately before it merged in
-  <https://github.com/Nischoy-ai/topo/pull/30>.
+- **Latest completed implementation slice:** M2.5 external-security-review
+  preparation and pre-review remediation (this branch; PR pending). Package-
+  manager distribution immediately before it merged in
+  <https://github.com/Nischoy-ai/topo/pull/31>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -68,10 +68,37 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slices 1 through 6 are merged; external security review/remediation is next.
-  Real beta and N-1 stable channel promotions remain required operational
-  evidence before any production claim. See "Current milestone: M2.5" below.
-- **Verified in the latest slice (package-manager distribution):** a
+  Slices 1 through 6 are merged. The external-review scope, baseline, and
+  remediation/closure protocol are now prepared; commissioning the independent
+  review, remediating its findings, and obtaining independent retest evidence
+  remain open. Real beta and N-1 stable channel promotions also remain required
+  operational evidence before any production claim and are explicitly deferred
+  until the user authorizes external repository and production signing-key
+  provisioning. See "Current milestone: M2.5" below.
+- **Verified in the latest slice (external-review preparation):**
+  `docs/security-review.md` maps principals, attack surfaces, code, and evidence
+  into a reviewer scope and defines stable finding records, severity decisions,
+  remediation ownership, and independent closure. A first official
+  `govulncheck` run against the old exact Go 1.23.12 release baseline found 41
+  reachable vulnerabilities. Exact Go 1.25.13 plus
+  `golang.org/x/crypto v0.52.0` and `github.com/Azure/go-ntlmssp v0.1.1`
+  clears every reachable finding under pinned `govulncheck v1.7.0`; CI and
+  `scripts/security-review-checks.sh` now fail on a regression. The verbose scan
+  retains the module-only `x/crypto/openpgp` advisory, but Topo imports only
+  `x/crypto/ssh`, so no affected package or symbol is reachable. A self-audit
+  also found that the Vault/Kubernetes secret adapters accepted plaintext HTTP
+  despite their verified-TLS contract; both now require strict HTTPS, reject
+  ambiguous base URLs, and refuse redirects, with real-TLS and downgrade/token-
+  forwarding regression tests. `scripts/security-review-checks.sh` passes end
+  to end under exact Go 1.25.13: module verification, formatting/diff checks,
+  vet, the vulnerability scan, the full race/coverage suite, Linux build, and
+  Windows amd64 vet/build. Workflow YAML parses and `actionlint` passes. This
+  committed tree also reproduces all six raw release archives and their
+  metadata byte-for-byte from two absolute paths with `go1.25.13`, then
+  reproduces the DEB/RPM/Helm package set from those verified inputs. This is
+  maintainer preparation and remediation, not an independent review; the gate
+  remains open.
+- **Verified in the previous slice (package-manager distribution):** a
   standard-library promotion builder validates release checksums and emits
   deterministic APT, RPM, Homebrew, WinGet, and OCI Helm inputs without
   rebuilding or repackaging Topo. Focused tests cover byte identity, two-path
@@ -917,9 +944,10 @@ they do not share a slice.
    — this is the project's third external dependency, after
    `golang.org/x/crypto` (SSH) and `github.com/Azure/go-ntlmssp` (WinRM
    NTLM), each added for the same reason. Pinned to `v1.42.1`, the last
-   version declaring `go 1.22` compatibility with this project's `go
-   1.23.0` — newer versions require `go 1.24` and were deliberately not
-   used to avoid silently bumping the language version CI is pinned to.
+   version declaring `go 1.22` compatibility with the project's then-current
+   `go 1.23.0` baseline — newer versions required `go 1.24` and were
+   deliberately not used in that discovery slice. The M2.5 security-review
+   preparation later raised the project baseline independently.
    Production requires `authPriv` (SHA/AES), mirroring how WinRM's
    production path requires NTLM+HTTPS and only permits a weaker mode
    (Basic auth) inside explicit `LabMode`; Topo Lab's SNMP agent —
@@ -943,7 +971,8 @@ they do not share a slice.
 2. **Done.** VMware vCenter virtual machine and host inventory: a new
    `pkg/discovery/vmware` plugin implementing `discovery.Plugin`, using
    `github.com/vmware/govmomi` (the official vSphere Go SDK, pinned to
-   `v0.52.0` — the last release declaring `go 1.23.0` compatibility) to
+   `v0.52.0` — the last release declaring `go 1.23.0` compatibility when this
+   discovery slice was implemented) to
    enumerate `HostSystem` and `VirtualMachine` objects read-only via a
    property-collector container view, with a fixed property set
    (`name`/`summary`/`config.network` for hosts,
@@ -1025,9 +1054,11 @@ multi-part milestone in this project, this is staged as separate slices.
 ### Storage technology decision
 
 `modernc.org/sqlite`, pinned to `v1.39.0` — the last release declaring `go
-1.23.0` compatibility with this project's pinned toolchain (newer releases
-require `go 1.24`/`go 1.25` and were deliberately not used, the same
-reasoning applied to every prior dependency pin in this project). It is a
+1.23.0` compatibility with the project's then-current toolchain (newer releases
+required `go 1.24`/`go 1.25` and were deliberately not used in that storage
+slice, the same reasoning applied to every prior dependency pin in this
+project). The M2.5 security-review preparation later raised the toolchain
+independently while retaining this tested storage version. It is a
 pure-Go transpilation of SQLite's C source (no cgo), which matters
 concretely here: this project's CI cross-compiles for Windows
 (`GOOS=windows GOARCH=amd64 go build`), and a cgo-based SQLite driver would
@@ -1194,7 +1225,7 @@ and independent security-review gaps. It does not add new discovery protocols.
    database in place.
 4. **Done — supply-chain release evidence.** Build deterministic raw
    archives for Linux, macOS, and Windows on amd64 and arm64 with exact Go
-   1.23.12, `CGO_ENABLED=0`, trimmed paths, no implicit VCS stamp, and fixed
+   1.25.13, `CGO_ENABLED=0`, trimmed paths, no implicit VCS stamp, and fixed
    archive metadata. Build twice from different absolute source paths and fail
    on byte drift. Publish sorted SHA-256 checksums, deterministic build
    metadata, an SPDX SBOM, a keyless Sigstore signature over the checksum
@@ -1206,7 +1237,7 @@ and independent security-review gaps. It does not add new discovery protocols.
    upgrade/rollback paths. The host package installs one `topo` binary and
    platform service definitions without embedding credentials or silently
    starting an unconfigured service.
-6. **Current — package-manager distribution.** Promote the package artifacts through a
+6. **Done — package-manager automation; operational evidence deferred.** Promote the package artifacts through a
    signed Nischoy-hosted APT repository, a signed Nischoy-hosted RPM repository,
    `Nischoy-ai/homebrew-tap`, Microsoft's `winget-pkgs` catalog, and an OCI Helm
    registry. GitHub Releases remain the immutable artifact source of truth;
@@ -1215,9 +1246,19 @@ and independent security-review gaps. It does not add new discovery protocols.
    promotion, native repository signing/key rotation, and clean-machine fresh
    install, N-1-to-N upgrade, configuration preservation, uninstall/purge, and
    rollback tests. Additional ecosystems (Chocolatey, Scoop, AUR, Snap) follow
-   demonstrated demand rather than blocking these initial native channels.
-7. **External security review.** Commission an independent review, remediate
-   findings, and retain evidence before any production-readiness claim.
+   demonstrated demand rather than blocking these initial native channels. A
+   real beta and real N-1 stable promotion remain required but are deferred
+   until external repositories and production signing credentials are
+   explicitly authorized and provisioned.
+7. **Current — external security review.** The review-preparation slice defines
+   the threat-boundary scope, reproducible baseline, finding schema, severity
+   policy, remediation ownership, and independent closure criteria. It also
+   upgrades the release/security baseline to exact Go 1.25.13 and fixed
+   `x/crypto`/`go-ntlmssp` versions after a baseline scan found 41 reachable
+   vulnerabilities, adds a pinned zero-reachable-finding CI gate, and requires
+   HTTPS/no redirects for external secret providers. Commission an independent
+   review against an immutable `main` commit, remediate its findings, and
+   retain independent retest evidence before any production-readiness claim.
 
 ### Acceptance gates for slice 1
 
@@ -1325,7 +1366,7 @@ and independent security-review gaps. It does not add new discovery protocols.
 ### Acceptance gates for slice 4
 
 - One release command builds Linux, macOS, and Windows archives for amd64 and
-  arm64 with exact Go 1.23.12 and embeds the semantic tag in `topo version`.
+  arm64 with exact Go 1.25.13 and embeds the semantic tag in `topo version`.
   Every archive contains the binary, `LICENSE`, and `README.md` under one
   version/platform directory.
 - `CGO_ENABLED=0`, `-trimpath`, and `-buildvcs=false` remove host compiler,
@@ -1351,7 +1392,7 @@ and independent security-review gaps. It does not add new discovery protocols.
   checksum, Cosign identity-constrained signature, GitHub provenance, and local
   byte-reproduction commands. README, SECURITY, roadmap, AGENTS, and this
   handoff describe the same trust boundary.
-- Full Go 1.23 formatting, vet, race/coverage, Linux build, Windows vet/build,
+- Full Go 1.25 formatting, vet, race/coverage, Linux build, Windows vet/build,
   release-tool unit tests, full-matrix local reproduction, and GitHub CI pass.
 
 ### Deliberate non-goals for slice 4
@@ -1407,7 +1448,7 @@ and independent security-review gaps. It does not add new discovery protocols.
   replacing the binary/package, preserves operator-created configuration and
   state on ordinary uninstall/upgrade, and restores the backup with the old
   binary for database rollback rather than reverse-migrating in place.
-- The full Go 1.23 Linux/Windows gates, raw-archive reproducibility proof,
+- The full Go 1.25 Linux/Windows gates, raw-archive reproducibility proof,
   package-content tests, package-assembly reproducibility proof, and GitHub CI
   pass.
 
@@ -1486,6 +1527,39 @@ and independent security-review gaps. It does not add new discovery protocols.
   public channel operation. Production keys are absent from PRs, and the first
   real beta/N-1 stable evidence cannot exist before reviewed tags and external
   repositories exist.
+
+### Acceptance gates for slice 7 preparation
+
+- `docs/security-review.md` identifies the review commit rule, principals,
+  trust boundaries, attack surfaces, primary implementation/evidence, review
+  tests, explicit exclusions, and sensitive-report handling.
+- The release and review baseline uses exact Go 1.25.13. The old Go 1.23.12,
+  `x/crypto v0.41.0`, and pre-release `go-ntlmssp` baseline finding is retained
+  honestly; pinned `govulncheck v1.7.0` reports zero reachable vulnerabilities
+  after the toolchain and dependency remediation and runs in ordinary CI.
+- Vault and Kubernetes secret-provider clients require absolute HTTPS base
+  URLs, normal server identity verification, and no redirects. Tests exercise
+  real TLS and prove plaintext and redirected token-bearing requests fail.
+- A reviewer can run one documented command to reproduce formatting, module
+  verification, vet, known-vulnerability, race, Linux-build, and Windows-
+  cross-build gates with the pinned toolchain.
+- Findings have stable IDs, severity rationale, impact/reproduction, ownership,
+  fix/regression evidence, and independent closure. Critical/high findings
+  always block; medium accepted risk requires explicit maintainer and reviewer
+  agreement with a bounded exposure and review date.
+- The full exact-Go formatting, vet, vulnerability, race/coverage, Linux build,
+  Windows vet/build, and release/package/distribution regression gates pass.
+
+### Deliberate non-goals for slice 7 preparation
+
+- Preparation and maintainer self-audit are not an independent penetration
+  test, do not close the gate, and do not create a production-readiness claim.
+- No external report or finding is fabricated. Commissioning, independent
+  findings, fixes driven by those findings, and independent retest evidence
+  remain the next gate work.
+- No external package repository or production signing credential is
+  provisioned. Real beta/N-1 promotion evidence remains a separate required
+  operational gate until the user explicitly authorizes that provisioning.
 
 ### Distribution model for slices 4-6
 

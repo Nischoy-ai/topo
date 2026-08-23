@@ -27,7 +27,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.23.12"
+          go-version: "1.25.13"
           cache: false
       - name: Validate release input
         id: release
@@ -40,12 +40,14 @@ jobs:
             echo "invalid semantic release tag: $version" >&2
             exit 1
           fi
-          if [[ "$(go env GOVERSION)" != "go1.23.12" ]]; then
-            echo "release requires exactly go1.23.12" >&2
+          if [[ "$(go env GOVERSION)" != "go1.25.13" ]]; then
+            echo "release requires exactly go1.25.13" >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "filename_version=${version#v}" >> "$GITHUB_OUTPUT"
+      - name: Reject reachable known vulnerabilities at tag time
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
       - name: Build raw archives twice and require byte-for-byte reproduction
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -77,7 +79,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.23.12"
+          go-version: "1.25.13"
           cache: false
       - name: Download verified package inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -132,7 +134,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.23.12"
+          go-version: "1.25.13"
           cache: false
       - name: Download verified raw release inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -279,7 +281,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.23.12"
+          go-version: "1.25.13"
           cache: false
       - name: Download verified raw, Linux, and Helm artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

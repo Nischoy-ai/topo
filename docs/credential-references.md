@@ -91,17 +91,18 @@ resolves every `vault:` reference against one Vault address and mount:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `VAULT_ADDR` | yes | Vault API base URL, `http://` or `https://`. |
+| `VAULT_ADDR` | yes | Absolute HTTPS Vault API base URL. Credentials, paths, query parameters, and fragments are rejected. |
 | `VAULT_TOKEN` | one of `VAULT_TOKEN` / `VAULT_TOKEN_FILE` | Vault token value. |
 | `VAULT_TOKEN_FILE` | one of `VAULT_TOKEN` / `VAULT_TOKEN_FILE` | Absolute path to a file containing the token, for Vault Agent or CSI driver token sinks. Preferred over `VAULT_TOKEN` in managed deployments. |
 | `VAULT_NAMESPACE` | no | Vault Enterprise namespace. |
 | `VAULT_MOUNT` | no | KV version 2 mount point. Defaults to `secret`. |
 | `VAULT_CACERT` | no | Absolute path to an additional PEM certificate authority to trust. |
 
-Topo verifies the Vault server's TLS identity using the system trust store
-plus `VAULT_CACERT` when set; it never disables certificate verification.
-Reads are bounded to 1 MiB and cancelled after 20 seconds. Errors report the
-secret path and Vault's own error text but never resolved credential bytes.
+Topo requires HTTPS and verifies the Vault server's TLS identity using the
+system trust store plus `VAULT_CACERT` when set; it never disables certificate
+verification or follows redirects. Reads are bounded to 1 MiB and each HTTP
+round trip is capped at 15 seconds. Errors report the secret path and Vault's
+own error text but never resolved credential bytes.
 
 ### Token lease and renewal
 
@@ -151,15 +152,16 @@ for a non-default service account layout:
 
 | Variable | Purpose |
 | --- | --- |
-| `TOPO_KUBERNETES_API_SERVER` | Overrides the API server URL normally built from `KUBERNETES_SERVICE_HOST`/`KUBERNETES_SERVICE_PORT`. When set, Topo trusts the system certificate store for TLS instead of the in-cluster CA unless `TOPO_KUBERNETES_CA_FILE` is also set. |
+| `TOPO_KUBERNETES_API_SERVER` | Overrides the API server URL normally built from `KUBERNETES_SERVICE_HOST`/`KUBERNETES_SERVICE_PORT`. It must be an absolute HTTPS base URL with no credentials, path, query, or fragment. When set, Topo trusts the system certificate store for TLS instead of the in-cluster CA unless `TOPO_KUBERNETES_CA_FILE` is also set. |
 | `TOPO_KUBERNETES_TOKEN_FILE` | Absolute path to the bearer token file. Defaults to the projected service account token path. Re-read on every request, so kubelet-rotated tokens are picked up without any renewal logic. |
 | `TOPO_KUBERNETES_CA_FILE` | Absolute path to an additional PEM certificate authority to trust for the API server's TLS identity. |
 | `TOPO_KUBERNETES_NAMESPACE` | Default namespace used when a reference omits one. Defaults to the pod's own namespace file. |
 
-Topo verifies the Kubernetes API server's TLS identity and never disables
-certificate verification. Reads are bounded to 1 MiB and cancelled after 20
-seconds. Errors report the secret name, namespace, and the Kubernetes API's
-own error text but never resolved credential bytes.
+Topo requires HTTPS, verifies the Kubernetes API server's TLS identity, and
+never disables certificate verification or follows redirects. Reads are
+bounded to 1 MiB and each HTTP round trip is capped at 15 seconds. Errors
+report the secret name, namespace, and the Kubernetes API's own error text but
+never resolved credential bytes.
 
 ### Least-privilege scoping
 

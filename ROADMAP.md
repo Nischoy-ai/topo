@@ -73,7 +73,7 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   signed GitHub build/SBOM attestations. See [docs/releases.md](docs/releases.md).
 - **Implemented:** DEB, RPM, MSI, Helm, raw archive, and offline-bundle packaging from the
   same immutable release artifacts. See [docs/packages.md](docs/packages.md).
-- **Current:** package-manager distribution through signed Nischoy APT and RPM repositories, an
+- **Implemented automation; operational evidence deferred:** package-manager distribution through signed Nischoy APT and RPM repositories, an
   organization Homebrew tap, WinGet catalog manifests, and an OCI Helm registry,
   with stable/beta promotion and clean-machine install/upgrade/uninstall tests.
   Deterministic generation and protected fail-closed promotion automation are
@@ -81,7 +81,13 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   See [docs/distribution.md](docs/distribution.md).
 - Additional package ecosystems such as Chocolatey, Scoop, AUR, and Snap follow
   demonstrated user demand rather than blocking the initial release channels.
-- External security review and remediation before any production claim.
+- **Current:** external security review preparation and remediation planning.
+  The reviewer scope/threat model and closure protocol are documented; the
+  security baseline now uses exact Go 1.25.13 with pinned `govulncheck`, and
+  pre-review reachable toolchain/dependency findings plus plaintext external
+  secret-provider transport were remediated. An independent review,
+  finding remediation, and independent retest remain required before any
+  production claim. See [docs/security-review.md](docs/security-review.md).
 
 ## M3 — hybrid release candidate
 

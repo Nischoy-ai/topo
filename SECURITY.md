@@ -6,7 +6,7 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, Authenticode, Developer ID, and notarization credentials. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, Authenticode, Developer ID, and notarization credentials. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
 
 ## Deployment guidance
 
@@ -33,7 +33,7 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 ## Release supply chain
 
 Semantic release tags must resolve to a commit already reachable from `main`.
-The tag workflow uses exact Go 1.23.12, CGO disabled, path/VCS stamping removed,
+The tag workflow uses exact Go 1.25.13, CGO disabled, path/VCS stamping removed,
 fixed archive metadata, and two independent source paths; any byte difference
 blocks publication. Release actions are pinned to immutable commit digests.
 `SHA256SUMS` is signed keylessly by the tag workflow's GitHub OIDC identity, and
@@ -132,6 +132,12 @@ provider authenticates in-cluster with the pod's own service account token
 and relies entirely on that service account's RBAC grants for least-privilege
 scoping — Topo does not enforce which Secrets may be read beyond what
 Kubernetes itself authorizes.
+
+The Vault and Kubernetes API adapters require absolute HTTPS base URLs and
+normal server-identity verification. They reject URL credentials, paths,
+queries, and fragments and do not follow redirects, so provider bearer tokens
+cannot be sent in plaintext or forwarded to a redirect target. Their responses
+and token-file reads remain bounded and cancellable.
 
 ## Topo Agent
 
