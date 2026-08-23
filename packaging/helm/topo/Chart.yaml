@@ -1,0 +1,12 @@
+apiVersion: v2
+name: topo
+description: Nischoy Topo destination-neutral infrastructure discovery controller
+type: application
+version: 0.0.0-dev
+appVersion: "dev"
+home: https://github.com/Nischoy-ai/topo
+sources:
+  - https://github.com/Nischoy-ai/topo
+maintainers:
+  - name: Nischoy
+    url: https://github.com/Nischoy-ai

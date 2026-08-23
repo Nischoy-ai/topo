@@ -68,10 +68,10 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 - **Implemented:** backup/restore and upgrade tooling with verified, non-overwriting
   recovery; tested migration from every supported schema; and transaction-wide
   rollback on migration failure. See [docs/storage.md](docs/storage.md#backup-and-restore).
-- **Current:** byte-reproducible Linux/macOS/Windows amd64/arm64 archives,
+- **Implemented:** byte-reproducible Linux/macOS/Windows amd64/arm64 archives,
   SHA-256 manifests, SPDX SBOMs, keyless Sigstore checksum signatures, and
   signed GitHub build/SBOM attestations. See [docs/releases.md](docs/releases.md).
-- DEB, RPM, MSI/MSIX, Helm, raw archive, and offline-bundle packaging from the
+- **Current:** DEB, RPM, MSI, Helm, raw archive, and offline-bundle packaging from the
   same immutable release artifacts.
 - Package-manager distribution: signed Nischoy APT and RPM repositories, an
   organization Homebrew tap, WinGet catalog manifests, and an OCI Helm registry,

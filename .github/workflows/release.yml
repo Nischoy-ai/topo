@@ -13,26 +13,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-evidence:
+  build-packages:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      filename_version: ${{ steps.release.outputs.filename_version }}
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.23.12"
           cache: false
-
       - name: Validate release input
         id: release
         shell: bash
@@ -50,62 +46,172 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "filename_version=${version#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build twice and require byte-for-byte reproduction
+      - name: Build raw archives twice and require byte-for-byte reproduction
         env:
           VERSION: ${{ steps.release.outputs.version }}
-        run: scripts/build-release.sh "$VERSION" "$GITHUB_SHA" dist
+        run: scripts/build-release.sh "$VERSION" "$GITHUB_SHA" "$RUNNER_TEMP/topo-raw"
+      - name: Build Linux and Helm packages twice from verified archives
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: scripts/build-packages.sh "$VERSION" "$RUNNER_TEMP/topo-raw" "$RUNNER_TEMP/topo-packages"
+      - name: Exercise DEB and RPM install/uninstall semantics
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: scripts/test-linux-packages.sh "$RUNNER_TEMP/topo-packages" "$VERSION"
+      - name: Retain verified package inputs for platform jobs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-${{ steps.release.outputs.filename_version }}-packages
+          path: ${{ runner.temp }}/topo-packages/
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Generate SPDX SBOM
+  windows-msi:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    needs: build-packages
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Download verified raw release inputs
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          path: ${{ runner.temp }}/topo-packages
+      - name: Install pinned WiX Toolset
+        shell: pwsh
+        run: dotnet tool install --tool-path "$env:RUNNER_TEMP/wix" wix --version 6.0.2
+      - name: Exercise MSI install, upgrade, and uninstall
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.build-packages.outputs.version }}
+        run: >-
+          scripts/test-msi.ps1
+          -ArtifactDirectory "$env:RUNNER_TEMP/topo-packages"
+          -Version "$env:VERSION"
+          -WixPath "$env:RUNNER_TEMP/wix/wix.exe"
+          -OutputDirectory "$env:RUNNER_TEMP/topo-msi"
+      - name: Authenticode-sign and verify both MSI packages
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_BASE64) -or
+              [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_PASSWORD)) {
+              throw "Windows release signing secrets are required; refusing to publish unsigned MSI packages"
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "topo-release-signing.pfx"
+          try {
+              [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_SIGNING_PFX_BASE64))
+              $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+                  -Filter signtool.exe -File -Recurse |
+                  Sort-Object FullName -Descending | Select-Object -First 1
+              if (-not $signtool) { throw "signtool.exe was not found on the Windows runner" }
+              Get-ChildItem "$env:RUNNER_TEMP/topo-msi" -Filter *.msi | ForEach-Object {
+                  & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
+                      /f $pfx /p $env:WINDOWS_SIGNING_PFX_PASSWORD $_.FullName
+                  if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for $($_.Name)" }
+                  & $signtool.FullName verify /pa /all /v $_.FullName
+                  if ($LASTEXITCODE -ne 0) { throw "Authenticode verification failed for $($_.Name)" }
+              }
+          } finally {
+              if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx -Force }
+          }
+      - name: Retain signed MSI packages
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-msi
+          path: ${{ runner.temp }}/topo-msi/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-packages, windows-msi]
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up the pinned release toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+      - name: Download verified raw, Linux, and Helm artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          path: dist
+      - name: Download signed MSI artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-msi
+          path: dist
+      - name: Build the deterministic offline bundle and final checksums
+        env:
+          VERSION: ${{ needs.build-packages.outputs.version }}
+          FILENAME_VERSION: ${{ needs.build-packages.outputs.filename_version }}
+        run: |
+          set -euo pipefail
+          go run ./internal/packagetool -mode finalize -out dist
+          go run ./internal/packagetool -mode bundle -root . -raw dist \
+            -out "dist/topo_${FILENAME_VERSION}_offline.tar.gz" -version "$VERSION"
+          go run ./internal/packagetool -mode finalize -out dist
+          (cd dist && sha256sum --check SHA256SUMS)
+      - name: Generate release-wide SPDX SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          file: dist/topo_${{ steps.release.outputs.filename_version }}_linux_amd64.tar.gz
+          path: dist
           format: spdx-json
-          output-file: dist/topo_${{ steps.release.outputs.filename_version }}_sbom.spdx.json
+          output-file: dist/topo_${{ needs.build-packages.outputs.filename_version }}_sbom.spdx.json
           upload-artifact: false
           upload-release-assets: false
-
+      - name: Include the SBOM in the authenticated checksum manifest
+        run: |
+          go run ./internal/packagetool -mode checksums -out dist
+          (cd dist && sha256sum --check SHA256SUMS)
       - name: Install the pinned Cosign client
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
       - name: Sign the checksum manifest with keyless Sigstore
         env:
-          VERSION: ${{ steps.release.outputs.filename_version }}
+          VERSION: ${{ needs.build-packages.outputs.filename_version }}
         run: |
           set -euo pipefail
           cosign sign-blob --yes \
             --bundle "dist/topo_${VERSION}_checksums.sigstore.json" \
             dist/SHA256SUMS
-
       - name: Generate signed SLSA build provenance
         id: provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-checksums: dist/SHA256SUMS
-
       - name: Preserve the provenance bundle with the release
         env:
           BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
-          VERSION: ${{ steps.release.outputs.filename_version }}
+          VERSION: ${{ needs.build-packages.outputs.filename_version }}
         run: cp "$BUNDLE" "dist/topo_${VERSION}_provenance.sigstore.json"
-
       - name: Generate signed SBOM attestation
         id: sbom-attestation
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-checksums: dist/SHA256SUMS
-          sbom-path: dist/topo_${{ steps.release.outputs.filename_version }}_sbom.spdx.json
-
+          sbom-path: dist/topo_${{ needs.build-packages.outputs.filename_version }}_sbom.spdx.json
       - name: Preserve the SBOM attestation bundle with the release
         env:
           BUNDLE: ${{ steps.sbom-attestation.outputs.bundle-path }}
-          VERSION: ${{ steps.release.outputs.filename_version }}
+          VERSION: ${{ needs.build-packages.outputs.filename_version }}
         run: cp "$BUNDLE" "dist/topo_${VERSION}_sbom-attestation.sigstore.json"
-
       - name: Verify signatures and provenance before publication
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.release.outputs.filename_version }}
+          VERSION: ${{ needs.build-packages.outputs.filename_version }}
         run: |
           set -euo pipefail
           cosign verify-blob \
@@ -115,19 +221,19 @@ jobs:
             dist/SHA256SUMS
           gh attestation verify "dist/topo_${VERSION}_linux_amd64.tar.gz" \
             --repo "$GITHUB_REPOSITORY"
-
-      - name: Retain release evidence as a workflow artifact
+          gh attestation verify "dist/topo_${VERSION}_windows_amd64.msi" \
+            --repo "$GITHUB_REPOSITORY"
+      - name: Retain complete release evidence as a workflow artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: topo-${{ steps.release.outputs.filename_version }}-release-evidence
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-release
           path: dist/
           if-no-files-found: error
           retention-days: 30
-
       - name: Publish immutable GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.release.outputs.version }}
+          VERSION: ${{ needs.build-packages.outputs.version }}
         run: |
           set -euo pipefail
           prerelease=()

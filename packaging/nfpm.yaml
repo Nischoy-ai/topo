@@ -1,0 +1,60 @@
+name: topo
+arch: "${TOPO_PACKAGE_ARCH}"
+platform: linux
+version: "${TOPO_PACKAGE_VERSION}"
+version_schema: semver
+release: "1"
+section: admin
+priority: optional
+maintainer: Nischoy <security@nischoy.com>
+description: Destination-neutral infrastructure discovery data plane
+vendor: Nischoy
+homepage: https://github.com/Nischoy-ai/topo
+license: Apache-2.0
+mtime: "1980-01-01T00:00:00Z"
+contents:
+  - src: "${TOPO_PACKAGE_BINARY}"
+    dst: /usr/bin/topo
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
+  - src: packaging/systemd/topo-agent.package.service
+    dst: /usr/lib/systemd/system/topo-agent.service
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
+  - src: packaging/systemd/topo-agent.env.example
+    dst: /usr/share/doc/topo/topo-agent.env.example
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
+  - src: LICENSE
+    dst: /usr/share/doc/topo/LICENSE
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
+  - src: README.md
+    dst: /usr/share/doc/topo/README.md
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
+scripts:
+  preinstall: packaging/linux/preinstall.sh
+  postinstall: packaging/linux/systemd-reload.sh
+  postremove: packaging/linux/systemd-reload.sh
+rpm:
+  compression: gzip
+  buildhost: reproducible.topo.invalid
+  packager: Nischoy
+deb:
+  compression: gzip

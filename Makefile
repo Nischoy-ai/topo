@@ -1,4 +1,4 @@
-.PHONY: test build run smoke lab-test release-snapshot
+.PHONY: test build run smoke lab-test release-snapshot package-snapshot
 
 test:
 	go test ./...
@@ -18,3 +18,7 @@ lab-test: build
 
 release-snapshot:
 	scripts/build-release.sh v0.0.0-dev dev dist
+
+package-snapshot:
+	scripts/build-release.sh v0.0.0-dev dev dist-raw
+	scripts/build-packages.sh v0.0.0-dev dist-raw dist
