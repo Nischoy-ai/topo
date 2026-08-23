@@ -114,6 +114,10 @@ redemption only for the same identity. A mismatch uses the generic invalid-token
 response and does not consume the token. Regression coverage includes the token
 store, the real controller API, concurrent correct/mismatched redemption,
 bounded request parsing, response identity, and audit redaction/identity.
+The implementation is commit `0e61e03` in
+<https://github.com/Nischoy-ai/topo/pull/35>; the complete pinned
+`scripts/security-review-checks.sh` gate passes under exact Go 1.25.13 with
+zero reachable vulnerabilities.
 
 This is maintainer triage and remediation, not independent verification. The
 finding remains open for independent retest, the other maintainer-audit findings

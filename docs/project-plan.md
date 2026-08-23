@@ -9,8 +9,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Updated:** 2026-08-23
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Current implementation slice:** M2.5 external-review remediation 1,
-  collector-scoped enrollment tokens (`TSR-2026-001`), on
-  `agent/m25-remediate-enrollment-token-scope`. The latest merged slice is the
+  collector-scoped enrollment tokens (`TSR-2026-001`), proposed in
+  <https://github.com/Nischoy-ai/topo/pull/35>. The latest merged slice is the
   external-security-review preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>; package-manager distribution
   immediately before it merged in <https://github.com/Nischoy-ai/topo/pull/31>.
@@ -38,8 +38,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** the collector-scoped enrollment-token remediation is
-  being prepared from `agent/m25-remediate-enrollment-token-scope`.
+- **Open pull request:** collector-scoped enrollment-token remediation in
+  <https://github.com/Nischoy-ai/topo/pull/35>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
