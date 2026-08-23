@@ -6,8 +6,10 @@ optional prerelease suffix) whose commit is already reachable from `main`.
 commit-pinned actions. It creates one GitHub Release containing:
 
 - deterministic raw archives for Linux, macOS, and Windows on amd64 and arm64;
-- DEB/RPM packages for Linux amd64/arm64, Authenticode-signed MSI installers
-  for Windows amd64/arm64, a Helm chart, and a deterministic offline bundle;
+- DEB and OpenPGP-signed RPM packages for Linux amd64/arm64,
+  Authenticode-signed MSI installers for Windows amd64/arm64,
+  Developer-ID-signed/notarized macOS archives, a Helm chart, and a
+  deterministic offline bundle;
 - `release-metadata.json`, recording the source commit, toolchain, build flags,
   target matrix, and each archive's SHA-256 digest;
 - `package-metadata.json`, binding native package payloads to their source
@@ -20,7 +22,8 @@ commit-pinned actions. It creates one GitHub Release containing:
 The raw archives are the immutable inputs for package assembly, which never
 invokes `go build`. Package-manager channels must promote the resulting package
 bytes and checksums rather than rebuilding Topo themselves. See
-[package artifacts and lifecycle](packages.md).
+[package artifacts and lifecycle](packages.md) and
+[package-manager distribution](distribution.md).
 
 ## Reproducible build contract
 
@@ -100,9 +103,12 @@ for the trust semantics of those commands.
 3. Confirm the tagged commit's `main` CI run is green. The tag workflow verifies
    the commit is reachable from `origin/main`, reproduces the release archive
    and package sets, exercises native package lifecycles, requires and verifies
-   Authenticode signatures on both MSIs, creates the SBOM/signatures/
+   OpenPGP signatures on RPMs, Authenticode signatures on both MSIs, and
+   Developer ID signatures plus notarization on both macOS payloads. It
+   refreshes metadata for those final signed bytes, creates the SBOM/signatures/
    attestations, verifies them, and only then creates the GitHub Release with
-   all evidence in one upload.
+   all evidence in one upload. All native keys live in the protected
+   `native-package-signing` environment, not ordinary build jobs.
 4. Verify one archive independently with both commands above before promoting
    the release to any package repository.
 
@@ -113,8 +119,8 @@ or tag-protection rules should restrict who may create release tags.
 ## Scope boundary
 
 The Sigstore checksum signature and GitHub attestations authenticate the full
-release artifact set across platforms. Windows MSI publication additionally
-requires verified Authenticode signatures. That evidence does not replace
-APT/RPM repository OpenPGP keys, macOS code signing/notarization, or repository
-key-rotation procedures; those remain distribution-slice gates. No production-
-readiness claim is made before those gates and the external security review.
+final artifact set across platforms. Native signing additionally covers RPM,
+MSI, and macOS trust. That evidence does not replace signed APT/RPM repository
+metadata or repository-key rotation; protected package promotion adds those
+controls. No production-readiness claim is made before a real beta, a real N-1
+stable promotion, and the external security review.

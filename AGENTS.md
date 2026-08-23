@@ -67,9 +67,9 @@ as focused security/operations slices rather than one packaging mega-PR:
    checksum manifest keylessly, generate signed GitHub provenance and SBOM
    attestations, pin release actions by commit, verify evidence before a tag
    can create a GitHub Release, and document independent consumer verification.
-5. **Current slice.** DEB, RPM, MSI, Helm, raw archives, and offline-bundle
+5. **Done.** DEB, RPM, MSI, Helm, raw archives, and offline-bundle
    packaging from the same verified release artifacts.
-6. **Then.** Publish those artifacts through a signed Nischoy APT repository,
+6. **Current slice.** Publish those artifacts through a signed Nischoy APT repository,
    a signed Nischoy RPM repository, `Nischoy-ai/homebrew-tap`, Microsoft's
    WinGet catalog, and an OCI Helm registry. Keep stable/beta promotion,
    repository-native signing/key rotation, and clean-machine install/upgrade/

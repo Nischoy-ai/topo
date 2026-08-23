@@ -139,12 +139,12 @@ restore the pre-upgrade backup to a new database path, and start the old binary
 against that restored path. Topo never reverse-migrates or overwrites the failed
 database in place. See [backup, restore, and upgrade procedures](storage.md#backup-and-restore).
 
-## Distribution boundary
+## Package-manager promotion
 
-This slice creates release artifacts; it does not yet publish APT/RPM metadata,
-a Homebrew formula, a WinGet manifest, or an OCI Helm chart. Those channels
-promote these exact bytes in the next slice and add repository-native signing,
-stable/beta policy, key rotation, and clean-machine channel tests. macOS
-Developer ID signing/notarization is coupled to that Homebrew promotion gate;
-until then the raw macOS archive carries the Sigstore/GitHub evidence described
-in [release verification](releases.md).
+The next release stage promotes these exact bytes through signed APT/RPM
+repositories, the Nischoy Homebrew tap, Microsoft's WinGet catalog, and a GHCR
+OCI Helm registry. It adds native signing, stable/beta policy, key rotation,
+and clean-machine gates without rebuilding Topo. See
+[package-manager distribution](distribution.md). These channels are not public
+until their one-time repositories/credentials are provisioned and a real beta
+and N-1 stable promotion complete.

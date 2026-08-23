@@ -66,17 +66,151 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  native-signing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-packages
+    environment: native-package-signing
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up the pinned release toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+      - name: Download verified package inputs
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          path: ${{ runner.temp }}/topo-native
+      - name: Install native RPM signing tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes rpm
+      - name: Import the isolated RPM release key
+        env:
+          RPM_SIGNING_PRIVATE_KEY: ${{ secrets.RPM_SIGNING_PRIVATE_KEY }}
+          RPM_SIGNING_FINGERPRINT: ${{ secrets.RPM_SIGNING_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$RPM_SIGNING_PRIVATE_KEY" || ! "$RPM_SIGNING_FINGERPRINT" =~ ^[0-9A-Fa-f]{40}$ ]]; then
+            echo "RPM release signing key and fingerprint are required" >&2
+            exit 1
+          fi
+          export GNUPGHOME="$RUNNER_TEMP/rpm-gnupg"
+          mkdir -m 0700 "$GNUPGHOME"
+          printf '%s' "$RPM_SIGNING_PRIVATE_KEY" | gpg --batch --import
+          actual=$(gpg --batch --with-colons --fingerprint "$RPM_SIGNING_FINGERPRINT" | awk -F: '$1 == "fpr" { print $10; exit }')
+          test "${actual^^}" = "${RPM_SIGNING_FINGERPRINT^^}"
+          scripts/sign-rpms.sh "$RUNNER_TEMP/topo-native" "$RPM_SIGNING_FINGERPRINT"
+          gpg --batch --export "$RPM_SIGNING_FINGERPRINT" > \
+            "$RUNNER_TEMP/topo-native/nischoy-topo-archive.gpg"
+          test -s "$RUNNER_TEMP/topo-native/nischoy-topo-archive.gpg"
+          go run ./internal/packagetool -mode finalize -out "$RUNNER_TEMP/topo-native"
+          (cd "$RUNNER_TEMP/topo-native" && sha256sum --check SHA256SUMS)
+          rm -rf "$GNUPGHOME"
+      - name: Retain native-signed release inputs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-native
+          path: ${{ runner.temp }}/topo-native/
+          if-no-files-found: error
+          retention-days: 1
+
+  macos-signing:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    needs: build-packages
+    environment: native-package-signing
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up the pinned release toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+      - name: Download verified raw release inputs
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          path: ${{ runner.temp }}/topo-packages
+      - name: Import the protected Developer ID certificate
+        env:
+          APPLE_DEVELOPER_ID_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_P12_BASE64 }}
+          APPLE_DEVELOPER_ID_P12_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$APPLE_DEVELOPER_ID_P12_BASE64"
+          test -n "$APPLE_DEVELOPER_ID_P12_PASSWORD"
+          keychain="$RUNNER_TEMP/topo-signing.keychain-db"
+          password=$(openssl rand -hex 32)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          printf '%s' "$APPLE_DEVELOPER_ID_P12_BASE64" | base64 -D > "$RUNNER_TEMP/developer-id.p12"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" \
+            -P "$APPLE_DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+      - name: Sign, notarize, and deterministically rearchive macOS payloads
+        env:
+          VERSION: ${{ needs.build-packages.outputs.version }}
+          FILENAME_VERSION: ${{ needs.build-packages.outputs.filename_version }}
+          APPLE_DEVELOPER_ID_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_IDENTITY }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_PRIVATE_KEY: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          for value in APPLE_DEVELOPER_ID_IDENTITY APPLE_NOTARY_ISSUER_ID APPLE_NOTARY_KEY_ID APPLE_NOTARY_PRIVATE_KEY; do
+            test -n "${!value}"
+          done
+          printf '%s' "$APPLE_NOTARY_PRIVATE_KEY" > "$RUNNER_TEMP/notary-key.p8"
+          mkdir "$RUNNER_TEMP/topo-macos"
+          for arch in amd64 arm64; do
+            archive="topo_${FILENAME_VERSION}_darwin_${arch}.tar.gz"
+            work="$RUNNER_TEMP/macos-$arch"
+            mkdir "$work"
+            tar -xzf "$RUNNER_TEMP/topo-packages/$archive" -C "$work"
+            payload="$work/topo_${FILENAME_VERSION}_darwin_${arch}"
+            codesign --force --options runtime --timestamp \
+              --sign "$APPLE_DEVELOPER_ID_IDENTITY" "$payload/topo"
+            codesign --verify --strict --verbose=2 "$payload/topo"
+            ditto -c -k --keepParent "$payload/topo" "$RUNNER_TEMP/topo-$arch-notary.zip"
+            xcrun notarytool submit "$RUNNER_TEMP/topo-$arch-notary.zip" \
+              --key "$RUNNER_TEMP/notary-key.p8" \
+              --key-id "$APPLE_NOTARY_KEY_ID" \
+              --issuer "$APPLE_NOTARY_ISSUER_ID" \
+              --wait
+            go run ./internal/darwinarchivetool \
+              -input "$payload" \
+              -out "$RUNNER_TEMP/topo-macos/$archive" \
+              -version "$VERSION" -arch "$arch"
+          done
+          rm -f "$RUNNER_TEMP/notary-key.p8" "$RUNNER_TEMP"/*-notary.zip
+      - name: Retain signed and notarized macOS archives
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-macos
+          path: ${{ runner.temp }}/topo-macos/
+          if-no-files-found: error
+          retention-days: 1
+
   windows-msi:
     runs-on: windows-latest
     timeout-minutes: 20
-    needs: build-packages
+    needs: [build-packages, native-signing]
+    environment: native-package-signing
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Download verified raw release inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-native
           path: ${{ runner.temp }}/topo-packages
       - name: Install pinned WiX Toolset
         shell: pwsh
@@ -130,7 +264,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [build-packages, windows-msi]
+    needs: [build-packages, native-signing, macos-signing, windows-msi]
     permissions:
       contents: write
       id-token: write
@@ -147,12 +281,17 @@ jobs:
       - name: Download verified raw, Linux, and Helm artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-native
           path: dist
       - name: Download signed MSI artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: topo-${{ needs.build-packages.outputs.filename_version }}-msi
+          path: dist
+      - name: Download signed and notarized macOS archives
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-macos
           path: dist
       - name: Build the deterministic offline bundle and final checksums
         env:
@@ -160,6 +299,7 @@ jobs:
           FILENAME_VERSION: ${{ needs.build-packages.outputs.filename_version }}
         run: |
           set -euo pipefail
+          go run ./internal/releasetool -mode refresh-metadata -out dist
           go run ./internal/packagetool -mode finalize -out dist
           go run ./internal/packagetool -mode bundle -root . -raw dist \
             -out "dist/topo_${FILENAME_VERSION}_offline.tar.gz" -version "$VERSION"

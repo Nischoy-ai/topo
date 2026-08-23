@@ -94,6 +94,73 @@ jobs:
           tar -xzf "$RUNNER_TEMP/dist/topo_0.0.0-ci_offline.tar.gz" -C "$RUNNER_TEMP/offline"
           (cd "$RUNNER_TEMP/offline/topo_0.0.0-ci_offline" && sha256sum --check OFFLINE-SHA256SUMS)
 
+  distribution-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [test, windows-package]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-packages
+          path: ${{ runner.temp }}/dist
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-msi
+          path: ${{ runner.temp }}/dist
+      - name: Exercise RPM signing with an ephemeral CI key
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes createrepo-c rpm
+          export GNUPGHOME="$RUNNER_TEMP/distribution-gnupg"
+          mkdir -m 0700 "$GNUPGHOME"
+          gpg --batch --passphrase '' --quick-gen-key \
+            'Nischoy Topo CI (ephemeral) <ci@nischoy.invalid>' rsa2048 sign 1d
+          fingerprint=$(gpg --batch --with-colons --fingerprint | awk -F: '$1 == "fpr" { print $10; exit }')
+          test "${#fingerprint}" -eq 40
+          scripts/sign-rpms.sh "$RUNNER_TEMP/dist" "$fingerprint"
+          gpg --batch --export "$fingerprint" > "$RUNNER_TEMP/dist/nischoy-topo-archive.gpg"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_ENV"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+      - name: Reproduce package-manager promotion inputs
+        run: |
+          set -euo pipefail
+          go run ./internal/packagetool -mode finalize -out "$RUNNER_TEMP/dist"
+          scripts/build-distribution.sh \
+            "$RUNNER_TEMP/dist" v0.0.0-ci beta 2026-01-01T00:00:00Z \
+            "$RUNNER_TEMP/distribution"
+          scripts/build-rpm-repositories.sh "$RUNNER_TEMP/distribution" 1767225600
+          scripts/sign-repositories.sh "$RUNNER_TEMP/distribution" "$fingerprint"
+      - name: Validate generated channel metadata
+        run: |
+          ruby -c "$RUNNER_TEMP/distribution/homebrew/Formula/topo-beta.rb"
+          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f) }' \
+            "$RUNNER_TEMP"/distribution/winget/manifests/n/Nischoy/Topo/0.0.0-ci/*.yaml
+          gzip -cd "$RUNNER_TEMP/distribution/apt/dists/beta/main/binary-amd64/Packages.gz" \
+            | diff - "$RUNNER_TEMP/distribution/apt/dists/beta/main/binary-amd64/Packages"
+          test "$(sha256sum "$RUNNER_TEMP/distribution/apt/pool/main/t/topo/topo_0.0.0-ci_amd64.deb" | cut -d ' ' -f 1)" = \
+            "$(sha256sum "$RUNNER_TEMP/dist/topo_0.0.0-ci_amd64.deb" | cut -d ' ' -f 1)"
+          test "$(sha256sum "$RUNNER_TEMP/distribution/helm/topo-0.0.0-ci.tgz" | cut -d ' ' -f 1)" = \
+            "$(sha256sum "$RUNNER_TEMP/dist/topo-0.0.0-ci.tgz" | cut -d ' ' -f 1)"
+          test "$(sha256sum "$RUNNER_TEMP/distribution/rpm/beta/x86_64/Packages/t/topo-0.0.0-ci-1.x86_64.rpm" | cut -d ' ' -f 1)" = \
+            "$(sha256sum "$RUNNER_TEMP/dist/topo-0.0.0-ci-1.x86_64.rpm" | cut -d ' ' -f 1)"
+          gpg --batch --verify "$RUNNER_TEMP/distribution/apt/dists/beta/InRelease"
+          gpg --batch --verify \
+            "$RUNNER_TEMP/distribution/rpm/beta/x86_64/repodata/repomd.xml.asc" \
+            "$RUNNER_TEMP/distribution/rpm/beta/x86_64/repodata/repomd.xml"
+      - name: Retain validated promotion inputs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-ci-distribution
+          path: ${{ runner.temp }}/distribution/
+          if-no-files-found: error
+          retention-days: 1
+
   helm-lifecycle:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -83,6 +83,106 @@ type archiveFile struct {
 	Mode os.FileMode
 }
 
+// RearchiveDarwin creates a deterministic raw release archive from an already
+// built and Developer-ID-signed macOS payload. It does not compile or modify
+// the executable and is intended for the isolated native-signing job.
+func RearchiveDarwin(inputDir, outputPath, version, arch string) error {
+	if !versionPattern.MatchString(version) {
+		return fmt.Errorf("version %q must be a semantic tag such as v1.2.3", version)
+	}
+	if arch != "amd64" && arch != "arm64" {
+		return fmt.Errorf("unsupported Darwin architecture %q", arch)
+	}
+	inputDir, err := filepath.Abs(inputDir)
+	if err != nil {
+		return err
+	}
+	outputPath, err = filepath.Abs(outputPath)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Lstat(outputPath); err == nil {
+		return fmt.Errorf("release output already exists: %s", outputPath)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	base := fmt.Sprintf("topo_%s_darwin_%s", strings.TrimPrefix(version, "v"), arch)
+	files := make([]archiveFile, 0, 3)
+	for _, item := range []struct {
+		name string
+		mode os.FileMode
+	}{{"LICENSE", 0o644}, {"README.md", 0o644}, {"topo", 0o755}} {
+		path := filepath.Join(inputDir, item.name)
+		info, err := os.Lstat(path)
+		if err != nil {
+			return fmt.Errorf("inspect signed Darwin input %s: %w", item.name, err)
+		}
+		if !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 128<<20 {
+			return fmt.Errorf("signed Darwin input %s is not a bounded regular file", item.name)
+		}
+		files = append(files, archiveFile{Name: base + "/" + item.name, Path: path, Mode: item.mode})
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Name < files[j].Name })
+	return writeTarGz(outputPath, files)
+}
+
+// RefreshMetadata updates raw-archive digests after isolated native signing.
+// It preserves the recorded source, version, commit, and toolchain identity.
+func RefreshMetadata(dir string) error {
+	path := filepath.Join(dir, "release-metadata.json")
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read release metadata: %w", err)
+	}
+	var manifest metadata
+	if err := json.Unmarshal(contents, &manifest); err != nil {
+		return fmt.Errorf("parse release metadata: %w", err)
+	}
+	if manifest.SchemaVersion != 1 || manifest.Project != projectName || manifest.Repository != repository ||
+		!versionPattern.MatchString(manifest.Version) || !commitPattern.MatchString(manifest.Commit) || len(manifest.Artifacts) != len(targets) {
+		return errors.New("release metadata is incomplete or invalid")
+	}
+	expected := make(map[string]Target, len(targets))
+	for _, target := range targets {
+		name := fmt.Sprintf("topo_%s_%s_%s.%s", strings.TrimPrefix(manifest.Version, "v"), target.GOOS, target.GOARCH, target.Format)
+		expected[name] = target
+	}
+	seen := make(map[string]struct{}, len(manifest.Artifacts))
+	for i := range manifest.Artifacts {
+		item := &manifest.Artifacts[i]
+		if filepath.Base(item.Filename) != item.Filename {
+			return fmt.Errorf("unsafe release artifact filename %q", item.Filename)
+		}
+		if _, duplicate := seen[item.Filename]; duplicate {
+			return fmt.Errorf("duplicate release artifact %s", item.Filename)
+		}
+		target, ok := expected[item.Filename]
+		if !ok || item.GOOS != target.GOOS || item.GOARCH != target.GOARCH {
+			return fmt.Errorf("release artifact identity mismatch for %s", item.Filename)
+		}
+		seen[item.Filename] = struct{}{}
+		digest, err := fileSHA256(filepath.Join(dir, item.Filename))
+		if err != nil {
+			return fmt.Errorf("refresh %s: %w", item.Filename, err)
+		}
+		item.SHA256 = digest
+	}
+	updated, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return err
+	}
+	updated = append(updated, '\n')
+	temporary := path + ".tmp"
+	if err := os.WriteFile(temporary, updated, 0o644); err != nil {
+		return err
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		_ = os.Remove(temporary)
+		return err
+	}
+	return nil
+}
+
 // Build compiles and archives every supported raw-binary target. The build
 // excludes host paths, VCS probing, cgo, timestamps, uid/gid, and filesystem
 // ordering as implicit inputs. Version and commit remain explicit inputs and

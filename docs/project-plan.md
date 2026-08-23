@@ -6,12 +6,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-22
+- **Updated:** 2026-08-23
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** M2.5 reproducible release artifacts and
-  supply-chain evidence, merged in <https://github.com/Nischoy-ai/topo/pull/29>.
-  Backup/restore and schema upgrade/rollback safety immediately before it
-  merged in <https://github.com/Nischoy-ai/topo/pull/28>.
+- **Latest completed slice:** M2.5 native package artifacts, merged in
+  <https://github.com/Nischoy-ai/topo/pull/30>. Reproducible release artifacts
+  and supply-chain evidence immediately before it merged in
+  <https://github.com/Nischoy-ai/topo/pull/29>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -36,9 +36,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M2.5 slice 5 (native package artifacts) is
-  <https://github.com/Nischoy-ai/topo/pull/30> from
-  `agent/m25-package-artifacts`.
+- **Open pull request:** none yet. M2.5 slice 6 is being implemented on
+  `agent/m25-package-manager-distribution`.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -53,7 +52,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   and schema upgrade/rollback safety) in
   <https://github.com/Nischoy-ai/topo/pull/28>; M2.5 slice 4 (reproducible
   release artifacts and supply-chain evidence) in
-  <https://github.com/Nischoy-ai/topo/pull/29>.
+  <https://github.com/Nischoy-ai/topo/pull/29>; M2.5 slice 5 (native package
+  artifacts) in <https://github.com/Nischoy-ai/topo/pull/30>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -67,10 +67,25 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slices 1 through 4 are merged; slice 5 (current) is package artifacts.
-  Package-manager distribution and an external security review follow in that
-  order. See "Current milestone: M2.5" below.
-- **Verified in the current slice (package artifacts):** package assembly uses
+  Slices 1 through 5 are merged; slice 6 (current) is package-manager
+  distribution. An external security review follows. See "Current milestone:
+  M2.5" below.
+- **In progress in the current slice (package-manager distribution):** a
+  standard-library promotion builder validates release checksums and emits
+  deterministic APT, RPM, Homebrew, WinGet, and OCI Helm inputs without
+  rebuilding or repackaging Topo. Focused tests cover byte identity, two-path
+  reproduction, tamper cleanup, channel policy, and MSI product-code parity;
+  a real build against slice-5 CI artifacts also succeeds. Release automation
+  now isolates RPM, Authenticode, Developer ID, and Apple notarization keys and
+  refreshes evidence over the final native-signed bytes. The protected manual
+  promotion workflow verifies release identity/provenance, signs repository
+  metadata, gates stable on a real N-1 tag, exercises Ubuntu/Fedora/Homebrew/
+  WinGet/OCI paths, and mutates external channels only after every test passes.
+  The required organization repositories, production keys, first beta tag,
+  and real N-1 stable tag do not exist yet; production signing, external
+  publication, and clean-channel evidence remain explicitly unverified rather
+  than simulated. See [`docs/distribution.md`](distribution.md).
+- **Verified in the previous slice (package artifacts):** package assembly uses
   the verified raw archives without rebuilding Topo and reproduces the DEB,
   RPM, and Helm outputs byte-for-byte from different absolute paths. CI
   installs/removes the amd64 DEB and RPM on Ubuntu and Fedora, verifies the
@@ -1181,12 +1196,12 @@ and independent security-review gaps. It does not add new discovery protocols.
    manifest, and signed GitHub SLSA build/SBOM attestations. Pin every release
    action by immutable commit, verify signature and provenance before a tag can
    create a GitHub Release, and document independent consumer verification.
-5. **Current — package artifacts.** Ship raw archives, DEB, RPM, MSI, Helm, and an
+5. **Done — package artifacts.** Ship raw archives, DEB, RPM, MSI, Helm, and an
    offline bundle using the same immutable verified artifacts and documented
    upgrade/rollback paths. The host package installs one `topo` binary and
    platform service definitions without embedding credentials or silently
    starting an unconfigured service.
-6. **Package-manager distribution.** Promote the package artifacts through a
+6. **Current — package-manager distribution.** Promote the package artifacts through a
    signed Nischoy-hosted APT repository, a signed Nischoy-hosted RPM repository,
    `Nischoy-ai/homebrew-tap`, Microsoft's `winget-pkgs` catalog, and an OCI Helm
    registry. GitHub Releases remain the immutable artifact source of truth;
@@ -1410,6 +1425,62 @@ and independent security-review gaps. It does not add new discovery protocols.
 - Clean-machine channel promotion tests across every supported distribution and
   a real N-1 stable release remain slice-6 gates. Slice 5 tests package
   semantics directly with synthetic versions and native package tools.
+
+### Acceptance gates for slice 6
+
+- One deterministic promotion command verifies the authenticated GitHub
+  Release checksum manifest and generates APT, RPM, Homebrew, WinGet, and OCI
+  Helm inputs twice from different absolute paths. It rejects byte drift,
+  release tampering, unsafe filenames, invalid semantic tags, prereleases in
+  stable, and normal releases in beta.
+- RPMs are OpenPGP-signed before their final GitHub Release checksums,
+  attestations, and publication. macOS binaries are Developer-ID-signed and
+  notarized before deterministic re-archiving. Authenticode remains mandatory
+  for MSI. Every native-signing job fails closed without its protected material
+  and the final evidence describes the post-signing bytes.
+- APT publishes architecture-specific `Packages`/`Packages.gz`, by-hash files,
+  a bounded-validity `Release`, clear-signed `InRelease`, and detached
+  `Release.gpg`. User setup uses a repository-scoped key under
+  `/etc/apt/keyrings` and Deb822 `Signed-By`, never global `apt-key` trust.
+- RPM repositories retain the exact signed RPM release assets, generate
+  per-architecture `repodata`, sign `repomd.xml`, and enable both `gpgcheck`
+  and `repo_gpgcheck` in the published `.repo` file.
+- Homebrew formulas select immutable GitHub Release archives and checksums for
+  macOS/Linux amd64/arm64, pass strict audit, install/test/uninstall on macOS,
+  and verify the installed macOS executable's Developer ID/notarization trust.
+- WinGet multi-file manifests contain the exact Authenticode-signed amd64/arm64
+  MSI URLs, SHA-256 digests, and deterministic product codes; pinned official
+  Microsoft validation passes and the referenced x64 MSI installs, reports the
+  expected version, and silently uninstalls before submission.
+- Helm pushes the existing chart archive to GHCR without `helm package`, pulls
+  the same semantic version, and compares the pulled chart byte-for-byte before
+  publication succeeds.
+- Beta and stable run through separately protected environments under one
+  shared serialization lock because both mutate shared repositories.
+  Stable requires an actual distinct N-1 stable GitHub Release and proves
+  clean-machine install, N-1-to-N upgrade, state/configuration preservation,
+  uninstall, and documented rollback before external mutation.
+- Repository private keys are unavailable to ordinary CI. Full-fingerprint
+  validation, protected-environment approval, scoped external-repository
+  tokens, an old/new public-key overlap mechanism, expiry monitoring, and an
+  incident rotation procedure are documented and fail closed.
+- A real beta promotion and then a real N-1 stable promotion pass against the
+  public HTTPS channels. The WinGet gate completes only when Microsoft's
+  external validation/review merges the generated catalog pull request; CI
+  must not claim control over that result.
+
+### Deliberate non-goals for slice 6
+
+- No submission to `homebrew/core`; the organization tap is the supported
+  launch path until adoption and Homebrew eligibility justify upstreaming.
+- No Chocolatey, Scoop, AUR, Snap, MSIX, PKG, or DMG in parallel. Their separate
+  trust, identity, and lifecycle costs require demonstrated demand.
+- No mutable replacement of an existing tag or GitHub Release asset. A bad
+  release is corrected with a new semantic version and a new promotion.
+- No claim that pull-request generation tests prove production native trust or
+  public channel operation. Production keys are absent from PRs, and the first
+  real beta/N-1 stable evidence cannot exist before reviewed tags and external
+  repositories exist.
 
 ### Distribution model for slices 4-6
 
