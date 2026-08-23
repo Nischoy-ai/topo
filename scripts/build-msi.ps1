@@ -49,7 +49,7 @@ try {
     New-Item -ItemType Directory -Path $work | Out-Null
     $expanded = Join-Path $work "raw"
     Expand-Archive -LiteralPath $RawArchive -DestinationPath $expanded
-    $binary = Get-ChildItem -LiteralPath $expanded -Filter topo.exe -File -Recurse
+    $binary = @(Get-ChildItem -LiteralPath $expanded -Filter topo.exe -File -Recurse)
     if ($binary.Count -ne 1) {
         throw "Raw archive must contain exactly one topo.exe, found $($binary.Count)"
     }
