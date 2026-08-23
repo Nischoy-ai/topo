@@ -100,6 +100,18 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   reproduces the DEB/RPM/Helm package set from those verified inputs. This is
   maintainer preparation and remediation, not an independent review; the gate
   remains open.
+- **Reviewer engagement brief issued (2026-08-23):**
+  `docs/security-review-engagement.md` records the outbound brief used to
+  commission the independent review against immutable commit
+  `c0cfb7848e6732590002265fccd7cf0fcbd8c7e9` (the M2.5 external-security-review
+  preparation merge, `docs/security-review.md`'s target). It restates that
+  packet's scope, trust boundaries, invariants, rules of engagement, finding
+  format, and closure protocol as a self-contained brief for the independent
+  reviewer, plus the required initial review-plan response. Issuing the brief
+  is commissioning, not the review itself: the independent review, findings,
+  remediation, and independent retest remain open, and this handoff will
+  record the reviewer's identity, findings register, and retest evidence once
+  they are received.
 - **Verified in the previous slice (package-manager distribution):** a
   standard-library promotion builder validates release checksums and emits
   deterministic APT, RPM, Homebrew, WinGet, and OCI Helm inputs without
