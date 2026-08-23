@@ -145,7 +145,8 @@ every-schema recovery, migration rollback, corruption, and non-overwrite tests
 remain unchanged and passing. The complete pinned
 `scripts/security-review-checks.sh` gate passes under exact Go 1.25.13 with
 zero reachable `govulncheck` findings, the full race/coverage suite, Linux
-vet/build, and Windows amd64 vet/build.
+vet/build, and Windows amd64 vet/build. The implementation is commit `da08ab3`
+in <https://github.com/Nischoy-ai/topo/pull/37>.
 
 These are maintainer triage and remediations, not independent verification.
 `TSR-2026-001`, `TSR-2026-002`, and `TSR-2026-009` remain open for independent

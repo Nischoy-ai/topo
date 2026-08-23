@@ -10,8 +10,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Current implementation slice:** M2.5 external-review remediation 2,
   owner-only live SQLite creation plus private backup staging
-  (`TSR-2026-002`/`TSR-2026-009`). The latest merged slice is collector-scoped
-  enrollment tokens (`TSR-2026-001`) in
+  (`TSR-2026-002`/`TSR-2026-009`), proposed in
+  <https://github.com/Nischoy-ai/topo/pull/37>. The latest merged slice is
+  collector-scoped enrollment tokens (`TSR-2026-001`) in
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation merged immediately before it in
   <https://github.com/Nischoy-ai/topo/pull/33>.
@@ -39,8 +40,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none yet; the current SQLite-permissions remediation is
-  on `agent/m25-remediate-sqlite-permissions` pending final verification.
+- **Open pull request:** SQLite live-file and backup-staging remediation in
+  <https://github.com/Nischoy-ai/topo/pull/37>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
