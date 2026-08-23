@@ -10,7 +10,8 @@ It also includes **Topo Lab**, a deterministic estate simulator for exercising d
 
 ## Quick start
 
-Requires Go 1.23 or later.
+Requires Go 1.25 or later. Release and security-review evidence uses exact Go
+1.25.13.
 
 ```sh
 make test
@@ -190,6 +191,7 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - SQLite operational recovery uses verified, non-overwriting `topo storage backup` and `topo storage restore` commands. Forward migrations from every supported schema retain persisted data and all pending versions roll back together on failure; downgrade recovery restores a pre-upgrade backup to a new path. See [backup, restore, and upgrade procedures](docs/storage.md#backup-and-restore).
 - Semantic-tag releases build deterministic Linux, macOS, and Windows archives twice from different source paths, publish SHA-256 manifests and an SPDX SBOM, and bind the artifacts to keyless Sigstore signatures plus signed GitHub build/SBOM attestations. All release actions are pinned by commit and evidence is verified before publication. See [release artifacts and verification](docs/releases.md).
 - Native package assembly consumes those verified binaries without recompiling them: DEB/RPM for Linux amd64/arm64, Authenticode-gated MSI for Windows amd64/arm64, a hardened Helm chart, and a deterministic offline bundle. Host packages install a dormant service definition but never embed credentials or start an unconfigured agent. See [package artifacts and lifecycle](docs/packages.md).
+- External-review preparation now includes a reviewer-facing threat-boundary scope, a pinned known-vulnerability CI gate, and a findings/remediation/independent-retest protocol. The independent review has not yet occurred and this preparation makes no production claim. See [external security review](docs/security-review.md).
 
 The current API-key transport, and TLS termination without `-mtls`, are suitable for local evaluation only. Do not expose the controller to an untrusted network until a persistent secret provider and encryption at rest are implemented; without `-mtls`, production deployments need a TLS-terminating reverse proxy in front of the controller. See [SECURITY.md](SECURITY.md).
 

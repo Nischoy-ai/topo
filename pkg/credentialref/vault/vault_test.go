@@ -3,21 +3,28 @@ package vault
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func newTestServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, Config) {
 	t.Helper()
-	server := httptest.NewServer(handler)
+	server := httptest.NewTLSServer(handler)
 	t.Cleanup(server.Close)
-	return server, Config{Address: server.URL, Mount: "secret", Token: "test-token"}
+	caPath := filepath.Join(t.TempDir(), "vault-test-ca.pem")
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return server, Config{Address: server.URL, Mount: "secret", Token: "test-token", CACertPath: caPath}
 }
 
 func TestClientResolveReadsField(t *testing.T) {
@@ -185,6 +192,31 @@ func TestClientResolveHonorsContextCancellation(t *testing.T) {
 	}
 }
 
+func TestClientDoesNotFollowRedirects(t *testing.T) {
+	var redirected atomic.Bool
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirected.Store(true)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(destination.Close)
+
+	server, config := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, destination.URL, http.StatusTemporaryRedirect)
+	})
+	defer server.Close()
+
+	client, err := NewClient(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Resolve(context.Background(), "topo/ssh", "password"); err == nil {
+		t.Fatal("expected redirected Vault response to fail")
+	}
+	if redirected.Load() {
+		t.Fatal("Vault client followed a redirect and risked forwarding its token")
+	}
+}
+
 func TestClientLookupAndRenewSelf(t *testing.T) {
 	server, config := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -226,6 +258,21 @@ func TestClientLookupAndRenewSelf(t *testing.T) {
 func TestConfigFromEnvironmentRequiresAddress(t *testing.T) {
 	clearVaultEnvironment(t)
 	if _, err := ConfigFromEnvironment(); err == nil || !strings.Contains(err.Error(), "VAULT_ADDR") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestConfigFromEnvironmentRejectsPlainHTTP(t *testing.T) {
+	clearVaultEnvironment(t)
+	t.Setenv("VAULT_ADDR", "http://vault.example.test")
+	t.Setenv("VAULT_TOKEN", "a-token")
+	if _, err := ConfigFromEnvironment(); err == nil || !strings.Contains(err.Error(), "https://") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestNewClientRejectsPlainHTTP(t *testing.T) {
+	if _, err := NewClient(Config{Address: "http://vault.example.test", Token: "a-token"}); err == nil || !strings.Contains(err.Error(), "https://") {
 		t.Fatalf("error = %v", err)
 	}
 }

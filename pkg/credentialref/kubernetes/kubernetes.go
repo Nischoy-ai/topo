@@ -16,6 +16,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,8 +86,9 @@ func ConfigFromEnvironment() (Config, error) {
 		}
 		apiServer = "https://" + net.JoinHostPort(host, port)
 	}
-	if !strings.HasPrefix(apiServer, "https://") && !strings.HasPrefix(apiServer, "http://") {
-		return Config{}, errors.New("TOPO_KUBERNETES_API_SERVER must be an http:// or https:// URL")
+	apiServer, err := validateHTTPSAPIServer(apiServer)
+	if err != nil {
+		return Config{}, err
 	}
 
 	tokenPath := strings.TrimSpace(os.Getenv("TOPO_KUBERNETES_TOKEN_FILE"))
@@ -118,7 +120,7 @@ func ConfigFromEnvironment() (Config, error) {
 	}
 
 	return Config{
-		APIServer:        strings.TrimRight(apiServer, "/"),
+		APIServer:        apiServer,
 		DefaultNamespace: namespace,
 		TokenPath:        tokenPath,
 		CACertPath:       caCertPath,
@@ -132,14 +134,17 @@ type Client struct {
 }
 
 // NewClient builds a Client from Config. Server identity is verified against
-// CACertPath; TLS verification is never disabled.
+// CACertPath; TLS verification is never disabled, plaintext HTTP is rejected,
+// and redirects are not followed.
 func NewClient(config Config) (*Client, error) {
-	if config.APIServer == "" {
-		return nil, errors.New("kubernetes config requires an API server address")
+	apiServer, err := validateHTTPSAPIServer(config.APIServer)
+	if err != nil {
+		return nil, err
 	}
 	if config.TokenPath == "" {
 		return nil, errors.New("kubernetes config requires a token file path")
 	}
+	config.APIServer = apiServer
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if config.CACertPath != "" {
@@ -159,8 +164,25 @@ func NewClient(config Config) (*Client, error) {
 		httpClient: &http.Client{
 			Transport: transport,
 			Timeout:   requestTimeout,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 	}, nil
+}
+
+func validateHTTPSAPIServer(apiServer string) (string, error) {
+	if apiServer == "" {
+		return "", errors.New("kubernetes config requires an API server address")
+	}
+	parsed, err := url.Parse(apiServer)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return "", errors.New("TOPO_KUBERNETES_API_SERVER must be an absolute https:// URL")
+	}
+	if parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.ForceQuery || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", errors.New("TOPO_KUBERNETES_API_SERVER must not contain credentials, a path, query parameters, or a fragment")
+	}
+	return strings.TrimRight(apiServer, "/"), nil
 }
 
 // Resolve reads one field from a Kubernetes Secret. namespace may be empty

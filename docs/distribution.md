@@ -154,4 +154,7 @@ GitHub Release asset.
   demand.
 - The first real beta and N-1 stable promotions remain required evidence.
   Pull-request CI proves deterministic generation and syntax only; it has no
-  production signing keys and performs no external publication.
+  production signing keys and performs no external publication. External-
+  security-review preparation does not waive or simulate this gate; provision
+  the repositories and production signing credentials only with explicit user
+  authorization.

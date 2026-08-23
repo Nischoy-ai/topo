@@ -1,17 +1,18 @@
 module github.com/Nischoy-ai/topo
 
-go 1.23.0
+go 1.25.0
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20251107120209-3297034cd2cf
-	golang.org/x/crypto v0.41.0
+	github.com/Azure/go-ntlmssp v0.1.1
+	golang.org/x/crypto v0.52.0
 )
 
-require golang.org/x/sys v0.35.0
+require golang.org/x/sys v0.45.0
 
 require (
 	github.com/gosnmp/gosnmp v1.42.1
 	github.com/vmware/govmomi v0.52.0
+	modernc.org/sqlite v1.39.0
 )
 
 require (
@@ -24,5 +25,4 @@ require (
 	modernc.org/libc v1.66.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.39.0 // indirect
 )

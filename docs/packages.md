@@ -24,9 +24,9 @@ nFPM 2.47.0 is pinned by version and by the official release archive digest in
 `scripts/fetch-nfpm.sh`. To assemble Linux packages and the Helm chart locally:
 
 ```sh
-GOTOOLCHAIN=go1.23.12 scripts/build-release.sh \
+GOTOOLCHAIN=go1.25.13 scripts/build-release.sh \
   v0.1.0 "$(git rev-parse HEAD)" dist-raw
-GOTOOLCHAIN=go1.23.12 scripts/build-packages.sh \
+GOTOOLCHAIN=go1.25.13 scripts/build-packages.sh \
   v0.1.0 dist-raw dist-packages
 ```
 

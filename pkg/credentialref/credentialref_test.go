@@ -3,6 +3,7 @@ package credentialref
 import (
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +43,7 @@ func TestResolveKubernetes(t *testing.T) {
 	if err := os.WriteFile(tokenPath, []byte("test-token\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server, caPath := newCredentialTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/namespaces/topo/secrets/ssh-credentials" {
 			t.Fatalf("unexpected path %q", r.URL.Path)
 		}
@@ -57,6 +58,7 @@ func TestResolveKubernetes(t *testing.T) {
 	defer server.Close()
 	t.Setenv("TOPO_KUBERNETES_API_SERVER", server.URL)
 	t.Setenv("TOPO_KUBERNETES_TOKEN_FILE", tokenPath)
+	t.Setenv("TOPO_KUBERNETES_CA_FILE", caPath)
 	t.Setenv("TOPO_KUBERNETES_NAMESPACE", "topo")
 
 	value, err := Resolve("k8s:ssh-credentials#password")
@@ -74,7 +76,7 @@ func TestResolveKubernetesExplicitNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	var gotPath string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server, caPath := newCredentialTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -84,6 +86,7 @@ func TestResolveKubernetesExplicitNamespace(t *testing.T) {
 	defer server.Close()
 	t.Setenv("TOPO_KUBERNETES_API_SERVER", server.URL)
 	t.Setenv("TOPO_KUBERNETES_TOKEN_FILE", tokenPath)
+	t.Setenv("TOPO_KUBERNETES_CA_FILE", caPath)
 
 	if _, err := Resolve("k8s:other-namespace/ssh-credentials#password"); err != nil {
 		t.Fatal(err)
@@ -98,12 +101,13 @@ func TestResolveKubernetesUnavailableDoesNotExposeCredential(t *testing.T) {
 	if err := os.WriteFile(tokenPath, []byte("test-token\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server, caPath := newCredentialTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 	t.Setenv("TOPO_KUBERNETES_API_SERVER", server.URL)
 	t.Setenv("TOPO_KUBERNETES_TOKEN_FILE", tokenPath)
+	t.Setenv("TOPO_KUBERNETES_CA_FILE", caPath)
 	t.Setenv("TOPO_KUBERNETES_NAMESPACE", "topo")
 
 	_, err := Resolve("k8s:missing#password")
@@ -124,7 +128,7 @@ func TestResolveKubernetesMissingConfiguration(t *testing.T) {
 }
 
 func TestResolveVault(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server, caPath := newCredentialTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/secret/data/topo/ssh" {
 			t.Fatalf("unexpected path %q", r.URL.Path)
 		}
@@ -139,6 +143,7 @@ func TestResolveVault(t *testing.T) {
 	defer server.Close()
 	t.Setenv("VAULT_ADDR", server.URL)
 	t.Setenv("VAULT_TOKEN", "test-token")
+	t.Setenv("VAULT_CACERT", caPath)
 
 	value, err := Resolve("vault:topo/ssh#password")
 	if err != nil {
@@ -150,12 +155,13 @@ func TestResolveVault(t *testing.T) {
 }
 
 func TestResolveVaultUnavailableDoesNotExposeCredential(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server, caPath := newCredentialTLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 	t.Setenv("VAULT_ADDR", server.URL)
 	t.Setenv("VAULT_TOKEN", "test-token")
+	t.Setenv("VAULT_CACERT", caPath)
 
 	_, err := Resolve("vault:topo/missing#password")
 	if !errors.Is(err, ErrUnavailable) {
@@ -229,4 +235,16 @@ func TestResolveBoundsCredentialValues(t *testing.T) {
 	} else if strings.Contains(err.Error(), credential[:64]) {
 		t.Fatalf("error exposed credential: %v", err)
 	}
+}
+
+func newCredentialTLSServer(t *testing.T, handler http.Handler) (*httptest.Server, string) {
+	t.Helper()
+	server := httptest.NewTLSServer(handler)
+	caPath := filepath.Join(t.TempDir(), "credential-provider-test-ca.pem")
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	if err := os.WriteFile(caPath, caPEM, 0o600); err != nil {
+		server.Close()
+		t.Fatal(err)
+	}
+	return server, caPath
 }
