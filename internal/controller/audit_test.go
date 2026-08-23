@@ -52,7 +52,7 @@ func TestAuditLogRequiresAuth(t *testing.T) {
 func TestEnrollmentTokenIssuanceIsAudited(t *testing.T) {
 	s := newEnrollmentTestServer(t)
 	h := s.Handler()
-	token := mintToken(t, h)
+	token := mintToken(t, h, "collector-1")
 
 	entries := getAuditEntries(t, h, "secret")
 	if len(entries) != 1 {
@@ -64,6 +64,9 @@ func TestEnrollmentTokenIssuanceIsAudited(t *testing.T) {
 	}
 	if e.Detail["token_fingerprint"] == "" {
 		t.Fatal("expected a non-empty token_fingerprint in the audit detail")
+	}
+	if e.Detail["collector_id"] != "collector-1" {
+		t.Fatalf("collector_id = %q, want collector-1", e.Detail["collector_id"])
 	}
 	if e.Detail["expires_at"] == "" {
 		t.Fatal("expected a non-empty expires_at in the audit detail")
@@ -84,7 +87,7 @@ func TestEnrollmentTokenIssuanceIsAudited(t *testing.T) {
 func TestEnrollIsAudited(t *testing.T) {
 	s := newEnrollmentTestServer(t)
 	h := s.Handler()
-	token := mintToken(t, h)
+	token := mintToken(t, h, "collector-1")
 
 	body, _ := json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "collector-1", CSR: testCSRBase64(t, "collector-1")})
 	r := httptest.NewRequest(http.MethodPost, "/v1/enroll", bytes.NewReader(body))

@@ -102,6 +102,28 @@ bounded-read, cancellation, and redaction tests run under the race detector.
 These are maintainer findings and fixes, not independent-review results. The
 independent reviewer must evaluate the fixes and may reopen them.
 
+## Maintainer remediation status
+
+A 2026-08-23 maintainer audit of merged `main` commit
+`c0cfb7848e6732590002265fccd7cf0fcbd8c7e9` identified
+`TSR-2026-001`: enrollment tokens were single-use and time-bounded but were not
+actually bound to the collector identity named when they were distributed.
+The first focused remediation requires `POST /v1/enrollment-tokens` to name and
+validate one `collector_id`, stores that identity with the token, and permits
+redemption only for the same identity. A mismatch uses the generic invalid-token
+response and does not consume the token. Regression coverage includes the token
+store, the real controller API, concurrent correct/mismatched redemption,
+bounded request parsing, response identity, and audit redaction/identity.
+The implementation is commit `0e61e03` in
+<https://github.com/Nischoy-ai/topo/pull/35>; the complete pinned
+`scripts/security-review-checks.sh` gate passes under exact Go 1.25.13 with
+zero reachable vulnerabilities.
+
+This is maintainer triage and remediation, not independent verification. The
+finding remains open for independent retest, the other maintainer-audit findings
+remain to be remediated or dispositioned under the protocol below, and the M2.5
+gate remains open.
+
 ## Reproducing the baseline
 
 From a clean checkout of the review commit, run:

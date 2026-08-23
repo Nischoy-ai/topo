@@ -82,7 +82,11 @@ as focused security/operations slices rather than one packaging mega-PR:
    remediate findings, and retain independent retest evidence before any
    production claim. Preparation must include a reviewer scope/threat model, a
    supported vulnerability-free build baseline, and explicit findings/closure
-   rules; preparation is not itself an independent review.
+   rules; preparation is not itself an independent review. The first focused
+   maintainer-audit remediation, `TSR-2026-001`, binds enrollment tokens to the
+   operator-selected collector ID and is ready for independent retest after
+   merge; it does not close the finding or the gate. Continue the remaining
+   findings as focused slices.
 
 The credential-references milestone is complete:
 

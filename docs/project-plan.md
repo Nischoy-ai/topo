@@ -8,11 +8,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-23
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed implementation slice:** M2.5 external-security-review
-  preparation and pre-review remediation, proposed in
-  <https://github.com/Nischoy-ai/topo/pull/33>. Package-manager distribution
-  immediately before it merged in
-  <https://github.com/Nischoy-ai/topo/pull/31>.
+- **Current implementation slice:** M2.5 external-review remediation 1,
+  collector-scoped enrollment tokens (`TSR-2026-001`), proposed in
+  <https://github.com/Nischoy-ai/topo/pull/35>. The latest merged slice is the
+  external-security-review preparation and pre-review remediation in
+  <https://github.com/Nischoy-ai/topo/pull/33>; package-manager distribution
+  immediately before it merged in <https://github.com/Nischoy-ai/topo/pull/31>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -37,8 +38,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** external-security-review preparation and pre-review
-  remediation in <https://github.com/Nischoy-ai/topo/pull/33>.
+- **Open pull request:** collector-scoped enrollment-token remediation in
+  <https://github.com/Nischoy-ai/topo/pull/35>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -77,6 +78,19 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   operational evidence before any production claim and are explicitly deferred
   until the user authorizes external repository and production signing-key
   provisioning. See "Current milestone: M2.5" below.
+- **Verified in the current remediation slice:** enrollment-token issuance now
+  requires a bounded `collector_id`; `TokenStore` stores that identity and
+  returns the same generic invalid-token error for a mismatch without consuming
+  the token. The response and audit detail identify the intended collector but
+  never expose the token beyond the issuance response. Tests cover malformed,
+  unknown-field, trailing-object, and oversized issuance requests; store/API
+  identity mismatch and retry; concurrent correct-versus-mismatched redemption;
+  response identity; and audit identity/redaction. The complete pinned
+  `scripts/security-review-checks.sh` gate passes under exact Go 1.25.13,
+  including zero reachable `govulncheck` findings, the full race/coverage
+  suite, Linux vet/build, and Windows amd64 vet/build. This remediates
+  `TSR-2026-001` for independent retest; it is not independent closure, and the
+  remaining findings keep the M2.5 gate open.
 - **Verified in the latest slice (external-review preparation):**
   `docs/security-review.md` maps principals, attack surfaces, code, and evidence
   into a reviewer scope and defines stable finding records, severity decisions,
@@ -1273,6 +1287,12 @@ and independent security-review gaps. It does not add new discovery protocols.
    HTTPS/no redirects for external secret providers. Commission an independent
    review against an immutable `main` commit, remediate its findings, and
    retain independent retest evidence before any production-readiness claim.
+   The first maintainer-audit remediation (`TSR-2026-001`) binds every
+   enrollment token to its operator-selected collector ID at issuance and
+   rejects a different enrollment identity without consuming the token. It is
+   ready for independent retest after merge, not independently verified; the
+   remaining findings still require remediation or a protocol-compliant
+   disposition.
 
 ### Acceptance gates for slice 1
 

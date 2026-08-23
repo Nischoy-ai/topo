@@ -19,10 +19,18 @@ type EnrollResponse struct {
 	ExpiresAt        time.Time `json:"expires_at"`
 }
 
+// TokenRequest is the POST /v1/enrollment-tokens request body. Each token is
+// bound to exactly one collector identity at issuance and cannot enroll a
+// certificate for any other identity.
+type TokenRequest struct {
+	CollectorID string `json:"collector_id"`
+}
+
 // TokenResponse is the POST /v1/enrollment-tokens response body.
 type TokenResponse struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
+	Token       string    `json:"token"`
+	CollectorID string    `json:"collector_id"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
 
 // RotateRequest is the POST /v1/rotate request body. Unlike EnrollRequest,

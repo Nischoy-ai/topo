@@ -238,7 +238,7 @@ func TestReEnrollmentRecoversFromRevokedCertificate(t *testing.T) {
 		t.Fatalf("revoke status = %d: %s", w.Code, w.Body.String())
 	}
 
-	token := mintToken(t, h)
+	token := mintToken(t, h, "collector-1")
 	body, err := json.Marshal(enrollment.EnrollRequest{Token: token, CollectorID: "collector-1", CSR: testCSRBase64(t, "collector-1")})
 	if err != nil {
 		t.Fatal(err)

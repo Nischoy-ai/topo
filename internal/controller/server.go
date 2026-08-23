@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -26,6 +27,10 @@ const enrollmentTokenTTL = time.Hour
 
 // maxEnrollRequestBytes bounds the POST /v1/enroll request body.
 const maxEnrollRequestBytes = 16 << 10
+
+// maxEnrollmentTokenRequestBytes bounds the small fixed-shape token issuance
+// request, which carries only one collector ID.
+const maxEnrollmentTokenRequestBytes = 4 << 10
 
 // maxHeartbeatRequestBytes bounds the POST /v1/heartbeats request body,
 // which carries only a schema version and two short IDs.
@@ -366,16 +371,33 @@ func (s *Server) createEnrollmentToken(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotImplemented, "collector enrollment is not enabled")
 		return
 	}
-	token, expiresAt, err := s.Tokens.Issue(enrollmentTokenTTL)
+	r.Body = http.MaxBytesReader(w, r.Body, maxEnrollmentTokenRequestBytes)
+	var req enrollment.TokenRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid enrollment token request: "+err.Error())
+		return
+	}
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, "invalid enrollment token request: request body must contain one JSON object")
+		return
+	}
+	if !enrollment.ValidCollectorID(req.CollectorID) {
+		writeError(w, http.StatusBadRequest, "collector_id is empty, too long, or contains control characters")
+		return
+	}
+	token, expiresAt, err := s.Tokens.Issue(req.CollectorID, enrollmentTokenTTL)
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return
 	}
 	s.recordAudit(r.Context(), "enrollment_token_issued", "api-key", map[string]string{
+		"collector_id":      req.CollectorID,
 		"token_fingerprint": tokenFingerprint(token),
 		"expires_at":        expiresAt.UTC().Format(time.RFC3339),
 	})
-	writeJSON(w, http.StatusCreated, enrollment.TokenResponse{Token: token, ExpiresAt: expiresAt})
+	writeJSON(w, http.StatusCreated, enrollment.TokenResponse{Token: token, CollectorID: req.CollectorID, ExpiresAt: expiresAt})
 }
 
 func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
@@ -408,7 +430,7 @@ func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
 
 	// The token is redeemed only after the CSR itself is structurally
 	// valid, so a malformed request never burns a valid token.
-	if err := s.Tokens.Redeem(req.Token); err != nil {
+	if err := s.Tokens.Redeem(req.Token, req.CollectorID); err != nil {
 		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
