@@ -71,11 +71,14 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 - **Implemented:** byte-reproducible Linux/macOS/Windows amd64/arm64 archives,
   SHA-256 manifests, SPDX SBOMs, keyless Sigstore checksum signatures, and
   signed GitHub build/SBOM attestations. See [docs/releases.md](docs/releases.md).
-- **Current:** DEB, RPM, MSI, Helm, raw archive, and offline-bundle packaging from the
-  same immutable release artifacts.
-- Package-manager distribution: signed Nischoy APT and RPM repositories, an
+- **Implemented:** DEB, RPM, MSI, Helm, raw archive, and offline-bundle packaging from the
+  same immutable release artifacts. See [docs/packages.md](docs/packages.md).
+- **Current:** package-manager distribution through signed Nischoy APT and RPM repositories, an
   organization Homebrew tap, WinGet catalog manifests, and an OCI Helm registry,
   with stable/beta promotion and clean-machine install/upgrade/uninstall tests.
+  Deterministic generation and protected fail-closed promotion automation are
+  implemented; real beta and N-1 stable promotion evidence remains required.
+  See [docs/distribution.md](docs/distribution.md).
 - Additional package ecosystems such as Chocolatey, Scoop, AUR, and Snap follow
   demonstrated user demand rather than blocking the initial release channels.
 - External security review and remediation before any production claim.

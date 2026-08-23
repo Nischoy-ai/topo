@@ -29,6 +29,12 @@ Run a clean, repeatable 500-host simulation:
 
 See [Topo Lab](docs/topo-lab.md) for personas, fault injection, expected graphs, and limitations.
 
+Release artifacts include raw archives, DEB, RPM, MSI, Helm, and an offline
+bundle. The protected distribution workflow promotes those exact bytes to APT,
+RPM, Homebrew, WinGet, and OCI Helm channels after native-signature and
+clean-machine gates. The channels are not public until their first real
+promotion succeeds; see [package-manager distribution](docs/distribution.md).
+
 Exercise 500 Linux targets through real SSH handshakes and sessions without provisioning VMs:
 
 ```sh

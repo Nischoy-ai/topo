@@ -1,0 +1,440 @@
+name: promote package-manager channels
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing GitHub release tag to promote
+        required: true
+        type: string
+      channel:
+        description: Promotion channel
+        required: true
+        type: choice
+        options: [beta, stable]
+      previous_version:
+        description: Previous stable tag (required for stable upgrade/rollback tests)
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: package-promotion
+  cancel-in-progress: false
+
+jobs:
+  prepare-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: distribution-${{ inputs.channel }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.23.12"
+          cache: false
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes createrepo-c rpm
+      - name: Validate immutable release and channel inputs
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          PREVIOUS_VERSION: ${{ inputs.previous_version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "promotion must run from the reviewed main branch" >&2
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "version must be a semantic release tag" >&2
+            exit 1
+          fi
+          if [[ "$CHANNEL" == stable ]]; then
+            if [[ "$VERSION" == *-* ]]; then
+              echo "stable promotion rejects prereleases" >&2
+              exit 1
+            fi
+            if [[ ! "$PREVIOUS_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ || "$PREVIOUS_VERSION" == "$VERSION" ]]; then
+              echo "stable promotion requires a distinct previous stable version" >&2
+              exit 1
+            fi
+            gh release view "$PREVIOUS_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null
+          elif [[ "$VERSION" != *-* ]]; then
+            echo "beta promotion requires a prerelease" >&2
+            exit 1
+          fi
+          release=$(gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,isPrerelease,publishedAt,tagName)
+          test "$(jq -r .tagName <<<"$release")" = "$VERSION"
+          test "$(jq -r .isDraft <<<"$release")" = false
+          if [[ "$CHANNEL" == stable ]]; then
+            test "$(jq -r .isPrerelease <<<"$release")" = false
+          else
+            test "$(jq -r .isPrerelease <<<"$release")" = true
+          fi
+          test -n "$(jq -r .publishedAt <<<"$release")"
+          promotion_at=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
+          test -n "$promotion_at"
+          echo "promotion_at=$promotion_at" >> "$GITHUB_OUTPUT"
+      - name: Download the complete immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: gh release download "$VERSION" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/dist"
+      - name: Install the pinned Cosign client
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Verify checksums, release identity, provenance, and RPM signatures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          filename_version=${VERSION#v}
+          (cd "$RUNNER_TEMP/dist" && sha256sum --check SHA256SUMS)
+          cosign verify-blob \
+            --bundle "$RUNNER_TEMP/dist/topo_${filename_version}_checksums.sigstore.json" \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/${VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$RUNNER_TEMP/dist/SHA256SUMS"
+          gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_amd64.deb" --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_windows_amd64.msi" --repo "$GITHUB_REPOSITORY"
+          install -d "$RUNNER_TEMP/rpmdb"
+          rpm --dbpath "$RUNNER_TEMP/rpmdb" --import "$RUNNER_TEMP/dist/nischoy-topo-archive.asc"
+          for package in "$RUNNER_TEMP"/dist/*.rpm; do
+            rpm --dbpath "$RUNNER_TEMP/rpmdb" --checksig --verbose "$package" | grep 'Signature.*: OK'
+          done
+      - name: Verify the immutable previous stable release
+        if: inputs.channel == 'stable'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_VERSION: ${{ inputs.previous_version }}
+        run: |
+          set -euo pipefail
+          filename_version=${PREVIOUS_VERSION#v}
+          gh release download "$PREVIOUS_VERSION" --repo "$GITHUB_REPOSITORY" \
+            --dir "$RUNNER_TEMP/previous"
+          (cd "$RUNNER_TEMP/previous" && sha256sum --check SHA256SUMS)
+          cosign verify-blob \
+            --bundle "$RUNNER_TEMP/previous/topo_${filename_version}_checksums.sigstore.json" \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/${PREVIOUS_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$RUNNER_TEMP/previous/SHA256SUMS"
+          gh attestation verify "$RUNNER_TEMP/previous/topo_${filename_version}_amd64.deb" \
+            --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "$RUNNER_TEMP/previous/topo-${filename_version}-1.x86_64.rpm" \
+            --repo "$GITHUB_REPOSITORY"
+      - name: Import the protected repository signing key
+        env:
+          REPOSITORY_SIGNING_PRIVATE_KEY: ${{ secrets.REPOSITORY_SIGNING_PRIVATE_KEY }}
+          REPOSITORY_SIGNING_FINGERPRINT: ${{ secrets.REPOSITORY_SIGNING_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$REPOSITORY_SIGNING_PRIVATE_KEY" || ! "$REPOSITORY_SIGNING_FINGERPRINT" =~ ^[0-9A-Fa-f]{40}$ ]]; then
+            echo "repository signing key and fingerprint are required" >&2
+            exit 1
+          fi
+          export GNUPGHOME="$RUNNER_TEMP/repository-gnupg"
+          mkdir -m 0700 "$GNUPGHOME"
+          printf '%s' "$REPOSITORY_SIGNING_PRIVATE_KEY" | gpg --batch --import
+          actual=$(gpg --batch --with-colons --fingerprint "$REPOSITORY_SIGNING_FINGERPRINT" | awk -F: '$1 == "fpr" { print $10; exit }')
+          test "${actual^^}" = "${REPOSITORY_SIGNING_FINGERPRINT^^}"
+          release_key=$(gpg --batch --show-keys --with-colons "$RUNNER_TEMP/dist/nischoy-topo-archive.gpg" | awk -F: '$1 == "fpr" { print $10; exit }')
+          test "${release_key^^}" = "${REPOSITORY_SIGNING_FINGERPRINT^^}"
+      - name: Build and sign deterministic repository inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          REPOSITORY_SIGNING_FINGERPRINT: ${{ secrets.REPOSITORY_SIGNING_FINGERPRINT }}
+          REPOSITORY_ADDITIONAL_PUBLIC_KEY: ${{ secrets.REPOSITORY_ADDITIONAL_PUBLIC_KEY }}
+          REPOSITORY_ADDITIONAL_PUBLIC_KEY_FINGERPRINT: ${{ secrets.REPOSITORY_ADDITIONAL_PUBLIC_KEY_FINGERPRINT }}
+          PROMOTION_AT: ${{ steps.release.outputs.promotion_at }}
+        run: |
+          set -euo pipefail
+          scripts/build-distribution.sh "$RUNNER_TEMP/dist" "$VERSION" "$CHANNEL" \
+            "$PROMOTION_AT" "$RUNNER_TEMP/distribution"
+          scripts/build-rpm-repositories.sh "$RUNNER_TEMP/distribution" "$(date -u -d "$PROMOTION_AT" +%s)"
+          export GNUPGHOME="$RUNNER_TEMP/repository-gnupg"
+          if [[ -n "$REPOSITORY_ADDITIONAL_PUBLIC_KEY" ]]; then
+            printf '%s' "$REPOSITORY_ADDITIONAL_PUBLIC_KEY" > "$RUNNER_TEMP/additional-repository-key.asc"
+            export TOPO_ADDITIONAL_PUBLIC_KEY_FILE="$RUNNER_TEMP/additional-repository-key.asc"
+            export TOPO_ADDITIONAL_PUBLIC_KEY_FINGERPRINT="$REPOSITORY_ADDITIONAL_PUBLIC_KEY_FINGERPRINT"
+          fi
+          scripts/sign-repositories.sh "$RUNNER_TEMP/distribution" "$REPOSITORY_SIGNING_FINGERPRINT"
+      - name: Exercise clean-machine APT install and stable upgrade
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          PREVIOUS_VERSION: ${{ inputs.previous_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/previous"
+          docker run --rm \
+            -e VERSION -e CHANNEL -e PREVIOUS_VERSION \
+            -v "$RUNNER_TEMP/distribution:/repo:ro" \
+            -v "$RUNNER_TEMP/previous:/previous:ro" \
+            ubuntu:24.04 \
+            bash -euc '
+              if compgen -G "/previous/topo_*_amd64.deb" >/dev/null; then dpkg -i /previous/topo_*_amd64.deb; fi
+              mkdir -p /etc/topo-agent
+              printf "%s\n" operator-owned >/etc/topo-agent/operator-owned
+              mkdir -p /var/lib/topo-agent/operator-owned
+              install -D -m 0644 /repo/keys/nischoy-topo-archive.gpg /etc/apt/keyrings/nischoy-topo.gpg
+              echo "deb [signed-by=/etc/apt/keyrings/nischoy-topo.gpg] file:/repo/apt $CHANNEL main" >/etc/apt/sources.list.d/topo.list
+              apt-get update
+              apt-get install --yes topo
+              test "$(topo version)" = "$VERSION"
+              test -f /etc/topo-agent/operator-owned
+              test -d /var/lib/topo-agent/operator-owned
+              if compgen -G "/previous/topo_*_amd64.deb" >/dev/null; then
+                apt-get install --yes --allow-downgrades /previous/topo_*_amd64.deb
+                test "$(topo version)" = "$PREVIOUS_VERSION"
+                apt-get install --yes topo
+                test "$(topo version)" = "$VERSION"
+              fi
+              apt-get remove --yes topo
+              test -f /etc/topo-agent/operator-owned
+              test -d /var/lib/topo-agent/operator-owned
+            '
+      - name: Exercise clean-machine RPM install and stable upgrade
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          PREVIOUS_VERSION: ${{ inputs.previous_version }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e VERSION -e CHANNEL -e PREVIOUS_VERSION \
+            -v "$RUNNER_TEMP/distribution:/repo:ro" \
+            -v "$RUNNER_TEMP/previous:/previous:ro" \
+            fedora@sha256:99e203734f0c44913163c0de9ea700c92b60b93fbb76c143728d757c5558c5ca \
+            bash -euc '
+              rpm --import /repo/keys/nischoy-topo-archive.asc
+              if [ -f /previous/nischoy-topo-archive.asc ]; then
+                rpm --import /previous/nischoy-topo-archive.asc
+              fi
+              if compgen -G "/previous/*.x86_64.rpm" >/dev/null; then dnf install -y /previous/*.x86_64.rpm; fi
+              mkdir -p /etc/topo-agent
+              printf "%s\n" operator-owned >/etc/topo-agent/operator-owned
+              mkdir -p /var/lib/topo-agent/operator-owned
+              cat >/etc/yum.repos.d/topo.repo <<EOF
+              [topo]
+              name=Topo
+              baseurl=file:///repo/rpm/$CHANNEL/\$basearch
+              enabled=1
+              gpgcheck=1
+              repo_gpgcheck=1
+              gpgkey=file:///repo/keys/nischoy-topo-archive.asc
+              EOF
+              dnf install -y topo
+              test "$(topo version)" = "$VERSION"
+              test -f /etc/topo-agent/operator-owned
+              test -d /var/lib/topo-agent/operator-owned
+              if compgen -G "/previous/*.x86_64.rpm" >/dev/null; then
+                dnf downgrade -y /previous/*.x86_64.rpm
+                test "$(topo version)" = "$PREVIOUS_VERSION"
+                dnf upgrade -y topo
+                test "$(topo version)" = "$VERSION"
+              fi
+              dnf remove -y topo
+              test -f /etc/topo-agent/operator-owned
+              test -d /var/lib/topo-agent/operator-owned
+            '
+      - name: Retain signed promotion transaction
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: topo-${{ inputs.version }}-${{ inputs.channel }}-promotion
+          path: ${{ runner.temp }}/distribution/
+          if-no-files-found: error
+          retention-days: 7
+
+  homebrew:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    needs: prepare-and-test
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ inputs.version }}-${{ inputs.channel }}-promotion
+          path: ${{ runner.temp }}/distribution
+      - name: Audit, install, and test the exact Homebrew formula
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          formula=topo
+          if [[ "$CHANNEL" == beta ]]; then formula=topo-beta; fi
+          brew tap-new nischoy-ai/tap
+          tap=$(brew --repository nischoy-ai/tap)
+          install -m 0644 "$RUNNER_TEMP/distribution/homebrew/Formula/$formula.rb" "$tap/Formula/$formula.rb"
+          brew audit --strict --online "nischoy-ai/tap/$formula"
+          brew install "nischoy-ai/tap/$formula"
+          brew test "nischoy-ai/tap/$formula"
+          test "$(topo version)" = "${{ inputs.version }}"
+          codesign --verify --strict --verbose=2 "$(command -v topo)"
+          spctl --assess --type execute --verbose=2 "$(command -v topo)"
+          brew uninstall "$formula"
+
+  winget:
+    if: inputs.channel == 'stable'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    needs: prepare-and-test
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ inputs.version }}-${{ inputs.channel }}-promotion
+          path: ${{ runner.temp }}/distribution
+      - name: Validate and exercise the exact WinGet manifest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ inputs.version }}".Substring(1)
+          $manifest = "$env:RUNNER_TEMP/distribution/winget/manifests/n/Nischoy/Topo/$version"
+          $validator = "$env:RUNNER_TEMP/wingetcreate.exe"
+          Invoke-WebRequest `
+            -Uri "https://github.com/microsoft/winget-create/releases/download/v1.12.13.0/wingetcreate.exe" `
+            -OutFile $validator
+          $validatorDigest = (Get-FileHash -Algorithm SHA256 -LiteralPath $validator).Hash.ToLowerInvariant()
+          if ($validatorDigest -ne "24042bd37915805615e6cf969ac57c6439124c3fe85823327f5f3fb24bd9ffea") {
+              throw "Pinned WingetCreate digest mismatch"
+          }
+          & $validator validate $manifest
+          if ($LASTEXITCODE -ne 0) { throw "WingetCreate rejected the generated manifest" }
+
+          $msi = "$env:RUNNER_TEMP/topo.msi"
+          Invoke-WebRequest `
+            -Uri "https://github.com/Nischoy-ai/topo/releases/download/${{ inputs.version }}/topo_${version}_windows_amd64.msi" `
+            -OutFile $msi
+          $declared = Select-String -LiteralPath "$manifest/Nischoy.Topo.installer.yaml" `
+            -Pattern '^    InstallerSha256: ([0-9A-F]{64})$' | Select-Object -First 1
+          if (-not $declared) { throw "WinGet manifest omits the x64 installer digest" }
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash
+          if ($actual -ne $declared.Matches[0].Groups[1].Value) { throw "WinGet installer digest mismatch" }
+          $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$msi`" /qn /norestart"
+          if ($install.ExitCode -ne 0) { throw "WinGet MSI install simulation failed" }
+          $installed = Join-Path $env:ProgramFiles "Nischoy/Topo/topo.exe"
+          if ((& $installed version).Trim() -ne "${{ inputs.version }}") { throw "WinGet manifest installed the wrong version" }
+          $uninstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/x `"$msi`" /qn /norestart"
+          if ($uninstall.ExitCode -ne 0) { throw "WinGet MSI uninstall simulation failed" }
+
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: distribution-${{ inputs.channel }}
+    needs: [prepare-and-test, homebrew, winget]
+    if: ${{ always() && needs.prepare-and-test.result == 'success' && needs.homebrew.result == 'success' && (needs.winget.result == 'success' || needs.winget.result == 'skipped') }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ inputs.version }}-${{ inputs.channel }}-promotion
+          path: ${{ runner.temp }}/distribution
+      - name: Install pinned Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.21.4
+      - name: Publish and pull-verify the exact OCI Helm chart
+        env:
+          HELM_EXPERIMENTAL_OCI: 1
+          GHCR_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          filename_version=${VERSION#v}
+          printf '%s' "$GHCR_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          mkdir "$RUNNER_TEMP/pulled"
+          if ! helm pull oci://ghcr.io/nischoy-ai/charts/topo --version "$filename_version" \
+            --destination "$RUNNER_TEMP/pulled"; then
+            helm push "$RUNNER_TEMP/distribution/helm/topo-${filename_version}.tgz" oci://ghcr.io/nischoy-ai/charts
+            helm pull oci://ghcr.io/nischoy-ai/charts/topo --version "$filename_version" \
+              --destination "$RUNNER_TEMP/pulled"
+          fi
+          cmp "$RUNNER_TEMP/distribution/helm/topo-${filename_version}.tgz" "$RUNNER_TEMP/pulled/topo-${filename_version}.tgz"
+      - name: Publish static APT and RPM repositories and the Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.DISTRIBUTION_GITHUB_TOKEN }}
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          gh repo clone Nischoy-ai/topo-packages "$RUNNER_TEMP/topo-packages"
+          mkdir -p "$RUNNER_TEMP/topo-packages/apt/dists" "$RUNNER_TEMP/topo-packages/apt/pool" \
+            "$RUNNER_TEMP/topo-packages/rpm" "$RUNNER_TEMP/topo-packages/keys"
+          rsync -a "$RUNNER_TEMP/distribution/apt/pool/" "$RUNNER_TEMP/topo-packages/apt/pool/"
+          rm -rf "$RUNNER_TEMP/topo-packages/apt/dists/$CHANNEL" "$RUNNER_TEMP/topo-packages/rpm/$CHANNEL"
+          cp -R "$RUNNER_TEMP/distribution/apt/dists/$CHANNEL" "$RUNNER_TEMP/topo-packages/apt/dists/$CHANNEL"
+          cp -R "$RUNNER_TEMP/distribution/rpm/$CHANNEL" "$RUNNER_TEMP/topo-packages/rpm/$CHANNEL"
+          cp "$RUNNER_TEMP/distribution"/apt/*.sources "$RUNNER_TEMP/topo-packages/apt/"
+          cp "$RUNNER_TEMP/distribution"/rpm/*.repo "$RUNNER_TEMP/topo-packages/rpm/"
+          cp "$RUNNER_TEMP/distribution/keys/nischoy-topo-archive.gpg" \
+            "$RUNNER_TEMP/distribution/keys/nischoy-topo-archive.asc" \
+            "$RUNNER_TEMP/topo-packages/keys/"
+          cd "$RUNNER_TEMP/topo-packages"
+          git add --all
+          if ! git diff --cached --quiet; then
+            git -c user.name='nischoy-release-bot' -c user.email='release-bot@nischoy.com' \
+              commit -m "Promote Topo $VERSION to $CHANNEL"
+            git push origin HEAD:main
+          fi
+
+          gh repo clone Nischoy-ai/homebrew-tap "$RUNNER_TEMP/homebrew-tap"
+          formula=topo
+          if [[ "$CHANNEL" == beta ]]; then formula=topo-beta; fi
+          install -D -m 0644 "$RUNNER_TEMP/distribution/homebrew/Formula/$formula.rb" \
+            "$RUNNER_TEMP/homebrew-tap/Formula/$formula.rb"
+          cd "$RUNNER_TEMP/homebrew-tap"
+          git add "Formula/$formula.rb"
+          if ! git diff --cached --quiet; then
+            git -c user.name='nischoy-release-bot' -c user.email='release-bot@nischoy.com' \
+              commit -m "topo ${VERSION#v}"
+            git push origin HEAD:main
+          fi
+      - name: Submit the stable WinGet manifest
+        if: inputs.channel == 'stable'
+        env:
+          GH_TOKEN: ${{ secrets.DISTRIBUTION_GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          filename_version=${VERSION#v}
+          branch="nischoy-topo-${filename_version}"
+          gh repo clone Nischoy-ai/winget-pkgs "$RUNNER_TEMP/winget-pkgs"
+          cd "$RUNNER_TEMP/winget-pkgs"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            git switch --track -c "$branch" "origin/$branch"
+          else
+            git switch -c "$branch"
+          fi
+          mkdir -p "manifests/n/Nischoy/Topo/$filename_version"
+          cp "$RUNNER_TEMP/distribution/winget/manifests/n/Nischoy/Topo/$filename_version/"*.yaml \
+            "manifests/n/Nischoy/Topo/$filename_version/"
+          git add "manifests/n/Nischoy/Topo/$filename_version"
+          if ! git diff --cached --quiet; then
+            git -c user.name='nischoy-release-bot' -c user.email='release-bot@nischoy.com' \
+              commit -m "New version: Nischoy.Topo version $filename_version"
+            git push origin "$branch"
+          fi
+          existing=$(gh pr list --repo microsoft/winget-pkgs --state all \
+            --head "Nischoy-ai:$branch" --json url --jq '.[0].url // empty')
+          if [[ -n "$existing" ]]; then
+            echo "WinGet submission already exists: $existing"
+          else
+            gh pr create --repo microsoft/winget-pkgs \
+              --head "Nischoy-ai:$branch" \
+              --base master \
+              --title "New version: Nischoy.Topo version $filename_version" \
+              --body "Automated promotion of the verified Nischoy Topo $VERSION GitHub release."
+          fi

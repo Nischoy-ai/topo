@@ -5,12 +5,73 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 )
+
+func TestRearchiveDarwinIsDeterministic(t *testing.T) {
+	directory := t.TempDir()
+	for name, contents := range map[string]string{
+		"LICENSE": "license\n", "README.md": "readme\n", "topo": "signed-binary",
+	} {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(contents), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first := filepath.Join(t.TempDir(), "first.tar.gz")
+	second := filepath.Join(t.TempDir(), "second.tar.gz")
+	if err := RearchiveDarwin(directory, first, "v1.2.3", "arm64"); err != nil {
+		t.Fatal(err)
+	}
+	if err := RearchiveDarwin(directory, second, "v1.2.3", "arm64"); err != nil {
+		t.Fatal(err)
+	}
+	firstBytes, _ := os.ReadFile(first)
+	secondBytes, _ := os.ReadFile(second)
+	if !bytes.Equal(firstBytes, secondBytes) {
+		t.Fatal("signed Darwin inputs did not rearchive deterministically")
+	}
+	files := readTarGz(t, first)
+	if files["topo_1.2.3_darwin_arm64/topo"].Mode != 0o755 ||
+		files["topo_1.2.3_darwin_arm64/topo"].Contents != "signed-binary" {
+		t.Fatalf("unexpected signed archive contents: %#v", files)
+	}
+}
+
+func TestRefreshMetadataUpdatesNativeSignedArchiveDigest(t *testing.T) {
+	directory := t.TempDir()
+	artifacts := make([]artifact, 0, len(targets))
+	for _, target := range targets {
+		extension := target.Format
+		name := "topo_1.2.3_" + target.GOOS + "_" + target.GOARCH + "." + extension
+		if err := os.WriteFile(filepath.Join(directory, name), []byte("signed:"+name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		artifacts = append(artifacts, artifact{Filename: name, GOOS: target.GOOS, GOARCH: target.GOARCH, SHA256: "stale"})
+	}
+	manifest := metadata{SchemaVersion: 1, Project: projectName, Repository: repository, Version: "v1.2.3", Commit: "0123456789abcdef0123456789abcdef01234567", Artifacts: artifacts}
+	contents, _ := json.Marshal(manifest)
+	if err := os.WriteFile(filepath.Join(directory, "release-metadata.json"), contents, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RefreshMetadata(directory); err != nil {
+		t.Fatal(err)
+	}
+	updatedBytes, _ := os.ReadFile(filepath.Join(directory, "release-metadata.json"))
+	var updated metadata
+	if err := json.Unmarshal(updatedBytes, &updated); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range updated.Artifacts {
+		if item.SHA256 == "stale" || len(item.SHA256) != 64 {
+			t.Fatalf("digest was not refreshed for %s: %q", item.Filename, item.SHA256)
+		}
+	}
+}
 
 func TestDeterministicArchives(t *testing.T) {
 	directory := t.TempDir()
