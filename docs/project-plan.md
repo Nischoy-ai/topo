@@ -8,10 +8,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-23
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Latest completed slice:** M2.5 native package artifacts, merged in
-  <https://github.com/Nischoy-ai/topo/pull/30>. Reproducible release artifacts
-  and supply-chain evidence immediately before it merged in
-  <https://github.com/Nischoy-ai/topo/pull/29>.
+- **Latest completed implementation slice:** M2.5 package-manager distribution,
+  merged in <https://github.com/Nischoy-ai/topo/pull/31>. Native package
+  artifacts immediately before it merged in
+  <https://github.com/Nischoy-ai/topo/pull/30>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -36,9 +36,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M2.5 slice 6 (package-manager distribution) is under
-  review in <https://github.com/Nischoy-ai/topo/pull/31> from
-  `agent/m25-package-manager-distribution`.
+- **Open pull request:** none.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -54,7 +52,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/28>; M2.5 slice 4 (reproducible
   release artifacts and supply-chain evidence) in
   <https://github.com/Nischoy-ai/topo/pull/29>; M2.5 slice 5 (native package
-  artifacts) in <https://github.com/Nischoy-ai/topo/pull/30>.
+  artifacts) in <https://github.com/Nischoy-ai/topo/pull/30>; M2.5 slice 6
+  (package-manager distribution) in
+  <https://github.com/Nischoy-ai/topo/pull/31>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -68,10 +68,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slices 1 through 5 are merged; slice 6 (current) is package-manager
-  distribution. An external security review follows. See "Current milestone:
-  M2.5" below.
-- **In progress in the current slice (package-manager distribution):** a
+  Slices 1 through 6 are merged; external security review/remediation is next.
+  Real beta and N-1 stable channel promotions remain required operational
+  evidence before any production claim. See "Current milestone: M2.5" below.
+- **Verified in the latest slice (package-manager distribution):** a
   standard-library promotion builder validates release checksums and emits
   deterministic APT, RPM, Homebrew, WinGet, and OCI Helm inputs without
   rebuilding or repackaging Topo. Focused tests cover byte identity, two-path
@@ -86,7 +86,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   The required organization repositories, production keys, first beta tag,
   and real N-1 stable tag do not exist yet; production signing, external
   publication, and clean-channel evidence remain explicitly unverified rather
-  than simulated. See [`docs/distribution.md`](distribution.md).
+  than simulated. Pull-request CI, including ephemeral RPM and repository
+  signing, passed in
+  <https://github.com/Nischoy-ai/topo/actions/runs/32625751259>. See
+  [`docs/distribution.md`](distribution.md).
 - **Verified in the previous slice (package artifacts):** package assembly uses
   the verified raw archives without rebuilding Topo and reproduces the DEB,
   RPM, and Helm outputs byte-for-byte from different absolute paths. CI
