@@ -84,10 +84,15 @@ as focused security/operations slices rather than one packaging mega-PR:
    supported vulnerability-free build baseline, and explicit findings/closure
    rules; preparation is not itself an independent review. Focused maintainer-
    audit remediations bind enrollment tokens to the operator-selected collector
-   ID (`TSR-2026-001`) and protect the live SQLite database plus backup creation
-   window (`TSR-2026-002`/`TSR-2026-009`). They are ready for independent retest
-   after merge; they do not close any finding or the gate. Continue the
-   remaining findings as focused slices.
+   ID (`TSR-2026-001`), protect the live SQLite database plus backup creation
+   window (`TSR-2026-002`/`TSR-2026-009`), and route a `workflow_dispatch`
+   version input through `env:` instead of raw `${{ }}` shell/PowerShell
+   interpolation in `promote.yml`, with a new CI check against recurrence
+   (`TSR-2026-003`, low severity — a same-run validation step already
+   constrained the value at discovery, so it was not independently
+   exploitable, but the constraint lives in a different step than the use).
+   They are ready for independent retest after merge; they do not close any
+   finding or the gate. Continue the remaining findings as focused slices.
 
 The credential-references milestone is complete:
 

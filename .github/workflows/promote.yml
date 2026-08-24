@@ -269,6 +269,7 @@ jobs:
       - name: Audit, install, and test the exact Homebrew formula
         env:
           CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
           formula=topo
@@ -279,7 +280,7 @@ jobs:
           brew audit --strict --online "nischoy-ai/tap/$formula"
           brew install "nischoy-ai/tap/$formula"
           brew test "nischoy-ai/tap/$formula"
-          test "$(topo version)" = "${{ inputs.version }}"
+          test "$(topo version)" = "$VERSION"
           codesign --verify --strict --verbose=2 "$(command -v topo)"
           spctl --assess --type execute --verbose=2 "$(command -v topo)"
           brew uninstall "$formula"
@@ -296,9 +297,11 @@ jobs:
           path: ${{ runner.temp }}/distribution
       - name: Validate and exercise the exact WinGet manifest
         shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           $ErrorActionPreference = "Stop"
-          $version = "${{ inputs.version }}".Substring(1)
+          $version = $env:VERSION.Substring(1)
           $manifest = "$env:RUNNER_TEMP/distribution/winget/manifests/n/Nischoy/Topo/$version"
           $validator = "$env:RUNNER_TEMP/wingetcreate.exe"
           Invoke-WebRequest `
@@ -313,7 +316,7 @@ jobs:
 
           $msi = "$env:RUNNER_TEMP/topo.msi"
           Invoke-WebRequest `
-            -Uri "https://github.com/Nischoy-ai/topo/releases/download/${{ inputs.version }}/topo_${version}_windows_amd64.msi" `
+            -Uri "https://github.com/Nischoy-ai/topo/releases/download/$env:VERSION/topo_${version}_windows_amd64.msi" `
             -OutFile $msi
           $declared = Select-String -LiteralPath "$manifest/Nischoy.Topo.installer.yaml" `
             -Pattern '^    InstallerSha256: ([0-9A-F]{64})$' | Select-Object -First 1
@@ -323,7 +326,7 @@ jobs:
           $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$msi`" /qn /norestart"
           if ($install.ExitCode -ne 0) { throw "WinGet MSI install simulation failed" }
           $installed = Join-Path $env:ProgramFiles "Nischoy/Topo/topo.exe"
-          if ((& $installed version).Trim() -ne "${{ inputs.version }}") { throw "WinGet manifest installed the wrong version" }
+          if ((& $installed version).Trim() -ne $env:VERSION) { throw "WinGet manifest installed the wrong version" }
           $uninstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/x `"$msi`" /qn /norestart"
           if ($uninstall.ExitCode -ne 0) { throw "WinGet MSI uninstall simulation failed" }
 

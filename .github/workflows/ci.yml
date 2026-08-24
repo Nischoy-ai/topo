@@ -16,6 +16,8 @@ jobs:
           go-version: "1.25.13"
           cache: false
       - run: gofmt -d . | tee /tmp/gofmt.diff && test ! -s /tmp/gofmt.diff
+      - name: Reject raw actor-input interpolation in workflow run steps
+        run: scripts/check-workflow-interpolation.sh
       - run: go vet ./...
       - name: Reject reachable known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...

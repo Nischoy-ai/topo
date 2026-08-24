@@ -23,6 +23,7 @@ if [ -n "$format_files" ]; then
 fi
 
 git diff --check
+./scripts/check-workflow-interpolation.sh
 GOTOOLCHAIN="$toolchain" go mod verify
 GOTOOLCHAIN="$toolchain" go vet ./...
 GOTOOLCHAIN="$toolchain" go run "$govulncheck" ./...

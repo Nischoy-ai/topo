@@ -148,10 +148,51 @@ zero reachable `govulncheck` findings, the full race/coverage suite, Linux
 vet/build, and Windows amd64 vet/build. The implementation is commit `da08ab3`
 in <https://github.com/Nischoy-ai/topo/pull/37>.
 
+A 2026-08-24 maintainer self-audit of the release/distribution automation in
+scope (see "Review scope" above: "release, package, promotion, and deployment
+automation, including workflow permissions and untrusted-input handling")
+found `TSR-2026-003`: four steps in `.github/workflows/promote.yml` (the
+Homebrew formula test, and three steps of the WinGet manifest
+validation/exercise job) interpolated the operator-supplied
+`workflow_dispatch` input `inputs.version` directly into a `run:` shell or
+PowerShell script body via a raw `${{ inputs.version }}` expression, instead
+of passing it through `env:` and referencing a shell/`$env:` variable.
+GitHub's expression substitution happens before the script is generated, so
+an actor-controlled string spliced this way is a script-injection primitive
+into the runner process — one that in this workflow later imports
+`REPOSITORY_SIGNING_PRIVATE_KEY`, `WINDOWS_SIGNING_PFX_PASSWORD`, and other
+release-signing secrets as environment variables a hijacked shell could read.
+Severity is low, not critical, because of two independent constraints
+already in the same workflow at the time of discovery: `workflow_dispatch`
+requires repository write access to trigger at all, and an earlier
+same-run step (`Validate immutable release and channel inputs`) rejects any
+`inputs.version` that does not match
+`^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$` before the
+four affected steps ever run, which excludes shell/PowerShell metacharacters
+from the value that reaches them. No proof-of-concept payload was
+constructed or run against a real workflow; the finding is a static-analysis
+result plus the general GitHub Actions script-injection primitive
+(<https://docs.github.com/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections>),
+not a demonstrated compromise. It is filed and fixed anyway because
+`inputs.version`'s constraint lives in a different job step than its use, so
+a later edit to that regex, to the `channel`/`previous_version` inputs, or a
+refactor that reorders steps could silently reopen it with no change to the
+four affected lines. The fix routes `inputs.version` through each step's
+`env:` block and references `$VERSION` (bash) or `$env:VERSION` (PowerShell)
+instead, matching every other step in the same workflow. A regression check,
+`scripts/check-workflow-interpolation.sh`, scans every `.github/workflows/*.yml`
+`run:` step for a raw `${{ inputs.` or `${{ github.event.` expression and
+fails the build if one is found; it runs in ordinary CI
+(`.github/workflows/ci.yml`) on every pull request, not only in
+`scripts/security-review-checks.sh`, since a workflow-file change is exactly
+the kind of edit CI should already be checking. The implementation is commit
+`b69ba8a` in <https://github.com/Nischoy-ai/topo/pull/38>.
+
 These are maintainer triage and remediations, not independent verification.
-`TSR-2026-001`, `TSR-2026-002`, and `TSR-2026-009` remain open for independent
-retest, the other maintainer-audit findings remain to be remediated or
-dispositioned under the protocol below, and the M2.5 gate remains open.
+`TSR-2026-001`, `TSR-2026-002`, `TSR-2026-003`, and `TSR-2026-009` remain open
+for independent retest, the other maintainer-audit findings remain to be
+remediated or dispositioned under the protocol below, and the M2.5 gate
+remains open.
 
 ## Reproducing the baseline
 
