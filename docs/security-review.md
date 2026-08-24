@@ -289,7 +289,7 @@ retest the exact remediation commit and mark the finding `Verified`; a
 maintainer or coding-agent fix alone cannot close a finding that originated
 from an independent review, the same rule that already applies to
 `TSR-2026-001`/`002`/`003`/`009` above. Implementation:
-`<pending>` in <https://github.com/Nischoy-ai/topo/pull/PENDING>.
+`cd93790` in <https://github.com/Nischoy-ai/topo/pull/39>.
 
 ## Reproducing the baseline
 

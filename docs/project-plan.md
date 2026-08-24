@@ -18,7 +18,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   (`TSR-2026-004`, renumbered from the reviewer's own `TSR-2026-001` label
   to avoid colliding with this project's already-assigned `TSR-2026-001`;
   see `docs/security-review.md#independent-review`), proposed in
-  <https://github.com/Nischoy-ai/topo/pull/PENDING>. The latest merged slice
+  <https://github.com/Nischoy-ai/topo/pull/39>. The latest merged slice
   routes the `promote.yml` `workflow_dispatch` version input through `env:`
   instead of raw `${{ }}` shell/PowerShell interpolation (`TSR-2026-003`) in
   <https://github.com/Nischoy-ai/topo/pull/38>; owner-only live SQLite
@@ -54,7 +54,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   fixtures.
 - **Open pull request:** publisher/agent/enrollment redirect and userinfo
   remediation (`TSR-2026-004`) in
-  <https://github.com/Nischoy-ai/topo/pull/PENDING>.
+  <https://github.com/Nischoy-ai/topo/pull/39>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
