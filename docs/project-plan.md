@@ -6,15 +6,20 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-23
+- **Updated:** 2026-08-24
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Current implementation slice:** M2.5 external-review remediation 2,
-  owner-only live SQLite creation plus private backup staging
-  (`TSR-2026-002`/`TSR-2026-009`), proposed in
-  <https://github.com/Nischoy-ai/topo/pull/37>. The latest merged slice is
-  collector-scoped enrollment tokens (`TSR-2026-001`) in
+- **Current implementation slice:** M2.5 external-review remediation 3,
+  routing the `promote.yml` `workflow_dispatch` version input through `env:`
+  instead of raw `${{ }}` shell/PowerShell interpolation
+  (`TSR-2026-003`), plus a new `scripts/check-workflow-interpolation.sh`
+  regression check wired into ordinary CI, proposed in
+  <https://github.com/Nischoy-ai/topo/pull/PENDING>. The latest merged slice
+  is owner-only live SQLite creation plus private backup staging
+  (`TSR-2026-002`/`TSR-2026-009`) in
+  <https://github.com/Nischoy-ai/topo/pull/37>; collector-scoped enrollment
+  tokens (`TSR-2026-001`) merged immediately before it in
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
-  preparation and pre-review remediation merged immediately before it in
+  preparation and pre-review remediation merged before that in
   <https://github.com/Nischoy-ai/topo/pull/33>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
@@ -40,8 +45,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** SQLite live-file and backup-staging remediation in
-  <https://github.com/Nischoy-ai/topo/pull/37>.
+- **Open pull request:** `promote.yml` workflow-interpolation remediation
+  (`TSR-2026-003`) in <https://github.com/Nischoy-ai/topo/pull/PENDING>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -61,7 +66,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   (package-manager distribution) in
   <https://github.com/Nischoy-ai/topo/pull/31>; external-review preparation in
   <https://github.com/Nischoy-ai/topo/pull/33>; collector-scoped enrollment-
-  token remediation in <https://github.com/Nischoy-ai/topo/pull/35>.
+  token remediation in <https://github.com/Nischoy-ai/topo/pull/35>; SQLite
+  live-file and backup-staging remediation in
+  <https://github.com/Nischoy-ai/topo/pull/37>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -82,7 +89,29 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   operational evidence before any production claim and are explicitly deferred
   until the user authorizes external repository and production signing-key
   provisioning. See "Current milestone: M2.5" below.
-- **Verified in the current remediation slice:** a missing SQLite database is
+- **Verified in the current remediation slice:** a 2026-08-24 maintainer
+  self-audit of the release/distribution automation found `TSR-2026-003`:
+  four steps in `.github/workflows/promote.yml` (one Homebrew-formula test
+  step and three WinGet-manifest validation/exercise steps) interpolated the
+  `workflow_dispatch` `inputs.version` value directly into a `run:`
+  shell/PowerShell script body via raw `${{ }}` substitution rather than
+  `env:`, a GitHub Actions script-injection primitive into a job that later
+  imports release-signing secrets. At discovery an earlier same-run step
+  already constrained `inputs.version` to a safe semver pattern before those
+  four steps ran, so this was not independently exploitable; it is filed and
+  fixed as defense-in-depth since that constraint lives in a different job
+  step than its use. All four steps now route the value through `env:` and
+  reference `$VERSION`/`$env:VERSION`. A new
+  `scripts/check-workflow-interpolation.sh` check scans every workflow's
+  `run:` steps for raw `inputs.`/`github.event.` interpolation and runs in
+  ordinary CI (`.github/workflows/ci.yml`) on every pull request, not only in
+  `scripts/security-review-checks.sh`. The complete pinned
+  `scripts/security-review-checks.sh` gate passes under exact Go 1.25.13,
+  including zero reachable `govulncheck` findings, the full race/coverage
+  suite, Linux vet/build, and Windows amd64 vet/build. This remediates
+  `TSR-2026-003` for independent retest; it is not independent closure, and
+  the remaining findings keep the M2.5 gate open.
+- **Verified in the previous remediation slice:** a missing SQLite database is
   exclusively pre-created and changed to POSIX mode `0600` before SQLite can
   open it, while an existing regular file is tightened before use and a final
   database or sidecar symlink is rejected. SQLite receives a filesystem path
@@ -101,7 +130,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   under exact Go 1.25.13, including zero reachable `govulncheck` findings, the
   full race/coverage suite, Linux vet/build, and Windows amd64 vet/build. This
   does not independently close either finding or the M2.5 gate.
-- **Verified in the previous remediation slice:** enrollment-token issuance now
+- **Verified in the remediation slice before that:** enrollment-token issuance now
   requires a bounded `collector_id`; `TokenStore` stores that identity and
   returns the same generic invalid-token error for a mismatch without consuming
   the token. The response and audit detail identify the intended collector but
@@ -1316,8 +1345,18 @@ and independent security-review gaps. It does not add new discovery protocols.
    ready for independent retest after merge, not independently verified.
    `TSR-2026-002` and `TSR-2026-009` protect the live SQLite file before open
    and keep an in-progress backup snapshot beneath a private staging directory;
-   they likewise require merge and independent retest. The remaining findings
-   still require remediation or a protocol-compliant disposition.
+   they likewise require merge and independent retest. `TSR-2026-003` (low
+   severity) routes a `workflow_dispatch` version input through `env:` instead
+   of raw `${{ }}` interpolation in four `promote.yml` shell/PowerShell steps,
+   closing a script-injection primitive into the job that later imports
+   release-signing secrets; a new `scripts/check-workflow-interpolation.sh`
+   check runs in ordinary CI to prevent recurrence. At discovery, a separate
+   earlier step already constrained the input to a safe semver pattern before
+   the four affected steps ran, so this was not independently exploitable —
+   it is filed and fixed as defense-in-depth against that constraint moving,
+   and still requires merge and independent retest like the others. The
+   remaining findings still require remediation or a protocol-compliant
+   disposition.
 
 ### Acceptance gates for slice 1
 

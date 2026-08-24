@@ -88,9 +88,14 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   secret-provider transport were remediated. Maintainer-audit finding
   `TSR-2026-001` is remediated by binding every enrollment token to its intended
   collector ID; `TSR-2026-002` and `TSR-2026-009` are remediated by protecting
-  live SQLite files before open and backup snapshots throughout creation. All
-  remain open for independent retest, and the other findings plus the full
-  independent review remain required before any production claim. See
+  live SQLite files before open and backup snapshots throughout creation;
+  `TSR-2026-003` (low severity) is remediated by routing a `workflow_dispatch`
+  version input through `env:` in four `promote.yml` shell/PowerShell steps
+  instead of raw `${{ }}` interpolation, closing a script-injection primitive
+  into a job that later imports release-signing secrets, with a new CI check
+  guarding against recurrence. All remain open for independent retest, and
+  the other findings plus the full independent review remain required before
+  any production claim. See
   [docs/security-review.md](docs/security-review.md).
 
 ## M3 — hybrid release candidate
