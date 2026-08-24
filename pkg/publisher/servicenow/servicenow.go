@@ -54,6 +54,9 @@ func (p Publisher) Validate(context.Context) error {
 	if err != nil || u.Scheme != "https" || u.Host == "" {
 		return errors.New("ServiceNow instance URL must be an absolute HTTPS URL")
 	}
+	if u.User != nil || (u.Path != "" && u.Path != "/") || u.ForceQuery || u.RawQuery != "" || u.Fragment != "" {
+		return errors.New("ServiceNow instance URL must not contain credentials, a path, query parameters, or a fragment")
+	}
 	if p.Config.DiscoverySource == "" {
 		return errors.New("ServiceNow discovery source is required")
 	}
@@ -89,7 +92,7 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 	req.Header.Set("Accept", "application/json")
 	client := p.Config.HTTPClient
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = defaultHTTPClient()
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -105,6 +108,18 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 	// exact IRE response schema is proprietary and unverified against a real
 	// instance; see docs/servicenow.md.
 	return publisher.Result{Destination: "servicenow-ire", Published: len(payload.Items), Diagnostics: map[string]any{"status": resp.StatusCode, "response": string(body)}}, nil
+}
+
+// defaultHTTPClient is used whenever Config.HTTPClient is nil. It never
+// follows a redirect: the Authorization header set above must not be
+// replayed against a destination the operator did not configure.
+func defaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
 
 // mapPayload builds the IRE request payload. Each source_native_key appears

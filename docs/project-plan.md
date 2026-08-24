@@ -8,16 +8,23 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-24
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Current implementation slice:** M2.5 external-review remediation 3,
-  routing the `promote.yml` `workflow_dispatch` version input through `env:`
-  instead of raw `${{ }}` shell/PowerShell interpolation
-  (`TSR-2026-003`), plus a new `scripts/check-workflow-interpolation.sh`
-  regression check wired into ordinary CI, proposed in
-  <https://github.com/Nischoy-ai/topo/pull/38>. The latest merged slice
-  is owner-only live SQLite creation plus private backup staging
-  (`TSR-2026-002`/`TSR-2026-009`) in
-  <https://github.com/Nischoy-ai/topo/pull/37>; collector-scoped enrollment
-  tokens (`TSR-2026-001`) merged immediately before it in
+- **Current implementation slice:** M2.5 external-review remediation 4,
+  the first finding from an actual independent reviewer (Grok/xAI) rather
+  than maintainer self-audit: publisher HTTPS clients (webhook, ServiceNow)
+  and the related agent-sender/enrollment-client residual now reject
+  URL userinfo (plus, for the base-address forms, path/query/fragment) and
+  refuse to follow redirects, so a bearer credential or enrollment token
+  cannot be replayed against an unconfigured destination
+  (`TSR-2026-004`, renumbered from the reviewer's own `TSR-2026-001` label
+  to avoid colliding with this project's already-assigned `TSR-2026-001`;
+  see `docs/security-review.md#independent-review`), proposed in
+  <https://github.com/Nischoy-ai/topo/pull/39>. The latest merged slice
+  routes the `promote.yml` `workflow_dispatch` version input through `env:`
+  instead of raw `${{ }}` shell/PowerShell interpolation (`TSR-2026-003`) in
+  <https://github.com/Nischoy-ai/topo/pull/38>; owner-only live SQLite
+  creation plus private backup staging (`TSR-2026-002`/`TSR-2026-009`) merged
+  before that in <https://github.com/Nischoy-ai/topo/pull/37>;
+  collector-scoped enrollment tokens (`TSR-2026-001`) merged before that in
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation merged before that in
   <https://github.com/Nischoy-ai/topo/pull/33>.
@@ -45,8 +52,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** `promote.yml` workflow-interpolation remediation
-  (`TSR-2026-003`) in <https://github.com/Nischoy-ai/topo/pull/38>.
+- **Open pull request:** publisher/agent/enrollment redirect and userinfo
+  remediation (`TSR-2026-004`) in
+  <https://github.com/Nischoy-ai/topo/pull/39>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -68,7 +76,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/33>; collector-scoped enrollment-
   token remediation in <https://github.com/Nischoy-ai/topo/pull/35>; SQLite
   live-file and backup-staging remediation in
-  <https://github.com/Nischoy-ai/topo/pull/37>.
+  <https://github.com/Nischoy-ai/topo/pull/37>; `promote.yml`
+  workflow-interpolation remediation in
+  <https://github.com/Nischoy-ai/topo/pull/38>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -82,14 +92,52 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
 - **Current milestone:** M2.5 — release readiness and security hardening.
-  Slices 1 through 6 are merged. The external-review scope, baseline, and
-  remediation/closure protocol are now prepared; commissioning the independent
-  review, remediating its findings, and obtaining independent retest evidence
-  remain open. Real beta and N-1 stable channel promotions also remain required
+  Slices 1 through 6 are merged. An independent reviewer (Grok/xAI) has
+  completed a first review pass against target commit
+  `c0cfb7848e6732590002265fccd7cf0fcbd8c7e9` and delivered a draft technical
+  report with one medium finding (`TSR-2026-004`, GitHub issue #36); no
+  critical or high findings, and several documented security invariants were
+  independently confirmed rather than accepted from documentation. Fixing
+  `TSR-2026-004` and obtaining the reviewer's independent retest of the exact
+  remediation commit remain open — see `docs/security-review.md#independent-
+  review`. Real beta and N-1 stable channel promotions also remain required
   operational evidence before any production claim and are explicitly deferred
   until the user authorizes external repository and production signing-key
   provisioning. See "Current milestone: M2.5" below.
-- **Verified in the current remediation slice:** a 2026-08-24 maintainer
+- **Verified in the current remediation slice (`TSR-2026-004`, independent review):** an independent reviewer
+  (Grok/xAI) found `TSR-2026-004` (reported as `TSR-2026-001` in the
+  reviewer's own numbering; renumbered here — see "Independent review" in
+  `docs/security-review.md` — to avoid colliding with this project's
+  pre-existing `TSR-2026-001`): `pkg/publisher/webhook/webhook.go` and
+  `pkg/publisher/servicenow/servicenow.go` validated only that a configured
+  destination was an absolute HTTPS URL, not rejecting embedded userinfo,
+  and their default `http.Client` had no `CheckRedirect` override, so a
+  redirect response would be followed with the configured bearer token
+  attached — a weaker boundary than `pkg/credentialref/vault`/`kubernetes`,
+  which already reject userinfo and refuse redirects. `Validate` in both
+  publishers now rejects userinfo (ServiceNow's `InstanceURL`, a base
+  address the code appends a fixed API path to, also rejects a non-root
+  path/query/fragment, mirroring `vault`'s `validateHTTPSAddress`), and both
+  publishers' default HTTP client now refuses redirects
+  (`CheckRedirect` → `http.ErrUseLastResponse`). The reviewer's related,
+  lower-risk residual is fixed in the same change:
+  `internal/agent/sender.go`'s `NewSender` and
+  `internal/enrollment/client.go`'s `validControllerURL` (shared by `Enroll`
+  and `Rotate`) apply the same userinfo/path/query/fragment rejection, and
+  all three of those HTTP clients now refuse redirects too. Regression tests
+  cover userinfo/path/query/fragment rejection and prove — with a real
+  `httptest` redirect, not a mock — that the redirect target is never
+  contacted and never receives the credential. The complete pinned
+  `scripts/security-review-checks.sh` gate passes under exact Go 1.25.13,
+  including the full race suite, Linux build, and Windows amd64 vet/build
+  (`govulncheck` could not reach the vulnerability database from this
+  sandbox's network policy — an environment restriction, not a code effect;
+  it runs normally in CI). This is fixed and ready for the reviewer's
+  independent retest; because this finding originated from an independent
+  review rather than maintainer self-audit, only that retest — not a
+  maintainer or coding-agent assertion — can mark it `Verified`, and the
+  M2.5 gate remains open until it is.
+- **Verified in the previous slice (`TSR-2026-003`, workflow interpolation):** a 2026-08-24 maintainer
   self-audit of the release/distribution automation found `TSR-2026-003`:
   four steps in `.github/workflows/promote.yml` (one Homebrew-formula test
   step and three WinGet-manifest validation/exercise steps) interpolated the
@@ -111,7 +159,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   suite, Linux vet/build, and Windows amd64 vet/build. This remediates
   `TSR-2026-003` for independent retest; it is not independent closure, and
   the remaining findings keep the M2.5 gate open.
-- **Verified in the previous remediation slice:** a missing SQLite database is
+- **Verified in the previous slice (`TSR-2026-002`/`TSR-2026-009`, SQLite permissions):** a missing SQLite database is
   exclusively pre-created and changed to POSIX mode `0600` before SQLite can
   open it, while an existing regular file is tightened before use and a final
   database or sidecar symlink is rejected. SQLite receives a filesystem path
@@ -130,7 +178,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   under exact Go 1.25.13, including zero reachable `govulncheck` findings, the
   full race/coverage suite, Linux vet/build, and Windows amd64 vet/build. This
   does not independently close either finding or the M2.5 gate.
-- **Verified in the remediation slice before that:** enrollment-token issuance now
+- **Verified in the previous slice (`TSR-2026-001`, enrollment token scope):** enrollment-token issuance now
   requires a bounded `collector_id`; `TokenStore` stores that identity and
   returns the same generic invalid-token error for a mismatch without consuming
   the token. The response and audit detail identify the intended collector but

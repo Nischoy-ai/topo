@@ -91,8 +91,18 @@ as focused security/operations slices rather than one packaging mega-PR:
    (`TSR-2026-003`, low severity — a same-run validation step already
    constrained the value at discovery, so it was not independently
    exploitable, but the constraint lives in a different step than the use).
-   They are ready for independent retest after merge; they do not close any
-   finding or the gate. Continue the remaining findings as focused slices.
+   An independent reviewer (Grok/xAI) has now completed a first review pass
+   against an immutable commit and reported one medium finding,
+   `TSR-2026-004` — publisher HTTPS clients (webhook, ServiceNow) accepted
+   URL userinfo and followed redirects, potentially replaying a bearer token
+   against an unconfigured destination; the related agent-sender/
+   enrollment-client residual is fixed in the same change. See "Independent
+   review" in `docs/security-review.md`. All four findings are ready for
+   independent retest after merge; they do not close any finding or the
+   gate, and `TSR-2026-004` in particular cannot be marked `Verified` by a
+   maintainer or coding-agent assertion — only the reviewer's retest of the
+   exact remediation commit can. Continue the remaining findings as focused
+   slices.
 
 The credential-references milestone is complete:
 

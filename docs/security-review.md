@@ -194,6 +194,103 @@ for independent retest, the other maintainer-audit findings remain to be
 remediated or dispositioned under the protocol below, and the M2.5 gate
 remains open.
 
+## Independent review
+
+An independent reviewer, Grok (xAI, no commercial/employment/development
+relationship with Nischoy-ai), completed the first independent review under
+this engagement against immutable target commit
+`c0cfb7848e6732590002265fccd7cf0fcbd8c7e9` — the same pre-remediation
+baseline the maintainer self-audit above also reviewed — and delivered a
+draft technical report dated 2026-08-23. Scope, methodology, and reproduced
+baseline evidence (exact Go 1.25.13, `govulncheck v1.7.0` zero reachable
+findings, `gofmt`/`vet`/`mod verify`/race suite/Windows cross-compile all
+passing) matched the engagement brief above. At the maintainer's direction,
+the finding was filed as a public GitHub issue rather than a private
+channel.
+
+**Key outcomes:** no critical or high findings. One medium finding. The
+reviewer independently verified the core security invariants this document
+claims — collector cannot obtain operator authority without the bearer
+credential; cross-collector isolation under mTLS; fail-closed revocation;
+compiled-in discovery operations only; durable serial revocation; atomic
+schema migration; least-privilege packaging defaults — and independently
+confirmed the maintainer's pre-remediation `govulncheck`/toolchain and
+Vault/Kubernetes strict-HTTPS claims, rather than accepting them from
+documentation alone. Real external package-channel promotion evidence was
+out of scope by engagement rule, same as it is for every gate in this
+document. The full report is retained outside the public repository per the
+sensitive-report handling above; this section summarizes it.
+
+**Finding numbering note:** the reviewer's report and GitHub issue
+<https://github.com/Nischoy-ai/topo/issues/36> label this finding
+`TSR-2026-001`. That ID was already assigned in this document, before the
+review began, to the unrelated enrollment-token-scope finding (see
+"Maintainer remediation status" above, fixed in PR #35). The reviewer's own
+methodology cites reading this document, so the collision is most likely an
+oversight rather than a deliberate renumbering; it is corrected here as
+`TSR-2026-004` — the next unused ID in this project's register — to keep one
+finding per stable ID project-wide. The GitHub issue title and a comment on
+it record the same correction for cross-reference. This is a bookkeeping
+correction only; it does not change the finding's content, severity, or
+evidence.
+
+### TSR-2026-004 — Publisher HTTPS clients follow redirects and accept URL userinfo
+
+**Severity:** Medium. **CWE-601** (URL Redirection to Untrusted Site),
+**CWE-200** (Exposure of Sensitive Information). Requires an
+operator-configured destination (attacker-controlled or later compromised,
+or a URL with embedded credentials), but the boundary was weaker than
+Topo's own credential-provider contract (`pkg/credentialref/vault` and
+`pkg/credentialref/kubernetes`, both of which already reject userinfo and
+refuse redirects) and could leak a bearer token via redirect or embed
+credentials directly in a configured URL.
+
+**Affected components (as reviewed):** `pkg/publisher/webhook/webhook.go`
+(`Validate`, `PublishBatch`) and `pkg/publisher/servicenow/servicenow.go`
+(`Validate`, `PublishBatch`). `Validate` in both checked only
+`scheme == "https"` and a non-empty host — not userinfo, path, query, or
+fragment — and `PublishBatch`'s default `http.Client{Timeout: 30 * time.Second}`
+had no `CheckRedirect` override, so it followed redirects using Go's
+default policy. The reviewer also noted a related, lower-risk residual:
+`internal/agent/sender.go` and `internal/enrollment/client.go` construct
+similarly bare default `http.Client` instances for the (operator-owned)
+controller URL.
+
+**Remediation:** `pkg/publisher/webhook/webhook.go` and
+`pkg/publisher/servicenow/servicenow.go` now reject a URL with embedded
+userinfo in `Validate` (ServiceNow's `InstanceURL` is a base address the
+code itself appends a fixed API path to, so it additionally rejects a
+non-root path, query, and fragment, mirroring
+`pkg/credentialref/vault`'s `validateHTTPSAddress`). Both publishers'
+default HTTP client (used whenever `Config.HTTPClient` is nil) now sets
+`CheckRedirect` to `http.ErrUseLastResponse`, so a 3xx response is returned
+to the caller — and rejected as a non-2xx result — instead of being
+followed with the bearer token attached. The related residual is folded
+into the same change: `internal/agent/sender.go`'s `NewSender` and
+`internal/enrollment/client.go`'s `validControllerURL` (shared by `Enroll`
+and `Rotate`) apply the same userinfo/path/query/fragment rejection, and
+all three of `NewSender`'s, `Enroll`'s, and `Rotate`'s HTTP clients now
+refuse redirects the same way.
+
+**Regression tests:** table-driven `Validate`/`NewSender`/
+`validControllerURL` rejection tests for userinfo (and, for the
+base-address forms, path/query/fragment); an `httptest`-backed redirect test
+per affected client proving the redirect target is never contacted and the
+bearer credential is never sent to it. The complete pinned
+`scripts/security-review-checks.sh` gate passes under exact Go 1.25.13
+(`govulncheck` could not be reached from this sandbox's network policy, not
+a code effect; it runs normally in CI), including the full race suite,
+Linux build, and Windows amd64 vet/build.
+
+**Status:** Fixed and ready for independent retest — **not** independently
+verified. Per the reviewer's own recommended remediation order, closure
+requires the original reviewer (or an equivalent independent party) to
+retest the exact remediation commit and mark the finding `Verified`; a
+maintainer or coding-agent fix alone cannot close a finding that originated
+from an independent review, the same rule that already applies to
+`TSR-2026-001`/`002`/`003`/`009` above. Implementation:
+`cd93790` in <https://github.com/Nischoy-ai/topo/pull/39>.
+
 ## Reproducing the baseline
 
 From a clean checkout of the review commit, run:

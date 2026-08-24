@@ -93,3 +93,60 @@ func TestValidateRequiresHTTPS(t *testing.T) {
 		t.Fatal("expected HTTPS validation error")
 	}
 }
+
+// TestValidateRejectsUserinfoPathQueryFragment matches the stricter
+// instance-URL contract already used by pkg/credentialref/vault: the code
+// itself appends the fixed IRE API path, so InstanceURL must be bare
+// scheme+host. TSR-2026-004.
+func TestValidateRejectsUserinfoPathQueryFragment(t *testing.T) {
+	for _, instanceURL := range []string{
+		"https://user:pass@example.service-now.com",
+		"https://example.service-now.com/extra/path",
+		"https://example.service-now.com/?query=1",
+		"https://example.service-now.com/#frag",
+	} {
+		p := Publisher{Config: Config{InstanceURL: instanceURL, DiscoverySource: "Nischoy Topo", DryRun: true}}
+		if err := p.Validate(context.Background()); err == nil {
+			t.Errorf("InstanceURL %q: expected validation error, got nil", instanceURL)
+		}
+	}
+}
+
+// TestPublishBatchDoesNotFollowRedirect proves defaultHTTPClient — what
+// PublishBatch actually uses whenever Config.HTTPClient is nil — never
+// follows a redirect, so the ServiceNow bearer token is never replayed
+// against a destination the operator did not configure. TSR-2026-004.
+func TestPublishBatchDoesNotFollowRedirect(t *testing.T) {
+	var redirectTargetHit bool
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/redirected":
+			redirectTargetHit = true
+			w.WriteHeader(http.StatusOK)
+		default:
+			if r.Header.Get("Authorization") != "Bearer test-token" {
+				t.Error("origin should still receive the configured bearer token")
+			}
+			http.Redirect(w, r, server.URL+"/redirected", http.StatusFound)
+		}
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/api/now/identifyreconcile/enhanced", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer test-token")
+	resp, err := defaultHTTPClient().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("expected the unfollowed 302 itself, got %s", resp.Status)
+	}
+	if redirectTargetHit {
+		t.Fatal("redirect target must never be contacted")
+	}
+}

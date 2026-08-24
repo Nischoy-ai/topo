@@ -258,6 +258,56 @@ func TestNewSenderRejectsInvalidURL(t *testing.T) {
 	}
 }
 
+// TestNewSenderRejectsUserinfoPathQueryFragment matches the stricter
+// contract already used by pkg/credentialref/vault: NewSender itself
+// appends the fixed /v1/... paths, so controllerURL must be bare
+// scheme+host. TSR-2026-004.
+func TestNewSenderRejectsUserinfoPathQueryFragment(t *testing.T) {
+	for _, controllerURL := range []string{
+		"http://user:pass@example.test",
+		"http://example.test/extra/path",
+		"http://example.test/?query=1",
+		"http://example.test/#frag",
+	} {
+		if _, err := NewSender(controllerURL, "", nil); err == nil {
+			t.Errorf("controllerURL %q: expected validation error, got nil", controllerURL)
+		}
+	}
+}
+
+// TestSenderDoesNotFollowRedirect proves the bearer key/mTLS identity above
+// is never replayed against a redirect target: the client NewSender builds
+// must not follow a 302 from the configured controller. TSR-2026-004.
+func TestSenderDoesNotFollowRedirect(t *testing.T) {
+	var redirectTargetHit bool
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/redirected":
+			redirectTargetHit = true
+			w.WriteHeader(http.StatusOK)
+		default:
+			if r.Header.Get("Authorization") != "Bearer test-api-key" {
+				t.Error("origin should still receive the configured bearer key")
+			}
+			http.Redirect(w, r, server.URL+"/redirected", http.StatusFound)
+		}
+	}))
+	defer server.Close()
+
+	sender, err := NewSender(server.URL, "test-api-key", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = sender.Send(context.Background(), testEnvelope("obs-1"))
+	if err == nil {
+		t.Fatal("expected an unfollowed redirect to surface as a delivery error")
+	}
+	if redirectTargetHit {
+		t.Fatal("redirect target must never be contacted")
+	}
+}
+
 // setupMTLSTest builds a CA, a server certificate for 127.0.0.1, and a
 // client certificate for "collector-1", writing the client certificate,
 // key, and CA certificate to a temp directory in the layout

@@ -28,6 +28,9 @@ func (p Publisher) Validate(context.Context) error {
 	if err != nil || u.Scheme != "https" || u.Host == "" {
 		return errors.New("webhook URL must be an absolute HTTPS URL")
 	}
+	if u.User != nil {
+		return errors.New("webhook URL must not embed credentials")
+	}
 	return nil
 }
 
@@ -53,7 +56,7 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 	}
 	client := p.Config.HTTPClient
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = defaultHTTPClient()
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -65,4 +68,16 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 		return publisher.Result{Destination: "webhook", Rejected: len(envelopes)}, fmt.Errorf("webhook returned %s: %s", resp.Status, body)
 	}
 	return publisher.Result{Destination: "webhook", Published: len(envelopes)}, nil
+}
+
+// defaultHTTPClient is used whenever Config.HTTPClient is nil. It never
+// follows a redirect: the Authorization header set above must not be
+// replayed against a destination the operator did not configure.
+func defaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }

@@ -93,7 +93,12 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   version input through `env:` in four `promote.yml` shell/PowerShell steps
   instead of raw `${{ }}` interpolation, closing a script-injection primitive
   into a job that later imports release-signing secrets, with a new CI check
-  guarding against recurrence. All remain open for independent retest, and
+  guarding against recurrence. An independent reviewer (Grok/xAI) has now
+  completed a first review pass and reported one medium finding,
+  `TSR-2026-004` (publisher HTTPS clients followed redirects and accepted URL
+  userinfo), remediated by rejecting userinfo and refusing redirects in the
+  webhook/ServiceNow publishers and the related agent/enrollment HTTP
+  clients. All four findings remain open pending independent retest, and
   the other findings plus the full independent review remain required before
   any production claim. See
   [docs/security-review.md](docs/security-review.md).

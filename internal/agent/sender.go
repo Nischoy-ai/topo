@@ -59,8 +59,18 @@ func NewSender(controllerURL, apiKey string, tlsConfig *tls.Config) (*Sender, er
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return nil, errors.New("controller URL must be an absolute http:// or https:// URL")
 	}
+	if parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.ForceQuery || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return nil, errors.New("controller URL must not contain credentials, a path, query parameters, or a fragment")
+	}
 	base := strings.TrimRight(controllerURL, "/")
-	httpClient := &http.Client{Timeout: requestTimeout}
+	httpClient := &http.Client{
+		Timeout: requestTimeout,
+		// Never follow a redirect: the bearer key/mTLS identity below must
+		// not be replayed against a host the operator did not configure.
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	if tlsConfig != nil {
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.TLSClientConfig = tlsConfig
