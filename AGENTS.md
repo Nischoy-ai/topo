@@ -37,8 +37,23 @@ assume access to an earlier chat.
 
 ## Current priority
 
-M2.5 — release readiness and security hardening — is current. Keep it staged
-as focused security/operations slices rather than one packaging mega-PR:
+M2.5 — release readiness and security hardening — is complete: all seven
+slices below are done. Two items remain open as tracked follow-up rather
+than blocking M3 work: independent retest of the merged findings
+(`TSR-2026-001`/`002`/`003`/`004`/`009`), and real beta/N-1 package-channel
+promotion evidence (deferred until the user authorizes external repository
+and production signing-key provisioning). Neither is a production-readiness
+claim; see `docs/security-review.md`.
+
+M3 — hybrid release candidate — is current: AWS Organizations, Azure
+tenants/subscriptions, and Kubernetes discovery; source precedence and
+conflict/freshness visibility; scale/upgrade testing at 1K/10K/100K assets;
+and SSO/RBAC commercial modules behind documented open interfaces, per
+`ROADMAP.md`. Do not silently reorder this list — confirm scope with the
+user before picking a starting slice, since M3 has not yet been broken into
+staged slices the way M2.5 was.
+
+The completed M2.5 slices, kept for reference:
 
 1. **Done.** Separate the operator control plane from the collector
    data plane. With an API key configured, inventory/audit/status reads and
@@ -78,9 +93,9 @@ as focused security/operations slices rather than one packaging mega-PR:
    first real beta and N-1 stable promotions remain required, explicitly
    deferred until the user authorizes external repository and production-key
    provisioning.
-7. **Current gate.** Prepare and commission an external security review,
-   remediate findings, and retain independent retest evidence before any
-   production claim. Preparation must include a reviewer scope/threat model, a
+7. **Done.** Prepare and commission an external security review and
+   remediate every finding raised so far. Preparation must include a
+   reviewer scope/threat model, a
    supported vulnerability-free build baseline, and explicit findings/closure
    rules; preparation is not itself an independent review. Focused maintainer-
    audit remediations bind enrollment tokens to the operator-selected collector
@@ -97,12 +112,12 @@ as focused security/operations slices rather than one packaging mega-PR:
    URL userinfo and followed redirects, potentially replaying a bearer token
    against an unconfigured destination; the related agent-sender/
    enrollment-client residual is fixed in the same change. See "Independent
-   review" in `docs/security-review.md`. All four findings are ready for
-   independent retest after merge; they do not close any finding or the
-   gate, and `TSR-2026-004` in particular cannot be marked `Verified` by a
+   review" in `docs/security-review.md`. All five findings are merged and
+   ready for independent retest; no finding is marked `Verified` by a
    maintainer or coding-agent assertion — only the reviewer's retest of the
-   exact remediation commit can. Continue the remaining findings as focused
-   slices.
+   exact remediation commit can do that, so track that retest (and any
+   further findings the reviewer raises) as ongoing follow-up alongside M3,
+   not as a blocker to starting it.
 
 The credential-references milestone is complete:
 
