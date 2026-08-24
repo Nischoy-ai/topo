@@ -13,7 +13,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   instead of raw `${{ }}` shell/PowerShell interpolation
   (`TSR-2026-003`), plus a new `scripts/check-workflow-interpolation.sh`
   regression check wired into ordinary CI, proposed in
-  <https://github.com/Nischoy-ai/topo/pull/PENDING>. The latest merged slice
+  <https://github.com/Nischoy-ai/topo/pull/38>. The latest merged slice
   is owner-only live SQLite creation plus private backup staging
   (`TSR-2026-002`/`TSR-2026-009`) in
   <https://github.com/Nischoy-ai/topo/pull/37>; collector-scoped enrollment
@@ -46,7 +46,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
 - **Open pull request:** `promote.yml` workflow-interpolation remediation
-  (`TSR-2026-003`) in <https://github.com/Nischoy-ai/topo/pull/PENDING>.
+  (`TSR-2026-003`) in <https://github.com/Nischoy-ai/topo/pull/38>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage

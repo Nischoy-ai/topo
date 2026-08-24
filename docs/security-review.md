@@ -186,7 +186,7 @@ fails the build if one is found; it runs in ordinary CI
 (`.github/workflows/ci.yml`) on every pull request, not only in
 `scripts/security-review-checks.sh`, since a workflow-file change is exactly
 the kind of edit CI should already be checking. The implementation is commit
-`<pending>` in <https://github.com/Nischoy-ai/topo/pull/PENDING>.
+`b69ba8a` in <https://github.com/Nischoy-ai/topo/pull/38>.
 
 These are maintainer triage and remediations, not independent verification.
 `TSR-2026-001`, `TSR-2026-002`, `TSR-2026-003`, and `TSR-2026-009` remain open
