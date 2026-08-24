@@ -51,7 +51,8 @@ conflict/freshness visibility; scale/upgrade testing at 1K/10K/100K assets;
 and SSO/RBAC commercial modules behind documented open interfaces, per
 `ROADMAP.md`. Slice 1, Kubernetes node/pod discovery, is implemented — see
 `docs/kubernetes.md` and "Current milestone: M3" in `docs/project-plan.md`.
-AWS Organizations and Azure tenants/subscriptions discovery, and Kubernetes
+Slice 2, AWS Organizations account-structure discovery, is implemented —
+see `docs/aws.md`. Azure tenants/subscriptions discovery, and Kubernetes
 workload object kinds beyond Node/Pod, remain unstaged — stage each the
 same way (Objective, Deliverables, Acceptance gates, Deliberate non-goals)
 before starting it, and confirm scope with the user first, rather than

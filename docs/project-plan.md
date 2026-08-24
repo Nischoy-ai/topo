@@ -11,9 +11,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
   M3 (hybrid release candidate) is current; slice 1 (Kubernetes node/pod
-  discovery) is implemented, proposed in
-  <https://github.com/Nischoy-ai/topo/pull/41>; AWS Organizations and
-  Azure tenants/subscriptions discovery remain unstaged. See "Current
+  discovery) is implemented and merged
+  (<https://github.com/Nischoy-ai/topo/pull/41>); slice 2 (AWS
+  Organizations account-structure discovery) is implemented; Azure
+  tenants/subscriptions discovery remains unstaged. See "Current
   milestone: M3" below. The most recent merged M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -33,29 +34,48 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>.
-- **Verified in the current slice (M3 slice 1, Kubernetes node/pod
-  discovery):** `pkg/discovery/kubernetes` lists `v1.Node` and `v1.Pod`
+- **Verified in the current slice (M3 slice 2, AWS Organizations
+  account-structure discovery):** `pkg/discovery/aws` calls
+  `DescribeOrganization`/`ListRoots` then recursively walks
+  `ListOrganizationalUnitsForParent`/`ListAccountsForParent` via
+  `aws-sdk-go-v2`'s Organizations client. Asset identity is each object's
+  AWS-assigned ID, never its mutable name; all four kinds (Organization,
+  Root, OrganizationalUnit, Account) map to `model.AssetCloudResource`
+  (reserved in `pkg/model` since the storage milestone, unused until now)
+  with `Attributes["kind"]` distinguishing them, and a single `member_of`
+  relationship forms the containment hierarchy. AWS has no official local
+  Organizations simulator (LocalStack was evaluated and rejected — a
+  separate Docker container, heavier than every other Topo Lab fixture);
+  Topo Lab hand-rolls an AWS-JSON-1.1 fixture
+  (`pkg/lab/aws_organizations_server.go`) with real SigV4 signature
+  verification via the SDK's own `v4.Signer` (re-deriving the expected
+  `Authorization` header from the known Lab credential over exactly the
+  client's own claimed `SignedHeaders`, not a simplified string
+  comparison) the same way it did for Kubernetes and SNMP. The two-scan
+  idempotency acceptance test runs the full `examples/lab/clean-500.json`
+  scenario as 500 simulated accounts nested two levels under two OUs: 506
+  total assets, 505 `member_of` relationships, zero errors, stable and
+  duplicate-free across a repeated scan and a `store.Memory` save —
+  verified end-to-end via the CLI (`topo lab aws-organizations-serve`,
+  `topo discover aws-organizations -lab`), not only in the test suite.
+  `go test -race ./...` passes; `gofmt`/`go vet` clean. Real-organization
+  verification beyond the hand-rolled fixture has not been performed — the
+  same posture as SNMP `authPriv`, real VMware/vCenter, and real
+  Kubernetes clusters. See `docs/aws.md`.
+- **Slice before that (M3 slice 1, Kubernetes node/pod discovery,
+  merged):** `pkg/discovery/kubernetes` lists `v1.Node` and `v1.Pod`
   objects cluster-wide via `k8s.io/client-go` (pinned `v0.35.8`, the latest
   release still compatible with exact Go 1.25.13 — `v0.36.x` requires Go
   1.26). Asset identity is each object's Kubernetes UID, never its name or
-  an IP address; both map to `model.AssetKubernetesObject` (reserved in
-  `pkg/model` since the storage milestone, unused until now) with
+  an IP address; both map to `model.AssetKubernetesObject` with
   `Attributes["kind"]` distinguishing `Node`/`Pod`. A `pod_runs_on_node`
   relationship resolves from `pod.Spec.NodeName`, skipped for unscheduled
-  pods. `client-go` has no equivalent of VMware's `vcsim`; Topo Lab
-  hand-rolls a Kubernetes API fixture (`pkg/lab/kubernetes_server.go`,
-  real `k8s.io/api` JSON over real HTTP for `GET /version`,
-  `GET /api/v1/nodes`, `GET /api/v1/pods`, with real bearer-token
-  enforcement) the same way it did for SNMP. The two-scan idempotency
-  acceptance test runs the full `examples/lab/clean-500.json` scenario:
-  500 node assets, 500 pod assets, 500 `pod_runs_on_node` relationships,
-  zero errors, stable and duplicate-free across a repeated scan and a
-  `store.Memory` save — verified end-to-end via the CLI
-  (`topo lab kubernetes-serve`, `topo discover kubernetes -lab`), not only
-  in the test suite. `go test -race ./...` passes; `gofmt`/`go vet` clean;
-  Linux and Windows cross-build both succeed. Real-cluster verification
-  beyond the hand-rolled fixture has not been performed — the same posture
-  as SNMP `authPriv` and real VMware/vCenter. See `docs/kubernetes.md`.
+  pods. Topo Lab hand-rolls a Kubernetes API fixture
+  (`pkg/lab/kubernetes_server.go`, real `k8s.io/api` JSON over real HTTP)
+  the same way it did for SNMP. The two-scan idempotency acceptance test
+  runs the full `examples/lab/clean-500.json` scenario: 500 node assets,
+  500 pod assets, 500 `pod_runs_on_node` relationships, zero errors. See
+  `docs/kubernetes.md`.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -1805,12 +1825,13 @@ Extend discovery to hybrid/cloud estates and prove Topo at scale, per
 
 AWS/Azure/Kubernetes discovery are themselves three separate protocol
 integrations, each roughly the size of the SNMP/VMware milestone above, not
-one slice; the user has confirmed Kubernetes discovery as the starting
-slice. AWS Organizations and Azure tenants/subscriptions discovery remain
-unstaged — stage each the same way (Objective, Deliverables, Acceptance
-gates, Deliberate non-goals) before starting it, rather than assuming scope.
+one slice; the user confirmed Kubernetes discovery as the starting slice,
+then AWS Organizations discovery as the second. Azure tenants/subscriptions
+discovery remains unstaged — stage it the same way (Objective, Deliverables,
+Acceptance gates, Deliberate non-goals) before starting it, rather than
+assuming scope.
 
-### Slice 1 — Kubernetes node and pod discovery (implemented, PR open)
+### Slice 1 — Kubernetes node and pod discovery (implemented, merged)
 
 **Objective.** Extend discovery into a Kubernetes cluster's own inventory:
 which nodes exist and which pods run on them, using only read-only
@@ -1886,6 +1907,100 @@ in-cluster auto-config (`rest.InClusterConfig()`-style autodetection) —
 targets and credentials are always explicit, matching every other
 protocol; no CRD/custom-resource discovery. AWS and Azure discovery remain
 separate, unstaged slices, not bundled into this one.
+
+### Slice 2 — AWS Organizations account-structure discovery (implemented, PR open)
+
+**Objective.** Extend discovery into an AWS Organization's own account
+structure: which accounts exist and how they are grouped into
+organizational units under the organization's roots, using only read-only
+`Describe`/`List` calls over the real AWS Organizations API — no mutating
+action (create, invite, move, tag, or policy) is ever issued, matching the
+read-only posture already established for VMware, SNMP, and Kubernetes.
+
+**Scope.** `pkg/discovery/aws` calls `DescribeOrganization` and `ListRoots`,
+then recursively walks `ListOrganizationalUnitsForParent` and
+`ListAccountsForParent` from each root down to 5 levels of nested OUs — the
+same nesting limit AWS Organizations itself enforces, kept as an explicit
+code-level bound rather than trusted implicitly, the same defense-in-depth
+posture every other Topo plugin applies to its own listings. Asset identity
+is each object's AWS-assigned ID (12-digit account ID, `r-`/`ou-`/`o-`
+prefixed root/OU/organization ID) — stable and immutable, never the
+object's mutable friendly name, matching the project's standing identity
+invariant. All four object kinds (Organization, Root, OrganizationalUnit,
+Account) map to the existing `model.AssetCloudResource` type (reserved in
+`pkg/model` since the storage milestone, unused until now) with
+`Attributes["kind"]` distinguishing them, the same generic-type-plus-kind
+choice already made for Kubernetes's Node/Pod objects. A single `member_of`
+relationship connects every root, OU, and account to its immediate parent,
+reused at every hierarchy level rather than one relationship type per
+parent/child kind pairing.
+
+**Authentication and target model.** One or more AWS Organizations API
+endpoint URLs are `discovery.Request.Targets`, matching the
+vCenter/WinRM/SNMP/Kubernetes target-list shape. Authentication is a static
+AWS access key ID (plain, non-secret, like a username) plus a secret access
+key and optional session token (for temporary/STS credentials) resolved
+through the existing credential-reference contract — never accepted as a
+CLI argument. `-region` is required and never defaulted or autodetected,
+since AWS Organizations is only reachable from specific regional endpoints
+depending on partition. Production targets require HTTPS; an explicit
+`-lab` flag, restricted to loopback targets exactly like the other
+plugins' own Lab flags, permits HTTP against the Topo Lab fixture below.
+
+**Acceptance testing.** AWS has no official local simulator for the
+Organizations API. LocalStack was evaluated and rejected: it runs as a
+separate Docker container rather than an in-process Go fixture, heavier
+than every other Topo Lab fixture and not reliably available in every
+build/CI environment. Matching the Kubernetes/SNMP precedent instead: a
+hand-rolled Topo Lab fixture (`pkg/lab/aws_organizations_server.go`) serves
+the real AWS-JSON-1.1 wire responses for the four actions the plugin
+actually calls, dispatched by the real `X-Amz-Target` header AWS itself
+uses. Unlike the Kubernetes fixture (which encodes real `k8s.io/api` Go
+types directly, since those carry public JSON struct tags),
+`aws-sdk-go-v2` generates its (de)serializers from a service model rather
+than JSON struct tags, so its types cannot be `encoding/json`-marshaled
+directly; the fixture instead defines minimal local structs mirroring the
+exact wire field names the generated deserializer expects — confirmed by
+reading `aws-sdk-go-v2`'s own `deserializers.go`, then verified empirically
+by running the real client against the fixture in this slice's own tests
+(a mismatch would have shown up as zero-valued fields, not a passing test).
+The wire format and the plugin's real client-side request construction and
+response decoding are still genuinely exercised. Authentication is
+verified as real AWS SigV4, not a simplified string comparison: the
+fixture re-derives the expected `Authorization` header using the SDK's own
+`v4.Signer` against the known Lab credential, over exactly the header set
+the client's own `Authorization` header claims it signed (its
+`SignedHeaders` component), and compares it to what the request actually
+presented — the same technique a from-scratch signature verifier would
+use, without hand-rolling the HMAC-SHA256 canonicalization itself; a
+wrong-secret acceptance test is therefore a real cryptographic failure, not
+a bypassed check. `topo lab aws-organizations-serve` exposes it for manual
+exploration, matching `kubernetes-serve`. The two-scan idempotency
+acceptance test runs the full `examples/lab/clean-500.json` scenario as 500
+simulated accounts nested two levels deep under two organizational units
+(plus one account attached directly to the root): 506 total assets (1
+organization, 1 root, 4 OUs, 500 accounts) and 505 `member_of`
+relationships, zero errors, stable and duplicate-free across a repeated
+scan and a `store.Memory` save, additionally verified end-to-end via the
+CLI at the same scale — the same shape as every prior protocol's
+acceptance test. A real AWS Organization was evaluated as an alternative
+fixture and deliberately not required for this slice, since it would need
+a real AWS account and a nontrivial pre-existing account structure, neither
+reproducible the way an in-process fixture is; real-organization
+verification remains explicitly unverified, matching the SNMP
+`authPriv`/real-VMware/real-Windows/real-Kubernetes-cluster posture —
+implemented and tested against a faithful fixture only, not yet against a
+genuinely live AWS account.
+
+**Deliberate non-goals for this slice.** No per-account resource inventory
+(EC2 instances, S3 buckets, IAM roles, etc. — a much larger and separately
+scoped follow-up); no Service Control Policy or tag-policy content; no
+account-creation or account-closure lifecycle events; no cross-account
+role assumption built into the plugin itself — a caller who needs to
+assume a role resolves the resulting temporary credentials through the
+existing credential-reference contract, matching how every other Topo
+discovery plugin treats credentials as always explicit. Azure discovery
+remains a separate, unstaged slice, not bundled into this one.
 
 ### Relationship to the M2.5 gate
 

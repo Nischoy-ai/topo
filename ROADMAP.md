@@ -116,9 +116,23 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   beyond the hand-rolled fixture has not been performed. Node/Pod only —
   no Deployment, Service, or other workload object kinds yet. See
   [docs/kubernetes.md](docs/kubernetes.md).
-- AWS Organizations and Azure tenants/subscriptions discovery, and
-  Kubernetes workload object kinds (Deployment, Service, ConfigMap,
-  PersistentVolumeClaim, etc.) beyond Node/Pod, remain unstaged.
+- **Implemented alpha (AWS Organizations):** organization account structure —
+  root/OU/account hierarchy via `member_of` relationships, AWS-assigned-ID
+  identity (never account name), via `aws-sdk-go-v2`'s Organizations
+  client. Production requires HTTPS; there is no fallback outside Topo
+  Lab's `-lab` mode. The Organizations API has no official local
+  simulator, so Topo Lab hand-rolls an AWS-JSON-1.1 fixture
+  (`pkg/lab/aws_organizations_server.go`) with real SigV4 signature
+  verification via the SDK's own signer, the same way it did for
+  Kubernetes and SNMP; the two-scan idempotency acceptance test runs the
+  full 500-host scenario as 500 simulated accounts (506 assets, 505
+  relationships). Real-organization verification beyond the hand-rolled
+  fixture has not been performed. Organization structure only — no
+  per-account resource inventory (EC2, S3, IAM, etc.) yet. See
+  [docs/aws.md](docs/aws.md).
+- Azure tenants/subscriptions discovery, Kubernetes workload object kinds
+  (Deployment, Service, ConfigMap, PersistentVolumeClaim, etc.) beyond
+  Node/Pod, and AWS per-account resource inventory, remain unstaged.
 - Source precedence and conflict/freshness visibility.
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.

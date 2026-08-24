@@ -29,6 +29,7 @@ import (
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
+	awsdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/aws"
 	kubernetesdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/kubernetes"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/snmp"
@@ -149,7 +150,7 @@ func storageRestore(args []string) error {
 
 func runLab(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve|kubernetes-serve>")
+		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve|kubernetes-serve|aws-organizations-serve>")
 	}
 	switch args[0] {
 	case "generate":
@@ -172,6 +173,8 @@ func runLab(args []string) error {
 		return labSNMPServe(args[1:])
 	case "kubernetes-serve":
 		return labKubernetesServe(args[1:])
+	case "aws-organizations-serve":
+		return labAWSOrganizationsServe(args[1:])
 	default:
 		return fmt.Errorf("unknown lab command %q", args[0])
 	}
@@ -224,6 +227,60 @@ func labKubernetesServe(args []string) error {
 	}()
 	fmt.Println("http://" + *addr)
 	slog.Info("Topo Lab Kubernetes listening", "address", *addr, "nodes", len(estate.Hosts), "token", lab.LabKubernetesToken)
+	err = server.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
+// labAWSOrganizationsServe binds one loopback HTTP listener exposing the
+// whole simulated estate as a single AWS Organization (one account per
+// host) and prints the organization's API endpoint URL to stdout —
+// suitable for `topo discover aws-organizations -lab -targets` after
+// piping that one line into a targets file. Like Kubernetes and unlike
+// SSH/WinRM/SNMP, a target is one organization's API endpoint, not one
+// address per simulated host, so there is no separate "targets" command.
+func labAWSOrganizationsServe(args []string) error {
+	fs := flag.NewFlagSet("lab aws-organizations-serve", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:6443", "loopback listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	host, _, err := net.SplitHostPort(*addr)
+	if err != nil {
+		return fmt.Errorf("invalid AWS Organizations Lab listen address: %w", err)
+	}
+	if ip := net.ParseIP(host); !strings.EqualFold(host, "localhost") && (ip == nil || !ip.IsLoopback()) {
+		return errors.New("Topo Lab AWS Organizations must listen on loopback")
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	server := &http.Server{
+		Addr:              *addr,
+		Handler:           lab.NewAWSOrganizationsServer(estate).Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
+	fmt.Println("http://" + *addr)
+	slog.Info("Topo Lab AWS Organizations listening", "address", *addr, "accounts", len(estate.Hosts), "access_key_id", lab.LabAWSAccessKeyID)
 	err = server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -954,6 +1011,9 @@ func discover(args []string) error {
 	if len(args) > 0 && args[0] == "kubernetes" {
 		return discoverKubernetes(args[1:])
 	}
+	if len(args) > 0 && args[0] == "aws-organizations" {
+		return discoverAWSOrganizations(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -1133,6 +1193,61 @@ func discoverKubernetes(args []string) error {
 	}
 	plugin := kubernetesdiscovery.Plugin{Config: kubernetesdiscovery.Config{
 		BearerToken:      string(token),
+		LabMode:          *labMode,
+		Concurrency:      *concurrency,
+		OperationTimeout: *operationTimeout,
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
+}
+
+func discoverAWSOrganizations(args []string) error {
+	fs := flag.NewFlagSet("discover aws-organizations", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one AWS Organizations API endpoint URL per line")
+	accessKeyID := fs.String("access-key-id", env("TOPO_AWS_ACCESS_KEY_ID", ""), "AWS access key ID")
+	secretAccessKeyRef := fs.String("secret-access-key-ref", "", "credential reference for the AWS secret access key (env:, file:, vault:, or k8s:)")
+	sessionTokenRef := fs.String("session-token-ref", "", "credential reference for an AWS STS session token, only required for temporary credentials")
+	region := fs.String("region", "", "AWS region to sign and send requests to (for example us-east-1)")
+	labMode := fs.Bool("lab", false, "permit HTTP, restricted to loopback Topo Lab targets")
+	concurrency := fs.Int("concurrency", 8, "maximum concurrent organization targets")
+	operationTimeout := fs.Duration("operation-timeout", 30*time.Second, "per-target Describe/List call sequence timeout")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "aws-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+	if *accessKeyID == "" {
+		return errors.New("AWS access key ID is required; set -access-key-id or TOPO_AWS_ACCESS_KEY_ID")
+	}
+	secretAccessKey, err := resolveCredential(*secretAccessKeyRef, "", "TOPO_AWS_SECRET_ACCESS_KEY", false)
+	if err != nil {
+		return fmt.Errorf("resolve AWS secret access key: %w", err)
+	}
+	sessionToken, err := resolveCredential(*sessionTokenRef, "", "TOPO_AWS_SESSION_TOKEN", true)
+	if err != nil {
+		return fmt.Errorf("resolve AWS session token: %w", err)
+	}
+	plugin := awsdiscovery.Plugin{Config: awsdiscovery.Config{
+		AccessKeyID:      *accessKeyID,
+		SecretAccessKey:  string(secretAccessKey),
+		SessionToken:     string(sessionToken),
+		Region:           *region,
 		LabMode:          *labMode,
 		Concurrency:      *concurrency,
 		OperationTimeout: *operationTimeout,

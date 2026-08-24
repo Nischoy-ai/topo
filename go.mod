@@ -10,6 +10,9 @@ require (
 require golang.org/x/sys v0.46.0
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.43.7
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.37
+	github.com/aws/aws-sdk-go-v2/service/organizations v1.54.1
 	github.com/gosnmp/gosnmp v1.42.1
 	github.com/vmware/govmomi v0.52.0
 	k8s.io/api v0.35.8
@@ -19,6 +22,9 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.38 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.38 // indirect
+	github.com/aws/smithy-go v1.27.8 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
