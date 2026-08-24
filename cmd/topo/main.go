@@ -29,6 +29,7 @@ import (
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
+	kubernetesdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/kubernetes"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/snmp"
 	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
@@ -148,7 +149,7 @@ func storageRestore(args []string) error {
 
 func runLab(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve>")
+		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve|kubernetes-serve>")
 	}
 	switch args[0] {
 	case "generate":
@@ -169,9 +170,65 @@ func runLab(args []string) error {
 		return labWinRMTargets(args[1:])
 	case "snmp-serve":
 		return labSNMPServe(args[1:])
+	case "kubernetes-serve":
+		return labKubernetesServe(args[1:])
 	default:
 		return fmt.Errorf("unknown lab command %q", args[0])
 	}
+}
+
+// labKubernetesServe binds one loopback HTTP listener exposing the whole
+// simulated estate as a single Kubernetes cluster (one Node and one Pod
+// per host) and prints the cluster's API server URL to stdout — suitable
+// for `topo discover kubernetes -lab -targets` after piping that one line
+// into a targets file. Unlike SSH/WinRM/SNMP, a Kubernetes target is one
+// cluster API server, not one address per simulated host, so there is no
+// separate "targets" command the way winrm-targets/ssh-targets exist.
+func labKubernetesServe(args []string) error {
+	fs := flag.NewFlagSet("lab kubernetes-serve", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:6443", "loopback listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	host, _, err := net.SplitHostPort(*addr)
+	if err != nil {
+		return fmt.Errorf("invalid Kubernetes Lab listen address: %w", err)
+	}
+	if ip := net.ParseIP(host); !strings.EqualFold(host, "localhost") && (ip == nil || !ip.IsLoopback()) {
+		return errors.New("Topo Lab Kubernetes must listen on loopback")
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	server := &http.Server{
+		Addr:              *addr,
+		Handler:           lab.NewKubernetesServer(estate).Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
+	fmt.Println("http://" + *addr)
+	slog.Info("Topo Lab Kubernetes listening", "address", *addr, "nodes", len(estate.Hosts), "token", lab.LabKubernetesToken)
+	err = server.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 // labSNMPServe binds one loopback UDP socket per simulated host and prints
@@ -894,6 +951,9 @@ func discover(args []string) error {
 	if len(args) > 0 && args[0] == "vmware" {
 		return discoverVMware(args[1:])
 	}
+	if len(args) > 0 && args[0] == "kubernetes" {
+		return discoverKubernetes(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -1033,6 +1093,48 @@ func discoverVMware(args []string) error {
 		LabMode:          *labMode,
 		Concurrency:      *concurrency,
 		ConnectTimeout:   *connectTimeout,
+		OperationTimeout: *operationTimeout,
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
+}
+
+func discoverKubernetes(args []string) error {
+	fs := flag.NewFlagSet("discover kubernetes", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one Kubernetes API server URL per line")
+	tokenRef := fs.String("token-ref", "", "credential reference for the Kubernetes bearer token (env: or file:)")
+	labMode := fs.Bool("lab", false, "permit HTTP and skip certificate verification, restricted to loopback Topo Lab targets")
+	concurrency := fs.Int("concurrency", 8, "maximum concurrent cluster targets")
+	operationTimeout := fs.Duration("operation-timeout", 30*time.Second, "per-request timeout")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "kubernetes-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+	token, err := resolveCredential(*tokenRef, "", "TOPO_KUBERNETES_TOKEN", false)
+	if err != nil {
+		return fmt.Errorf("resolve Kubernetes bearer token: %w", err)
+	}
+	plugin := kubernetesdiscovery.Plugin{Config: kubernetesdiscovery.Config{
+		BearerToken:      string(token),
+		LabMode:          *labMode,
+		Concurrency:      *concurrency,
 		OperationTimeout: *operationTimeout,
 	}}
 	ctx, cancel := context.WithCancel(context.Background())

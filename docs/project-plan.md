@@ -10,8 +10,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
-  M3 (hybrid release candidate) is current but not yet staged into slices;
-  see "Current milestone: M3" below. The most recent merged M2.5 slice fixed
+  M3 (hybrid release candidate) is current; slice 1 (Kubernetes node/pod
+  discovery) is implemented, proposed in
+  <https://github.com/Nischoy-ai/topo/pull/PENDING>; AWS Organizations and
+  Azure tenants/subscriptions discovery remain unstaged. See "Current
+  milestone: M3" below. The most recent merged M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
   (webhook, ServiceNow) and the related agent-sender/enrollment-client
@@ -30,6 +33,29 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>.
+- **Verified in the current slice (M3 slice 1, Kubernetes node/pod
+  discovery):** `pkg/discovery/kubernetes` lists `v1.Node` and `v1.Pod`
+  objects cluster-wide via `k8s.io/client-go` (pinned `v0.35.8`, the latest
+  release still compatible with exact Go 1.25.13 — `v0.36.x` requires Go
+  1.26). Asset identity is each object's Kubernetes UID, never its name or
+  an IP address; both map to `model.AssetKubernetesObject` (reserved in
+  `pkg/model` since the storage milestone, unused until now) with
+  `Attributes["kind"]` distinguishing `Node`/`Pod`. A `pod_runs_on_node`
+  relationship resolves from `pod.Spec.NodeName`, skipped for unscheduled
+  pods. `client-go` has no equivalent of VMware's `vcsim`; Topo Lab
+  hand-rolls a Kubernetes API fixture (`pkg/lab/kubernetes_server.go`,
+  real `k8s.io/api` JSON over real HTTP for `GET /version`,
+  `GET /api/v1/nodes`, `GET /api/v1/pods`, with real bearer-token
+  enforcement) the same way it did for SNMP. The two-scan idempotency
+  acceptance test runs the full `examples/lab/clean-500.json` scenario:
+  500 node assets, 500 pod assets, 500 `pod_runs_on_node` relationships,
+  zero errors, stable and duplicate-free across a repeated scan and a
+  `store.Memory` save — verified end-to-end via the CLI
+  (`topo lab kubernetes-serve`, `topo discover kubernetes -lab`), not only
+  in the test suite. `go test -race ./...` passes; `gofmt`/`go vet` clean;
+  Linux and Windows cross-build both succeed. Real-cluster verification
+  beyond the hand-rolled fixture has not been performed — the same posture
+  as SNMP `authPriv` and real VMware/vCenter. See `docs/kubernetes.md`.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -54,8 +80,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none. M3 has not yet been staged into slices; see
-  "Current milestone: M3" below.
+- **Open pull request:** M3 slice 1, Kubernetes node/pod discovery, in
+  <https://github.com/Nischoy-ai/topo/pull/PENDING>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -1777,14 +1803,89 @@ Extend discovery to hybrid/cloud estates and prove Topo at scale, per
 
 ### Slices
 
-Not yet staged. Unlike M2.5, this milestone has not been broken into
-ordered, independently-mergeable slices — do that (matching the pattern
-each completed milestone above followed: one focused vertical slice per PR,
-with acceptance gates and deliberate non-goals recorded here) before
-starting implementation, and confirm the starting slice and its scope with
-the user rather than assuming an order. AWS/Azure/Kubernetes discovery are
-themselves three separate protocol integrations, each roughly the size of
-the SNMP/VMware milestone above, not one slice.
+AWS/Azure/Kubernetes discovery are themselves three separate protocol
+integrations, each roughly the size of the SNMP/VMware milestone above, not
+one slice; the user has confirmed Kubernetes discovery as the starting
+slice. AWS Organizations and Azure tenants/subscriptions discovery remain
+unstaged — stage each the same way (Objective, Deliverables, Acceptance
+gates, Deliberate non-goals) before starting it, rather than assuming scope.
+
+### Slice 1 — Kubernetes node and pod discovery (implemented, PR open)
+
+**Objective.** Extend discovery into a Kubernetes cluster's own inventory:
+which nodes exist and which pods run on them, using only read-only
+enumeration over the real Kubernetes API — no mutating verb is ever issued,
+matching the read-only posture already established for VMware
+(vSphere API) and SNMP (network devices).
+
+**Scope.** `pkg/discovery/kubernetes` lists `v1.Node` and `v1.Pod` objects
+across the cluster (all namespaces) via `k8s.io/client-go`'s REST client.
+Asset identity is each object's Kubernetes UID (`metadata.uid`) — stable
+across reschedules, IP reassignment, and node reboots, never the object
+name or an IP address, matching the project's standing identity invariant.
+Both map to the existing `model.AssetKubernetesObject` type (already
+reserved in `pkg/model`, unused until now) with `Attributes["kind"]`
+distinguishing `Node` from `Pod`, rather than adding new `AssetType`
+constants per Kubernetes kind — the project has many more kinds than it has
+fixed asset types, so a generic type plus a `kind` attribute scales the way
+a per-kind constant would not. A `pod_runs_on_node` relationship connects
+each pod to its node (resolved from `pod.Spec.NodeName`, matching how
+`vm_runs_on_host` resolves VMware's VM-to-host relationship), skipped for
+unscheduled pods with no assigned node. Node/pod IP addresses are recorded
+as attributes only, never as separate `NetworkInterface` assets or as
+identity — unlike a VM's or physical host's NIC, a pod's IP is expected to
+change on every reschedule, so treating it as a stable sub-asset would
+misrepresent it.
+
+**Authentication and target model.** One or more API server URLs are
+`discovery.Request.Targets`, matching the vCenter/WinRM/SNMP target-list
+shape. Authentication is a bearer token (a Kubernetes ServiceAccount token
+in production; the standard in-cluster and out-of-cluster auth model)
+resolved through the existing credential-reference contract — never
+accepted as a CLI argument. Production targets require HTTPS with normal
+certificate verification; an explicit `-lab` flag, restricted to loopback
+targets exactly like WinRM's `-lab-basic` and VMware's `-lab`, permits HTTP
+and skipped certificate verification against the Topo Lab fixture below.
+
+**Acceptance testing.** Unlike VMware (which has `vcsim`, an official
+simulator built for this purpose), `client-go` has no equivalent real local
+test double outside of `envtest`/`kubebuilder`, which requires downloading
+platform-specific `kube-apiserver`/`etcd` binaries — not reliably available
+in every build/CI environment and heavier than this slice needs. Also
+ruled out: `client-go/kubernetes/fake`, the in-memory fake clientset —
+it bypasses HTTP and JSON entirely (it satisfies the clientset Go interface
+directly), so it would never exercise the plugin's actual request
+construction or response decoding, unlike every other protocol's
+acceptance test in this project. Matching SNMP's precedent instead (SNMP
+also had no official simulator, since `gosnmp` is client-only): a
+hand-rolled Topo Lab fixture (`pkg/lab`) serves the small set of real
+Kubernetes REST API JSON responses (`GET /api/v1/nodes`,
+`GET /api/v1/pods`) the plugin actually calls, over a real HTTP listener,
+using the real `k8s.io/api` types for encoding — so the wire format and the
+plugin's own `client-go` REST call and JSON-decode path are both genuinely
+exercised, not simplified away, even though the server behind them is
+hand-rolled rather than an official implementation. `topo lab
+kubernetes-serve` exposes it for manual exploration, matching
+`snmp-serve`/`winrm-serve`/`ssh-serve`. The two-scan idempotency acceptance
+test (repeat scan, save to `store.Memory`, assert no duplicate assets) runs
+against this fixture, the same shape as every prior protocol's acceptance
+test. A real cluster (`kind`, a managed cluster, or any conformant API
+server) was evaluated as an alternative fixture and deliberately not
+required for this slice, since a hand-rolled fixture over the real REST
+API shape needs no external binary download or cluster provisioning and is
+exactly as reproducible as `vcsim`; real-cluster verification remains
+explicitly unverified, matching the SNMP `authPriv`/real-VMware/real-Windows
+posture — implemented and tested against a faithful fixture only, not yet
+against a genuinely live system.
+
+**Deliberate non-goals for this slice.** No workload-management object
+kinds beyond Node and Pod (no Deployment, Service, ConfigMap, PVC, etc. —
+real, scoped follow-ups for a later slice once this one's shape is
+proven); no cluster-admission or mutating capability of any kind; no
+in-cluster auto-config (`rest.InClusterConfig()`-style autodetection) —
+targets and credentials are always explicit, matching every other
+protocol; no CRD/custom-resource discovery. AWS and Azure discovery remain
+separate, unstaged slices, not bundled into this one.
 
 ### Relationship to the M2.5 gate
 
