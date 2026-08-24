@@ -19,7 +19,8 @@ import (
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	"github.com/Nischoy-ai/topo/pkg/model"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	k8sdiscovery "k8s.io/client-go/discovery"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -45,6 +46,20 @@ type Config struct {
 	// WinRM's NTLM negotiation do, so there is no distinct connect phase to
 	// give its own timeout.
 	OperationTimeout time.Duration
+}
+
+// client bundles only the two API surfaces this plugin actually calls —
+// CoreV1 (Nodes, Pods) and Discovery (ServerVersion for the connectivity
+// check) — rather than the full generated *kubernetes.Clientset, which
+// constructs a typed client for every built-in API group (apps, batch,
+// rbac, storage, networking, and two dozen more this plugin never touches)
+// unconditionally in its constructor. The linker cannot dead-code-eliminate
+// those unused groups through that constructor, so importing the full
+// Clientset roughly doubled the compiled binary's size in practice; this
+// narrower pair of clients uses only the packages this plugin needs.
+type client struct {
+	core      corev1client.CoreV1Interface
+	discovery k8sdiscovery.DiscoveryInterface
 }
 
 type Plugin struct{ Config Config }
@@ -97,11 +112,11 @@ func (p Plugin) CheckConnectivity(ctx context.Context, r discovery.Request) erro
 	if err := p.ValidateConfiguration(ctx, r); err != nil {
 		return err
 	}
-	client, err := p.dial(r.Targets[0])
+	c, err := p.dial(r.Targets[0])
 	if err != nil {
 		return err
 	}
-	_, err = client.Discovery().ServerVersion()
+	_, err = c.discovery.ServerVersion()
 	return err
 }
 
@@ -161,7 +176,7 @@ func (p Plugin) Discover(ctx context.Context, r discovery.Request) (model.Observ
 }
 
 func (p Plugin) discoverTarget(ctx context.Context, rawTarget string) (*Inventory, []model.CollectionError) {
-	client, err := p.dial(rawTarget)
+	c, err := p.dial(rawTarget)
 	if err != nil {
 		return nil, []model.CollectionError{{Code: "kubernetes_connect", Message: rawTarget + ": " + err.Error(), Retryable: retryable(err)}}
 	}
@@ -170,7 +185,7 @@ func (p Plugin) discoverTarget(ctx context.Context, rawTarget string) (*Inventor
 	opCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	nodeList, err := client.CoreV1().Nodes().List(opCtx, metav1.ListOptions{Limit: maxObjects + 1})
+	nodeList, err := c.core.Nodes().List(opCtx, metav1.ListOptions{Limit: maxObjects + 1})
 	if err != nil {
 		return nil, []model.CollectionError{{Code: "kubernetes_operation", Message: rawTarget + ": list nodes: " + err.Error(), Retryable: retryable(err)}}
 	}
@@ -181,7 +196,7 @@ func (p Plugin) discoverTarget(ctx context.Context, rawTarget string) (*Inventor
 
 	var collectionErrors []model.CollectionError
 	var pods []PodInventory
-	podList, err := client.CoreV1().Pods("").List(opCtx, metav1.ListOptions{Limit: maxObjects + 1})
+	podList, err := c.core.Pods("").List(opCtx, metav1.ListOptions{Limit: maxObjects + 1})
 	if err != nil {
 		collectionErrors = append(collectionErrors, model.CollectionError{Code: "kubernetes_partial", Message: rawTarget + ": list pods: " + err.Error(), Retryable: retryable(err)})
 	} else if len(podList.Items) > maxObjects {
@@ -193,7 +208,7 @@ func (p Plugin) discoverTarget(ctx context.Context, rawTarget string) (*Inventor
 	return &Inventory{Nodes: nodes, Pods: pods}, collectionErrors
 }
 
-func (p Plugin) dial(rawTarget string) (*kubernetes.Clientset, error) {
+func (p Plugin) dial(rawTarget string) (*client, error) {
 	target, err := validateTarget(rawTarget, p.Config.LabMode)
 	if err != nil {
 		return nil, err
@@ -205,13 +220,16 @@ func (p Plugin) dial(rawTarget string) (*kubernetes.Clientset, error) {
 	if p.Config.LabMode {
 		cfg.TLSClientConfig = rest.TLSClientConfig{Insecure: true}
 	}
-	timeout := p.operationTimeout()
-	cfg.Timeout = timeout
-	client, err := kubernetes.NewForConfig(cfg)
+	cfg.Timeout = p.operationTimeout()
+	core, err := corev1client.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	disco, err := k8sdiscovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &client{core: core, discovery: disco}, nil
 }
 
 func (p Plugin) operationTimeout() time.Duration {
