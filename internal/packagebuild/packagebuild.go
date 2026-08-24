@@ -26,7 +26,17 @@ import (
 
 const (
 	nfpmVersion = "2.47.0"
-	maxFileSize = 128 << 20
+	// maxFileSize bounds every regular file this package reads or writes,
+	// including the offline bundle — the largest single release artifact by
+	// design, since it aggregates every platform archive plus DEB/RPM/MSI/
+	// Helm payloads into one file for air-gapped installs. Matches
+	// internal/distribution's maxArtifactSize, which already used 512 MiB
+	// for the same artifact set one stage further down the release
+	// pipeline; 128 MiB was tight even before Kubernetes discovery roughly
+	// doubled each platform binary's size by linking in k8s.io/client-go's
+	// generated API types, and would only get tighter as AWS/Azure
+	// discovery add comparable weight.
+	maxFileSize = 512 << 20
 )
 
 var (

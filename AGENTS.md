@@ -49,9 +49,13 @@ M3 — hybrid release candidate — is current: AWS Organizations, Azure
 tenants/subscriptions, and Kubernetes discovery; source precedence and
 conflict/freshness visibility; scale/upgrade testing at 1K/10K/100K assets;
 and SSO/RBAC commercial modules behind documented open interfaces, per
-`ROADMAP.md`. Do not silently reorder this list — confirm scope with the
-user before picking a starting slice, since M3 has not yet been broken into
-staged slices the way M2.5 was.
+`ROADMAP.md`. Slice 1, Kubernetes node/pod discovery, is implemented — see
+`docs/kubernetes.md` and "Current milestone: M3" in `docs/project-plan.md`.
+AWS Organizations and Azure tenants/subscriptions discovery, and Kubernetes
+workload object kinds beyond Node/Pod, remain unstaged — stage each the
+same way (Objective, Deliverables, Acceptance gates, Deliberate non-goals)
+before starting it, and confirm scope with the user first, rather than
+assuming an order.
 
 The completed M2.5 slices, kept for reference:
 

@@ -103,7 +103,22 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
 
 ## M3 — hybrid release candidate
 
-- AWS Organizations, Azure tenants/subscriptions, and Kubernetes discovery.
+- **Implemented alpha (Kubernetes):** cluster node and pod inventory —
+  Kubernetes UID-based identity (never node/pod name or an IP address),
+  `pod_runs_on_node` relationships, via `k8s.io/client-go`. Production
+  requires HTTPS with normal certificate verification; there is no
+  fallback outside Topo Lab's `-lab` mode. `client-go` has no local
+  simulator equivalent to VMware's `vcsim`, so Topo Lab hand-rolls a
+  Kubernetes API fixture (real `k8s.io/api` JSON over real HTTP,
+  `pkg/lab/kubernetes_server.go`) the same way it did for SNMP; the
+  two-scan idempotency acceptance test runs the full 500-host scenario
+  (500 nodes, 500 pods, 500 relationships). Real-cluster verification
+  beyond the hand-rolled fixture has not been performed. Node/Pod only —
+  no Deployment, Service, or other workload object kinds yet. See
+  [docs/kubernetes.md](docs/kubernetes.md).
+- AWS Organizations and Azure tenants/subscriptions discovery, and
+  Kubernetes workload object kinds (Deployment, Service, ConfigMap,
+  PersistentVolumeClaim, etc.) beyond Node/Pod, remain unstaged.
 - Source precedence and conflict/freshness visibility.
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.
