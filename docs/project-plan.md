@@ -12,7 +12,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   complete — see "Completion status" under "Completed milestone: M2.5" below.
   M3 (hybrid release candidate) is current; slice 1 (Kubernetes node/pod
   discovery) is implemented, proposed in
-  <https://github.com/Nischoy-ai/topo/pull/PENDING>; AWS Organizations and
+  <https://github.com/Nischoy-ai/topo/pull/41>; AWS Organizations and
   Azure tenants/subscriptions discovery remain unstaged. See "Current
   milestone: M3" below. The most recent merged M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
@@ -81,7 +81,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
 - **Open pull request:** M3 slice 1, Kubernetes node/pod discovery, in
-  <https://github.com/Nischoy-ai/topo/pull/PENDING>.
+  <https://github.com/Nischoy-ai/topo/pull/41>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
