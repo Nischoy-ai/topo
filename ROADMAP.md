@@ -81,27 +81,25 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   See [docs/distribution.md](docs/distribution.md).
 - Additional package ecosystems such as Chocolatey, Scoop, AUR, and Snap follow
   demonstrated user demand rather than blocking the initial release channels.
-- **Current:** external security review remediation and independent retest.
-  The reviewer scope/threat model and closure protocol are documented; the
-  security baseline now uses exact Go 1.25.13 with pinned `govulncheck`, and
+- **Complete:** external security review preparation and remediation. The
+  reviewer scope/threat model and closure protocol are documented; the
+  security baseline uses exact Go 1.25.13 with pinned `govulncheck`, and
   pre-review reachable toolchain/dependency findings plus plaintext external
-  secret-provider transport were remediated. Maintainer-audit finding
-  `TSR-2026-001` is remediated by binding every enrollment token to its intended
-  collector ID; `TSR-2026-002` and `TSR-2026-009` are remediated by protecting
-  live SQLite files before open and backup snapshots throughout creation;
-  `TSR-2026-003` (low severity) is remediated by routing a `workflow_dispatch`
-  version input through `env:` in four `promote.yml` shell/PowerShell steps
-  instead of raw `${{ }}` interpolation, closing a script-injection primitive
-  into a job that later imports release-signing secrets, with a new CI check
-  guarding against recurrence. An independent reviewer (Grok/xAI) has now
-  completed a first review pass and reported one medium finding,
-  `TSR-2026-004` (publisher HTTPS clients followed redirects and accepted URL
-  userinfo), remediated by rejecting userinfo and refusing redirects in the
-  webhook/ServiceNow publishers and the related agent/enrollment HTTP
-  clients. All four findings remain open pending independent retest, and
-  the other findings plus the full independent review remain required before
-  any production claim. See
-  [docs/security-review.md](docs/security-review.md).
+  secret-provider transport were remediated. Every finding raised so far —
+  maintainer-audit `TSR-2026-001` (enrollment tokens not bound to their
+  intended collector ID), `TSR-2026-002`/`TSR-2026-009` (live SQLite file and
+  backup-staging permissions), `TSR-2026-003` (raw `${{ }}` workflow-input
+  interpolation in `promote.yml`), and the first independent-reviewer finding
+  `TSR-2026-004` (Grok/xAI; publisher HTTPS clients followed redirects and
+  accepted URL userinfo) — is fixed and merged. This closes M2.5's
+  implementation and remediation scope; two items remain open as
+  tracked follow-up rather than blocking further roadmap work: independent
+  retest of the fixed findings, and real beta/N-1 package-channel promotion
+  evidence (deferred until external repository and production signing-key
+  provisioning is authorized). Neither is represented as complete, and
+  neither is a production-readiness claim — see
+  [docs/security-review.md](docs/security-review.md) and "Release gates"
+  below.
 
 ## M3 — hybrid release candidate
 

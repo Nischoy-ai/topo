@@ -8,25 +8,27 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 - **Updated:** 2026-08-24
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
-- **Current implementation slice:** M2.5 external-review remediation 4,
-  the first finding from an actual independent reviewer (Grok/xAI) rather
-  than maintainer self-audit: publisher HTTPS clients (webhook, ServiceNow)
-  and the related agent-sender/enrollment-client residual now reject
-  URL userinfo (plus, for the base-address forms, path/query/fragment) and
-  refuse to follow redirects, so a bearer credential or enrollment token
-  cannot be replayed against an unconfigured destination
-  (`TSR-2026-004`, renumbered from the reviewer's own `TSR-2026-001` label
-  to avoid colliding with this project's already-assigned `TSR-2026-001`;
-  see `docs/security-review.md#independent-review`), proposed in
-  <https://github.com/Nischoy-ai/topo/pull/39>. The latest merged slice
-  routes the `promote.yml` `workflow_dispatch` version input through `env:`
-  instead of raw `${{ }}` shell/PowerShell interpolation (`TSR-2026-003`) in
+- **Milestone status:** M2.5 (release readiness and security hardening) is
+  complete — see "Completion status" under "Completed milestone: M2.5" below.
+  M3 (hybrid release candidate) is current but not yet staged into slices;
+  see "Current milestone: M3" below. The most recent merged M2.5 slice fixed
+  `TSR-2026-004`, the first finding from an actual independent reviewer
+  (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
+  (webhook, ServiceNow) and the related agent-sender/enrollment-client
+  residual now reject URL userinfo (plus, for the base-address forms,
+  path/query/fragment) and refuse to follow redirects, so a bearer
+  credential or enrollment token cannot be replayed against an unconfigured
+  destination (renumbered from the reviewer's own `TSR-2026-001` label to
+  avoid colliding with this project's already-assigned `TSR-2026-001`; see
+  `docs/security-review.md#independent-review`), merged in
+  <https://github.com/Nischoy-ai/topo/pull/39>. Before that: the `promote.yml`
+  `workflow_dispatch` version-input interpolation fix (`TSR-2026-003`) in
   <https://github.com/Nischoy-ai/topo/pull/38>; owner-only live SQLite
-  creation plus private backup staging (`TSR-2026-002`/`TSR-2026-009`) merged
-  before that in <https://github.com/Nischoy-ai/topo/pull/37>;
-  collector-scoped enrollment tokens (`TSR-2026-001`) merged before that in
+  creation plus private backup staging (`TSR-2026-002`/`TSR-2026-009`) in
+  <https://github.com/Nischoy-ai/topo/pull/37>;
+  collector-scoped enrollment tokens (`TSR-2026-001`) in
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
-  preparation and pre-review remediation merged before that in
+  preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
@@ -52,9 +54,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** publisher/agent/enrollment redirect and userinfo
-  remediation (`TSR-2026-004`) in
-  <https://github.com/Nischoy-ai/topo/pull/39>.
+- **Open pull request:** none. M3 has not yet been staged into slices; see
+  "Current milestone: M3" below.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -78,7 +79,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   live-file and backup-staging remediation in
   <https://github.com/Nischoy-ai/topo/pull/37>; `promote.yml`
   workflow-interpolation remediation in
-  <https://github.com/Nischoy-ai/topo/pull/38>.
+  <https://github.com/Nischoy-ai/topo/pull/38>; publisher/agent/enrollment
+  redirect and userinfo remediation (`TSR-2026-004`) in
+  <https://github.com/Nischoy-ai/topo/pull/39>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -91,19 +94,21 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   [`docs/servicenow.md`](servicenow.md#verified-against-a-real-instance)
   for full detail and what remains unverified (the other CI classes,
   larger batches, multiple relations, the response schema).
-- **Current milestone:** M2.5 — release readiness and security hardening.
-  Slices 1 through 6 are merged. An independent reviewer (Grok/xAI) has
-  completed a first review pass against target commit
-  `c0cfb7848e6732590002265fccd7cf0fcbd8c7e9` and delivered a draft technical
-  report with one medium finding (`TSR-2026-004`, GitHub issue #36); no
-  critical or high findings, and several documented security invariants were
-  independently confirmed rather than accepted from documentation. Fixing
-  `TSR-2026-004` and obtaining the reviewer's independent retest of the exact
-  remediation commit remain open — see `docs/security-review.md#independent-
-  review`. Real beta and N-1 stable channel promotions also remain required
-  operational evidence before any production claim and are explicitly deferred
-  until the user authorizes external repository and production signing-key
-  provisioning. See "Current milestone: M2.5" below.
+- **Completed milestone:** M2.5 — release readiness and security hardening.
+  All seven slices are merged, including remediation of every finding raised
+  so far by maintainer self-audit and by the first independent reviewer
+  (Grok/xAI): `TSR-2026-001`/`002`/`003`/`004`/`009`. No critical or high
+  findings were reported, and several documented security invariants were
+  independently confirmed rather than accepted from documentation alone. The
+  reviewer's independent retest of the exact remediation commits, and real
+  beta/N-1 stable package-channel promotion evidence (deferred until the
+  user authorizes external repository and production signing-key
+  provisioning), remain open as tracked follow-up — neither blocks M3, and
+  neither is a production-readiness claim. See "Completion status" under
+  "Completed milestone: M2.5" below and `docs/security-review.md#independent-
+  review`.
+- **Current milestone:** M3 — hybrid release candidate. Not yet staged into
+  slices. See "Current milestone: M3" below.
 - **Verified in the current remediation slice (`TSR-2026-004`, independent review):** an independent reviewer
   (Grok/xAI) found `TSR-2026-004` (reported as `TSR-2026-001` in the
   reviewer's own numbering; renumbered here — see "Independent review" in
@@ -1307,7 +1312,7 @@ what comes next.
   is unwarranted complexity until there is more than one schema revision
   to manage in practice.
 
-## Current milestone: M2.5 release readiness and security hardening
+## Completed milestone: M2.5 release readiness and security hardening
 
 ### Objective
 
@@ -1315,6 +1320,19 @@ Turn the implemented discovery/controller capabilities into a system that can
 be operated and distributed safely. This milestone closes trust-boundary,
 compromise-recovery, upgrade/restore, supply-chain, packaging, distribution,
 and independent security-review gaps. It does not add new discovery protocols.
+
+### Completion status
+
+All seven slices below are implemented and merged, including remediation of
+every security finding raised so far
+(`TSR-2026-001`/`002`/`003`/`004`/`009` — see `docs/security-review.md`).
+M3 work below proceeds without waiting on the two items that remain open as
+tracked follow-up, not blockers: (1) the independent reviewer's retest of
+those merged fixes — no finding is `Verified` until that happens, regardless
+of this milestone's completion; and (2) real beta/N-1 package-channel
+promotion evidence, deferred until the user authorizes external repository
+and production signing-key provisioning. Neither omission is a
+production-readiness claim; see "Release gates" in `ROADMAP.md`.
 
 ### Slices
 
@@ -1745,12 +1763,44 @@ promotion, or acceptance gates. Repository signing keys must be isolated from
 ordinary build jobs. Stable and beta are explicit promotion channels, and only
 stable passes after the full install/upgrade/rollback matrix succeeds.
 
+## Current milestone: M3 — hybrid release candidate
+
+### Objective
+
+Extend discovery to hybrid/cloud estates and prove Topo at scale, per
+`ROADMAP.md`'s M3 line:
+
+- AWS Organizations, Azure tenants/subscriptions, and Kubernetes discovery.
+- Source precedence and conflict/freshness visibility.
+- Scale and upgrade testing at 1K, 10K, and 100K assets.
+- SSO/RBAC commercial modules behind documented open interfaces.
+
+### Slices
+
+Not yet staged. Unlike M2.5, this milestone has not been broken into
+ordered, independently-mergeable slices — do that (matching the pattern
+each completed milestone above followed: one focused vertical slice per PR,
+with acceptance gates and deliberate non-goals recorded here) before
+starting implementation, and confirm the starting slice and its scope with
+the user rather than assuming an order. AWS/Azure/Kubernetes discovery are
+themselves three separate protocol integrations, each roughly the size of
+the SNMP/VMware milestone above, not one slice.
+
+### Relationship to the M2.5 gate
+
+M3 implementation proceeds independently of M2.5's two open follow-up
+items (independent retest, real package-channel promotion evidence — see
+"Completion status" under the M2.5 section above). Neither blocks starting
+M3, and starting M3 does not change either item's status: no finding
+becomes `Verified` and no production-readiness claim becomes true just
+because M3 work has begun.
+
 ## Follow-on order
 
-Complete the M2.5 slices above in order unless evidence from an enterprise
-pilot changes the priority. After M2.5, pursue AWS, Azure, Kubernetes,
+The M2.5 slices above are complete (see "Completion status" under that
+milestone); M3, started above, pursues AWS, Azure, Kubernetes,
 conflict/freshness visibility, and larger scale gates leading toward Topo
-Graph.
+Graph, unless evidence from an enterprise pilot changes the priority.
 
 PostgreSQL was evaluated as part of the persistent-storage milestone and
 deliberately deferred (see "Storage technology decision" under the
