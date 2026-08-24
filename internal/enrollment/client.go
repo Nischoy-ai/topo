@@ -73,7 +73,7 @@ func Enroll(ctx context.Context, controllerURL, token, collectorID string, boots
 		return Result{}, fmt.Errorf("marshal enrollment request: %w", err)
 	}
 
-	httpClient := &http.Client{Timeout: requestTimeout}
+	httpClient := &http.Client{Timeout: requestTimeout, CheckRedirect: refuseRedirects}
 	if len(bootstrapCACertPEM) > 0 {
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(bootstrapCACertPEM) {
@@ -128,7 +128,7 @@ func Rotate(ctx context.Context, controllerURL string, tlsConfig *tls.Config, co
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = tlsConfig
-	httpClient := &http.Client{Timeout: requestTimeout, Transport: transport}
+	httpClient := &http.Client{Timeout: requestTimeout, Transport: transport, CheckRedirect: refuseRedirects}
 
 	decoded, err := submitCSR(ctx, httpClient, strings.TrimRight(controllerURL, "/")+"/v1/rotate", requestBody)
 	if err != nil {
@@ -142,7 +142,17 @@ func validControllerURL(controllerURL string) error {
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return errors.New("controller URL must be an absolute http:// or https:// URL")
 	}
+	if parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.ForceQuery || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("controller URL must not contain credentials, a path, query parameters, or a fragment")
+	}
 	return nil
+}
+
+// refuseRedirects prevents the one-time enrollment token, or the CSR
+// authenticated by the collector's current mTLS certificate, from being
+// replayed against a redirect target the operator did not configure.
+func refuseRedirects(*http.Request, []*http.Request) error {
+	return http.ErrUseLastResponse
 }
 
 // generateKeyAndCSR generates a fresh ECDSA P-256 key pair and a
