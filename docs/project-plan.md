@@ -18,7 +18,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   subscription-structure discovery) is implemented, completing all three
   protocol integrations `ROADMAP.md`'s M3 line names; slice 4 (source
   precedence and asset conflict/freshness visibility) is implemented on
-  `agent/m3-source-precedence-visibility`, pending pull request. See "Current
+  `agent/m3-source-precedence-visibility`, proposed in
+  <https://github.com/Nischoy-ai/topo/pull/46>. See "Current
   milestone: M3" below. The most recent merged M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -156,8 +157,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
 - **Open pull request:** M3 slice 4, source precedence and asset
-  conflict/freshness visibility, pending from
-  `agent/m3-source-precedence-visibility`.
+  conflict/freshness visibility, in
+  <https://github.com/Nischoy-ai/topo/pull/46>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -2210,7 +2211,7 @@ fallback) — credentials are always explicit, matching every other Topo
 discovery plugin. This completes the three protocol integrations
 `ROADMAP.md`'s M3 line names (Kubernetes, AWS Organizations, Azure).
 
-### Slice 4 — source precedence and asset conflict/freshness visibility (implemented, pending pull request)
+### Slice 4 — source precedence and asset conflict/freshness visibility (implemented, proposed in PR 46)
 
 **Objective.** Make Topo's resolved asset view explainable when more than one
 discovery source reports the same stable asset. Preserve each source's latest
