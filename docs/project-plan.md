@@ -76,8 +76,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   `topo discover azure -lab`), not only in the test suite. `go test -race
   ./...` passes; `gofmt`/`go vet` clean. Real-tenant verification beyond
   the hand-rolled fixture has not been performed — the same posture as
-  SNMP `authPriv`, real VMware/vCenter, real Kubernetes clusters, and real
-  AWS Organizations. See `docs/azure.md`.
+  SNMP `authPriv`, real VMware/vCenter, and real Kubernetes clusters (AWS
+  Organizations has since gained partial real-account verification — see
+  the AWS slice bullet below). See `docs/azure.md`.
 - **Slice before that (M3 slice 2, AWS Organizations account-structure
   discovery, merged):** `pkg/discovery/aws` calls
   `DescribeOrganization`/`ListRoots` then recursively walks
@@ -91,8 +92,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   SigV4 signature verification via the SDK's own `v4.Signer`. The two-scan
   idempotency acceptance test runs the full `examples/lab/clean-500.json`
   scenario as 500 simulated accounts nested two levels under two OUs: 506
-  total assets, 505 `member_of` relationships, zero errors. See
-  `docs/aws.md`.
+  total assets, 505 `member_of` relationships, zero errors. Since merging,
+  it has also been verified against a real, live AWS account (2026-08-25):
+  real connectivity, real SigV4 auth, real multi-account enumeration, and
+  the documented four-action least-privilege IAM policy confirmed
+  empirically sufficient — OU nesting, permission-denied handling, and
+  delegated-admin/STS credentials remain verified only against the Lab
+  fixture. See `docs/aws.md`.
 - **Milestone slice before that (M3 slice 1, Kubernetes node/pod
   discovery, merged):** `pkg/discovery/kubernetes` lists `v1.Node` and
   `v1.Pod` objects cluster-wide via `k8s.io/client-go` (pinned `v0.35.8`,
@@ -2016,11 +2022,29 @@ CLI at the same scale — the same shape as every prior protocol's
 acceptance test. A real AWS Organization was evaluated as an alternative
 fixture and deliberately not required for this slice, since it would need
 a real AWS account and a nontrivial pre-existing account structure, neither
-reproducible the way an in-process fixture is; real-organization
-verification remains explicitly unverified, matching the SNMP
-`authPriv`/real-VMware/real-Windows/real-Kubernetes-cluster posture —
-implemented and tested against a faithful fixture only, not yet against a
-genuinely live AWS account.
+reproducible the way an in-process fixture is.
+
+**Real-account verification (2026-08-25, post-merge).** The maintainer
+provided a free-tier AWS account and a dedicated read-only IAM user for
+live testing outside Topo Lab. Before Organizations was enabled, a real
+`DescribeOrganization` call correctly returned a real
+`AWSOrganizationsNotInUseException`, handled as a clean non-retryable
+`aws_organizations_operation` error. After enabling Organizations, the
+plugin correctly enumerated the real Organization, Root, and management
+account; after a second member account was added, a repeat run picked it
+up with no code changes. The exact four-action least-privilege IAM policy
+`docs/aws.md` recommends was then substituted for the broader managed
+policy on the same IAM user, and discovery produced identical results,
+confirming the documented minimum-permission claim empirically rather
+than by assertion alone. This remains a single-account-then-two-account
+Organization with no organizational units created, so the recursive
+`ListOrganizationalUnitsForParent` walk, the `AccessDeniedException`
+permission-denied path, the delegated-administrator credential path, and
+STS session-token usage are still verified only against the Lab fixture —
+matching the SNMP `authPriv`/real-VMware/real-Windows/real-Kubernetes-
+cluster posture for those specific remaining gaps. See "Verified against a
+real, live AWS account" in `docs/aws.md` for the full account of what was
+tested.
 
 **Deliberate non-goals for this slice.** No per-account resource inventory
 (EC2 instances, S3 buckets, IAM roles, etc. — a much larger and separately
