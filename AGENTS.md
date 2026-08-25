@@ -53,11 +53,13 @@ and SSO/RBAC commercial modules behind documented open interfaces, per
 `docs/kubernetes.md` and "Current milestone: M3" in `docs/project-plan.md`.
 Slice 2, AWS Organizations account-structure discovery, is implemented —
 see `docs/aws.md`. Slice 3, Azure tenant subscription-structure discovery,
-is implemented — see `docs/azure.md`. That completes the three protocol
+is implemented — see `docs/azure.md`. Slice 4, source precedence plus asset
+conflict/freshness visibility, is implemented — see
+`docs/source-resolution.md`. That completes the three protocol
 integrations `ROADMAP.md`'s M3 line names; remaining M3 work (Kubernetes
 workload object kinds beyond Node/Pod, AWS per-account and Azure
-per-subscription resource inventory, source precedence/conflict-freshness
-visibility, scale/upgrade testing, SSO/RBAC modules) remains unstaged —
+per-subscription resource inventory, relationship precedence and cross-ID
+correlation, scale/upgrade testing, SSO/RBAC modules) remains unstaged —
 stage each the same way (Objective, Deliverables, Acceptance gates,
 Deliberate non-goals) before starting it, and confirm scope with the user
 first, rather than assuming an order.

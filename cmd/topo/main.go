@@ -677,6 +677,20 @@ func openRepository(driver, dsn string) (store.Repository, func(), error) {
 	}
 }
 
+func parseSourcePrecedence(raw string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	plugins := strings.Split(raw, ",")
+	for i := range plugins {
+		plugins[i] = strings.TrimSpace(plugins[i])
+	}
+	if err := store.ValidateSourcePrecedence(plugins); err != nil {
+		return nil, err
+	}
+	return plugins, nil
+}
+
 func serve(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	addr := fs.String("addr", env("TOPO_ADDR", ":8080"), "listen address")
@@ -686,8 +700,13 @@ func serve(args []string) error {
 	mtlsSAN := fs.String("mtls-san", "localhost,127.0.0.1,::1", "comma-separated DNS names/IPs for the controller's own TLS server certificate")
 	dbDriver := fs.String("db-driver", "memory", "storage backend: memory (default; does not survive a restart) or sqlite (persistent, requires -db-dsn)")
 	dbDSN := fs.String("db-dsn", "", "sqlite: database file path, or \":memory:\" for a non-persistent SQLite instance used only for testing the SQL code paths")
+	sourcePrecedence := fs.String("source-precedence", "", "comma-separated discovery plugin names from highest to lowest asset-resolution priority")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	precedence, err := parseSourcePrecedence(*sourcePrecedence)
+	if err != nil {
+		return fmt.Errorf("invalid -source-precedence: %w", err)
 	}
 	repo, closeRepo, err := openRepository(*dbDriver, *dbDSN)
 	if err != nil {
@@ -706,6 +725,7 @@ func serve(args []string) error {
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	controllerServer := controller.New(repo, logger, string(apiKey))
+	controllerServer.SourcePrecedence = precedence
 	var ca *enrollment.CA
 	if *caDir != "" {
 		var caErr error

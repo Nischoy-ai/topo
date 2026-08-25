@@ -22,6 +22,10 @@ var ErrNotFound = errors.New("not found")
 type Repository interface {
 	SaveObservation(context.Context, model.ObservationEnvelope) error
 	ListObservations(context.Context) ([]model.ObservationEnvelope, error)
+	// ListAssetClaims returns the latest claim each site/collector/plugin
+	// source has made about each stable asset. Callers resolve these through
+	// ResolveAssetClaims so precedence policy remains backend-independent.
+	ListAssetClaims(context.Context) ([]AssetClaim, error)
 	ListAssets(context.Context) ([]ResolvedAsset, error)
 	ListRelationships(context.Context) ([]ResolvedRelationship, error)
 
@@ -84,10 +88,54 @@ type CertificateRevocation struct {
 }
 
 type ResolvedAsset struct {
-	ID                 string      `json:"id"`
-	Asset              model.Asset `json:"asset"`
-	FirstObservationID string      `json:"first_observation_id"`
-	LastObservationID  string      `json:"last_observation_id"`
+	ID                 string          `json:"id"`
+	Asset              model.Asset     `json:"asset"`
+	FirstObservationID string          `json:"first_observation_id"`
+	LastObservationID  string          `json:"last_observation_id"`
+	FirstObservedAt    time.Time       `json:"first_observed_at"`
+	LastObservedAt     time.Time       `json:"last_observed_at"`
+	WinningSource      AssetSource     `json:"winning_source"`
+	Sources            []AssetSource   `json:"sources"`
+	Conflicts          []AssetConflict `json:"conflicts"`
+}
+
+// AssetSource identifies one independent discovery source and records the
+// freshness of its claim. PrecedenceRank is zero-based; lower ranks win.
+// ExplicitPrecedence distinguishes a configured rank from the shared default
+// rank assigned to every unlisted plugin.
+type AssetSource struct {
+	SiteID             string    `json:"site_id"`
+	CollectorID        string    `json:"collector_id"`
+	Plugin             string    `json:"plugin"`
+	FirstObservationID string    `json:"first_observation_id"`
+	LastObservationID  string    `json:"last_observation_id"`
+	FirstObservedAt    time.Time `json:"first_observed_at"`
+	LastObservedAt     time.Time `json:"last_observed_at"`
+	PrecedenceRank     int       `json:"precedence_rank"`
+	ExplicitPrecedence bool      `json:"explicit_precedence"`
+}
+
+// AssetClaim is one source's latest view of one stable asset. Repositories
+// persist claims; ResolveAssetClaims applies policy and constructs the public
+// resolved view.
+type AssetClaim struct {
+	AssetID string      `json:"asset_id"`
+	Asset   model.Asset `json:"asset"`
+	Source  AssetSource `json:"source"`
+}
+
+type AssetConflictClaim struct {
+	Source  AssetSource `json:"source"`
+	Present bool        `json:"present"`
+	Value   any         `json:"value,omitempty"`
+}
+
+// AssetConflict describes one field for which contributing sources report
+// different values. Evidence is deliberately excluded: collection timestamps
+// and confidence naturally vary without representing configuration drift.
+type AssetConflict struct {
+	Field  string               `json:"field"`
+	Claims []AssetConflictClaim `json:"claims"`
 }
 
 // ResolvedRelationship is a relationship's current state resolved across
@@ -107,7 +155,7 @@ type Memory struct {
 	mu               sync.RWMutex
 	observations     []model.ObservationEnvelope
 	observationIndex map[string]int
-	assets           map[string]ResolvedAsset
+	assetClaims      map[string]map[string]AssetClaim
 	relationships    map[string]ResolvedRelationship
 	auditEntries     []audit.Entry
 	schedules        map[string]Schedule
@@ -117,7 +165,7 @@ type Memory struct {
 func NewMemory() *Memory {
 	return &Memory{
 		observationIndex: map[string]int{},
-		assets:           map[string]ResolvedAsset{},
+		assetClaims:      map[string]map[string]AssetClaim{},
 		relationships:    map[string]ResolvedRelationship{},
 		schedules:        map[string]Schedule{},
 		revocations:      map[string]CertificateRevocation{},
@@ -139,13 +187,29 @@ func (m *Memory) SaveObservation(_ context.Context, e model.ObservationEnvelope)
 	}
 	for _, a := range e.Assets {
 		id := model.StableAssetID(a)
-		r, ok := m.assets[id]
-		if !ok {
-			r = ResolvedAsset{ID: id, FirstObservationID: e.ObservationID}
+		sourceKey := AssetSourceKey(e.SiteID, e.CollectorID, e.Plugin)
+		claims := m.assetClaims[id]
+		if claims == nil {
+			claims = map[string]AssetClaim{}
+			m.assetClaims[id] = claims
 		}
-		r.Asset = a
-		r.LastObservationID = e.ObservationID
-		m.assets[id] = r
+		claim, exists := claims[sourceKey]
+		if !exists {
+			claim = AssetClaim{AssetID: id, Source: AssetSource{
+				SiteID: e.SiteID, CollectorID: e.CollectorID, Plugin: e.Plugin,
+				FirstObservationID: e.ObservationID, FirstObservedAt: e.ObservedAt,
+			}}
+		}
+		if !exists || e.ObservedAt.Before(claim.Source.FirstObservedAt) {
+			claim.Source.FirstObservationID = e.ObservationID
+			claim.Source.FirstObservedAt = e.ObservedAt
+		}
+		if !exists || !e.ObservedAt.Before(claim.Source.LastObservedAt) {
+			claim.Asset = a
+			claim.Source.LastObservationID = e.ObservationID
+			claim.Source.LastObservedAt = e.ObservedAt
+		}
+		claims[sourceKey] = claim
 	}
 	for _, rel := range e.Relationships {
 		id := model.StableRelationshipID(rel)
@@ -166,13 +230,28 @@ func (m *Memory) ListObservations(_ context.Context) ([]model.ObservationEnvelop
 	return out, nil
 }
 func (m *Memory) ListAssets(_ context.Context) ([]ResolvedAsset, error) {
+	claims, err := m.ListAssetClaims(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return ResolveAssetClaims(claims, nil), nil
+}
+func (m *Memory) ListAssetClaims(_ context.Context) ([]AssetClaim, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	out := make([]ResolvedAsset, 0, len(m.assets))
-	for _, a := range m.assets {
-		out = append(out, a)
+	var out []AssetClaim
+	for _, claims := range m.assetClaims {
+		for _, claim := range claims {
+			out = append(out, claim)
+		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].AssetID != out[j].AssetID {
+			return out[i].AssetID < out[j].AssetID
+		}
+		return AssetSourceKey(out[i].Source.SiteID, out[i].Source.CollectorID, out[i].Source.Plugin) <
+			AssetSourceKey(out[j].Source.SiteID, out[j].Source.CollectorID, out[j].Source.Plugin)
+	})
 	return out, nil
 }
 func (m *Memory) ListRelationships(_ context.Context) ([]ResolvedRelationship, error) {

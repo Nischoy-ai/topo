@@ -126,8 +126,11 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   verification via the SDK's own signer, the same way it did for
   Kubernetes and SNMP; the two-scan idempotency acceptance test runs the
   full 500-host scenario as 500 simulated accounts (506 assets, 505
-  relationships). Real-organization verification beyond the hand-rolled
-  fixture has not been performed. Organization structure only — no
+  relationships). A real AWS Organization has since confirmed genuine
+  SigV4 connectivity, multi-account enumeration, the not-enabled error path,
+  and the documented four-action least-privilege policy; live OU nesting,
+  delegated-administrator access, and STS credentials remain unverified.
+  Organization structure only — no
   per-account resource inventory (EC2, S3, IAM, etc.) yet. See
   [docs/aws.md](docs/aws.md).
 - **Implemented alpha (Azure):** tenant subscription structure —
@@ -146,15 +149,24 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   two-scan idempotency acceptance test runs the full 500-host scenario as
   500 simulated subscriptions (506 assets, 505 relationships — matching
   the AWS slice's numbers by deliberately symmetric fixture design.
-  Real-tenant verification beyond the hand-rolled fixture has not been
-  performed. Tenant structure only — no per-subscription resource
+  Real-tenant setup was attempted but remains blocked on assigning Reader at
+  Tenant Root Group scope; no live discovery claim is made. Tenant structure
+  only — no per-subscription resource
   inventory (VMs, storage, networking, etc.) yet. See
   [docs/azure.md](docs/azure.md).
 - Kubernetes workload object kinds (Deployment, Service, ConfigMap,
   PersistentVolumeClaim, etc.) beyond Node/Pod, AWS per-account resource
   inventory, and Azure per-subscription resource inventory, remain
   unstaged.
-- Source precedence and conflict/freshness visibility.
+- **Implemented alpha (asset source resolution):** `topo serve
+  -source-precedence` orders discovery plugins; the memory and SQLite stores
+  retain each site/collector/plugin source's latest same-ID asset claim; and
+  `GET /v1/assets` exposes the deterministic winner, contributing sources,
+  field-level conflicts, and first/latest observation timestamps. SQLite
+  schema version 5 transactionally backfills claims from older retained
+  observations. Cross-ID correlation, relationship precedence, omission-based
+  retirement, and stale-after policy remain separate follow-ups. See
+  [docs/source-resolution.md](docs/source-resolution.md).
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.
 

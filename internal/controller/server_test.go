@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,6 +29,44 @@ func TestIngestAndListAssets(t *testing.T) {
 	h.ServeHTTP(w, r)
 	if w.Code != 200 || !bytes.Contains(w.Body.Bytes(), []byte(`"count":1`)) {
 		t.Fatalf("list response: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAssetEndpointAppliesConfiguredSourcePrecedence(t *testing.T) {
+	s := New(store.NewMemory(), nil, "secret")
+	s.SourcePrecedence = []string{"vmware", "ssh-linux"}
+	h := s.Handler()
+	for _, body := range []string{
+		`{"schema_version":"v1alpha1","observation_id":"vmware-old","site_id":"s","collector_id":"vcenter","plugin":"vmware","observed_at":"2026-08-24T10:00:00Z","assets":[{"type":"host","native_id":"h1","name":"authoritative","attributes":{"os":"linux"}}]}`,
+		`{"schema_version":"v1alpha1","observation_id":"ssh-new","site_id":"s","collector_id":"relay","plugin":"ssh-linux","observed_at":"2026-08-24T11:00:00Z","assets":[{"type":"host","native_id":"h1","name":"newer","attributes":{"os":"other"}}]}`,
+	} {
+		r := httptest.NewRequest(http.MethodPost, "/v1/observations", bytes.NewBufferString(body))
+		r.Header.Set("Authorization", "Bearer secret")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusAccepted {
+			t.Fatalf("ingest status %d: %s", w.Code, w.Body.String())
+		}
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/assets", nil)
+	r.Header.Set("Authorization", "Bearer secret")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list status %d: %s", w.Code, w.Body.String())
+	}
+	var response struct {
+		Items []store.ResolvedAsset `json:"items"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Items) != 1 || response.Items[0].Asset.Name != "authoritative" || response.Items[0].WinningSource.Plugin != "vmware" {
+		t.Fatalf("precedence response = %#v", response.Items)
+	}
+	if len(response.Items[0].Sources) != 2 || len(response.Items[0].Conflicts) != 2 {
+		t.Fatalf("source/conflict visibility missing: %#v", response.Items[0])
 	}
 }
 func TestIngestAndListRelationships(t *testing.T) {

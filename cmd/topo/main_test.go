@@ -79,6 +79,22 @@ func TestResolvePrivateKeyReference(t *testing.T) {
 	}
 }
 
+func TestParseSourcePrecedence(t *testing.T) {
+	plugins, err := parseSourcePrecedence("vmware, ssh-linux,aws-organizations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(plugins, ",") != "vmware,ssh-linux,aws-organizations" {
+		t.Fatalf("plugins = %#v", plugins)
+	}
+	if plugins, err := parseSourcePrecedence("  "); err != nil || plugins != nil {
+		t.Fatalf("empty precedence = %#v, %v", plugins, err)
+	}
+	if _, err := parseSourcePrecedence("vmware,vmware"); err == nil {
+		t.Fatal("duplicate source precedence accepted")
+	}
+}
+
 func TestDecodeSpoolKey(t *testing.T) {
 	value, err := decodeSpoolKey([]byte("  " + strings.Repeat("ab", 32) + "\n"))
 	if err != nil {

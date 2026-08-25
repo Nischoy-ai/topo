@@ -102,6 +102,16 @@ The VMware plugin creates a read-only property-collector container view scoped t
 
 The controller's storage backend (`store.Repository`) is opt-in persistent: the default `-db-driver memory` keeps every prior release's behavior exactly (nothing survives a restart), and `-db-driver sqlite -db-dsn <path>` opts into a SQLite-backed store that does. There is no encryption at rest — the database file's confidentiality depends entirely on filesystem permissions, the same trust boundary this project already places on the enrollment CA's private key and Topo Agent's offline spool. Topo establishes owner-only POSIX modes before SQLite opens a new live database or starts copying a backup rather than trying to repair exposure afterward; the containing directory/Windows ACL remains an operator boundary. Enrollment tokens, collector heartbeats, and one-off job state remain in-memory only regardless of `-db-driver`; a controller restart still invalidates outstanding enrollment tokens and loses heartbeat/job history. Recurring discovery schedules and certificate revocations are persisted with SQLite because losing either is a silent policy/security change. `SaveObservation` is idempotent by observation ID in both backends — a collector retrying a delivery whose response was lost replaces the existing record rather than creating a duplicate, so retried delivery cannot be used to inflate stored observation counts.
 
+`-source-precedence` is a resolution policy, not an authorization boundary.
+It determines which plugin's same-ID asset claim appears as the current value
+and exposes every competing claim and timestamp through operator-only
+`GET /v1/assets`; it does not make a source trusted to authenticate requests or
+let one collector act as another. mTLS observation identity remains bound to
+the verified certificate subject. Bearer-key compatibility still carries its
+documented broader authority, so an operator must protect that key rather than
+assuming a high precedence rank makes bearer-submitted data trustworthy. See
+[source precedence and asset freshness](docs/source-resolution.md).
+
 `topo storage backup` creates a transactionally consistent SQLite snapshot
 inside an already-private staging directory, verifies it, and refuses to
 replace an existing destination. `topo storage

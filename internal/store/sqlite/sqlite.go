@@ -28,7 +28,7 @@ import (
 // dedicated migration framework is unwarranted complexity for this
 // project's single-controller deployment shape and small sequential schema;
 // migrations (below) and migrate are the seam future revisions extend.
-const schemaVersion = 4
+const schemaVersion = 5
 
 const migrationV1 = `
 CREATE TABLE observations (
@@ -82,6 +82,23 @@ CREATE TABLE certificate_revocations (
 );
 `
 
+const migrationV5 = `
+CREATE TABLE asset_claims (
+	asset_id                 TEXT NOT NULL,
+	source_key               TEXT NOT NULL,
+	asset_json               TEXT NOT NULL,
+	site_id                  TEXT NOT NULL,
+	collector_id             TEXT NOT NULL,
+	plugin                   TEXT NOT NULL,
+	first_observation_id     TEXT NOT NULL,
+	last_observation_id      TEXT NOT NULL,
+	first_observed_at        TEXT NOT NULL,
+	last_observed_at         TEXT NOT NULL,
+	PRIMARY KEY (asset_id, source_key)
+);
+CREATE INDEX asset_claims_asset_id ON asset_claims (asset_id);
+`
+
 // migrations maps each schema version to the SQL that upgrades a database
 // from version-1 to that version. migrate applies every entry between the
 // database's current PRAGMA user_version and schemaVersion in order, so a
@@ -92,6 +109,7 @@ var migrations = map[int]string{
 	2: migrationV2,
 	3: migrationV3,
 	4: migrationV4,
+	5: migrationV5,
 }
 
 // Store implements store.Repository backed by a SQLite database.
@@ -261,12 +279,115 @@ func (s *Store) migrate(ctx context.Context) error {
 		if _, err := tx.ExecContext(ctx, migration); err != nil {
 			return fmt.Errorf("apply schema migration to version %d: %w", v, err)
 		}
+		if v == 5 {
+			if err := backfillAssetClaims(ctx, tx); err != nil {
+				return fmt.Errorf("backfill asset claims for schema version %d: %w", v, err)
+			}
+		}
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, v)); err != nil {
 			return fmt.Errorf("set schema version to %d: %w", v, err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit schema migration to version %d: %w", schemaVersion, err)
+	}
+	return nil
+}
+
+// backfillAssetClaims reconstructs version-5 source claims from the immutable
+// observation envelopes already retained by every earlier schema. Running it
+// inside migrate's transaction means a decode or insert failure rolls back the
+// table creation and every earlier pending migration together.
+func backfillAssetClaims(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `SELECT envelope_json FROM observations ORDER BY rowid`)
+	if err != nil {
+		return fmt.Errorf("list observations: %w", err)
+	}
+	var envelopes []model.ObservationEnvelope
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("scan observation: %w", err)
+		}
+		var envelope model.ObservationEnvelope
+		if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("decode observation: %w", err)
+		}
+		envelopes = append(envelopes, envelope)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("list observations: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close observations: %w", err)
+	}
+	for _, envelope := range envelopes {
+		for _, asset := range envelope.Assets {
+			assetJSON, err := json.Marshal(asset)
+			if err != nil {
+				return fmt.Errorf("marshal asset: %w", err)
+			}
+			if err := saveAssetClaim(ctx, tx, envelope, model.StableAssetID(asset), string(assetJSON)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func saveAssetClaim(ctx context.Context, tx *sql.Tx, envelope model.ObservationEnvelope, assetID, assetJSON string) error {
+	sourceKey := store.AssetSourceKey(envelope.SiteID, envelope.CollectorID, envelope.Plugin)
+	observed := envelope.ObservedAt.UTC()
+	var currentJSON, firstID, lastID, firstRaw, lastRaw string
+	err := tx.QueryRowContext(ctx, `
+		SELECT asset_json, first_observation_id, last_observation_id,
+		       first_observed_at, last_observed_at
+		FROM asset_claims WHERE asset_id = ? AND source_key = ?
+	`, assetID, sourceKey).Scan(&currentJSON, &firstID, &lastID, &firstRaw, &lastRaw)
+	if errors.Is(err, sql.ErrNoRows) {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO asset_claims (
+				asset_id, source_key, asset_json, site_id, collector_id, plugin,
+				first_observation_id, last_observation_id,
+				first_observed_at, last_observed_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, assetID, sourceKey, assetJSON, envelope.SiteID, envelope.CollectorID, envelope.Plugin,
+			envelope.ObservationID, envelope.ObservationID,
+			observed.Format(time.RFC3339Nano), observed.Format(time.RFC3339Nano)); err != nil {
+			return fmt.Errorf("insert asset claim: %w", err)
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read asset claim: %w", err)
+	}
+	firstObserved, err := time.Parse(time.RFC3339Nano, firstRaw)
+	if err != nil {
+		return fmt.Errorf("decode asset claim first_observed_at: %w", err)
+	}
+	lastObserved, err := time.Parse(time.RFC3339Nano, lastRaw)
+	if err != nil {
+		return fmt.Errorf("decode asset claim last_observed_at: %w", err)
+	}
+	if observed.Before(firstObserved) {
+		firstObserved = observed
+		firstID = envelope.ObservationID
+	}
+	if !observed.Before(lastObserved) {
+		lastObserved = observed
+		lastID = envelope.ObservationID
+		currentJSON = assetJSON
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE asset_claims SET asset_json = ?, first_observation_id = ?,
+			last_observation_id = ?, first_observed_at = ?, last_observed_at = ?
+		WHERE asset_id = ? AND source_key = ?
+	`, currentJSON, firstID, lastID, firstObserved.UTC().Format(time.RFC3339Nano),
+		lastObserved.UTC().Format(time.RFC3339Nano), assetID, sourceKey); err != nil {
+		return fmt.Errorf("update asset claim: %w", err)
 	}
 	return nil
 }
@@ -310,6 +431,9 @@ func (s *Store) SaveObservation(ctx context.Context, e model.ObservationEnvelope
 				last_observation_id = excluded.last_observation_id
 		`, id, string(assetJSON), e.ObservationID, e.ObservationID); err != nil {
 			return fmt.Errorf("save asset: %w", err)
+		}
+		if err := saveAssetClaim(ctx, tx, e, id, string(assetJSON)); err != nil {
+			return err
 		}
 	}
 
@@ -361,25 +485,53 @@ func (s *Store) ListObservations(ctx context.Context) ([]model.ObservationEnvelo
 }
 
 func (s *Store) ListAssets(ctx context.Context) ([]store.ResolvedAsset, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, asset_json, first_observation_id, last_observation_id FROM assets ORDER BY id`)
+	claims, err := s.ListAssetClaims(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list assets: %w", err)
+		return nil, err
+	}
+	return store.ResolveAssetClaims(claims, nil), nil
+}
+
+func (s *Store) ListAssetClaims(ctx context.Context) ([]store.AssetClaim, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT asset_id, asset_json, site_id, collector_id, plugin,
+		       first_observation_id, last_observation_id,
+		       first_observed_at, last_observed_at
+		FROM asset_claims
+		ORDER BY asset_id, source_key
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list asset claims: %w", err)
 	}
 	defer rows.Close()
-	var out []store.ResolvedAsset
+	var out []store.AssetClaim
 	for rows.Next() {
-		var resolved store.ResolvedAsset
+		var claim store.AssetClaim
 		var assetJSON string
-		if err := rows.Scan(&resolved.ID, &assetJSON, &resolved.FirstObservationID, &resolved.LastObservationID); err != nil {
-			return nil, fmt.Errorf("scan asset: %w", err)
+		var firstObserved, lastObserved string
+		if err := rows.Scan(
+			&claim.AssetID, &assetJSON,
+			&claim.Source.SiteID, &claim.Source.CollectorID, &claim.Source.Plugin,
+			&claim.Source.FirstObservationID, &claim.Source.LastObservationID,
+			&firstObserved, &lastObserved,
+		); err != nil {
+			return nil, fmt.Errorf("scan asset claim: %w", err)
 		}
-		if err := json.Unmarshal([]byte(assetJSON), &resolved.Asset); err != nil {
-			return nil, fmt.Errorf("decode asset: %w", err)
+		claim.Source.FirstObservedAt, err = time.Parse(time.RFC3339Nano, firstObserved)
+		if err != nil {
+			return nil, fmt.Errorf("decode asset claim first_observed_at: %w", err)
 		}
-		out = append(out, resolved)
+		claim.Source.LastObservedAt, err = time.Parse(time.RFC3339Nano, lastObserved)
+		if err != nil {
+			return nil, fmt.Errorf("decode asset claim last_observed_at: %w", err)
+		}
+		if err := json.Unmarshal([]byte(assetJSON), &claim.Asset); err != nil {
+			return nil, fmt.Errorf("decode asset claim: %w", err)
+		}
+		out = append(out, claim)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list assets: %w", err)
+		return nil, fmt.Errorf("list asset claims: %w", err)
 	}
 	return out, nil
 }
