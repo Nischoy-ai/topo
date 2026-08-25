@@ -28,6 +28,8 @@ func Run(t *testing.T, newRepo func(t *testing.T) store.Repository) {
 	t.Run("EmptyRepositoryReturnsEmptyNotError", func(t *testing.T) { testEmpty(t, newRepo(t)) })
 	t.Run("SaveObservationRoundTrips", func(t *testing.T) { testRoundTrip(t, newRepo(t)) })
 	t.Run("ListAssetsResolvesRepeatedObservations", func(t *testing.T) { testAssetResolution(t, newRepo(t)) })
+	t.Run("AssetSourceClaimsResolvePrecedenceAndConflicts", func(t *testing.T) { testAssetSourcePrecedence(t, newRepo(t)) })
+	t.Run("OutOfOrderAssetClaimDoesNotRollback", func(t *testing.T) { testOutOfOrderAssetClaim(t, newRepo(t)) })
 	t.Run("ListRelationshipsResolvesRepeatedObservations", func(t *testing.T) { testRelationshipResolution(t, newRepo(t)) })
 	t.Run("DistinctAssetsAndRelationshipsStaySeparate", func(t *testing.T) { testDistinctEntities(t, newRepo(t)) })
 	t.Run("ConcurrentSaveObservationIsSafe", func(t *testing.T) { testConcurrentSave(t, newRepo(t)) })
@@ -213,6 +215,96 @@ func testAssetResolution(t *testing.T, repo store.Repository) {
 	}
 	if !reflect.DeepEqual(resolved.Asset.Attributes, map[string]any{"changed": true}) {
 		t.Fatalf("resolved asset did not pick up the latest observation's attributes: %#v", resolved.Asset.Attributes)
+	}
+}
+
+func testAssetSourcePrecedence(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	firstSeen := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	lastSeen := firstSeen.Add(time.Hour)
+	authoritative := sampleEnvelope("obs-authoritative", "host-1", "stable-identity")
+	authoritative.SiteID = "site-a"
+	authoritative.CollectorID = "collector-a"
+	authoritative.Plugin = "authoritative"
+	authoritative.ObservedAt = firstSeen
+	authoritative.Assets[0].Name = "authoritative-name"
+	authoritative.Assets[0].Attributes = map[string]any{"os": "linux", "owner": "platform"}
+	newer := sampleEnvelope("obs-newer", "host-1", "stable-identity")
+	newer.SiteID = "site-a"
+	newer.CollectorID = "collector-b"
+	newer.Plugin = "inventory"
+	newer.ObservedAt = lastSeen
+	newer.Assets[0].Name = "newer-name"
+	newer.Assets[0].Attributes = map[string]any{"os": "windows", "region": "west"}
+	if err := repo.SaveObservation(ctx, authoritative); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.SaveObservation(ctx, newer); err != nil {
+		t.Fatal(err)
+	}
+	claims, err := repo.ListAssetClaims(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaultHosts := filterAssets(store.ResolveAssetClaims(claims, nil), model.AssetHost)
+	if len(defaultHosts) != 1 || defaultHosts[0].Asset.Name != "newer-name" || defaultHosts[0].WinningSource.Plugin != "inventory" {
+		t.Fatalf("default freshness winner = %#v, want newer inventory claim", defaultHosts)
+	}
+	resolved := store.ResolveAssetClaims(claims, []string{"authoritative", "inventory"})
+	hosts := filterAssets(resolved, model.AssetHost)
+	if len(hosts) != 1 {
+		t.Fatalf("resolved hosts = %d, want 1", len(hosts))
+	}
+	host := hosts[0]
+	if host.Asset.Name != "authoritative-name" || host.WinningSource.Plugin != "authoritative" {
+		t.Fatalf("precedence winner = %#v, want authoritative source", host)
+	}
+	if len(host.Sources) != 2 || host.Sources[0].Plugin != "authoritative" || !host.Sources[0].ExplicitPrecedence || host.Sources[0].PrecedenceRank != 0 {
+		t.Fatalf("source visibility = %#v", host.Sources)
+	}
+	if !host.FirstObservedAt.Equal(firstSeen) || !host.LastObservedAt.Equal(lastSeen) {
+		t.Fatalf("freshness = %v..%v, want %v..%v", host.FirstObservedAt, host.LastObservedAt, firstSeen, lastSeen)
+	}
+	conflicts := make(map[string]store.AssetConflict, len(host.Conflicts))
+	for _, conflict := range host.Conflicts {
+		conflicts[conflict.Field] = conflict
+	}
+	for _, field := range []string{"name", "attributes.os", "attributes.owner", "attributes.region"} {
+		if len(conflicts[field].Claims) != 2 {
+			t.Fatalf("conflict %q missing both source claims: %#v", field, host.Conflicts)
+		}
+	}
+	if _, exists := conflicts["evidence"]; exists {
+		t.Fatalf("evidence must not be treated as a configuration conflict: %#v", host.Conflicts)
+	}
+}
+
+func testOutOfOrderAssetClaim(t *testing.T, repo store.Repository) {
+	t.Helper()
+	ctx := context.Background()
+	newer := sampleEnvelope("obs-new", "host-1", "stable-identity")
+	newer.ObservedAt = time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)
+	newer.Assets[0].Name = "new-state"
+	older := sampleEnvelope("obs-old", "host-1", "stable-identity")
+	older.ObservedAt = newer.ObservedAt.Add(-time.Hour)
+	older.Assets[0].Name = "old-state"
+	if err := repo.SaveObservation(ctx, newer); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.SaveObservation(ctx, older); err != nil {
+		t.Fatal(err)
+	}
+	assets, err := repo.ListAssets(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hosts := filterAssets(assets, model.AssetHost)
+	if len(hosts) != 1 || hosts[0].Asset.Name != "new-state" {
+		t.Fatalf("out-of-order observation rolled back source claim: %#v", hosts)
+	}
+	if hosts[0].WinningSource.FirstObservationID != "obs-old" || hosts[0].WinningSource.LastObservationID != "obs-new" {
+		t.Fatalf("source freshness IDs = %#v", hosts[0].WinningSource)
 	}
 }
 

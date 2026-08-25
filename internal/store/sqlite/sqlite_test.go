@@ -69,7 +69,7 @@ func TestSQLiteDataSurvivesReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(assets) != 1 || assets[0].Asset.NativeID != "host-1" {
+	if len(assets) != 1 || assets[0].Asset.NativeID != "host-1" || len(assets[0].Sources) != 1 || assets[0].WinningSource.Plugin != "test" {
 		t.Fatalf("asset did not survive reopen: %#v", assets)
 	}
 	relationships, err := second.ListRelationships(context.Background())
@@ -140,7 +140,7 @@ func TestSQLiteMigratesExistingDatabaseFromV1ToLatestSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := v1.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules; DROP TABLE certificate_revocations`); err != nil {
+	if _, err := v1.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules; DROP TABLE certificate_revocations; DROP TABLE asset_claims`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v1.DB().Exec(`PRAGMA user_version = 1`); err != nil {
@@ -179,7 +179,7 @@ func TestSQLiteMigratesExistingDatabaseFromV2ToLatestSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := v2.DB().Exec(`DROP TABLE schedules; DROP TABLE certificate_revocations`); err != nil {
+	if _, err := v2.DB().Exec(`DROP TABLE schedules; DROP TABLE certificate_revocations; DROP TABLE asset_claims`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v2.DB().Exec(`PRAGMA user_version = 2`); err != nil {
@@ -206,7 +206,7 @@ func TestSQLiteMigratesExistingDatabaseFromV3ToLatestSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := v3.DB().Exec(`DROP TABLE certificate_revocations`); err != nil {
+	if _, err := v3.DB().Exec(`DROP TABLE certificate_revocations; DROP TABLE asset_claims`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v3.DB().Exec(`PRAGMA user_version = 3`); err != nil {
@@ -228,6 +228,45 @@ func TestSQLiteMigratesExistingDatabaseFromV3ToLatestSchema(t *testing.T) {
 	})
 	if err != nil || !created {
 		t.Fatalf("certificate_revocations table missing after upgrade: created %v, err %v", created, err)
+	}
+}
+
+func TestSQLiteMigratesExistingDatabaseFromV4AndBackfillsAssetClaims(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "topo.db")
+	v4, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope := model.ObservationEnvelope{
+		SchemaVersion: model.SchemaVersion,
+		ObservationID: "pre-v5-observation",
+		SiteID:        "site-a",
+		CollectorID:   "collector-a",
+		Plugin:        "ssh-linux",
+		ObservedAt:    time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
+		Assets:        []model.Asset{{Type: model.AssetHost, NativeID: "host-a", Name: "host-a"}},
+	}
+	if err := v4.SaveObservation(context.Background(), envelope); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v4.DB().Exec(`DROP TABLE asset_claims; PRAGMA user_version = 4`); err != nil {
+		t.Fatal(err)
+	}
+	if err := v4.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening a version-4 database with the current binary should upgrade it in place: %v", err)
+	}
+	defer upgraded.Close()
+	claims, err := upgraded.ListAssetClaims(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(claims) != 1 || claims[0].Source.Plugin != envelope.Plugin || claims[0].Source.LastObservationID != envelope.ObservationID {
+		t.Fatalf("version-4 asset was not backfilled as a source claim: %#v", claims)
 	}
 }
 
@@ -364,8 +403,8 @@ func TestSQLiteBackupRestoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if backup.SchemaVersion != 4 {
-		t.Fatalf("backup schema version = %d, want 4", backup.SchemaVersion)
+	if backup.SchemaVersion != 5 {
+		t.Fatalf("backup schema version = %d, want 5", backup.SchemaVersion)
 	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
@@ -401,7 +440,7 @@ func TestSQLiteBackupRestoreRoundTrip(t *testing.T) {
 }
 
 func TestSQLiteRestoreAndUpgradeEverySupportedSchema(t *testing.T) {
-	for version := 1; version <= 4; version++ {
+	for version := 1; version <= 5; version++ {
 		t.Run(strconv.Itoa(version), func(t *testing.T) {
 			ctx := context.Background()
 			directory := t.TempDir()
@@ -440,7 +479,7 @@ func TestSQLiteRestoreAndUpgradeEverySupportedSchema(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			for droppedVersion, table := range map[int]string{2: "audit_entries", 3: "schedules", 4: "certificate_revocations"} {
+			for droppedVersion, table := range map[int]string{2: "audit_entries", 3: "schedules", 4: "certificate_revocations", 5: "asset_claims"} {
 				if version < droppedVersion {
 					if _, err := source.DB().Exec(`DROP TABLE ` + table); err != nil {
 						t.Fatal(err)
@@ -469,6 +508,10 @@ func TestSQLiteRestoreAndUpgradeEverySupportedSchema(t *testing.T) {
 			observations, err := upgraded.ListObservations(ctx)
 			if err != nil || len(observations) != 1 || observations[0].ObservationID != envelope.ObservationID {
 				t.Fatalf("version %d observations after restore/upgrade = %#v, %v", version, observations, err)
+			}
+			assets, err := upgraded.ListAssets(ctx)
+			if err != nil || len(assets) != 2 || len(assets[0].Sources) != 1 {
+				t.Fatalf("version %d asset claims after restore/upgrade = %#v, %v", version, assets, err)
 			}
 			relationships, err := upgraded.ListRelationships(ctx)
 			if err != nil || len(relationships) != 1 || relationships[0].Relationship.Type != "host_has_interface" {
@@ -501,7 +544,7 @@ func TestSQLiteMigrationFailureRollsBackEveryPendingVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules; DROP TABLE certificate_revocations; CREATE TABLE schedules (conflict TEXT); PRAGMA user_version = 1`); err != nil {
+	if _, err := db.DB().Exec(`DROP TABLE audit_entries; DROP TABLE schedules; DROP TABLE certificate_revocations; DROP TABLE asset_claims; CREATE TABLE schedules (conflict TEXT); PRAGMA user_version = 1`); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {

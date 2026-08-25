@@ -4,7 +4,24 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
-This repository is the first working vertical slice of the project plan. It currently includes local and Linux SSH host discovery; Windows WinRM discovery for audited CIM identity, hardware, OS, network, volume, service, and patch collection plus machine-wide uninstall-registry software inventory; HTTPS-only NTLMv2 authentication for Windows pilots; SNMPv3 network device identity and interface discovery (MIB-II `system`/`interfaces`, `authPriv` required in production); VMware vCenter/ESXi virtual machine and host inventory over the vSphere API (read-only only, `authPriv`-equivalent HTTPS-with-verified-certificates required in production); Kubernetes cluster node and pod inventory over the real Kubernetes API (read-only `list` calls only, UID-based identity, `pod_runs_on_node` relationships); AWS Organizations account structure over the real AWS Organizations API (read-only `Describe`/`List` calls only, AWS-assigned-ID identity, recursive `member_of` relationships across roots/OUs/accounts); Azure tenant subscription structure over the real Azure Resource Manager API (read-only `Get`/`List` calls only, ARM-resource-path identity, `member_of` relationships across management groups/subscriptions); concurrent two-scan acceptance for 500 Linux and 500 Windows targets; bounded `env:`/`file:`/`vault:`/`k8s:` credential references; an authenticated controller ingestion API with an opt-in certificate authority for collector enrollment, opt-in native outbound mTLS, certificate rotation, durable serial-specific revocation/re-enrollment recovery, and always-on collector liveness heartbeats and job delivery; an outbound-only Topo Agent MVP with encrypted offline buffering, a hardened Linux systemd unit, and Windows Service Control Manager integration; identity resolution with a choice of storage backend — in-memory by default, or an opt-in SQLite-backed store (`topo serve -db-driver sqlite -db-dsn <path>`) that survives a controller restart, both behind the same `store.Repository` interface and proven behaviorally identical by a shared conformance test suite; a hash-chained, tamper-evident audit log (`GET /v1/audit`) of enrollment token issuance, collector enrollment, certificate rotation/revocation, job creation, and schedule changes, persisted the same way discovery data is; server-side recurring discovery scheduling (`POST /v1/schedules`) that turns into an actual job the next time the target collector polls for work, with no background ticker, persisted the same way; JSON Lines and HTTPS webhook publishers; and a ServiceNow IRE publisher whose outbound payload is validated duplicate-free and idempotent across repeated Topo Lab scans, and whose reconciliation behavior (submit once creates a CI, resubmit the same source key updates it rather than duplicating it) is verified against a real ServiceNow developer instance. WinRM real-host compatibility fixtures, Kerberos and certificate authentication, real-Windows verification of the agent's service wrapper, broader ServiceNow class/relationship coverage against a real instance beyond the single class validated so far, SNMP `authPriv`, VMware, Kubernetes, AWS Organizations, and Azure discovery verification against real devices/vCenter/clusters/AWS accounts/Azure tenants (all five are implemented and tested against faithful simulators or fixtures only: `vcsim` for VMware, a hand-rolled agent for SNMP, and hand-rolled API fixtures with real wire-protocol encoding for Kubernetes, AWS Organizations, and Azure), Kubernetes workload object kinds beyond Node/Pod, AWS per-account resource inventory beyond the organization's own account structure, Azure per-subscription resource inventory beyond the tenant's own subscription structure, a PostgreSQL storage backend (deliberately deferred until an HA/clustered-controller deployment shape actually needs it — see [docs/storage.md](docs/storage.md)), and fleet scheduling remain subsequent work rather than being represented as complete.
+This repository implements local, Linux SSH, Windows WinRM, SNMPv3, VMware,
+Kubernetes Node/Pod, AWS Organizations, and Azure tenant/subscription discovery;
+bounded credential references; an authenticated controller with outbound mTLS,
+rotation, revocation, heartbeats, and jobs; an outbound-only agent with encrypted
+offline buffering; SQLite persistence, backup/restore, source-aware asset
+resolution, an audit log, and recurring scheduling; deterministic release and
+package automation; JSON Lines/webhook publishing; and a ServiceNow IRE
+publisher with real duplicate-CI reconciliation evidence. The detailed status
+and evidence boundaries are maintained in [ROADMAP.md](ROADMAP.md).
+
+AWS Organizations has partial live-account evidence: real SigV4 connectivity,
+multi-account enumeration, the not-enabled error path, and the documented
+least-privilege policy are confirmed. Live AWS OU/delegated-admin/STS paths,
+real Azure discovery (setup is blocked on Tenant Root Group Reader assignment),
+real VMware/Kubernetes/SNMP compatibility, broader ServiceNow class coverage,
+additional Kubernetes/cloud resource kinds, relationship precedence and
+cross-ID correlation, PostgreSQL/HA, and the M3 scale gates remain explicit
+follow-ups rather than completed claims.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -193,13 +210,13 @@ curl -H 'Authorization: Bearer replace-with-a-long-random-value' \
 
 ## Architecture
 
-The canonical `ObservationEnvelope` separates immutable source observations from resolved assets. Each asset has a source-native identity, optional strong identifiers, attributes, and evidence. Relationships refer to native identities within the observation. IP addresses remain mutable attributes and do not determine identity.
+The canonical `ObservationEnvelope` separates immutable source observations from resolved assets. Each asset has a source-native identity, optional strong identifiers, attributes, and evidence. Relationships refer to native identities within the observation. IP addresses remain mutable attributes and do not determine identity. When multiple site/collector/plugin sources report the same stable asset, Topo retains every source's latest claim; `topo serve -source-precedence` selects a deterministic winner and `GET /v1/assets` exposes contributing sources, field conflicts, and first/latest observation timestamps. See [source precedence and asset freshness](docs/source-resolution.md).
 
 The public extension points are small Go interfaces:
 
 - `discovery.Plugin`: capability description, configuration validation, connectivity check, and discovery.
 - `publisher.Publisher`: destination validation, preview, and batch publication.
-- `store.Repository`: immutable observation storage and resolved-asset reads.
+- `store.Repository`: immutable observation storage, per-source asset claims, and resolved-asset reads.
 
 The JSON Schema and Protobuf definitions under `api/` are the cross-process contract. They are currently `v1alpha1`; breaking changes are allowed until `v1` but must increment the schema version.
 

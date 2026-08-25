@@ -50,6 +50,10 @@ type Server struct {
 	Store  store.Repository
 	Logger *slog.Logger
 	APIKey string
+	// SourcePrecedence lists discovery plugin names from highest to lowest
+	// priority for the resolved GET /v1/assets view. Unlisted plugins share a
+	// lower default rank and resolve by freshness plus stable source identity.
+	SourcePrecedence []string
 
 	// CA and Tokens enable collector enrollment (POST /v1/enrollment-tokens
 	// and POST /v1/enroll) when both are set. Leaving either nil disables
@@ -285,11 +289,12 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "schema_version": model.SchemaVersion, "uptime_seconds": int(time.Since(s.started).Seconds())})
 }
 func (s *Server) assets(w http.ResponseWriter, r *http.Request) {
-	v, err := s.Store.ListAssets(r.Context())
+	claims, err := s.Store.ListAssetClaims(r.Context())
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return
 	}
+	v := store.ResolveAssetClaims(claims, s.SourcePrecedence)
 	writeJSON(w, 200, map[string]any{"items": v, "count": len(v)})
 }
 func (s *Server) relationships(w http.ResponseWriter, r *http.Request) {

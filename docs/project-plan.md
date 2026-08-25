@@ -16,7 +16,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   Organizations account-structure discovery) is implemented and merged
   (<https://github.com/Nischoy-ai/topo/pull/42>); slice 3 (Azure tenant
   subscription-structure discovery) is implemented, completing all three
-  protocol integrations `ROADMAP.md`'s M3 line names. See "Current
+  protocol integrations `ROADMAP.md`'s M3 line names; slice 4 (source
+  precedence and asset conflict/freshness visibility) is implemented on
+  `agent/m3-source-precedence-visibility`, proposed in
+  <https://github.com/Nischoy-ai/topo/pull/46>. See "Current
   milestone: M3" below. The most recent merged M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -36,7 +39,23 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>.
-- **Verified in the current slice (M3 slice 3, Azure tenant
+- **Verified in the current slice (M3 slice 4, source precedence and asset
+  conflict/freshness visibility):** `topo serve -source-precedence` accepts
+  an ordered, bounded list of discovery plugin names. Both repository
+  backends retain one latest asset claim per site/collector/plugin source;
+  shared resolution picks an explicit-priority winner, then freshness and a
+  stable source hash break ties without depending on arrival or map order.
+  `GET /v1/assets` adds the winning and contributing sources, precedence
+  ranks, first/latest observation identifiers and timestamps, and
+  field-level conflicts while preserving its existing top-level resolved
+  asset fields. An out-of-order observation cannot roll one source backward.
+  SQLite schema version 5 persists claims and reconstructs them from retained
+  observations inside the all-pending-migrations transaction; conformance,
+  restart, backup/restore, and every-supported-schema tests cover the change.
+  Relationship precedence, cross-ID correlation, omission-based retirement,
+  stale-after policy, and the 1K/10K/100K scale gate remain deliberate
+  follow-ups. See `docs/source-resolution.md`.
+- **Verified in the previous slice (M3 slice 3, Azure tenant
   subscription-structure discovery):** `pkg/discovery/azure` authenticates
   via the Azure AD OAuth2 client-credentials grant, then calls a single
   recursive `Get` on the tenant's root management group
@@ -137,8 +156,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M3 slice 1, Kubernetes node/pod discovery, in
-  <https://github.com/Nischoy-ai/topo/pull/41>.
+- **Open pull request:** M3 slice 4, source precedence and asset
+  conflict/freshness visibility, in
+  <https://github.com/Nischoy-ai/topo/pull/46>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -164,7 +184,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   workflow-interpolation remediation in
   <https://github.com/Nischoy-ai/topo/pull/38>; publisher/agent/enrollment
   redirect and userinfo remediation (`TSR-2026-004`) in
-  <https://github.com/Nischoy-ai/topo/pull/39>.
+  <https://github.com/Nischoy-ai/topo/pull/39>; M3 Kubernetes discovery in
+  <https://github.com/Nischoy-ai/topo/pull/41>; AWS Organizations discovery
+  in <https://github.com/Nischoy-ai/topo/pull/42>; Azure tenant discovery in
+  <https://github.com/Nischoy-ai/topo/pull/43>; and AWS/Azure live-validation
+  handoff updates in <https://github.com/Nischoy-ai/topo/pull/44> and
+  <https://github.com/Nischoy-ai/topo/pull/45>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -2185,6 +2210,52 @@ the client-credentials grant (no managed-identity or Azure CLI credential
 fallback) — credentials are always explicit, matching every other Topo
 discovery plugin. This completes the three protocol integrations
 `ROADMAP.md`'s M3 line names (Kubernetes, AWS Organizations, Azure).
+
+### Slice 4 — source precedence and asset conflict/freshness visibility (implemented, proposed in PR 46)
+
+**Objective.** Make Topo's resolved asset view explainable when more than one
+discovery source reports the same stable asset. Preserve each source's latest
+claim, select one current value through an explicit deterministic precedence
+policy, and show operators both disagreements and observation freshness rather
+than silently replacing one source with whichever observation arrived last.
+
+**Deliverables.** The controller accepts an optional ordered
+`-source-precedence` list of discovery plugin names (highest priority first).
+Every asset claim is namespaced by site, collector, and plugin and retains its
+first/latest observation identifiers and timestamps. `GET /v1/assets` remains
+backward-compatible at the top level (`id`, `asset`, first/last observation
+IDs) while adding the winning source, every contributing source, first/latest
+observed timestamps, and field-level conflicts for `name`, identifiers, and
+top-level attributes. Sources absent from the configured list rank after every
+listed source; ties resolve by latest source observation and then stable source
+identity, never request arrival order. SQLite schema version 5 persists and
+backfills source claims transactionally from the immutable observation rows;
+the memory and SQLite repositories continue to share one conformance suite.
+
+**Acceptance gates.** Both repositories must prove that a lower-priority newer
+claim cannot displace a higher-priority older claim; an out-of-order delivery
+cannot roll back one source's current claim; equal-priority claims resolve
+deterministically; conflicts identify every disagreeing source/value without
+treating evidence timestamps as configuration conflicts; and source first/latest
+times survive SQLite restart, backup/restore, and migration from every supported
+schema. Controller tests must exercise the configured policy through the real
+observation and asset endpoints. The exact Go 1.25.13 format, vet, race,
+vulnerability, Linux build, and Windows cross-build gates must pass.
+
+**Deliberate non-goals.** This slice does not correlate assets whose canonical
+stable IDs differ, configure precedence separately per collector or site,
+resolve relationship conflicts, delete claims merely because a later scan omits
+an asset, impose a universal stale-after threshold, send alerts, or implement
+the later 1K/10K/100K scale gate. Those require separate policy decisions and
+must not be implied by visibility into timestamps and same-ID asset claims.
+
+**Verification.** The full `scripts/security-review-checks.sh` gate passes on
+the committed-tree candidate under exact Go 1.25.13: formatting and diff
+checks, module verification, `go vet ./...`, pinned `govulncheck` with zero
+reachable findings, the full race/coverage suite, Linux build, and Windows
+amd64 vet/build. Helm lifecycle rendering remains covered by the ordinary CI
+chart job; a local Helm binary was not installed in the development
+environment, so no local chart-render claim is made.
 
 ### Relationship to the M2.5 gate
 

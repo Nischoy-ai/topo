@@ -51,6 +51,10 @@ persistence:
   accessModes:
     - ReadWriteOnce
 
+# Discovery plugin names from highest to lowest resolved-asset priority.
+# Claims from unlisted plugins rank after every listed plugin.
+sourcePrecedence: []
+
 resources:
   requests:
     cpu: 100m
