@@ -25,6 +25,7 @@ import (
 	"github.com/Nischoy-ai/topo/internal/agent"
 	"github.com/Nischoy-ai/topo/internal/controller"
 	"github.com/Nischoy-ai/topo/internal/enrollment"
+	toporelay "github.com/Nischoy-ai/topo/internal/relay"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
@@ -69,6 +70,8 @@ func run(args []string) error {
 		return discover(args[1:])
 	case "agent":
 		return runAgent(args[1:])
+	case "relay":
+		return runRelay(args[1:])
 	case "storage":
 		return runStorage(args[1:])
 	case "lab":
@@ -81,7 +84,7 @@ func run(args []string) error {
 	}
 }
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|storage|lab|version>")
+	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|relay|storage|lab|version>")
 	return errors.New("command required")
 }
 
@@ -808,6 +811,84 @@ func runAgent(args []string) error {
 	default:
 		return errors.New("usage: topo agent <run|install|uninstall|enroll|rotate>")
 	}
+}
+
+func runRelay(args []string) error {
+	if len(args) == 0 || args[0] != "run" {
+		return errors.New("usage: topo relay run")
+	}
+	return relayRun(args[1:])
+}
+
+func relayRun(args []string) error {
+	fs := flag.NewFlagSet("relay run", flag.ContinueOnError)
+	instanceURL := fs.String("servicenow-instance", os.Getenv("SERVICENOW_INSTANCE_URL"), "ServiceNow instance base URL (HTTPS)")
+	tokenRef := fs.String("token-ref", "", "credential reference for the ServiceNow bearer token (env:, file:, vault:, or k8s:)")
+	configPath := fs.String("config", "", "absolute path to the local Relay profile JSON")
+	spoolDir := fs.String("spool-dir", "", "absolute path to the encrypted Relay delivery spool")
+	spoolKeyRef := fs.String("spool-key-ref", "", "credential reference for the 64-hex-character Relay spool encryption key")
+	spoolMaxBytes := fs.Int64("spool-max-bytes", 128<<20, "maximum encrypted Relay spool bytes")
+	pollInterval := fs.Duration("poll-interval", time.Minute, "ServiceNow check-in and job poll interval")
+	discoverySource := fs.String("discovery-source", "Nischoy Topo", "registered ServiceNow discovery_source choice value")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *instanceURL == "" {
+		return errors.New("-servicenow-instance is required")
+	}
+	if *configPath == "" {
+		return errors.New("-config is required")
+	}
+	if *spoolDir == "" {
+		return errors.New("-spool-dir is required")
+	}
+
+	fileConfig, err := toporelay.LoadConfig(*configPath)
+	if err != nil {
+		return err
+	}
+	token, err := resolveCredential(*tokenRef, "", "TOPO_SERVICENOW_TOKEN", false)
+	if err != nil {
+		return fmt.Errorf("resolve ServiceNow token: %w", err)
+	}
+	spoolKeyHex, err := resolveCredential(*spoolKeyRef, "", "TOPO_RELAY_SPOOL_KEY", false)
+	if err != nil {
+		return fmt.Errorf("resolve Relay spool encryption key: %w", err)
+	}
+	spoolKey, err := decodeSpoolKey(spoolKeyHex)
+	if err != nil {
+		return err
+	}
+	spool, err := toporelay.NewSpool(*spoolDir, spoolKey, *spoolMaxBytes)
+	if err != nil {
+		return err
+	}
+	client, err := toporelay.NewClient(*instanceURL, string(token), nil)
+	if err != nil {
+		return err
+	}
+	irePublisher := servicenow.Publisher{Config: servicenow.Config{
+		InstanceURL:     *instanceURL,
+		Token:           string(token),
+		DiscoverySource: *discoverySource,
+	}}
+	if err := irePublisher.Validate(context.Background()); err != nil {
+		return err
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	logger.Info("Topo ServiceNow Relay starting", "relay_id", fileConfig.RelayID, "site", fileConfig.SiteID, "profiles", len(fileConfig.Profiles), "poll_interval", pollInterval.String(), "spool_dir", *spoolDir)
+	return toporelay.Run(ctx, toporelay.RunConfig{
+		FileConfig:   fileConfig,
+		Version:      version,
+		PollInterval: *pollInterval,
+		Control:      client,
+		Executor:     toporelay.Executor{Config: fileConfig},
+		Publisher:    irePublisher,
+		Spool:        spool,
+		Logger:       logger,
+	})
 }
 
 func agentRun(args []string) error {

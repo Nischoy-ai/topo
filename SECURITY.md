@@ -351,9 +351,33 @@ between it and `cmdb_ci_network_adapter`: submitting the same
 `sys_object_source`) and the relation between them to `operation:
 NO_CHANGE` — none of the three duplicated. Coverage of Topo's other CI
 classes against a real instance remains open. ServiceNow's IRE response
-schema is still not parsed: `PublishBatch` treats any 2xx response as
-published and any non-2xx as rejected without depending on
-response fields, since that schema is proprietary and only partially
-observed so far, and requires an absolute HTTPS instance URL and a bearer
-token supplied through the same credential reference contract as every
-other Topo secret. See [ServiceNow publishing](docs/servicenow.md).
+schema is only partially parsed: `PublishBatch` recognizes the
+real-instance-observed `hasError: true` semantic bit at any JSON nesting depth
+and treats it as a non-retryable rejection, while retaining the remaining
+bounded body as diagnostics rather than coupling to proprietary response
+fields. It requires an absolute HTTPS instance URL and a bearer token supplied
+through the same credential-reference contract as every other Topo secret. See
+[ServiceNow publishing](docs/servicenow.md).
+
+## ServiceNow-controlled Relay
+
+`topo relay run` polls only fixed Topo scoped-application HTTPS resources and
+never listens for inbound connections. A ServiceNow job can select only the
+compiled-in `discover` type and one locally defined profile ID. Plugin type,
+targets, SSH host-key verification, concurrency, deadlines, output bounds, and
+credential references remain in an absolute-path owner-controlled JSON file on
+the Relay host; the job contract has no fields capable of carrying those
+values or arbitrary commands. The client rejects unknown response fields,
+refuses redirects, bounds responses, and claims at most one job per poll.
+
+Each Relay record is bound to a dedicated ServiceNow integration user; both
+Scripted REST resources match `gs.getUserID()` and the requested Relay ID, so
+one Relay credential cannot claim another Relay's work. One process per Relay
+ID is the supported alpha shape. Observations and result metadata are written
+to a bounded owner-only AES-256-GCM spool before IRE publication, survive a
+process restart, and remain until the result endpoint acknowledges them.
+Transient IRE failures retry at most three times; `hasError: true` and 4xx
+validation failures are reported without blind replay because real validation
+showed a rejected IRE request can leave an incomplete identification artifact.
+The ServiceNow bearer token and spool key are credential references and never
+ordinary CLI values. See [ServiceNow-controlled Topo Relay](docs/servicenow-relay.md).

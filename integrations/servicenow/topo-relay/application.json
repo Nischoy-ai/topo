@@ -1,0 +1,75 @@
+{
+  "name": "Nischoy Topo",
+  "scope": "x_nischoy_topo",
+  "version": "0.1.0",
+  "roles": ["x_nischoy_topo.relay", "x_nischoy_topo.operator"],
+  "scripted_rest_api": {
+    "name": "Topo Relay API",
+    "api_id": "v1",
+    "base_path": "/api/x_nischoy_topo/v1",
+    "resources": [
+      {"name": "Relay poll", "method": "POST", "path": "/relay/poll", "script": "scripts/poll.js"},
+      {"name": "Relay result", "method": "POST", "path": "/relay/result", "script": "scripts/result.js"}
+    ]
+  },
+  "tables": [
+    {
+      "name": "x_nischoy_topo_relay",
+      "label": "Topo Relay",
+      "fields": [
+        ["u_relay_id", "String", 128, true],
+        ["u_site_id", "String", 128, true],
+        ["u_service_user", "Reference:sys_user", 32, true],
+        ["u_active", "True/False", 0, true],
+        ["u_last_seen", "Date/Time", 0, false],
+        ["u_version", "String", 64, false],
+        ["u_profiles", "String", 4000, false]
+      ],
+      "unique_index": ["u_relay_id"]
+    },
+    {
+      "name": "x_nischoy_topo_profile",
+      "label": "Topo Discovery Profile",
+      "fields": [
+        ["u_profile_id", "String", 128, true],
+        ["u_name", "String", 255, true],
+        ["u_relay", "Reference:x_nischoy_topo_relay", 32, true],
+        ["u_plugin", "Choice:local,ssh-linux", 40, true],
+        ["u_active", "True/False", 0, true]
+      ],
+      "unique_index": ["u_relay", "u_profile_id"]
+    },
+    {
+      "name": "x_nischoy_topo_schedule",
+      "label": "Topo Discovery Schedule",
+      "fields": [
+        ["u_name", "String", 255, true],
+        ["u_profile", "Reference:x_nischoy_topo_profile", 32, true],
+        ["u_interval_minutes", "Integer", 0, true],
+        ["u_next_run", "Date/Time", 0, true],
+        ["u_active", "True/False", 0, true]
+      ]
+    },
+    {
+      "name": "x_nischoy_topo_job",
+      "label": "Topo Discovery Job",
+      "fields": [
+        ["u_job_id", "String", 128, true],
+        ["u_relay", "Reference:x_nischoy_topo_relay", 32, true],
+        ["u_profile", "Reference:x_nischoy_topo_profile", 32, true],
+        ["u_state", "Choice:queued,running,completed,failed", 40, true],
+        ["u_started_at", "Date/Time", 0, false],
+        ["u_completed_at", "Date/Time", 0, false],
+        ["u_success", "True/False", 0, false],
+        ["u_observation_id", "String", 128, false],
+        ["u_assets", "Integer", 0, false],
+        ["u_relationships", "Integer", 0, false],
+        ["u_collection_errors", "Integer", 0, false],
+        ["u_error", "String", 4000, false]
+      ],
+      "unique_index": ["u_job_id"]
+    }
+  ],
+  "scheduled_script": "scripts/enqueue_due_schedules.js",
+  "profile_ui_action": "scripts/start_discovery.js"
+}

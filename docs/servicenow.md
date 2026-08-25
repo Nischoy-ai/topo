@@ -46,8 +46,10 @@ instance:
   endpoint and asserts the actual HTTP requests — method, path, auth header,
   and the source keys they carry — match on both scans.
 - **Response visibility without assuming a schema.** `PublishBatch` captures
-  the (bounded) response body in `Diagnostics` for operator review, but does
-  not parse or depend on any particular field of it.
+  the bounded response body in `Diagnostics` for operator review. It recognizes
+  the `hasError: true` semantic bit observed during real-instance validation at
+  any JSON nesting depth and rejects that publication, without coupling Topo
+  to the rest of ServiceNow's proprietary response schema.
 
 ## Verified against a real instance
 
@@ -115,10 +117,11 @@ mechanism (inherited from `cmdb_ci` and the same `identifyreconcile`
 endpoint) but have not individually been submitted to a real instance.
 Larger multi-item batches, multiple relations in one request, and this
 instance's specific identification/reconciliation rule configuration for
-classes beyond the default were also not exercised. The IRE response
-schema is still not parsed by `PublishBatch` — treating any 2xx as
-published and non-2xx as rejected remains the deliberate design, not a
-gap this validation closed.
+classes beyond the default were also not exercised. The full IRE response
+schema is still not parsed by `PublishBatch`; only the real-instance-observed
+`hasError` semantic bit is recognized. A 2xx response with `hasError: true` is
+rejected, while other successful response details remain bounded diagnostics
+rather than a version-coupled contract.
 
 ## Configuration
 

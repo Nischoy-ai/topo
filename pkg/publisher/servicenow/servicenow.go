@@ -27,6 +27,20 @@ type Config struct {
 
 type Publisher struct{ Config Config }
 
+// PublishError classifies an IRE failure for delivery loops. Transport
+// failures, 5xx, and 429 may be retried; configuration/validation failures and
+// a successful HTTP response whose JSON reports hasError=true must not be
+// replayed blindly because a rejected IRE request can leave an incomplete
+// identification record behind.
+type PublishError struct {
+	retryable bool
+	err       error
+}
+
+func (e *PublishError) Error() string   { return e.err.Error() }
+func (e *PublishError) Unwrap() error   { return e.err }
+func (e *PublishError) Retryable() bool { return e.retryable }
+
 type IREPayload struct {
 	Items     []IREItem     `json:"items"`
 	Relations []IRERelation `json:"relations,omitempty"`
@@ -96,18 +110,55 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return publisher.Result{}, err
+		return publisher.Result{}, &PublishError{retryable: true, err: err}
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return publisher.Result{Destination: "servicenow-ire", Rejected: len(payload.Items)}, fmt.Errorf("ServiceNow IRE returned %s: %s", resp.Status, string(body))
+		retryable := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500
+		return publisher.Result{Destination: "servicenow-ire", Rejected: len(payload.Items)}, &PublishError{retryable: retryable, err: fmt.Errorf("ServiceNow IRE returned %s: %s", resp.Status, string(body))}
 	}
-	// The response body is captured for operator diagnostics (for example,
-	// manual reconciliation review) rather than parsed, since ServiceNow's
-	// exact IRE response schema is proprietary and unverified against a real
-	// instance; see docs/servicenow.md.
+	if responseReportsError(body) {
+		return publisher.Result{Destination: "servicenow-ire", Rejected: len(payload.Items)}, &PublishError{err: fmt.Errorf("ServiceNow IRE response reported hasError=true: %s", string(body))}
+	}
+	// The response body is captured for operator diagnostics. Apart from the
+	// hasError semantic bit above, the exact IRE response schema remains an
+	// unparsed, version-independent diagnostic; see docs/servicenow.md.
 	return publisher.Result{Destination: "servicenow-ire", Published: len(payload.Items), Diagnostics: map[string]any{"status": resp.StatusCode, "response": string(body)}}, nil
+}
+
+// responseReportsError deliberately recognizes only the stable semantic bit
+// observed in real-instance responses, at any nesting depth. It does not
+// couple Topo to the rest of ServiceNow's proprietary response schema.
+func responseReportsError(body []byte) bool {
+	var decoded any
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return false
+	}
+	var walk func(any) bool
+	walk = func(value any) bool {
+		switch typed := value.(type) {
+		case map[string]any:
+			for key, child := range typed {
+				if key == "hasError" {
+					if flag, ok := child.(bool); ok && flag {
+						return true
+					}
+				}
+				if walk(child) {
+					return true
+				}
+			}
+		case []any:
+			for _, child := range typed {
+				if walk(child) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return walk(decoded)
 }
 
 // defaultHTTPClient is used whenever Config.HTTPClient is nil. It never

@@ -11,7 +11,10 @@ rotation, revocation, heartbeats, and jobs; an outbound-only agent with encrypte
 offline buffering; SQLite persistence, backup/restore, source-aware asset
 resolution, an audit log, and recurring scheduling; deterministic release and
 package automation; JSON Lines/webhook publishing; and a ServiceNow IRE
-publisher with real duplicate-CI reconciliation evidence. The detailed status
+publisher with real duplicate-CI reconciliation evidence. An outbound-only
+ServiceNow-controlled Topo Relay alpha can claim locally preconfigured local or
+SSH discovery profiles from a scoped-app job queue, publish through IRE, and
+report job status through an encrypted retry spool. The detailed status
 and evidence boundaries are maintained in [ROADMAP.md](ROADMAP.md).
 
 AWS Organizations has partial live-account evidence: real SigV4 connectivity,
@@ -232,6 +235,14 @@ The product family uses these names as capabilities are delivered:
 
 Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_source_info` for stable source identity. Publishing uses `/api/now/identifyreconcile/enhanced`; it does not write CMDB tables directly. Preview mode produces the complete proposed payload without network access. The outbound payload is proven duplicate-free and idempotent across repeated scans (deduplicated within a batch, and validated identical across independent Topo Lab discovery runs), and ServiceNow's own identification and reconciliation behavior has been verified against a real developer instance for the `cmdb_ci_computer` class: submitting the same `sys_object_source_info` twice updates the existing CI rather than creating a duplicate. See [ServiceNow publishing](docs/servicenow.md). A production deployment must register the `Nischoy Topo` discovery source as a `discovery_source` choice value (a real ServiceNow requirement found during validation — writes are otherwise rejected), and configure reconciliation rules and explicit canonical-attribute mappings, before enabling writes; Nischoy Topo does not invent custom `cmdb_ci` fields for its internal identifiers.
 
+`topo relay run` adds the MID-like control path: ServiceNow owns Topo Profile,
+Schedule, and Job records while a Relay inside the network polls outbound,
+executes only a matching local profile, publishes through IRE, and reports the
+result. ServiceNow never supplies targets, credentials, or command text. This
+alpha uses Topo's scoped application rather than impersonating the stock MID
+Server/ECC Queue protocol. The complete setup and current real-instance
+evidence boundary are in [ServiceNow-controlled Topo Relay](docs/servicenow-relay.md).
+
 ## Security posture
 
 - The controller can require a bearer API key and caps request bodies at 10 MiB. With a key configured, operator reads and control-plane mutations require that bearer credential; enrolled collector certificates are limited to observation delivery, heartbeats, job polling/results, and certificate rotation. Leaving the key unset preserves the open evaluation mode.
@@ -241,6 +252,10 @@ Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_sourc
 - The WinRM plugin executes fixed CIM resource/query pairs for required host identity and optional network, volume, service, and patch inventory plus one compiled-in PowerShell command for machine-wide uninstall-registry software inventory; it requires HTTPS outside loopback-only Lab mode, verifies server certificates, performs NTLMv2 without Basic fallback, bounds SOAP and command output, and applies operation deadlines and concurrency limits.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are resolved through bounded `env:`, `file:`, `vault:`, or `k8s:` references and never serialized into observations, CLI arguments, or logs.
+- ServiceNow-controlled Relay jobs contain only `discover` and a local profile
+  ID. Targets, SSH host-key policy, bounds, and credential references remain on
+  the Relay host; completed deliveries are retained in a bounded,
+  AES-256-GCM-encrypted spool until ServiceNow acknowledges their result.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
 - Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token bound to that collector ID at issuance; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 - Outbound mTLS (opt-in via `-mtls`, requires `-ca-dir`) lets the controller terminate TLS natively and authenticate collectors by their enrolled certificate instead of the bearer API key; a client presenting no certificate at all still reaches `POST /v1/enroll` (authenticated by its one-time token). A verified collector certificate authorizes collector data-plane endpoints but not operator endpoints. See [Running as native mTLS](docs/enrollment.md#running-as-native-mtls).

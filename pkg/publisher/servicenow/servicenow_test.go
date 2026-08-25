@@ -2,6 +2,7 @@ package servicenow
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,35 @@ import (
 
 	"github.com/Nischoy-ai/topo/pkg/model"
 )
+
+func TestPublishBatchRejectsIREHasErrorResponseWithoutRetry(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"result":{"items":[{"hasError":true}]}}`))
+	}))
+	defer server.Close()
+	p := Publisher{Config: Config{InstanceURL: server.URL, Token: "test-token", DiscoverySource: "Nischoy Topo", HTTPClient: server.Client()}}
+	result, err := p.PublishBatch(context.Background(), []model.ObservationEnvelope{{Assets: []model.Asset{{Type: model.AssetHost, NativeID: "h1"}}}})
+	if err == nil || result.Rejected != 1 {
+		t.Fatalf("result=%#v err=%v", result, err)
+	}
+	var publishError *PublishError
+	if !errors.As(err, &publishError) || publishError.Retryable() {
+		t.Fatalf("error = %#v, want non-retryable PublishError", err)
+	}
+}
+
+func TestPublishBatchClassifiesServiceUnavailableAsRetryable(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	p := Publisher{Config: Config{InstanceURL: server.URL, Token: "test-token", DiscoverySource: "Nischoy Topo", HTTPClient: server.Client()}}
+	_, err := p.PublishBatch(context.Background(), []model.ObservationEnvelope{{Assets: []model.Asset{{Type: model.AssetHost, NativeID: "h1"}}}})
+	var publishError *PublishError
+	if !errors.As(err, &publishError) || !publishError.Retryable() {
+		t.Fatalf("error = %#v, want retryable PublishError", err)
+	}
+}
 
 func TestPreviewProducesIREIdentityAndRelationship(t *testing.T) {
 	p := Publisher{Config: Config{InstanceURL: "https://example.service-now.com", DiscoverySource: "Nischoy Topo", DryRun: true}}
