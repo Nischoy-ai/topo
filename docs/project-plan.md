@@ -2056,7 +2056,7 @@ existing credential-reference contract, matching how every other Topo
 discovery plugin treats credentials as always explicit. Azure discovery
 remains a separate, unstaged slice, not bundled into this one.
 
-### Slice 3 — Azure tenant subscription-structure discovery (implemented, PR open)
+### Slice 3 — Azure tenant subscription-structure discovery (implemented, merged)
 
 **Objective.** Extend discovery into an Azure AD (Microsoft Entra ID)
 tenant's own subscription structure: which subscriptions exist and how
@@ -2156,9 +2156,25 @@ end-to-end via the CLI at the same scale. A real Azure tenant was
 evaluated as an alternative fixture and deliberately not required for
 this slice, for the same reason a real AWS Organization wasn't for the
 AWS slice; real-tenant verification remains explicitly unverified,
-matching the SNMP `authPriv`/real-VMware/real-Kubernetes-cluster/
-real-AWS-Organization posture — implemented and tested against a faithful
-fixture only, not yet against a genuinely live Azure tenant.
+matching the SNMP `authPriv`/real-VMware/real-Kubernetes-cluster
+posture — implemented and tested against a faithful fixture only, not yet
+against a genuinely live Azure tenant.
+
+**Real-tenant verification: attempted, pending (2026-08-25).** The
+maintainer created a real Azure AD tenant, an app registration
+(`topo`), and started the RBAC setup needed to test it — the exact
+Azure-side equivalent of the AWS Organizations real-account test above.
+It's blocked partway through: assigning the built-in **Reader** role to
+the app registration at the Tenant Root Group scope requires Azure RBAC
+write access there, which the maintainer's currently-elevated account
+does not yet have (Entra ID directory roles and Azure RBAC are separate
+systems; the one-time "Access management for Azure resources" elevation
+in Entra ID → Properties bridges them but hasn't been completed yet).
+Left as an explicit, tracked follow-up rather than silently dropped —
+resume by completing that elevation, assigning Reader to the `topo` app
+registration at the Tenant Root Group scope, generating a client secret,
+and running `topo discover azure` against `management.azure.com` the same
+way the AWS test ran against `organizations.us-east-1.amazonaws.com`.
 
 **Deliberate non-goals for this slice.** No per-subscription resource
 inventory (VMs, storage accounts, network resources, etc. — the Azure
