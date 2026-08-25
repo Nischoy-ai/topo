@@ -130,9 +130,30 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   fixture has not been performed. Organization structure only — no
   per-account resource inventory (EC2, S3, IAM, etc.) yet. See
   [docs/aws.md](docs/aws.md).
-- Azure tenants/subscriptions discovery, Kubernetes workload object kinds
-  (Deployment, Service, ConfigMap, PersistentVolumeClaim, etc.) beyond
-  Node/Pod, and AWS per-account resource inventory, remain unstaged.
+- **Implemented alpha (Azure):** tenant subscription structure —
+  management-group/subscription hierarchy via `member_of` relationships,
+  full-ARM-resource-path identity (never a bare short name or display
+  name — Azure's automatically created "Tenant Root Group" reuses the
+  tenant's own GUID as its short name, so only the full ARM path
+  disambiguates it), via `azure-sdk-for-go`'s OAuth2 client-credentials
+  flow and ARM clients. Production requires HTTPS; Topo Lab's `-lab` mode
+  still requires HTTPS too (`azidentity` unconditionally refuses a
+  non-HTTPS authority host), served with a freshly generated self-signed
+  certificate instead. The ARM API has no official local simulator, so
+  Topo Lab hand-rolls an ARM fixture (`pkg/lab/azure_server.go`) serving
+  the real OpenID Connect discovery document, OAuth2 token endpoint, and
+  ARM Get/List responses, the same way it did for Kubernetes and AWS; the
+  two-scan idempotency acceptance test runs the full 500-host scenario as
+  500 simulated subscriptions (506 assets, 505 relationships — matching
+  the AWS slice's numbers by deliberately symmetric fixture design.
+  Real-tenant verification beyond the hand-rolled fixture has not been
+  performed. Tenant structure only — no per-subscription resource
+  inventory (VMs, storage, networking, etc.) yet. See
+  [docs/azure.md](docs/azure.md).
+- Kubernetes workload object kinds (Deployment, Service, ConfigMap,
+  PersistentVolumeClaim, etc.) beyond Node/Pod, AWS per-account resource
+  inventory, and Azure per-subscription resource inventory, remain
+  unstaged.
 - Source precedence and conflict/freshness visibility.
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.

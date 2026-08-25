@@ -6,15 +6,17 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-24
+- **Updated:** 2026-08-25
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
   M3 (hybrid release candidate) is current; slice 1 (Kubernetes node/pod
   discovery) is implemented and merged
   (<https://github.com/Nischoy-ai/topo/pull/41>); slice 2 (AWS
-  Organizations account-structure discovery) is implemented; Azure
-  tenants/subscriptions discovery remains unstaged. See "Current
+  Organizations account-structure discovery) is implemented and merged
+  (<https://github.com/Nischoy-ai/topo/pull/42>); slice 3 (Azure tenant
+  subscription-structure discovery) is implemented, completing all three
+  protocol integrations `ROADMAP.md`'s M3 line names. See "Current
   milestone: M3" below. The most recent merged M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -34,48 +36,77 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>.
-- **Verified in the current slice (M3 slice 2, AWS Organizations
-  account-structure discovery):** `pkg/discovery/aws` calls
+- **Verified in the current slice (M3 slice 3, Azure tenant
+  subscription-structure discovery):** `pkg/discovery/azure` authenticates
+  via the Azure AD OAuth2 client-credentials grant, then calls a single
+  recursive `Get` on the tenant's root management group
+  (`$expand=children&$recurse=true`) via `azure-sdk-for-go`'s
+  `armmanagementgroups`/`armsubscriptions` clients — unlike AWS's
+  per-parent listing walk, Azure returns the whole hierarchy in one call.
+  Asset identity is each object's full ARM resource path, never a bare
+  short name or display name: Azure's automatically created "Tenant Root
+  Group" reuses the tenant's own GUID as its short name, so a bare-GUID
+  identity would collide the Tenant and root ManagementGroup assets (found
+  empirically while testing this slice — the first implementation produced
+  a self-referential relationship before the ARM-path fix). All three
+  kinds (Tenant, ManagementGroup, Subscription) map to
+  `model.AssetCloudResource` with `Attributes["kind"]` distinguishing
+  them, and a single `member_of` relationship forms the hierarchy, reusing
+  AWS's relationship type. Azure has no official local ARM simulator;
+  Topo Lab hand-rolls an ARM fixture (`pkg/lab/azure_server.go`) serving
+  the tenant's OpenID Connect discovery document, the OAuth2 token
+  endpoint, and the ARM Get/List responses — its wire field names were
+  confirmed by reading `azure-sdk-for-go`'s own `models_serde.go`, then
+  verified empirically by capturing the real client's actual request
+  sequence against a logging test double. Unlike AWS's SigV4, Azure's ARM
+  API has no per-request signing, so verifying the client
+  ID/secret at the token endpoint and the bearer token on every ARM call
+  by equality is the real protocol, not a simplification. One real
+  constraint discovered while building the fixture: `azidentity`
+  unconditionally refuses a non-HTTPS authority host, so Topo Lab's Azure
+  fixture — unlike Kubernetes's and AWS's plain-HTTP loopback fixtures —
+  always serves HTTPS with a freshly generated self-signed certificate.
+  The two-scan idempotency acceptance test runs the full
+  `examples/lab/clean-500.json` scenario as 500 simulated subscriptions
+  nested two levels under two management groups: 506 total assets, 505
+  `member_of` relationships — matching the AWS slice's numbers by
+  deliberately symmetric fixture design — zero errors, stable and
+  duplicate-free across a repeated scan and a `store.Memory` save,
+  verified end-to-end via the CLI (`topo lab azure-serve`,
+  `topo discover azure -lab`), not only in the test suite. `go test -race
+  ./...` passes; `gofmt`/`go vet` clean. Real-tenant verification beyond
+  the hand-rolled fixture has not been performed — the same posture as
+  SNMP `authPriv`, real VMware/vCenter, real Kubernetes clusters, and real
+  AWS Organizations. See `docs/azure.md`.
+- **Slice before that (M3 slice 2, AWS Organizations account-structure
+  discovery, merged):** `pkg/discovery/aws` calls
   `DescribeOrganization`/`ListRoots` then recursively walks
   `ListOrganizationalUnitsForParent`/`ListAccountsForParent` via
   `aws-sdk-go-v2`'s Organizations client. Asset identity is each object's
   AWS-assigned ID, never its mutable name; all four kinds (Organization,
   Root, OrganizationalUnit, Account) map to `model.AssetCloudResource`
-  (reserved in `pkg/model` since the storage milestone, unused until now)
   with `Attributes["kind"]` distinguishing them, and a single `member_of`
-  relationship forms the containment hierarchy. AWS has no official local
-  Organizations simulator (LocalStack was evaluated and rejected — a
-  separate Docker container, heavier than every other Topo Lab fixture);
-  Topo Lab hand-rolls an AWS-JSON-1.1 fixture
-  (`pkg/lab/aws_organizations_server.go`) with real SigV4 signature
-  verification via the SDK's own `v4.Signer` (re-deriving the expected
-  `Authorization` header from the known Lab credential over exactly the
-  client's own claimed `SignedHeaders`, not a simplified string
-  comparison) the same way it did for Kubernetes and SNMP. The two-scan
+  relationship forms the containment hierarchy. Topo Lab hand-rolls an
+  AWS-JSON-1.1 fixture (`pkg/lab/aws_organizations_server.go`) with real
+  SigV4 signature verification via the SDK's own `v4.Signer`. The two-scan
   idempotency acceptance test runs the full `examples/lab/clean-500.json`
   scenario as 500 simulated accounts nested two levels under two OUs: 506
-  total assets, 505 `member_of` relationships, zero errors, stable and
-  duplicate-free across a repeated scan and a `store.Memory` save —
-  verified end-to-end via the CLI (`topo lab aws-organizations-serve`,
-  `topo discover aws-organizations -lab`), not only in the test suite.
-  `go test -race ./...` passes; `gofmt`/`go vet` clean. Real-organization
-  verification beyond the hand-rolled fixture has not been performed — the
-  same posture as SNMP `authPriv`, real VMware/vCenter, and real
-  Kubernetes clusters. See `docs/aws.md`.
-- **Slice before that (M3 slice 1, Kubernetes node/pod discovery,
-  merged):** `pkg/discovery/kubernetes` lists `v1.Node` and `v1.Pod`
-  objects cluster-wide via `k8s.io/client-go` (pinned `v0.35.8`, the latest
-  release still compatible with exact Go 1.25.13 — `v0.36.x` requires Go
-  1.26). Asset identity is each object's Kubernetes UID, never its name or
-  an IP address; both map to `model.AssetKubernetesObject` with
-  `Attributes["kind"]` distinguishing `Node`/`Pod`. A `pod_runs_on_node`
-  relationship resolves from `pod.Spec.NodeName`, skipped for unscheduled
-  pods. Topo Lab hand-rolls a Kubernetes API fixture
-  (`pkg/lab/kubernetes_server.go`, real `k8s.io/api` JSON over real HTTP)
-  the same way it did for SNMP. The two-scan idempotency acceptance test
-  runs the full `examples/lab/clean-500.json` scenario: 500 node assets,
-  500 pod assets, 500 `pod_runs_on_node` relationships, zero errors. See
-  `docs/kubernetes.md`.
+  total assets, 505 `member_of` relationships, zero errors. See
+  `docs/aws.md`.
+- **Milestone slice before that (M3 slice 1, Kubernetes node/pod
+  discovery, merged):** `pkg/discovery/kubernetes` lists `v1.Node` and
+  `v1.Pod` objects cluster-wide via `k8s.io/client-go` (pinned `v0.35.8`,
+  the latest release still compatible with exact Go 1.25.13 — `v0.36.x`
+  requires Go 1.26). Asset identity is each object's Kubernetes UID, never
+  its name or an IP address; both map to `model.AssetKubernetesObject`
+  with `Attributes["kind"]` distinguishing `Node`/`Pod`. A
+  `pod_runs_on_node` relationship resolves from `pod.Spec.NodeName`,
+  skipped for unscheduled pods. Topo Lab hand-rolls a Kubernetes API
+  fixture (`pkg/lab/kubernetes_server.go`, real `k8s.io/api` JSON over
+  real HTTP) the same way it did for SNMP. The two-scan idempotency
+  acceptance test runs the full `examples/lab/clean-500.json` scenario:
+  500 node assets, 500 pod assets, 500 `pod_runs_on_node` relationships,
+  zero errors. See `docs/kubernetes.md`.
 - **Milestone before that:** SNMP and VMware discovery (`ROADMAP.md`
   M2), both slices done. Slice 1 (SNMP, merged in
   <https://github.com/Nischoy-ai/topo/pull/21>): `pkg/discovery/snmp`
@@ -1826,10 +1857,9 @@ Extend discovery to hybrid/cloud estates and prove Topo at scale, per
 AWS/Azure/Kubernetes discovery are themselves three separate protocol
 integrations, each roughly the size of the SNMP/VMware milestone above, not
 one slice; the user confirmed Kubernetes discovery as the starting slice,
-then AWS Organizations discovery as the second. Azure tenants/subscriptions
-discovery remains unstaged — stage it the same way (Objective, Deliverables,
-Acceptance gates, Deliberate non-goals) before starting it, rather than
-assuming scope.
+then AWS Organizations discovery as the second, then Azure tenant discovery
+as the third — completing all three protocol integrations
+`ROADMAP.md`'s M3 line names.
 
 ### Slice 1 — Kubernetes node and pod discovery (implemented, merged)
 
@@ -1908,7 +1938,7 @@ targets and credentials are always explicit, matching every other
 protocol; no CRD/custom-resource discovery. AWS and Azure discovery remain
 separate, unstaged slices, not bundled into this one.
 
-### Slice 2 — AWS Organizations account-structure discovery (implemented, PR open)
+### Slice 2 — AWS Organizations account-structure discovery (implemented, merged)
 
 **Objective.** Extend discovery into an AWS Organization's own account
 structure: which accounts exist and how they are grouped into
@@ -2001,6 +2031,120 @@ assume a role resolves the resulting temporary credentials through the
 existing credential-reference contract, matching how every other Topo
 discovery plugin treats credentials as always explicit. Azure discovery
 remains a separate, unstaged slice, not bundled into this one.
+
+### Slice 3 — Azure tenant subscription-structure discovery (implemented, PR open)
+
+**Objective.** Extend discovery into an Azure AD (Microsoft Entra ID)
+tenant's own subscription structure: which subscriptions exist and how
+they are grouped into management groups under the tenant's root
+management group, using only read-only `Get`/`List` calls over the real
+Azure Resource Manager (ARM) API — no mutating action (create, move, or
+delete) is ever issued, matching the read-only posture already
+established for VMware, SNMP, Kubernetes, and AWS.
+
+**Scope.** `pkg/discovery/azure` authenticates via the Azure AD OAuth2
+client-credentials grant, looks up the configured tenant's own details,
+then calls a single recursive `Get` on the tenant's root management group
+(`$expand=children&$recurse=true`) to retrieve the whole hierarchy in one
+call — unlike AWS's per-parent `ListOrganizationalUnitsForParent`/
+`ListAccountsForParent` walk, Azure's API returns the entire tree in one
+request. Recursion is still bounded in code to 6 levels, matching Azure's
+own real management-group nesting limit, kept as an explicit bound rather
+than trusted implicitly — the same defense-in-depth posture AWS's 5-level
+OU bound uses. A flat `GET /subscriptions` call enriches the tree's
+subscription entries with state and display-name detail.
+
+Asset identity is each object's **full ARM resource path**
+(`/subscriptions/{guid}`, `/providers/Microsoft.Management/
+managementGroups/{groupId}`, or `/tenants/{tenantId}`) — a deliberate,
+Azure-specific refinement of the project's "never use a mutable name as
+identity" invariant: Azure automatically creates a "Tenant Root Group"
+whose short group name is, by Azure's own convention, identical to the
+tenant's own GUID, so a Tenant asset and the root ManagementGroup asset
+would collide on a bare-GUID identity even though they are different
+resource kinds (caught empirically while testing this slice — the initial
+implementation used the bare short name and produced a self-referential
+`member_of` relationship where a management group pointed at itself). The
+full ARM path disambiguates every object because it encodes the resource
+type in its own path, the same way it would for a real Azure user
+browsing the portal or CLI. All three kinds (Tenant, ManagementGroup,
+Subscription) map to the existing `model.AssetCloudResource` type with
+`Attributes["kind"]` distinguishing them, and a single `member_of`
+relationship — reusing the same relationship type AWS's hierarchy uses —
+connects every management group and subscription to its immediate parent.
+
+**Authentication and target model.** One or more ARM API endpoint URLs
+are `discovery.Request.Targets`, matching the vCenter/WinRM/SNMP/
+Kubernetes/AWS target-list shape. Authentication is the standard Azure AD
+OAuth2 client-credentials grant: a tenant ID, an application (service
+principal) client ID (plain, non-secret, like a username), and a client
+secret (resolved through the existing credential-reference contract)
+exchange for a short-lived bearer token the plugin then presents on every
+ARM call. This differs from Kubernetes's model (a long-lived
+ServiceAccount token handed in directly): Azure AD access tokens are
+short-lived by design, obtained via an app-registration credential rather
+than distributed as a static secret, so the plugin performs the full
+token-acquisition round trip itself. `-authority-url` is required and
+never defaulted beyond its production default
+(`https://login.microsoftonline.com`) or autodetected — sovereign clouds
+(Azure Government, Azure China) use different authority and ARM hosts.
+Production targets require HTTPS; an explicit `-lab` flag, restricted to
+loopback targets, skips certificate verification against the Topo Lab
+fixture below — but unlike Kubernetes's and AWS's `-lab` modes, it cannot
+fall back to plain HTTP: `azidentity` (the Azure SDK's credential package)
+unconditionally refuses a non-HTTPS authority host, with no client option
+to override it, discovered empirically while building this slice's Lab
+fixture. Topo Lab's Azure fixture therefore always serves HTTPS with a
+freshly generated, self-signed, loopback-only certificate instead of the
+plain-HTTP loopback the Kubernetes and AWS fixtures use.
+
+**Acceptance testing.** Azure has no official local simulator for the ARM
+API. Matching the Kubernetes/AWS precedent instead: a hand-rolled Topo Lab
+fixture (`pkg/lab/azure_server.go`) serves the real wire responses for
+the endpoints the plugin actually calls — the tenant's OpenID Connect
+discovery document, the OAuth2 token endpoint, `GET /tenants`, the
+recursive management-group `Get`, and `GET /subscriptions` — discovered by
+running the real client against a capturing test double and reading its
+exact request sequence, the same empirical-then-verified approach used to
+confirm AWS's wire field names. As with the AWS fixture, `azure-sdk-for-go`
+generates its (de)serializers from a service model without JSON struct
+tags, so the fixture defines minimal local structs mirroring the exact
+wire field names the generated deserializer expects, confirmed by reading
+`azure-sdk-for-go`'s own `models_serde.go` files, then verified empirically
+against the real client. Unlike AWS's SigV4 (a per-request signing scheme
+that genuinely needs cryptographic re-derivation to test meaningfully),
+Azure's ARM API has no per-request signing — a client obtains a bearer
+token once via OAuth2 and presents it on every call, so verifying the
+`client_id`/`client_secret` pair at the token endpoint and the bearer
+token on every ARM call by plain equality is not a simplification here:
+it is the real protocol, the same way Kubernetes's bearer-token fixture
+check already was. `topo lab azure-serve` exposes it for manual
+exploration, matching `kubernetes-serve`/`aws-organizations-serve`. The
+two-scan idempotency acceptance test runs the full
+`examples/lab/clean-500.json` scenario as 500 simulated subscriptions
+nested two levels deep under two management groups (plus one subscription
+attached directly to the root) — deliberately mirroring the AWS fixture's
+shape: 506 total assets (1 tenant, 5 management groups including the
+root, 500 subscriptions) and 505 `member_of` relationships, matching the
+AWS slice's numbers by design, zero errors, stable and duplicate-free
+across a repeated scan and a `store.Memory` save, additionally verified
+end-to-end via the CLI at the same scale. A real Azure tenant was
+evaluated as an alternative fixture and deliberately not required for
+this slice, for the same reason a real AWS Organization wasn't for the
+AWS slice; real-tenant verification remains explicitly unverified,
+matching the SNMP `authPriv`/real-VMware/real-Kubernetes-cluster/
+real-AWS-Organization posture — implemented and tested against a faithful
+fixture only, not yet against a genuinely live Azure tenant.
+
+**Deliberate non-goals for this slice.** No per-subscription resource
+inventory (VMs, storage accounts, network resources, etc. — the Azure
+counterpart to AWS's still-unstaged per-account resource inventory); no
+Azure Policy or management-group policy content; no subscription-creation
+or subscription-transfer lifecycle events; no credential chaining beyond
+the client-credentials grant (no managed-identity or Azure CLI credential
+fallback) — credentials are always explicit, matching every other Topo
+discovery plugin. This completes the three protocol integrations
+`ROADMAP.md`'s M3 line names (Kubernetes, AWS Organizations, Azure).
 
 ### Relationship to the M2.5 gate
 

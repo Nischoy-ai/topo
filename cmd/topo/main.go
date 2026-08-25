@@ -30,6 +30,7 @@ import (
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	awsdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/aws"
+	azurediscovery "github.com/Nischoy-ai/topo/pkg/discovery/azure"
 	kubernetesdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/kubernetes"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/snmp"
@@ -150,7 +151,7 @@ func storageRestore(args []string) error {
 
 func runLab(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve|kubernetes-serve|aws-organizations-serve>")
+		return errors.New("usage: topo lab <generate|expected|serve|run|ssh-serve|ssh-targets|winrm-serve|winrm-targets|snmp-serve|kubernetes-serve|aws-organizations-serve|azure-serve>")
 	}
 	switch args[0] {
 	case "generate":
@@ -175,6 +176,8 @@ func runLab(args []string) error {
 		return labKubernetesServe(args[1:])
 	case "aws-organizations-serve":
 		return labAWSOrganizationsServe(args[1:])
+	case "azure-serve":
+		return labAzureServe(args[1:])
 	default:
 		return fmt.Errorf("unknown lab command %q", args[0])
 	}
@@ -286,6 +289,52 @@ func labAWSOrganizationsServe(args []string) error {
 		return nil
 	}
 	return err
+}
+
+// labAzureServe binds one loopback HTTPS listener (a freshly generated,
+// self-signed certificate — azidentity refuses a non-HTTPS authority
+// host unconditionally, so Topo Lab's Azure fixture cannot fall back to
+// plain HTTP the way the Kubernetes and AWS Lab fixtures can) exposing
+// the whole simulated estate as a single Azure AD tenant (one
+// subscription per host) and prints its base URL to stdout — the same
+// URL is both the -authority-url and the -targets endpoint, since this
+// one fixture serves the OAuth2 token endpoint and the ARM API together.
+// Suitable for `topo discover azure -lab` after piping that one line into
+// both flags.
+func labAzureServe(args []string) error {
+	fs := flag.NewFlagSet("lab azure-serve", flag.ContinueOnError)
+	scenarioPath := fs.String("scenario", "examples/lab/clean-500.json", "scenario JSON path")
+	addr := fs.String("addr", "127.0.0.1:6443", "loopback listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	host, _, err := net.SplitHostPort(*addr)
+	if err != nil {
+		return fmt.Errorf("invalid Azure Lab listen address: %w", err)
+	}
+	if ip := net.ParseIP(host); !strings.EqualFold(host, "localhost") && (ip == nil || !ip.IsLoopback()) {
+		return errors.New("Topo Lab Azure must listen on loopback")
+	}
+	scenario, err := loadScenario(*scenarioPath)
+	if err != nil {
+		return err
+	}
+	estate, err := lab.Generate(scenario)
+	if err != nil {
+		return err
+	}
+	baseURL, server, err := lab.ServeAzureTLS(lab.NewAzureServer(estate), *addr)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	fmt.Println(baseURL)
+	slog.Info("Topo Lab Azure listening", "address", *addr, "subscriptions", len(estate.Hosts), "tenant_id", lab.LabAzureTenantID, "client_id", lab.LabAzureClientID)
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return server.Shutdown(shutdownCtx)
 }
 
 // labSNMPServe binds one loopback UDP socket per simulated host and prints
@@ -1014,6 +1063,9 @@ func discover(args []string) error {
 	if len(args) > 0 && args[0] == "aws-organizations" {
 		return discoverAWSOrganizations(args[1:])
 	}
+	if len(args) > 0 && args[0] == "azure" {
+		return discoverAzure(args[1:])
+	}
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	site := fs.String("site", "default", "site ID")
 	collector := fs.String("collector", "local", "collector ID")
@@ -1248,6 +1300,60 @@ func discoverAWSOrganizations(args []string) error {
 		SecretAccessKey:  string(secretAccessKey),
 		SessionToken:     string(sessionToken),
 		Region:           *region,
+		LabMode:          *labMode,
+		Concurrency:      *concurrency,
+		OperationTimeout: *operationTimeout,
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	observation, err := plugin.Discover(ctx, discovery.Request{SiteID: *site, CollectorID: *collector, Targets: targets})
+	if err != nil {
+		return err
+	}
+	_, err = jsonlines.Publisher{Writer: os.Stdout}.PublishBatch(ctx, []model.ObservationEnvelope{observation})
+	return err
+}
+
+func discoverAzure(args []string) error {
+	fs := flag.NewFlagSet("discover azure", flag.ContinueOnError)
+	targetsPath := fs.String("targets", "", "file containing one Azure Resource Manager endpoint URL per line")
+	tenantID := fs.String("tenant-id", env("TOPO_AZURE_TENANT_ID", ""), "Azure AD (Microsoft Entra ID) tenant ID")
+	clientID := fs.String("client-id", env("TOPO_AZURE_CLIENT_ID", ""), "Azure AD application (service principal) client ID")
+	clientSecretRef := fs.String("client-secret-ref", "", "credential reference for the Azure AD application's client secret (env:, file:, vault:, or k8s:)")
+	authorityURL := fs.String("authority-url", "https://login.microsoftonline.com", "Azure AD OAuth2 authority base URL")
+	labMode := fs.Bool("lab", false, "restrict targets and authority to loopback and skip TLS certificate verification against them")
+	concurrency := fs.Int("concurrency", 8, "maximum concurrent tenant targets")
+	operationTimeout := fs.Duration("operation-timeout", 30*time.Second, "per-target token-acquisition-plus-Get/List call sequence timeout")
+	site := fs.String("site", "default", "site ID")
+	collector := fs.String("collector", "azure-relay", "collector ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *targetsPath == "" {
+		return errors.New("-targets is required")
+	}
+	targets, err := readTargets(*targetsPath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return errors.New("targets file contains no targets")
+	}
+	if *tenantID == "" {
+		return errors.New("Azure tenant ID is required; set -tenant-id or TOPO_AZURE_TENANT_ID")
+	}
+	if *clientID == "" {
+		return errors.New("Azure client ID is required; set -client-id or TOPO_AZURE_CLIENT_ID")
+	}
+	clientSecret, err := resolveCredential(*clientSecretRef, "", "TOPO_AZURE_CLIENT_SECRET", false)
+	if err != nil {
+		return fmt.Errorf("resolve Azure client secret: %w", err)
+	}
+	plugin := azurediscovery.Plugin{Config: azurediscovery.Config{
+		TenantID:         *tenantID,
+		ClientID:         *clientID,
+		ClientSecret:     string(clientSecret),
+		AuthorityURL:     *authorityURL,
 		LabMode:          *labMode,
 		Concurrency:      *concurrency,
 		OperationTimeout: *operationTimeout,
