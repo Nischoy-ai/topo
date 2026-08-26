@@ -20,8 +20,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   precedence and asset conflict/freshness visibility) is implemented and
   merged in <https://github.com/Nischoy-ai/topo/pull/46>; slice 5
   (ServiceNow-controlled Topo Relay MVP), prioritized by the enterprise-pilot
-  requirement, is implemented on `agent/m3-servicenow-relay` and awaiting a
-  pull request. See "Current milestone: M3" below. The most recent merged
+  requirement, is implemented on `agent/m3-servicenow-relay` and proposed in
+  <https://github.com/Nischoy-ai/topo/pull/47>. See "Current milestone: M3"
+  below. The most recent merged
   M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -180,8 +181,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none yet; M3 slice 5 is implemented on
-  `agent/m3-servicenow-relay` and awaiting publication.
+- **Open pull request:** M3 slice 5, ServiceNow-controlled Topo Relay MVP, in
+  <https://github.com/Nischoy-ai/topo/pull/47>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -2281,7 +2282,7 @@ amd64 vet/build. Helm lifecycle rendering remains covered by the ordinary CI
 chart job; a local Helm binary was not installed in the development
 environment, so no local chart-render claim is made.
 
-### Slice 5 — ServiceNow-controlled Topo Relay MVP (implemented, awaiting PR)
+### Slice 5 — ServiceNow-controlled Topo Relay MVP (implemented, proposed in PR 47)
 
 **Objective.** Let an operator use ServiceNow as the control panel for an
 outbound-only Topo Relay installed inside a network segment: start or schedule
