@@ -198,8 +198,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M3 slice 6 will be proposed from
-  `agent/m3-native-ecc-mid`; replace this line with the PR URL after creation.
+- **Open pull request:** M3 slice 6, native ServiceNow ECC-compatible MID
+  transport, in <https://github.com/Nischoy-ai/topo/pull/48>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
