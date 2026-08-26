@@ -8,6 +8,19 @@ which is how ServiceNow's IRE recognizes "this is the same configuration
 item I've seen before" across repeated scans rather than creating a new,
 duplicate CI each time.
 
+IRE remains the destination write boundary when ServiceNow also controls
+discovery through Topo's native ECC-compatible MID mode. `topo mid run` uses
+the standard `/ecc_queue.do?SOAP` transport, `ecc_agent` identity, and native
+MID selection rather than requiring a Topo scoped application. Its first slice
+supports only Heartbeat and a safe correlated denial for every other topic;
+stock Discovery result contracts remain gated on real official-MID captures.
+See [Native ServiceNow ECC-compatible MID transport](servicenow-mid.md).
+
+The custom scoped-app Relay from PR #47 is retained only as an experimental
+predecessor. Its custom tables and Scripted REST resources are not installation
+requirements for the required native architecture; see
+[predecessor scoped-app Relay](servicenow-relay.md).
+
 ```sh
 ./bin/topo discover -format servicenow-preview local
 ```

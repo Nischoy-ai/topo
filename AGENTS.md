@@ -56,13 +56,20 @@ see `docs/aws.md`. Slice 3, Azure tenant subscription-structure discovery,
 is implemented — see `docs/azure.md`. Slice 4, source precedence plus asset
 conflict/freshness visibility, is implemented — see
 `docs/source-resolution.md`. Slice 5, prioritized from the enterprise-pilot
-requirement, implements an outbound-only ServiceNow-controlled Topo Relay for
-locally preconfigured local and SSH profiles — see
-`docs/servicenow-relay.md`. That completes the three protocol
+requirement, implemented an outbound-only ServiceNow-controlled Topo Relay for
+locally preconfigured local and SSH profiles using a custom scoped application
+— see `docs/servicenow-relay.md`. That transport is retained as an experimental
+predecessor, not the required final architecture. Slice 6 implements the first
+native ServiceNow ECC-compatible MID transport via `topo mid run`: strict SOAP
+ECC polling, durable claim/restart handling, Heartbeat-only dispatch, and
+correlated denial of every other topic, with simulator evidence only; real
+`ecc_agent` registration/validation, stock Heartbeat XML, and Up/Down behavior
+remain unverified — see `docs/servicenow-mid.md`. That completes the three protocol
 integrations `ROADMAP.md`'s M3 line names; remaining M3 work (Kubernetes
 workload object kinds beyond Node/Pod, AWS per-account and Azure
 per-subscription resource inventory, relationship precedence and cross-ID
-correlation, scale/upgrade testing, SSO/RBAC modules) remains unstaged —
+correlation, native stock Discovery topic translators, scale/upgrade testing,
+SSO/RBAC modules) remains unstaged —
 stage each the same way (Objective, Deliverables, Acceptance gates,
 Deliberate non-goals) before starting it, and confirm scope with the user
 first, rather than assuming an order.
