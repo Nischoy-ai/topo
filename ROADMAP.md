@@ -167,6 +167,19 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   observations. Cross-ID correlation, relationship precedence, omission-based
   retirement, and stale-after policy remain separate follow-ups. See
   [docs/source-resolution.md](docs/source-resolution.md).
+- **Implemented alpha (ServiceNow-controlled Topo Relay):** `topo relay run`
+  polls an authenticated scoped-app job queue outbound from the network,
+  executes only a locally preconfigured `local` or `ssh-linux` profile,
+  publishes observations through IRE, and reports terminal status through a
+  bounded encrypted retry spool. Jobs contain no targets, credentials,
+  options, or executable text. Public table/resource/server-script definitions
+  provide the Topo Profile, Schedule, Job, Relay heartbeat, manual-start, and
+  scheduled-enqueue control panel. Automated tests cover the full simulated
+  ServiceNow-to-real-SSH-to-IRE-to-result path; importing the scoped app and
+  completing a scheduled job against a real ServiceNow instance remain
+  unverified. This behaves like a MID Server operationally but does not emulate
+  the proprietary MID/ECC Queue protocol or appear in the stock MID selector.
+  See [docs/servicenow-relay.md](docs/servicenow-relay.md).
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.
 

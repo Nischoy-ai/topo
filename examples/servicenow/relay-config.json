@@ -1,0 +1,24 @@
+{
+  "schema_version": "v1alpha1",
+  "relay_id": "laptop-relay-1",
+  "site_id": "home-lab",
+  "profiles": [
+    {
+      "id": "this-laptop",
+      "plugin": "local"
+    },
+    {
+      "id": "linux-network-pilot",
+      "plugin": "ssh-linux",
+      "targets_file": "/etc/topo/targets/linux-pilot.txt",
+      "ssh": {
+        "private_key_ref": "file:/etc/topo/credentials/id_ed25519",
+        "known_hosts_file": "/etc/topo/known_hosts",
+        "concurrency": 16,
+        "connect_timeout": "10s",
+        "command_timeout": "10s",
+        "max_output_bytes": 4194304
+      }
+    }
+  ]
+}

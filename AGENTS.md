@@ -55,7 +55,10 @@ Slice 2, AWS Organizations account-structure discovery, is implemented —
 see `docs/aws.md`. Slice 3, Azure tenant subscription-structure discovery,
 is implemented — see `docs/azure.md`. Slice 4, source precedence plus asset
 conflict/freshness visibility, is implemented — see
-`docs/source-resolution.md`. That completes the three protocol
+`docs/source-resolution.md`. Slice 5, prioritized from the enterprise-pilot
+requirement, implements an outbound-only ServiceNow-controlled Topo Relay for
+locally preconfigured local and SSH profiles — see
+`docs/servicenow-relay.md`. That completes the three protocol
 integrations `ROADMAP.md`'s M3 line names; remaining M3 work (Kubernetes
 workload object kinds beyond Node/Pod, AWS per-account and Azure
 per-subscription resource inventory, relationship precedence and cross-ID
