@@ -61,6 +61,13 @@ func TestResolveCredentialRejectsConflictingFlags(t *testing.T) {
 	}
 }
 
+func TestMIDRunRejectsPositionalArguments(t *testing.T) {
+	err := midRun([]string{"unexpected"})
+	if err == nil || !strings.Contains(err.Error(), "does not accept positional arguments") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestResolvePrivateKeyReference(t *testing.T) {
 	path := filepath.Join("testdata", "key")
 	reference, err := resolvePrivateKeyReference("", path)

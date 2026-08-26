@@ -6,6 +6,14 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
+ServiceNow ECC records are untrusted control-plane input, not executable
+instructions. Native MID selection, capabilities, applications, IP ranges, and
+credentials do not replace Topo's local operation/target policy. Only reviewed
+topic translators may call compiled-in discovery operations, and every
+target-bearing request must intersect an owner-controlled local allowlist.
+Generic `Command`, arbitrary `SSHCommand`, PowerShell, JavaScript, Groovy, and
+unknown topics are denied by default with a correlated result.
+
 The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, Authenticode, Developer ID, and notarization credentials. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
 
 ## Deployment guidance
@@ -24,6 +32,14 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Review ServiceNow IRE preview output before enabling destination writes,
   and configure identification/reconciliation rules for every CI class Topo
   emits; see [ServiceNow publishing](docs/servicenow.md).
+- For `topo mid run`, use a dedicated ServiceNow user with the built-in
+  `mid_server` role, an exact unique MID name, a password credential reference,
+  and an owner-only absolute state directory. The client accepts only a strict
+  HTTPS instance origin, one fixed SOAP ECC path, and no redirects. The current
+  Heartbeat-only slice has no target authority; do not advertise discovery or
+  orchestration capabilities until the corresponding stock transaction and
+  local allowlist enforcement are implemented. See
+  [Native ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
 - Before installing a downloaded raw release, verify both its `SHA256SUMS`
   keyless Sigstore bundle and its GitHub artifact attestation; checking an
   unsigned digest alone detects corruption but not an attacker who replaced
@@ -359,7 +375,37 @@ fields. It requires an absolute HTTPS instance URL and a bearer token supplied
 through the same credential-reference contract as every other Topo secret. See
 [ServiceNow publishing](docs/servicenow.md).
 
-## ServiceNow-controlled Relay
+## Native ServiceNow ECC-compatible MID transport
+
+`topo mid run` polls only `ecc_queue` records whose agent is exactly
+`mid.server.<configured-name>`, queue is `output`, and state is `ready`. It
+uses ServiceNow's direct document/literal SOAP operations at the fixed
+`/ecc_queue.do?SOAP` endpoint with Basic authentication from a credential
+reference. Instance URL userinfo/path/query/fragment are rejected, redirects
+are refused, each request is cancellable and time-bounded, and SOAP bodies,
+XML depth/tokens, record counts, fields, payloads, and error results are
+bounded. XML directives are rejected.
+
+The output `sys_id` and a digest of its operation-bearing fields are synced to
+an owner-only local journal before `ready` becomes `processing`. An OS file lock
+prevents a second process using the same local state directory/MID identity.
+After a crash, the next process resumes the journal; it queries for an existing
+`input` response by `response_to` before inserting, then marks the output
+`processed`. More than one existing response is left visible as an error rather
+than hidden. ServiceNow's public direct SOAP `update` operation does not expose
+a compare-and-swap condition, so a unique MID name remains a native
+configuration boundary across hosts. No target-bearing topic is enabled while
+that stronger claim behavior remains unverified.
+
+Only `Heartbeat` is recognized in the first slice. Its correlated result shape
+is simulator-tested but still requires comparison with an official MID on the
+target release before real Up/Down interoperability is claimed. `Command`,
+`SSHCommand`, PowerShell, JavaScript, Groovy, and every other topic receive a
+bounded `topo_unsupported_topic` result; Topo never parses their payload/name
+as operations. No capability or IP-range record grants local authority. See
+[Native ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
+
+## Predecessor scoped-app ServiceNow Relay
 
 `topo relay run` polls only fixed Topo scoped-application HTTPS resources and
 never listens for inbound connections. A ServiceNow job can select only the
@@ -381,3 +427,7 @@ validation failures are reported without blind replay because real validation
 showed a rejected IRE request can leave an incomplete identification artifact.
 The ServiceNow bearer token and spool key are credential references and never
 ordinary CLI values. See [ServiceNow-controlled Topo Relay](docs/servicenow-relay.md).
+
+This PR #47 transport is retained as experimental predecessor behavior. Its
+custom application/tables/resources are not required for `topo mid run` and are
+not the required final ServiceNow architecture.

@@ -25,6 +25,7 @@ import (
 	"github.com/Nischoy-ai/topo/internal/agent"
 	"github.com/Nischoy-ai/topo/internal/controller"
 	"github.com/Nischoy-ai/topo/internal/enrollment"
+	"github.com/Nischoy-ai/topo/internal/mid"
 	toporelay "github.com/Nischoy-ai/topo/internal/relay"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
@@ -72,6 +73,8 @@ func run(args []string) error {
 		return runAgent(args[1:])
 	case "relay":
 		return runRelay(args[1:])
+	case "mid":
+		return runMID(args[1:])
 	case "storage":
 		return runStorage(args[1:])
 	case "lab":
@@ -84,7 +87,7 @@ func run(args []string) error {
 	}
 }
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|relay|storage|lab|version>")
+	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|relay|mid|storage|lab|version>")
 	return errors.New("command required")
 }
 
@@ -887,6 +890,75 @@ func relayRun(args []string) error {
 		Executor:     toporelay.Executor{Config: fileConfig},
 		Publisher:    irePublisher,
 		Spool:        spool,
+		Logger:       logger,
+	})
+}
+
+func runMID(args []string) error {
+	if len(args) == 0 || args[0] != "run" {
+		return errors.New("usage: topo mid run")
+	}
+	return midRun(args[1:])
+}
+
+func midRun(args []string) error {
+	fs := flag.NewFlagSet("mid run", flag.ContinueOnError)
+	instanceURL := fs.String("servicenow-instance", os.Getenv("SERVICENOW_INSTANCE_URL"), "ServiceNow instance origin (absolute HTTPS URL)")
+	midName := fs.String("name", os.Getenv("TOPO_MID_NAME"), "native MID identity; ECC agent is mid.server.<name>")
+	username := fs.String("username", os.Getenv("TOPO_SERVICENOW_MID_USERNAME"), "dedicated ServiceNow username with the built-in mid_server role")
+	passwordRef := fs.String("password-ref", "", "credential reference for the ServiceNow MID user's password (env:, file:, vault:, or k8s:)")
+	stateDir := fs.String("state-dir", os.Getenv("TOPO_MID_STATE_DIR"), "absolute owner-only directory for the MID identity lock and crash journal")
+	pollInterval := fs.Duration("poll-interval", mid.DefaultPollInterval, "maximum interval between bounded ECC output polls")
+	batchSize := fs.Int("batch-size", 1, "maximum output/ready ECC records claimed per poll (1-16)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("topo mid run does not accept positional arguments")
+	}
+	if *instanceURL == "" {
+		return errors.New("-servicenow-instance is required")
+	}
+	if *midName == "" {
+		return errors.New("-name is required")
+	}
+	if *username == "" {
+		return errors.New("-username is required")
+	}
+	if *stateDir == "" {
+		return errors.New("-state-dir is required")
+	}
+	password, err := resolveCredential(*passwordRef, "", "TOPO_SERVICENOW_MID_PASSWORD", false)
+	if err != nil {
+		return fmt.Errorf("resolve ServiceNow MID password: %w", err)
+	}
+	client, err := mid.NewClient(*instanceURL, *username, string(password), nil)
+	if err != nil {
+		return err
+	}
+	state, err := mid.OpenState(*stateDir, *midName)
+	if err != nil {
+		return err
+	}
+	defer state.Close()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	logger.Info("Topo ECC-compatible MID starting",
+		"mid_name", *midName,
+		"agent", mid.AgentPrefix+*midName,
+		"poll_interval", pollInterval.String(),
+		"batch_size", *batchSize,
+		"supported_topics", []string{mid.TopicHeartbeat},
+	)
+	return mid.Run(ctx, mid.RunConfig{
+		MIDName:      *midName,
+		Version:      version,
+		PollInterval: *pollInterval,
+		BatchSize:    *batchSize,
+		Transport:    client,
+		State:        state,
 		Logger:       logger,
 	})
 }

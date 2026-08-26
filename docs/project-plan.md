@@ -20,9 +20,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   precedence and asset conflict/freshness visibility) is implemented and
   merged in <https://github.com/Nischoy-ai/topo/pull/46>; slice 5
   (ServiceNow-controlled Topo Relay MVP), prioritized by the enterprise-pilot
-  requirement, is implemented on `agent/m3-servicenow-relay` and proposed in
-  <https://github.com/Nischoy-ai/topo/pull/47>. See "Current milestone: M3"
-  below. The most recent merged
+  requirement, is merged in <https://github.com/Nischoy-ai/topo/pull/47> and
+  retained as an experimental scoped-app predecessor, not the required final
+  architecture. Slice 6 (native ServiceNow ECC-compatible MID transport) is
+  implemented on `agent/m3-native-ecc-mid`: `topo mid run`, strict direct-SOAP
+  ECC polling, durable claim/restart handling, local identity locking,
+  Heartbeat-only dispatch, and correlated denial of every other topic. Real
+  `ecc_agent` bootstrap/validation, exact stock Heartbeat XML, and Up/Down
+  evidence remain unverified. See "Current milestone: M3" below. The most recent merged
   M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -42,28 +47,40 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/35>; external-security-review
   preparation and pre-review remediation in
   <https://github.com/Nischoy-ai/topo/pull/33>.
-- **Verified in the current slice (M3 slice 5, ServiceNow-controlled Topo
-  Relay MVP):** `topo relay run` polls two fixed authenticated Scripted REST
-  resources outbound, advertises local profile IDs, claims no more than one
-  `discover` job, and executes only locally configured `local` or `ssh-linux`
-  profiles. ServiceNow cannot supply targets, credentials, options, or command
-  text; SSH profiles require a local absolute targets file, credential
-  references, and verified `known_hosts`. A dedicated ServiceNow user is bound
-  to one Relay record by both scripts. Completed observations/results enter a
-  bounded AES-256-GCM spool before the first IRE request; publication and
-  result acknowledgement resume across failures without duplicate result
-  publication. IRE `hasError: true` and non-retryable 4xx responses now fail
-  the job without blind replay; transient transport/429/5xx errors retry up to
-  three times. Public scoped-app table/resource/server-script definitions add
-  Relay, Profile, Schedule, Job, manual-start, due-schedule enqueue, poll, and
-  result behavior. A full simulated ServiceNow-to-real-Topo-Lab-SSH-to-IRE-to-
-  result test passes, along with fixed-path/auth/redirect/response-bound/job-
-  injection/profile/spool tests. The complete exact-Go-1.25.13 security review
-  gate passes with zero reachable vulnerabilities, the full race suite, Linux
-  build, and Windows amd64 vet/build. Importing the scoped app and running a
-  scheduled job against the real developer instance remain explicitly
-  unverified; the source definitions are not represented as a signed Store app
-  or an already exported update set. See `docs/servicenow-relay.md`.
+- **Verified in the current slice (M3 slice 6, native ServiceNow
+  ECC-compatible MID transport):** `topo mid run` uses only the fixed native
+  `/ecc_queue.do?SOAP` direct service, rejects non-HTTPS/ambiguous instance
+  URLs and redirects, authenticates a dedicated MID user with the shared
+  credential-reference contract, and polls a bounded set of
+  `output`/`ready` records addressed exactly to
+  `mid.server.<configured-name>`. A synchronized owner-only append journal
+  precedes the `processing` transition; an OS lock rejects a second local
+  process for the same identity; restart recovery queries by `response_to`
+  before insert so a lost SOAP response cannot duplicate the correlated
+  `input`/`ready` result. XML body/depth/token, record, field, payload,
+  parameter, timeout, and result bounds are enforced on Unix and Windows.
+  Only `Heartbeat` is recognized. `Command`, `SSHCommand`, PowerShell,
+  JavaScript, Groovy, and every unknown topic receive a bounded visible
+  `topo_unsupported_topic` result and no target-bearing operation is executed.
+  The deterministic `internal/mid/eccsim` SOAP/ECC fixture proves the transport,
+  state, crash, correlation, authentication, redirect, bound, fault, and
+  denial behavior. Exact Go 1.25.13 focused and full race tests, repository
+  vet, Linux build, Windows amd64 vet/build, and the pinned
+  `scripts/security-review-checks.sh` gate pass; `govulncheck` reports zero
+  reachable vulnerabilities. The simulator does not prove ServiceNow sensor
+  behavior. Real
+  `ecc_agent` bootstrap/list appearance, validation, exact stock Heartbeat XML,
+  Up/Down transitions, and Discovery Status remain explicitly unverified
+  pending signed-in developer-instance/reference-MID access. See
+  `docs/servicenow-mid.md`.
+- **Verified in the previous/predecessor slice (M3 slice 5,
+  ServiceNow-controlled Topo Relay MVP):** `topo relay run` polls two fixed
+  custom Scripted REST resources, executes only locally configured `local` or
+  `ssh-linux` profiles, and retains IRE/result delivery in an encrypted spool.
+  Its simulator-backed end-to-end evidence remains valid, but the scoped app,
+  custom tables, and scripts are not the required final architecture or an
+  installation prerequisite. They are retained as experimental predecessor
+  artifacts; see `docs/servicenow-relay.md`.
 - **Verified in the previous slice (M3 slice 4, source precedence and asset
   conflict/freshness visibility):** `topo serve -source-precedence` accepts
   an ordered, bounded list of discovery plugin names. Both repository
@@ -181,8 +198,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M3 slice 5, ServiceNow-controlled Topo Relay MVP, in
-  <https://github.com/Nischoy-ai/topo/pull/47>.
+- **Open pull request:** M3 slice 6, native ServiceNow ECC-compatible MID
+  transport, in <https://github.com/Nischoy-ai/topo/pull/48>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -214,7 +231,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/43>; and AWS/Azure live-validation
   handoff updates in <https://github.com/Nischoy-ai/topo/pull/44> and
   <https://github.com/Nischoy-ai/topo/pull/45>; source precedence/conflict
-  visibility in <https://github.com/Nischoy-ai/topo/pull/46>.
+  visibility in <https://github.com/Nischoy-ai/topo/pull/46>; and the scoped-app
+  ServiceNow Relay predecessor in <https://github.com/Nischoy-ai/topo/pull/47>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -240,8 +258,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   neither is a production-readiness claim. See "Completion status" under
   "Completed milestone: M2.5" below and `docs/security-review.md#independent-
   review`.
-- **Current milestone:** M3 — hybrid release candidate. Slice 5 is the current
-  enterprise-pilot priority. See "Current milestone: M3" below.
+- **Current milestone:** M3 — hybrid release candidate. Slice 6, native
+  ServiceNow ECC-compatible MID transport and real-instance evidence, is the
+  current enterprise-pilot priority. See "Current milestone: M3" below.
 - **Verified in the current remediation slice (`TSR-2026-004`, independent review):** an independent reviewer
   (Grok/xAI) found `TSR-2026-004` (reported as `TSR-2026-001` in the
   reviewer's own numbering; renumbered here — see "Independent review" in
@@ -2236,7 +2255,7 @@ fallback) — credentials are always explicit, matching every other Topo
 discovery plugin. This completes the three protocol integrations
 `ROADMAP.md`'s M3 line names (Kubernetes, AWS Organizations, Azure).
 
-### Slice 4 — source precedence and asset conflict/freshness visibility (implemented, proposed in PR 46)
+### Slice 4 — source precedence and asset conflict/freshness visibility (implemented, merged in PR 46)
 
 **Objective.** Make Topo's resolved asset view explainable when more than one
 discovery source reports the same stable asset. Preserve each source's latest
@@ -2282,15 +2301,19 @@ amd64 vet/build. Helm lifecycle rendering remains covered by the ordinary CI
 chart job; a local Helm binary was not installed in the development
 environment, so no local chart-render claim is made.
 
-### Slice 5 — ServiceNow-controlled Topo Relay MVP (implemented, proposed in PR 47)
+### Slice 5 — ServiceNow-controlled Topo Relay MVP (implemented and merged in PR 47; experimental predecessor)
 
-**Objective.** Let an operator use ServiceNow as the control panel for an
+**Historical objective.** Let an operator use ServiceNow as the control panel for an
 outbound-only Topo Relay installed inside a network segment: start or schedule
 one of the Relay's locally preconfigured discovery profiles, observe Relay and
 job status in ServiceNow, and reconcile the resulting CIs and relationships
 through IRE. This copies the useful deployment shape of a MID Server without
 impersonating ServiceNow's proprietary MID Server protocol or making
 ServiceNow Topo's internal data model.
+
+This scoped-app approach is retained as implementation/evidence history, not
+the required final architecture. Slice 6 supersedes its control plane with
+native ECC/MID behavior and requires no Topo application on the instance.
 
 **Deliverables.** Add `topo relay run`, a long-running process that polls a
 fixed Scripted REST API beneath the configured ServiceNow instance, advertises
@@ -2338,6 +2361,60 @@ Automated evidence is intentionally simulator-backed; real scoped-app import,
 OAuth/role configuration, scheduled execution, and IRE publication through the
 new Relay remain pending against the available developer instance.
 
+### Slice 6 — native ServiceNow ECC-compatible MID transport (current)
+
+**Objective.** Replace slice 5's custom scoped-application control plane with
+an ECC-compatible implementation that installs only on the Topo host and uses
+ServiceNow's native MID Server records, selection model, Discovery schedules,
+Discovery Status, and ECC Queue. Slice 5 remains a predecessor/experimental
+transport until native behavior is proven; it is not the required final
+architecture and is not removed in this slice.
+
+**Deliverables.** Add `topo mid run` and a native ECC transport package that
+uses the documented direct SOAP endpoint `/ecc_queue.do?SOAP` with a dedicated
+ServiceNow user and credential references. The client accepts only an absolute
+HTTPS instance origin, refuses credentials/path/query/fragment and redirects,
+bounds and cancels every request and XML response, and polls a bounded set of
+`output`/`ready` records addressed exactly to
+`mid.server.<locally-configured-name>`. It durably journals a claimed record,
+uses explicit `processing`/`processed` transitions, prevents two local
+processes from sharing one MID identity, resumes an interrupted claim, and
+deduplicates a result by `response_to` before inserting a correlated
+`input`/`ready` record. The first dispatcher recognizes only the stock
+`Heartbeat` topic; every other topic, including generic `Command`,
+`SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics, receives a
+bounded correlated denied/unsupported result and is never executed. A faithful
+SOAP/ECC simulator exercises this transport in deterministic CI. Registration,
+validation, heartbeat XML, and instance-derived liveness behavior must be
+captured separately against a real ServiceNow instance rather than inferred
+from the simulator.
+
+**Acceptance gates.** Tests cover URL and credential validation, Basic-auth
+SOAP requests, redirect refusal, exact agent/queue/state filters, response and
+XML depth/record bounds, SOAP faults, claim/restart recovery, local duplicate-
+process exclusion, result correlation/deduplication, Heartbeat-only dispatch,
+and visible denial of every other topic without executing payload/name/source
+content. Exact Go 1.25.13 format, diff, focused SOAP/ECC integration, vet,
+race, Linux build, Windows amd64 vet/build, and the pinned security-review gate
+must pass. Real evidence must state independently whether Topo appears in the
+standard MID list, completes native validation, responds to the instance's
+stock Heartbeat probe, and transitions Up/Down; any unobserved point remains
+explicitly unverified.
+
+**Deliberate non-goals.** This slice does not implement stock Discovery
+`Command`, `SSHCommand`, PowerShell, JavaScript, Groovy, pattern, credential,
+attachment, or sensor payload contracts; advertise `ALL` or generic
+orchestration capabilities; accept ServiceNow selection metadata as local
+authorization; execute any target operation; install a scoped application,
+update set, custom table/API/Business Rule/scheduled script; remove the slice-5
+predecessor; provision package channels or production signing credentials; or
+claim official ServiceNow MID certification. The precise claim is an
+ECC-compatible implementation until real interoperability evidence supports
+more. A later focused slice must capture one sanitized stock Linux SSH
+Discovery transaction from an official MID reference run before translating
+any target-bearing topic, and every requested target/range must then intersect
+a local allowlist before execution.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up
@@ -2350,12 +2427,16 @@ because M3 work has begun.
 ## Follow-on order
 
 The M2.5 slices above are complete (see "Completion status" under that
-milestone); M3's ServiceNow-controlled Relay was prioritized by enterprise
-pilot evidence after the original Kubernetes/AWS/Azure/source-resolution
-slices. The next Relay work should import and validate the scoped app on the
-real developer instance, then add WinRM/SNMP/VMware profiles and service-manager
-packaging as focused slices before returning to the remaining larger scale
-gates leading toward Topo Graph.
+milestone); M3's ServiceNow integration was prioritized by enterprise-pilot
+evidence after the original Kubernetes/AWS/Azure/source-resolution slices.
+The custom scoped-app Relay from slice 5 is retained as predecessor evidence,
+not the required final architecture. The current work is slice 6's native ECC
+transport and real-instance Heartbeat/registration/validation evidence. Only
+after that evidence exists should a focused Linux SSH slice capture and
+translate the exact stock Discovery transaction; WinRM, SNMP, VMware, cloud,
+and orchestration topics follow separately rather than inheriting guessed
+contracts or an `ALL` capability. The remaining larger scale gates leading
+toward Topo Graph stay staged independently.
 
 PostgreSQL was evaluated as part of the persistent-storage milestone and
 deliberately deferred (see "Storage technology decision" under the

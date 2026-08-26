@@ -167,19 +167,26 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   observations. Cross-ID correlation, relationship precedence, omission-based
   retirement, and stale-after policy remain separate follow-ups. See
   [docs/source-resolution.md](docs/source-resolution.md).
-- **Implemented alpha (ServiceNow-controlled Topo Relay):** `topo relay run`
-  polls an authenticated scoped-app job queue outbound from the network,
-  executes only a locally preconfigured `local` or `ssh-linux` profile,
-  publishes observations through IRE, and reports terminal status through a
-  bounded encrypted retry spool. Jobs contain no targets, credentials,
-  options, or executable text. Public table/resource/server-script definitions
-  provide the Topo Profile, Schedule, Job, Relay heartbeat, manual-start, and
-  scheduled-enqueue control panel. Automated tests cover the full simulated
-  ServiceNow-to-real-SSH-to-IRE-to-result path; importing the scoped app and
-  completing a scheduled job against a real ServiceNow instance remain
-  unverified. This behaves like a MID Server operationally but does not emulate
-  the proprietary MID/ECC Queue protocol or appear in the stock MID selector.
-  See [docs/servicenow-relay.md](docs/servicenow-relay.md).
+- **Implemented predecessor (scoped-app ServiceNow-controlled Relay):** PR #47's
+  `topo relay run` custom tables and Scripted REST resources remain in the
+  repository as experimental transport evidence. They are not the required
+  final architecture or an installation prerequisite. See
+  [docs/servicenow-relay.md](docs/servicenow-relay.md).
+- **Implemented transport slice (native ServiceNow ECC-compatible MID):**
+  `topo mid run` uses the fixed native `/ecc_queue.do?SOAP` endpoint with a
+  dedicated MID user credential reference, polls only bounded
+  `output`/`ready` work for exactly `mid.server.<configured-name>`, durably
+  journals claims, enforces a local identity lock, resumes crash windows,
+  deduplicates correlated `input`/`ready` results by `response_to`, and refuses
+  redirects and unbounded XML. Only the stock `Heartbeat` topic is recognized;
+  `Command`, `SSHCommand`, PowerShell, JavaScript, Groovy, and every unknown
+  topic receive a visible correlated denial and are never executed. A faithful
+  direct-SOAP/ECC simulator provides deterministic CI evidence. Real
+  `ecc_agent` bootstrap, standard list appearance, validation, exact stock
+  Heartbeat XML, Up/Down transitions, and Discovery Status behavior remain
+  unverified pending a sanitized official-MID reference capture. No scoped
+  application is required for this native path. See
+  [docs/servicenow-mid.md](docs/servicenow-mid.md).
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.
 
