@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-25
+- **Updated:** 2026-08-28
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -23,9 +23,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   requirement, is merged in <https://github.com/Nischoy-ai/topo/pull/47> and
   retained as an experimental scoped-app predecessor, not the required final
   architecture. Slice 6 (native ServiceNow ECC-compatible MID transport) is
-  implemented on `agent/m3-native-ecc-mid`: `topo mid run`, strict direct-SOAP
-  ECC polling, durable claim/restart handling, local identity locking,
-  Heartbeat-only dispatch, and correlated denial of every other topic. Real
+  implemented and merged in <https://github.com/Nischoy-ai/topo/pull/48>:
+  `topo mid run`, strict direct-SOAP ECC polling, durable claim/restart
+  handling, local identity locking, Heartbeat-only dispatch, and correlated
+  denial of every other topic. Real
   `ecc_agent` bootstrap/validation, exact stock Heartbeat XML, and Up/Down
   evidence remain unverified. See "Current milestone: M3" below. The most recent merged
   M2.5 slice fixed
@@ -73,6 +74,24 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   Up/Down transitions, and Discovery Status remain explicitly unverified
   pending signed-in developer-instance/reference-MID access. See
   `docs/servicenow-mid.md`.
+- **Verified development Homebrew pilot (not production-channel evidence):**
+  the separate public
+  <https://github.com/Nischoy-ai/homebrew-topo-dev> tap and its
+  `v0.0.0-dev.2` prerelease packages the exact Topo source commit recorded in
+  `release-metadata.json`. Exact Go 1.25.13 built all six raw archives twice
+  from separate source paths with byte-identical output; every public asset
+  was downloaded again and verified against the published
+  `SHA256SUMS`. `topo.rb` passes Homebrew style, strict online new-formula
+  audit, a real Apple Silicon install, and `brew test`; the installed
+  `/opt/homebrew/bin/topo` reports `v0.0.0-dev.1` and exposes `topo mid run`.
+  The macOS binary has only Go's ad-hoc linker signature—no Developer ID team
+  identity or notarization—and the mutable prerelease has no Sigstore bundle,
+  GitHub build provenance, SBOM, or protected promotion evidence. This pilot
+  neither provisions the deferred official `Nischoy-ai/homebrew-tap` nor
+  satisfies the real-beta/N-1 stable package-channel gate. The earlier
+  `v0.0.0-dev.1` build was withdrawn after the security gate began reporting
+  reachable `GO-2026-6303`; v0.55.0 of `golang.org/x/crypto` fixes it, and the
+  exact Go 1.25.13 security-review gate reports zero reachable vulnerabilities.
 - **Verified in the previous/predecessor slice (M3 slice 5,
   ServiceNow-controlled Topo Relay MVP):** `topo relay run` polls two fixed
   custom Scripted REST resources, executes only locally configured `local` or
@@ -198,8 +217,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M3 slice 6, native ServiceNow ECC-compatible MID
-  transport, in <https://github.com/Nischoy-ai/topo/pull/48>.
+- **Open pull request:** development Homebrew evidence documentation in
+  <https://github.com/Nischoy-ai/topo/pull/49>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -232,7 +251,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   handoff updates in <https://github.com/Nischoy-ai/topo/pull/44> and
   <https://github.com/Nischoy-ai/topo/pull/45>; source precedence/conflict
   visibility in <https://github.com/Nischoy-ai/topo/pull/46>; and the scoped-app
-  ServiceNow Relay predecessor in <https://github.com/Nischoy-ai/topo/pull/47>.
+  ServiceNow Relay predecessor in <https://github.com/Nischoy-ai/topo/pull/47>;
+  and native ServiceNow ECC-compatible MID transport in
+  <https://github.com/Nischoy-ai/topo/pull/48>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
