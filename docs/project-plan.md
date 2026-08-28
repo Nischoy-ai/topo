@@ -77,10 +77,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Verified development Homebrew pilot (not production-channel evidence):**
   the separate public
   <https://github.com/Nischoy-ai/homebrew-topo-dev> tap and its
-  `v0.0.0-dev.1` prerelease package merged Topo commit
-  `32733488a704114e3a805c6313aae4257cade7d4`. Exact Go 1.25.13 built all six
-  raw archives twice from separate source paths with byte-identical output;
-  every public asset was downloaded again and verified against the published
+  `v0.0.0-dev.2` prerelease packages the exact Topo source commit recorded in
+  `release-metadata.json`. Exact Go 1.25.13 built all six raw archives twice
+  from separate source paths with byte-identical output; every public asset
+  was downloaded again and verified against the published
   `SHA256SUMS`. `topo.rb` passes Homebrew style, strict online new-formula
   audit, a real Apple Silicon install, and `brew test`; the installed
   `/opt/homebrew/bin/topo` reports `v0.0.0-dev.1` and exposes `topo mid run`.
@@ -88,7 +88,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   identity or notarization—and the mutable prerelease has no Sigstore bundle,
   GitHub build provenance, SBOM, or protected promotion evidence. This pilot
   neither provisions the deferred official `Nischoy-ai/homebrew-tap` nor
-  satisfies the real-beta/N-1 stable package-channel gate.
+  satisfies the real-beta/N-1 stable package-channel gate. The earlier
+  `v0.0.0-dev.1` build was withdrawn after the security gate began reporting
+  reachable `GO-2026-6303`; v0.55.0 of `golang.org/x/crypto` fixes it, and the
+  exact Go 1.25.13 security-review gate reports zero reachable vulnerabilities.
 - **Verified in the previous/predecessor slice (M3 slice 5,
   ServiceNow-controlled Topo Relay MVP):** `topo relay run` polls two fixed
   custom Scripted REST resources, executes only locally configured `local` or

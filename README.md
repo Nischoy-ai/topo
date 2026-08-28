@@ -64,9 +64,10 @@ is available for manual testing of the native ServiceNow ECC integration:
 brew install nischoy-ai/topo-dev/topo
 ```
 
-It is built from merged commit `3273348`, has no Developer ID signature or
-notarization ticket, and does not satisfy the deferred beta/N-1 production-
-channel evidence. See [package-manager distribution](docs/distribution.md).
+Its exact source commit and toolchain are recorded in the published release
+metadata. It has no Developer ID signature or notarization ticket and does not
+satisfy the deferred beta/N-1 production-channel evidence. See
+[package-manager distribution](docs/distribution.md).
 
 Exercise 500 Linux targets through real SSH handshakes and sessions without provisioning VMs:
 
