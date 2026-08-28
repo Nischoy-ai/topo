@@ -214,9 +214,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** development Homebrew evidence documentation will be
-  proposed from `agent/homebrew-dev-prerelease-evidence`; replace this line
-  with the PR URL after creation.
+- **Open pull request:** development Homebrew evidence documentation in
+  <https://github.com/Nischoy-ai/topo/pull/49>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
