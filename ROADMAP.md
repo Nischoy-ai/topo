@@ -167,25 +167,38 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   observations. Cross-ID correlation, relationship precedence, omission-based
   retirement, and stale-after policy remain separate follow-ups. See
   [docs/source-resolution.md](docs/source-resolution.md).
-- **Implemented predecessor (scoped-app ServiceNow-controlled Relay):** PR #47's
+- **ServiceNow product direction — Topo discovery plus IRE:** Topo owns
+  scheduling and executes only compiled-in discovery operations, then publishes
+  destination-neutral observations through the documented
+  `/api/now/identifyreconcile/enhanced` API with stable source identity. ECC is
+  not a general ingestion API, and Topo does not claim standard Discovery
+  Schedule, Discovery Status, stock sensor, or drop-in MID compatibility.
+  Broader real-instance validation of Topo's emitted classes, relationships,
+  and batch sizes remains M3 work. See
+  [docs/servicenow.md](docs/servicenow.md).
+- **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
-  repository as experimental transport evidence. They are not the required
-  final architecture or an installation prerequisite. See
+  repository as experimental control-plane evidence. They are not required for
+  direct IRE publication. See
   [docs/servicenow-relay.md](docs/servicenow-relay.md).
-- **Implemented transport slice (native ServiceNow ECC-compatible MID):**
+- **Implemented experiment (ServiceNow ECC-compatible transport):**
   `topo mid run` uses the fixed native `/ecc_queue.do?SOAP` endpoint with a
   dedicated MID user credential reference, polls only bounded
   `output`/`ready` work for exactly `mid.server.<configured-name>`, durably
   journals claims, enforces a local identity lock, resumes crash windows,
   deduplicates correlated `input`/`ready` results by `response_to`, and refuses
-  redirects and unbounded XML. Only the stock `Heartbeat` topic is recognized;
+  redirects and unbounded XML. Only the simulator-defined `Heartbeat` topic is
+  recognized;
   `Command`, `SSHCommand`, PowerShell, JavaScript, Groovy, and every unknown
   topic receive a visible correlated denial and are never executed. A faithful
-  direct-SOAP/ECC simulator provides deterministic CI evidence. Real
-  `ecc_agent` bootstrap, standard list appearance, validation, exact stock
-  Heartbeat XML, Up/Down transitions, and Discovery Status behavior remain
-  unverified pending a sanitized official-MID reference capture. No scoped
-  application is required for this native path. See
+  direct-SOAP/ECC simulator provides deterministic CI evidence. A 2026-08-28
+  official-MID reference run proved automatic `ecc_agent` registration,
+  standard list appearance, native validation, and a correlated
+  `HeartbeatProbe` request/result on the tested release. It also proved Topo's
+  simulator-only `Heartbeat` topic is not that stock contract and showed that
+  ECC input requires operation-specific instance processing. No stock
+  Discovery translators are planned without a documented and supported
+  interoperability contract. See
   [docs/servicenow-mid.md](docs/servicenow-mid.md).
 - Scale and upgrade testing at 1K, 10K, and 100K assets.
 - SSO/RBAC commercial modules behind documented open interfaces.

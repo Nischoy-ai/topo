@@ -11,13 +11,12 @@ rotation, revocation, heartbeats, and jobs; an outbound-only agent with encrypte
 offline buffering; SQLite persistence, backup/restore, source-aware asset
 resolution, an audit log, and recurring scheduling; deterministic release and
 package automation; JSON Lines/webhook publishing; and a ServiceNow IRE
-publisher with real duplicate-CI reconciliation evidence. `topo mid run` adds
-the first native ServiceNow ECC-compatible transport slice: strict SOAP ECC
-polling, durable claim/restart handling, native Heartbeat-only dispatch, and a
-safe correlated denial for every other topic. The PR #47 scoped-app Relay is
-retained as an experimental predecessor, not a required installation or the
-final architecture. The detailed status and evidence boundaries are maintained
-in [ROADMAP.md](ROADMAP.md).
+publisher with real duplicate-CI reconciliation evidence. For ServiceNow,
+Topo remains the discovery engine and publishes normalized observations through
+the documented IRE API. The `topo mid run` ECC transport and PR #47 scoped-app
+Relay remain bounded experiments; neither is a customer installation
+requirement or a supported replacement for ServiceNow Discovery. The detailed
+status and evidence boundaries are maintained in [ROADMAP.md](ROADMAP.md).
 
 AWS Organizations has partial live-account evidence: real SigV4 connectivity,
 multi-account enumeration, the not-enabled error path, and the documented
@@ -25,9 +24,9 @@ least-privilege policy are confirmed. Live AWS OU/delegated-admin/STS paths,
 real Azure discovery (setup is blocked on Tenant Root Group Reader assignment),
 real VMware/Kubernetes/SNMP compatibility, broader ServiceNow class coverage,
 additional Kubernetes/cloud resource kinds, relationship precedence and
-cross-ID correlation, real ServiceNow MID registration/validation/Heartbeat
-evidence and stock Discovery topic contracts, PostgreSQL/HA, and the M3 scale
-gates remain explicit follow-ups rather than completed claims.
+cross-ID correlation, broader real-instance ServiceNow IRE class/batch
+coverage, PostgreSQL/HA, and the M3 scale gates remain explicit follow-ups
+rather than completed claims.
 
 It also includes **Topo Lab**, a deterministic estate simulator for exercising discovery concurrency, failures, identity resolution, and CMDB mappings without provisioning hundreds of real machines.
 
@@ -238,21 +237,24 @@ The product family uses these names as capabilities are delivered:
 
 Nischoy Topo maps assets to ServiceNow CI classes and supplies `sys_object_source_info` for stable source identity. Publishing uses `/api/now/identifyreconcile/enhanced`; it does not write CMDB tables directly. Preview mode produces the complete proposed payload without network access. The outbound payload is proven duplicate-free and idempotent across repeated scans (deduplicated within a batch, and validated identical across independent Topo Lab discovery runs), and ServiceNow's own identification and reconciliation behavior has been verified against a real developer instance for the `cmdb_ci_computer` class: submitting the same `sys_object_source_info` twice updates the existing CI rather than creating a duplicate. See [ServiceNow publishing](docs/servicenow.md). A production deployment must register the `Nischoy Topo` discovery source as a `discovery_source` choice value (a real ServiceNow requirement found during validation — writes are otherwise rejected), and configure reconciliation rules and explicit canonical-attribute mappings, before enabling writes; Nischoy Topo does not invent custom `cmdb_ci` fields for its internal identifiers.
 
-`topo mid run` is the required control-plane direction. It polls native
-`ecc_queue` output through `/ecc_queue.do?SOAP` as
-`mid.server.<configured-name>`, journals claims before state transitions,
-inserts correlated input results, supports only the stock `Heartbeat` topic in
-this first slice, and visibly denies every other topic without executing its
-name or payload. It installs nothing on the instance beyond ordinary native
-ServiceNow MID/Discovery configuration. Real `ecc_agent` registration,
-validation, stock Heartbeat XML, and Up/Down evidence remain unverified until a
-sanitized official-MID reference capture is available. See
-[Native ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
+Topo-owned discovery followed by IRE publication is the supported ServiceNow
+architecture. ECC Queue is a MID probe/sensor transport, not a general CMDB
+ingestion API: an `input` result updates Discovery or the CMDB only when native
+instance processing recognizes its topic and operation-specific payload. Topo
+does not promise standard Discovery Schedule, Discovery Status, stock sensor,
+or drop-in MID compatibility.
 
-The scoped-app `topo relay run` transport from PR #47 remains in the repository
-as an experimental predecessor only; its custom tables and Scripted REST API
-are not required for `topo mid run`. See
-[predecessor scoped-app Relay](docs/servicenow-relay.md).
+`topo mid run` is retained as an experimental, default-deny ECC transport. A
+real official-MID reference run proved automatic registration, native
+validation, and a correlated `HeartbeatProbe` exchange, while also proving
+that Topo's simulator-only `Heartbeat` contract is not the stock contract for
+the tested release. No stock Discovery topic translator is planned without a
+documented and supported interoperability contract. See
+[Experimental ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
+
+The scoped-app `topo relay run` transport from PR #47 also remains as an
+experiment. Its custom tables and Scripted REST API are not required for direct
+IRE publishing. See [experimental scoped-app Relay](docs/servicenow-relay.md).
 
 ## Security posture
 
@@ -263,14 +265,14 @@ are not required for `topo mid run`. See
 - The WinRM plugin executes fixed CIM resource/query pairs for required host identity and optional network, volume, service, and patch inventory plus one compiled-in PowerShell command for machine-wide uninstall-registry software inventory; it requires HTTPS outside loopback-only Lab mode, verifies server certificates, performs NTLMv2 without Basic fallback, bounds SOAP and command output, and applies operation deadlines and concurrency limits.
 - The container runs as a non-root user with a read-only filesystem and no Linux capabilities.
 - Secrets are resolved through bounded `env:`, `file:`, `vault:`, or `k8s:` references and never serialized into observations, CLI arguments, or logs.
-- Native ServiceNow control uses a fixed SOAP ECC endpoint, exact MID agent
-  identity, bounded/cancellable XML, redirect refusal, a local process lock,
-  and a durable crash journal. Only `Heartbeat` is recognized; `Command`,
-  `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics receive a
-  correlated denial. No target-bearing operation is enabled until its stock
-  contract is captured and its requested targets intersect a local allowlist.
+- ServiceNow publication uses the documented IRE API, stable source identity,
+  strict HTTPS validation, redirect refusal, bounded responses, and no direct
+  CMDB table writes. The experimental ECC transport remains default-deny:
+  `Command`, `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics
+  receive a correlated denial, and it is not a supported discovery control
+  plane.
 - The PR #47 scoped-app Relay's local-profile/encrypted-spool boundary remains
-  documented as predecessor behavior, not the required native architecture.
+  documented as experimental behavior, not a required architecture.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
 - Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token bound to that collector ID at issuance; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 - Outbound mTLS (opt-in via `-mtls`, requires `-ca-dir`) lets the controller terminate TLS natively and authenticate collectors by their enrolled certificate instead of the bearer API key; a client presenting no certificate at all still reaches `POST /v1/enroll` (authenticated by its one-time token). A verified collector certificate authorizes collector data-plane endpoints but not operator endpoints. See [Running as native mTLS](docs/enrollment.md#running-as-native-mtls).

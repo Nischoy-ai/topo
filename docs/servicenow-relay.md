@@ -1,13 +1,14 @@
-# Predecessor scoped-app ServiceNow-controlled Topo Relay
+# Experimental scoped-app ServiceNow-controlled Topo Relay
 
-This document records the experimental predecessor implemented in PR #47. It
-is retained while Topo's native ECC-compatible transport is proven, but it is
-not the required final ServiceNow architecture. Installing Topo does not
-require this scoped application, its custom tables, Scripted REST resources,
-Business Rule, UI action, or scheduled script. New native work is documented
-in [Native ServiceNow ECC-compatible MID transport](servicenow-mid.md).
+This document records the experimental control-plane prototype implemented in
+PR #47. It is retained as control-plane and encrypted-spool evidence, but it is
+not the required ServiceNow architecture. Installing Topo for direct IRE
+publication does not require this scoped application, its custom tables,
+Scripted REST resources, Business Rule, UI action, or scheduled script. The
+separate ECC experiment is documented in
+[Experimental ServiceNow ECC-compatible MID transport](servicenow-mid.md).
 
-The predecessor runs inside the network, makes outbound HTTPS requests to
+The experimental Relay runs inside the network, makes outbound HTTPS requests to
 custom ServiceNow resources, claims a job created from a custom form or
 schedule, performs a compiled-in discovery operation, publishes the
 observation through IRE, and records terminal job status in a custom table.
@@ -26,11 +27,11 @@ ServiceNow profile / schedule / job
        ServiceNow IRE + job result
 ```
 
-This predecessor is not a drop-in replacement in the stock ServiceNow
+This experiment is not a drop-in replacement in the stock ServiceNow
 Discovery Schedule MID Server selector. Its custom Topo tables and **Start
-discovery** UI action are historical experimental controls, not installation
-requirements for the product. Native `ecc_agent`, selection, Discovery Status,
-and `ecc_queue` behavior belong to `topo mid run` instead.
+discovery** UI action are optional experimental controls, not installation
+requirements for the product. Topo does not promise native `ecc_agent`,
+Discovery Schedule, Discovery Status, or stock sensor compatibility.
 
 ## Security boundary
 
@@ -79,9 +80,9 @@ The source definitions are retained under
 `integrations/servicenow/topo-relay/`. `application.json` is the authoritative
 field/resource manifest and the `scripts/` directory contains the exact server
 scripts. They are reviewable source artifacts, not yet a signed ServiceNow
-Store application or a generated update-set XML file. Do not install them for
-the native architecture. To reproduce PR #47's predecessor experiment in a
-disposable sub-production instance only:
+Store application or a generated update-set XML file. They are not needed for
+direct IRE publication. To reproduce PR #47's experiment in a disposable
+sub-production instance only:
 
 1. Create a scoped application named **Nischoy Topo** with scope
    `x_nischoy_topo`.
@@ -121,7 +122,7 @@ the scoped application through ServiceNow source control or an update set.
 That real exported artifact—not hand-authored metadata XML—should become the
 repeatable installation input for later instances.
 
-## Configure the predecessor Relay host
+## Configure the experimental Relay host
 
 Start from `examples/servicenow/relay-config.json`. The config path, targets
 file, `known_hosts`, credential files, and spool path must be absolute. The
@@ -163,7 +164,7 @@ logs. Restart the Relay after rotating or renewing it. Automatic OAuth token
 refresh is a follow-up; use an access token whose lifetime matches the pilot or
 restart with a newly written token file before expiry.
 
-## Start and inspect predecessor discovery
+## Start and inspect experimental discovery
 
 Create one ServiceNow Topo Profile for each local profile ID, assigned to the
 matching Relay record. The ServiceNow `u_plugin` is display/audit metadata; the
@@ -181,12 +182,13 @@ Relay trusts only its local profile definition.
 
 ## Evidence status
 
-Automated tests exercise this predecessor's outbound HTTP contract, bearer header and
+Automated tests exercise this experiment's outbound HTTP contract, bearer header and
 fixed paths, redirect refusal, response bounds, job-schema injection rejection,
 encrypted-spool retry, local discovery, and a complete real-SSH Topo Lab flow
 through a simulated ServiceNow poll/IRE/result server. The scoped application
 scripts and table definitions have not yet been imported into a real
 ServiceNow instance. That experiment is no longer on the required validation
-path: real evidence should instead exercise `topo mid run` through the native
-MID list, validation, Heartbeat, Discovery Schedule, Discovery Status, and ECC
-Queue. Do not claim this predecessor as a supported production MID replacement.
+path. Product evidence should exercise Topo's documented IRE publication,
+stable source identity, class/relationship mappings, and repeated discovery
+against a real instance. Do not claim this experiment as a supported
+production MID replacement or required ServiceNow integration.

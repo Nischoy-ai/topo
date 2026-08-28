@@ -1,32 +1,46 @@
-# Native ServiceNow ECC-compatible MID transport
+# Experimental ServiceNow ECC-compatible MID transport
 
-`topo mid run` is Topo's required ServiceNow control-plane direction. It uses
-ServiceNow's native ECC Queue and direct SOAP table service; it does not require
-a Topo scoped application, update set, custom table, Scripted REST API,
-Business Rule, UI action, or scheduled script on the instance.
+`topo mid run` is a retained interoperability experiment. It uses ServiceNow's
+native ECC Queue and direct SOAP table service, but it is not Topo's supported
+ServiceNow ingestion path, a customer installation requirement, or a drop-in
+replacement for the official MID Server. Topo-owned discovery followed by the
+documented IRE API is the product architecture; see
+[ServiceNow publishing](servicenow.md).
 
 The precise current claim is **ECC-compatible MID transport**, not a certified
 or fully interoperable replacement for every stock MID Server operation. The
 public SOAP and ECC contracts define transport and selection fields, but every
-ECC `topic` and payload is an operation-specific contract. Topo enables a topic
-only after it has been observed in a sanitized official MID reference run and
-mapped to a compiled-in, reviewed Topo operation.
+ECC `topic` and payload is an operation-specific contract. No additional topic
+will be enabled without a new explicit product decision and a documented,
+supported interoperability contract.
 
-No third-party MID approval program is treated as a prerequisite. Progress is
-gated by observed interoperability and security evidence, not by an assumed
-certification requirement; use the stronger “native MID Server” product claim
-only if later evidence supports it.
+No third-party MID approval program is asserted as a prerequisite. The blocker
+is the technical contract: ECC is a probe/sensor transport, not a general CMDB
+ingestion API, and stock Discovery results are meaningful only to matching
+instance-side processors. Do not use the stronger “native MID Server” product
+claim.
 
-## Native architecture
+## Why this is not the product ingestion architecture
 
-ServiceNow remains the intended control panel:
+ServiceNow's public ECC and SOAP descriptions define message transport and
+selection fields. They do not define one destination-neutral discovery result
+that becomes a CI. Each probe topic and payload is consumed by an
+operation-specific Business Rule or sensor. An unmatched `input` record can
+remain unprocessed or fail with no matching sensor; merely inserting it into
+`ecc_queue` does not publish anything to CMDB.
+
+Stock Discovery also sends dynamic operation content. ServiceNow documents, for
+example, that an `SSHCommand` message's `name` is the actual command. Executing
+that content would violate Topo's compiled-in-operation invariant. Recreating
+the official MID runtime and every version-specific probe, sensor, pattern,
+credential, attachment, and pagination contract is not a supported Topo goal.
+
+The experiment's bounded transport shape remains:
 
 ```text
-Native Discovery Schedule / MID selector
+Experimental ECC output / ready record
                     |
                     v
-       ecc_queue output / ready record
-                    |
        HTTPS POST /ecc_queue.do?SOAP
                     |
              topo mid run
@@ -35,10 +49,10 @@ Native Discovery Schedule / MID selector
                     |
        ecc_queue input / ready response
                     |
-      native sensor / Discovery Status / IRE
+      matching native sensor, if one exists
 ```
 
-The native instance records involved in the final architecture are:
+The native instance records exercised by the experiment are:
 
 - `ecc_agent`: registered MID identity, host/version/status, and validation
   state;
@@ -47,10 +61,9 @@ The native instance records involved in the final architecture are:
 - `ecc_queue`: work and results, correlated by `agent`, `topic`, `source`,
   `queue`, `state`, `response_to`, and `agent_correlator`.
 
-Topo never writes a CMDB CI table directly. When a later stock discovery
-translator produces destination-neutral Topo observations, CI publication
-continues through ServiceNow IRE with stable source identity, as documented in
-[ServiceNow publishing](servicenow.md).
+Topo never writes a CMDB CI table directly. Production discovery observations
+are published to ServiceNow IRE with stable source identity independently of
+this experiment, as documented in [ServiceNow publishing](servicenow.md).
 
 ## SOAP and ECC boundary
 
@@ -101,30 +114,32 @@ but the public transport alone cannot prove atomic exclusion between two hosts
 misconfigured with the same MID name. Native configuration must keep MID names
 unique. This slice also executes no target-bearing operation, so that remaining
 cross-host claim question cannot cause duplicate SSH/PowerShell/SNMP or other
-side effects. A real official-MID capture must establish the stronger native
-claim behavior before any such translator is enabled.
+side effects. No target-bearing translator is planned for this path.
 
-## Supported topics
+## Implemented experimental topics
 
 | ECC topic | Current behavior | Evidence |
 | --- | --- | --- |
-| `Heartbeat` | Creates one bounded correlated success result and echoes the bounded ECC `parameters` field as opaque correlation data. It does not force `ecc_agent.status=Up`. | SOAP/state/correlation behavior is simulator-tested. The exact stock Heartbeat XML and ServiceNow Up/Down interpretation remain unverified against a real instance. |
+| `Heartbeat` | Creates one bounded correlated success result and echoes the bounded ECC `parameters` field as opaque correlation data. It does not force `ecc_agent.status=Up`. | Simulator-only contract. The tested official MID release used `HeartbeatProbe`, not `Heartbeat`; this handler is not stock-compatible evidence. |
+| `HeartbeatProbe` | Default-denied as unsupported. | A real official MID request/response was captured on 2026-08-28, but Topo did not implement it after ECC was removed from the product ingestion path. |
 | `Command`, `SSHCommand`, PowerShell, JavaScript, Groovy | Always creates a correlated `topo_unsupported_topic` error; never executes or interprets name/payload content. | Deterministic denial tests. |
 | Every other topic | Same default-deny result. | Deterministic denial tests. |
 
-The generated Heartbeat result follows the public ECC description: an
+The generated simulator-only Heartbeat result follows the public ECC
+description: an
 `input` response correlated to the output record, with a `<results>` root, one
-`<result>`, and one `<parameters>` element. Its exact compatibility with the
-stock Heartbeat sensor is not claimed until it is compared with a sanitized
-official MID response on the target ServiceNow release.
+`<result>`, and one `<parameters>` element. The real reference run established
+that it is not the tested release's stock liveness contract because the native
+topic was `HeartbeatProbe`.
 
 Topo advertises no `ALL`, generic orchestration, SSH, PowerShell, or discovery
 capability in this slice. `ecc_agent_capability` is selection metadata, never
 an authorization boundary.
 
-## Native instance configuration
+## Experimental instance configuration
 
-Use only ordinary ServiceNow administration:
+Use this only in a disposable development environment to reproduce transport
+research:
 
 1. Enable/license the ServiceNow Discovery/ITOM features the deployment needs.
 2. Create a dedicated non-interactive user for this MID identity and assign the
@@ -132,18 +147,15 @@ Use only ordinary ServiceNow administration:
    custom application role. Confirm that the release's native ACLs permit the
    required `ecc_queue` SOAP query/insert/update operations.
 3. Establish the standard `ecc_agent` record for the exact configured name,
-   then validate it through **MID Server > Servers > Validate**. The precise
-   bootstrap messages that create/populate this record have not yet been
-   captured, so this first slice does not fabricate them or repeatedly write
+   then validate it through **MID Server > Servers > Validate**. Automatic
+   creation was observed for the official MID, but Topo's own bootstrap
+   equivalence remains unverified; the experiment does not repeatedly write
    host/version/status fields.
-4. Assign only the native supported applications, exact capabilities, and IP
-   ranges Topo has actually implemented. Do not select `ALL`.
-5. Configure native Discovery credentials and schedules only after the exact
-   corresponding stock ECC transaction has a reviewed Topo translator. The
-   first planned transaction is one sanitized Linux SSH Discovery Schedule run
-   captured from a temporary official MID reference installation.
-6. Observe work and results through the standard MID Server list, Discovery
-   Schedule MID selector, Discovery Status, and ECC Queue.
+4. Do not assign applications, capabilities, or IP ranges and do not select
+   `ALL`; no target-bearing native operation is supported.
+5. Do not point a native Discovery Schedule at Topo. Standard Discovery status
+   and sensor completion are not claimed.
+6. Observe the experiment only through the MID Server list and ECC Queue.
 
 Official starting references:
 
@@ -180,20 +192,15 @@ restart after rotation. Do not place passwords, OAuth tokens, spool keys, SSH
 keys, or native Discovery credentials in ECC payloads, properties, logs,
 labels, command lines, or observation attributes.
 
-## Local target authorization
+## No target authority
 
-This Heartbeat-only slice has no target-capable operation, so an ECC `source`,
+This experiment has no target-capable operation, so an ECC `source`,
 native IP-range assignment, or capability cannot make Topo connect to anything.
-Before the first Linux SSH translator is enabled, the Topo host must have a
-separate owner-controlled target allowlist. Every requested host or IP range
-must intersect that local allowlist; the effective target set is the
-intersection, never the ServiceNow range alone. The translator must reject an
-empty or ambiguous intersection and continue to enforce the existing SSH host
-key, command, deadline, output, and credential-reference boundaries.
-
-The same rule applies independently to future WinRM, SNMP, VMware, cloud, and
-Kubernetes translators. A capability record says what ServiceNow may select;
-it does not grant Topo network or operation authority.
+No Linux SSH, WinRM, SNMP, VMware, cloud, Kubernetes, pattern, or orchestration
+translator is planned for this path. If a future documented interoperability
+contract causes that decision to be revisited, every requested target must
+still intersect an owner-controlled local allowlist; ServiceNow selection
+metadata can never grant Topo network or operation authority.
 
 ## Evidence status
 
@@ -204,13 +211,32 @@ faults, ready-to-processing-to-processed transitions, crash recovery without
 duplicate response insertion, local duplicate-process exclusion, Heartbeat
 dispatch, and visible denial of executable/unknown topics.
 
-The simulator is not a ServiceNow instance and does not prove any of these
-real-system points yet:
+The simulator is not a ServiceNow instance. A separate sanitized official-MID
+reference run on 2026-08-28, using the official Australia Patch 3 Linux
+container and a dedicated user with the built-in `mid_server` role, established:
 
-- automatic `ecc_agent` registration and required bootstrap fields;
-- standard MID list appearance and validation completion;
-- the exact stock Heartbeat request/result XML for the target release;
-- ServiceNow's Up/Down transitions and events from Topo responses;
+- the official MID automatically created its `ecc_agent` record and appeared
+  `Up` in the standard MID Server list;
+- native validation completed with `Validated: Yes` while initial application,
+  capability, and IP-range configuration was skipped;
+- the instance created an `output`/`processed` `HeartbeatProbe`, and the
+  official MID returned a correlated `input`/`processed` `HeartbeatProbe` whose
+  `response_to` referenced the output record;
+- the response used a `<results probe_time="..." result_code="0">` root,
+  runtime queue/memory/thread fields, echoed request parameters, and
+  `mid_operational_state=Up`; and
+- startup/validation also exercised topics including `SystemCommand`,
+  `config.file`, `queue.processing`, and `queue.stats`, demonstrating that
+  registration and validation are not a one-topic generic result contract.
+
+That reference run did not prove Topo compatibility: Topo recognizes
+`Heartbeat`, while the real release sent `HeartbeatProbe`. Topo itself was not
+registered or validated as an official-MID-equivalent implementation, and the
+official container was not stopped long enough to record a ServiceNow-derived
+Down transition. The following remain unverified and are no longer scheduled
+as product gates:
+
+- ServiceNow Up/Down transitions derived from Topo responses;
 - credential exchange or decryption contracts;
 - attachments, pagination beyond direct SOAP record paging, or multipage
   pattern results;
@@ -221,9 +247,8 @@ evidence separate from simulator evidence.
 
 ## Predecessor scoped-app Relay
 
-The custom scoped-application transport from PR #47 remains in the repository
-as an experimental predecessor while native ECC behavior is being proven. It
-is not the required final product architecture, and new deployments should not
-interpret its custom tables or Scripted REST resources as prerequisites for
-`topo mid run`. See [predecessor scoped-app Relay](servicenow-relay.md) for its
-separate contract and evidence history.
+The custom scoped-application transport from PR #47 also remains in the
+repository as an experiment. Neither experiment is the required product
+architecture, and direct IRE publication requires neither one. See
+[experimental scoped-app Relay](servicenow-relay.md) for its separate contract
+and evidence history.
