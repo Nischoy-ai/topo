@@ -177,7 +177,7 @@ topo mid run \
   -name topo-pilot \
   -username topo.mid \
   -password-ref file:/etc/topo/servicenow-mid-password \
-  -state-dir /var/lib/topo-mid \
+  -state-dir /var/lib/topo/mid \
   -poll-interval 40s
 ```
 

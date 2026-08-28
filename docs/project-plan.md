@@ -74,16 +74,34 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   denial behavior. Exact Go 1.25.13 focused and full race tests, repository
   vet, Linux build, Windows amd64 vet/build, and the pinned
   `scripts/security-review-checks.sh` gate pass; `govulncheck` reports zero
-  reachable vulnerabilities. The current architecture-decision branch also
-  raises `golang.org/x/crypto` to `v0.55.0` (and its `x/text` requirement to
-  `v0.41.0`) after the gate identified reachable `GO-2026-6303` in the Topo Lab
-  SSH server path. The simulator does not prove ServiceNow sensor
-  behavior. A separate official-MID reference run proved native automatic
+  reachable vulnerabilities. Merged PR #49 raises `golang.org/x/crypto` to
+  `v0.55.0` (and its `x/text` requirement to `v0.41.0`) after the gate
+  identified reachable `GO-2026-6303` in the Topo Lab SSH server path. The
+  simulator does not prove ServiceNow sensor behavior. A separate official-MID
+  reference run proved native automatic
   `ecc_agent` creation, standard-list `Up`, validation, and the exact
   `HeartbeatProbe` correlation/result shape for that official MID. It did not
   prove Topo compatibility or a Topo-derived Down transition. The mismatch and
   sensor dependency caused ECC to be removed from the product ingestion path;
   no stock Discovery translator is planned. See `docs/servicenow-mid.md`.
+- **Verified development Homebrew pilot (not production-channel evidence):**
+  the separate public
+  <https://github.com/Nischoy-ai/homebrew-topo-dev> tap and its
+  `v0.0.0-dev.2` prerelease packages the exact Topo source commit recorded in
+  `release-metadata.json`. Exact Go 1.25.13 built all six raw archives twice
+  from separate source paths with byte-identical output; every public asset
+  was downloaded again and verified against the published
+  `SHA256SUMS`. `topo.rb` passes Homebrew style, strict online new-formula
+  audit, a real Apple Silicon install, and `brew test`; the installed
+  `/opt/homebrew/bin/topo` reports `v0.0.0-dev.1` and exposes `topo mid run`.
+  The macOS binary has only Go's ad-hoc linker signature—no Developer ID team
+  identity or notarization—and the mutable prerelease has no Sigstore bundle,
+  GitHub build provenance, SBOM, or protected promotion evidence. This pilot
+  neither provisions the deferred official `Nischoy-ai/homebrew-tap` nor
+  satisfies the real-beta/N-1 stable package-channel gate. The earlier
+  `v0.0.0-dev.1` build was withdrawn after the security gate began reporting
+  reachable `GO-2026-6303`; v0.55.0 of `golang.org/x/crypto` fixes it, and the
+  exact Go 1.25.13 security-review gate reports zero reachable vulnerabilities.
 - **Verified in experimental slice 5 (M3,
   ServiceNow-controlled Topo Relay MVP):** `topo relay run` polls two fixed
   custom Scripted REST resources, executes only locally configured `local` or
@@ -210,7 +228,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
 - **Open pull request:** M3 ServiceNow IRE product-boundary decision and
-  `GO-2026-6303` dependency remediation in
+  post-PR-49 conflict resolution in
   <https://github.com/Nischoy-ai/topo/pull/50>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
@@ -245,8 +263,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   <https://github.com/Nischoy-ai/topo/pull/45>; source precedence/conflict
   visibility in <https://github.com/Nischoy-ai/topo/pull/46>; the scoped-app
   ServiceNow Relay experiment in <https://github.com/Nischoy-ai/topo/pull/47>;
-  and the ECC-compatible MID experiment in
-  <https://github.com/Nischoy-ai/topo/pull/48>.
+  the ECC-compatible MID experiment in
+  <https://github.com/Nischoy-ai/topo/pull/48>; and the development Homebrew
+  prerelease evidence in <https://github.com/Nischoy-ai/topo/pull/49>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -2401,10 +2420,10 @@ deduplicates a result by `response_to` before inserting a correlated
 simulator-defined `Heartbeat` topic; every other topic, including generic
 `Command`, `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics,
 receives a bounded correlated denied/unsupported result and is never executed.
-A faithful SOAP/ECC simulator exercises this transport in deterministic CI. Registration,
-validation, heartbeat XML, and instance-derived liveness behavior must be
-captured separately against a real ServiceNow instance rather than inferred
-from the simulator.
+A faithful SOAP/ECC simulator exercises this transport in deterministic CI.
+Registration, validation, heartbeat XML, and instance-derived liveness behavior
+must be captured separately against a real ServiceNow instance rather than
+inferred from the simulator.
 
 **Acceptance gates.** Tests cover URL and credential validation, Basic-auth
 SOAP requests, redirect refusal, exact agent/queue/state filters, response and
@@ -2424,7 +2443,7 @@ attachment, or sensor payload contracts; advertise `ALL` or generic
 orchestration capabilities; accept ServiceNow selection metadata as local
 authorization; execute any target operation; install a scoped application,
 update set, custom table/API/Business Rule/scheduled script; remove the slice-5
-predecessor; provision package channels or production signing credentials; or
+experiment; provision package channels or production signing credentials; or
 claim official ServiceNow MID certification. The precise claim is an
 ECC-compatible implementation until real interoperability evidence supports
 more.

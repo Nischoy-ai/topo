@@ -58,9 +58,37 @@ Make the `ghcr.io/nischoy-ai/charts/topo` package public after its first
 workflow-created publication. The repository-scoped `GITHUB_TOKEN` receives
 only `packages: write` in the final publication job.
 
-These repositories and secrets do not exist as of 2026-08-23. No public tag or
-package channel should be represented as available until this setup, a beta
-promotion, and then the first N-1-gated stable promotion have succeeded.
+These production repositories and secrets do not exist as of 2026-08-28. No
+official public tag or package channel should be represented as available until
+this setup, a beta promotion, and then the first N-1-gated stable promotion
+have succeeded.
+
+## Development-only Homebrew pilot
+
+With explicit operator authorization, a separate public development tap was
+published at <https://github.com/Nischoy-ai/homebrew-topo-dev>. Its
+`v0.0.0-dev.2` prerelease contains raw archives built twice from the exact
+Topo source commit recorded in `release-metadata.json`, with exact Go 1.25.13
+from separate source paths; the two outputs matched byte-for-byte. Every
+published asset was downloaded again and verified against the published
+`SHA256SUMS`. The formula passed `brew style`, strict online
+`brew audit --new`, a real Apple Silicon `brew install`, and `brew test`.
+
+Install this development build with:
+
+```sh
+brew install nischoy-ai/topo-dev/topo
+```
+
+The formula and executable are both named `topo`. These artifacts have only
+Go's ad-hoc linker signature on macOS: no Apple Developer
+ID identity, notarization ticket, Sigstore bundle, GitHub build provenance,
+SBOM, or protected promotion evidence. The GitHub prerelease is mutable. This
+pilot is not the future official `Nischoy-ai/homebrew-tap`, is not supported
+for production, and does not satisfy either the real-beta or N-1 stable
+promotion gate. The development build uses `golang.org/x/crypto` v0.55.0; the
+earlier withdrawn build used v0.54.0, which the project security gate began
+rejecting as reachable `GO-2026-6303` on 2026-08-28.
 
 ## Release and promotion
 
