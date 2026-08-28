@@ -209,9 +209,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** none for the M3 ServiceNow architecture decision at
-  this handoff; the current change should be proposed from its own focused
-  branch.
+- **Open pull request:** M3 ServiceNow IRE product-boundary decision and
+  `GO-2026-6303` dependency remediation in
+  <https://github.com/Nischoy-ai/topo/pull/50>.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
