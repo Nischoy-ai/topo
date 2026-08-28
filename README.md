@@ -58,10 +58,10 @@ bundle. The protected distribution workflow promotes those exact bytes to APT,
 RPM, Homebrew, WinGet, and OCI Helm channels after native-signature and
 clean-machine gates. Those official channels are not public until their first
 real promotion succeeds. A separate unsigned development-only Homebrew pilot
-is available for manual testing of the native MID slice:
+is available for manual testing of the native ServiceNow ECC integration:
 
 ```sh
-brew install nischoy-ai/topo-dev/topo-mid
+brew install nischoy-ai/topo-dev/topo
 ```
 
 It is built from merged commit `3273348`, has no Developer ID signature or

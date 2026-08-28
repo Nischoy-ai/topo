@@ -67,7 +67,7 @@ have succeeded.
 
 With explicit operator authorization, a separate public development tap was
 published at <https://github.com/Nischoy-ai/homebrew-topo-dev>. Its
-`v0.0.0-mid.1` prerelease contains raw archives built from merged Topo commit
+`v0.0.0-dev.1` prerelease contains raw archives built from merged Topo commit
 `32733488a704114e3a805c6313aae4257cade7d4` twice with exact Go 1.25.13 from
 separate source paths; the two outputs matched byte-for-byte. Every published
 asset was downloaded again and verified against the published `SHA256SUMS`.
@@ -77,11 +77,11 @@ Apple Silicon `brew install`, and `brew test`.
 Install this development build with:
 
 ```sh
-brew install nischoy-ai/topo-dev/topo-mid
+brew install nischoy-ai/topo-dev/topo
 ```
 
-The formula is named `topo-mid` but installs the executable as `topo`. These
-artifacts have only Go's ad-hoc linker signature on macOS: no Apple Developer
+The formula and executable are both named `topo`. These artifacts have only
+Go's ad-hoc linker signature on macOS: no Apple Developer
 ID identity, notarization ticket, Sigstore bundle, GitHub build provenance,
 SBOM, or protected promotion evidence. The GitHub prerelease is mutable. This
 pilot is not the future official `Nischoy-ai/homebrew-tap`, is not supported
