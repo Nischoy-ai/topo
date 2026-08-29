@@ -6,13 +6,13 @@ Nischoy Topo is pre-alpha and has no supported production release yet. Report vu
 
 Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
 
-ServiceNow ECC records are untrusted control-plane input, not executable
-instructions. Native MID selection, capabilities, applications, IP ranges, and
-credentials do not replace Topo's local operation/target policy. Only reviewed
-topic translators may call compiled-in discovery operations, and every
-target-bearing request must intersect an owner-controlled local allowlist.
-Generic `Command`, arbitrary `SSHCommand`, PowerShell, JavaScript, Groovy, and
-unknown topics are denied by default with a correlated result.
+ServiceNow IRE is a destination boundary, never a source of discovery
+authority. The retained experimental ECC transport treats every ECC record as
+untrusted input, not an executable instruction. Native MID selection,
+capabilities, applications, IP ranges, and credentials do not replace Topo's
+local policy. No target-bearing ECC translator is supported; generic `Command`,
+arbitrary `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics are
+denied by default with a correlated result.
 
 The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, Authenticode, Developer ID, and notarization credentials. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
 
@@ -32,14 +32,15 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Review ServiceNow IRE preview output before enabling destination writes,
   and configure identification/reconciliation rules for every CI class Topo
   emits; see [ServiceNow publishing](docs/servicenow.md).
-- For `topo mid run`, use a dedicated ServiceNow user with the built-in
+- `topo mid run` is an experiment, not the supported ServiceNow publication
+  path. If reproducing it in a disposable environment, use a dedicated user
+  with the built-in
   `mid_server` role, an exact unique MID name, a password credential reference,
   and an owner-only absolute state directory. The client accepts only a strict
-  HTTPS instance origin, one fixed SOAP ECC path, and no redirects. The current
-  Heartbeat-only slice has no target authority; do not advertise discovery or
-  orchestration capabilities until the corresponding stock transaction and
-  local allowlist enforcement are implemented. See
-  [Native ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
+  HTTPS instance origin, one fixed SOAP ECC path, and no redirects. Do not
+  advertise discovery or orchestration capabilities or attach a native
+  Discovery Schedule. See
+  [Experimental ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
 - Before installing a downloaded raw release, verify both its `SHA256SUMS`
   keyless Sigstore bundle and its GitHub artifact attestation; checking an
   unsigned digest alone detects corruption but not an attacker who replaced
@@ -52,6 +53,9 @@ Semantic release tags must resolve to a commit already reachable from `main`.
 The tag workflow uses exact Go 1.25.13, CGO disabled, path/VCS stamping removed,
 fixed archive metadata, and two independent source paths; any byte difference
 blocks publication. Release actions are pinned to immutable commit digests.
+The security gate requires zero reachable `govulncheck` findings; the direct
+`golang.org/x/crypto` dependency is pinned to `v0.55.0` or newer within the
+Go 1.25 compatibility line to remediate `GO-2026-6303` in the SSH server path.
 `SHA256SUMS` is signed keylessly by the tag workflow's GitHub OIDC identity, and
 GitHub stores signed SLSA provenance and SPDX SBOM attestations for the archive
 digests. The workflow verifies both signature and provenance before it creates
@@ -354,6 +358,12 @@ creation, update, and deletion are each recorded in the audit log (see
 
 ## ServiceNow publishing
 
+Topo-owned discovery followed by the documented IRE API is the supported
+ServiceNow architecture. ServiceNow receives normalized evidence; it does not
+supply commands, scripts, OIDs, queries, or targets to Topo. This preserves the
+same compiled-in operation and local target-authorization boundaries used for
+every other destination.
+
 Topo's ServiceNow IRE payload builder deduplicates by `source_native_key`
 and by relationship `(type, from, to)` within a batch, and is validated to
 produce an identical `(source_native_key, className)` set across
@@ -375,7 +385,7 @@ fields. It requires an absolute HTTPS instance URL and a bearer token supplied
 through the same credential-reference contract as every other Topo secret. See
 [ServiceNow publishing](docs/servicenow.md).
 
-## Native ServiceNow ECC-compatible MID transport
+## Experimental ServiceNow ECC-compatible MID transport
 
 `topo mid run` polls only `ecc_queue` records whose agent is exactly
 `mid.server.<configured-name>`, queue is `output`, and state is `ready`. It
@@ -394,18 +404,19 @@ After a crash, the next process resumes the journal; it queries for an existing
 `processed`. More than one existing response is left visible as an error rather
 than hidden. ServiceNow's public direct SOAP `update` operation does not expose
 a compare-and-swap condition, so a unique MID name remains a native
-configuration boundary across hosts. No target-bearing topic is enabled while
-that stronger claim behavior remains unverified.
+configuration boundary across hosts. No target-bearing topic is enabled or
+planned for this path.
 
-Only `Heartbeat` is recognized in the first slice. Its correlated result shape
-is simulator-tested but still requires comparison with an official MID on the
-target release before real Up/Down interoperability is claimed. `Command`,
+Only `Heartbeat` is recognized in the simulator-backed implementation. A real
+2026-08-28 official-MID run used `HeartbeatProbe`, proving this is not the stock
+liveness contract for the tested release. `Command`,
 `SSHCommand`, PowerShell, JavaScript, Groovy, and every other topic receive a
 bounded `topo_unsupported_topic` result; Topo never parses their payload/name
-as operations. No capability or IP-range record grants local authority. See
-[Native ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
+as operations. No capability or IP-range record grants local authority. ECC is
+a topic-specific probe/sensor transport, not Topo's CMDB ingestion path. See
+[Experimental ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
 
-## Predecessor scoped-app ServiceNow Relay
+## Experimental scoped-app ServiceNow Relay
 
 `topo relay run` polls only fixed Topo scoped-application HTTPS resources and
 never listens for inbound connections. A ServiceNow job can select only the
@@ -426,8 +437,9 @@ Transient IRE failures retry at most three times; `hasError: true` and 4xx
 validation failures are reported without blind replay because real validation
 showed a rejected IRE request can leave an incomplete identification artifact.
 The ServiceNow bearer token and spool key are credential references and never
-ordinary CLI values. See [ServiceNow-controlled Topo Relay](docs/servicenow-relay.md).
+ordinary CLI values. See
+[experimental ServiceNow-controlled Topo Relay](docs/servicenow-relay.md).
 
-This PR #47 transport is retained as experimental predecessor behavior. Its
-custom application/tables/resources are not required for `topo mid run` and are
-not the required final ServiceNow architecture.
+This PR #47 transport is retained as experimental behavior. Its custom
+application/tables/resources are not required for direct IRE publication and
+are not the required ServiceNow architecture.

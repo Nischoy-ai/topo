@@ -55,20 +55,28 @@ Slice 2, AWS Organizations account-structure discovery, is implemented —
 see `docs/aws.md`. Slice 3, Azure tenant subscription-structure discovery,
 is implemented — see `docs/azure.md`. Slice 4, source precedence plus asset
 conflict/freshness visibility, is implemented — see
-`docs/source-resolution.md`. Slice 5, prioritized from the enterprise-pilot
-requirement, implemented an outbound-only ServiceNow-controlled Topo Relay for
-locally preconfigured local and SSH profiles using a custom scoped application
-— see `docs/servicenow-relay.md`. That transport is retained as an experimental
-predecessor, not the required final architecture. Slice 6 implements the first
-native ServiceNow ECC-compatible MID transport via `topo mid run`: strict SOAP
-ECC polling, durable claim/restart handling, Heartbeat-only dispatch, and
-correlated denial of every other topic, with simulator evidence only; real
-`ecc_agent` registration/validation, stock Heartbeat XML, and Up/Down behavior
-remain unverified — see `docs/servicenow-mid.md`. That completes the three protocol
-integrations `ROADMAP.md`'s M3 line names; remaining M3 work (Kubernetes
-workload object kinds beyond Node/Pod, AWS per-account and Azure
-per-subscription resource inventory, relationship precedence and cross-ID
-correlation, native stock Discovery topic translators, scale/upgrade testing,
+`docs/source-resolution.md`. Slice 5 implemented an outbound-only
+ServiceNow-controlled Topo Relay for locally preconfigured local and SSH
+profiles using a custom scoped application — see `docs/servicenow-relay.md`.
+Slice 6 implemented an experimental native ServiceNow ECC-compatible
+transport via `topo mid run`: strict SOAP ECC polling, durable claim/restart
+handling, simulator-only `Heartbeat` dispatch, and correlated denial of every
+other topic — see `docs/servicenow-mid.md`. A 2026-08-28 official-MID reference
+run then established that ECC is a private probe/sensor transport rather than a
+CMDB ingestion API, that the stock liveness topic is `HeartbeatProbe` rather
+than Topo's simulator-only `Heartbeat`, and that stock Discovery completion
+depends on operation-specific sensor contracts and licensed Discovery content.
+The product direction is therefore Topo-owned, destination-neutral discovery
+published through ServiceNow's documented IRE API. The Relay and MID
+transports are retained as experiments, not customer installation requirements
+or planned stock-Discovery replacements. Do not add stock Discovery topic
+translators or claim native Discovery Schedule/Status compatibility without a
+new explicit product decision backed by a documented, supported ServiceNow
+interoperability contract. That completes the three protocol integrations
+`ROADMAP.md`'s M3 line names; remaining M3 work (Kubernetes workload object
+kinds beyond Node/Pod, AWS per-account and Azure per-subscription resource
+inventory, relationship precedence and cross-ID correlation, broader
+real-instance IRE class/relationship/batch evidence, scale/upgrade testing,
 SSO/RBAC modules) remains unstaged —
 stage each the same way (Objective, Deliverables, Acceptance gates,
 Deliberate non-goals) before starting it, and confirm scope with the user
