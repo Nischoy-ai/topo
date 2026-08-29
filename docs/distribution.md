@@ -67,12 +67,15 @@ have succeeded.
 
 With explicit operator authorization, a separate public development tap was
 published at <https://github.com/Nischoy-ai/homebrew-topo-dev>. Its
-`v0.0.0-dev.2` prerelease contains raw archives built twice from the exact
-Topo source commit recorded in `release-metadata.json`, with exact Go 1.25.13
-from separate source paths; the two outputs matched byte-for-byte. Every
-published asset was downloaded again and verified against the published
-`SHA256SUMS`. The formula passed `brew style`, strict online
-`brew audit --new`, a real Apple Silicon `brew install`, and `brew test`.
+`v0.0.0-dev.3` prerelease contains raw archives built twice from merged Topo
+commit `c2332fcbeec734b7d19ba07b1ef193881a2545fd`, recorded in
+`release-metadata.json`, with exact Go 1.25.13 from separate source paths; the
+two outputs matched byte-for-byte. Every published asset was downloaded again
+and verified against the published `SHA256SUMS`. The formula passed
+`brew style`, strict online `brew audit`, a real Apple Silicon upgrade from
+`v0.0.0-dev.2`, and `brew test`. The installed binary reports
+`v0.0.0-dev.3` and exposes the supported `topo publish servicenow` IRE
+workflow.
 
 Install this development build with:
 

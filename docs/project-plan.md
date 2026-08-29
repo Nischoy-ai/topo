@@ -97,13 +97,16 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Verified development Homebrew pilot (not production-channel evidence):**
   the separate public
   <https://github.com/Nischoy-ai/homebrew-topo-dev> tap and its
-  `v0.0.0-dev.2` prerelease packages the exact Topo source commit recorded in
+  `v0.0.0-dev.3` prerelease packages merged Topo commit
+  `c2332fcbeec734b7d19ba07b1ef193881a2545fd`, recorded in
   `release-metadata.json`. Exact Go 1.25.13 built all six raw archives twice
   from separate source paths with byte-identical output; every public asset
   was downloaded again and verified against the published
-  `SHA256SUMS`. `topo.rb` passes Homebrew style, strict online new-formula
-  audit, a real Apple Silicon install, and `brew test`; the installed
-  `/opt/homebrew/bin/topo` reports `v0.0.0-dev.1` and exposes `topo mid run`.
+  `SHA256SUMS`. `topo.rb` passes Homebrew style and strict online audit, a real
+  Apple Silicon upgrade from `v0.0.0-dev.2`, and `brew test`; the installed
+  `/opt/homebrew/bin/topo` reports `v0.0.0-dev.3` and exposes the supported
+  `topo publish servicenow` IRE workflow (while retaining the experimental
+  `topo mid run` command).
   The macOS binary has only Go's ad-hoc linker signature—no Developer ID team
   identity or notarization—and the mutable prerelease has no Sigstore bundle,
   GitHub build provenance, SBOM, or protected promotion evidence. This pilot
