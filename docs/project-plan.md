@@ -43,7 +43,20 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   401 from an unrelated Table API. A separate real preflight exposed required
   dependency/key contracts for disk, software, and VM classes, so those
   mappings were removed rather than creating partial CIs. See "Current
-  milestone: M3" below. The most recent merged
+  milestone: M3" below. On 2026-08-29 the user approved a second, managed-mode
+  target architecture: the Nischoy Topo scoped application is the control
+  panel and sole durable operational store, while horizontally scalable Topo
+  workers keep no durable state, poll a fixed scoped REST surface, enforce a
+  local allowlist, execute only compiled-in operations, and return
+  destination-neutral observations for application-side IRE processing. It
+  does not use ECC or native Discovery runtime tables. Raw result chunks
+  expire after successful IRE processing; run summaries and normalized CMDB
+  state remain. Credential bindings must support both protected
+  ServiceNow-encrypted records (including Password2 where real scoped-app
+  evidence supports it) and external Vault references. This is an approved
+  design, not an implemented or validated feature; standalone direct IRE
+  publication remains supported. See
+  `docs/servicenow-control-plane.md`. The most recent merged
   M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
