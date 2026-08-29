@@ -69,6 +69,8 @@ func run(args []string) error {
 		return serve(args[1:])
 	case "discover":
 		return discover(args[1:])
+	case "publish":
+		return runPublish(args[1:])
 	case "agent":
 		return runAgent(args[1:])
 	case "relay":
@@ -87,7 +89,7 @@ func run(args []string) error {
 	}
 }
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|agent|relay|mid|storage|lab|version>")
+	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|publish|agent|relay|mid|storage|lab|version>")
 	return errors.New("command required")
 }
 

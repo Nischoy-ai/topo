@@ -41,6 +41,20 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
   advertise discovery or orchestration capabilities or attach a native
   Discovery Schedule. See
   [Experimental ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
+- `topo publish servicenow` is the supported ServiceNow write boundary. It
+  previews locally unless `-apply` is present, resolves the bearer token only
+  from the shared credential-reference contract, accepts only bounded Topo
+  observation JSON Lines, and maps only reviewed asset classes, relationship
+  types, and CMDB fields. Unsupported service/cloud/Kubernetes assets, VMware
+  relationships, arbitrary CMDB attribute names, malformed/dangling graph
+  edges, and ambiguous duplicate source identities are rejected before a
+  credential is resolved or a network request is made. Automatic retries are
+  limited to transport errors, HTTP 429, and 5xx; a 4xx response,
+  `hasError:true`, `hasWarning:true`, or an oversized/ambiguous response is not
+  replayed blindly. Every apply first sends the exact payload to ServiceNow's
+  documented non-committing `queryEnhanced` endpoint and proceeds to the write
+  endpoint only when that server-side preflight succeeds without errors or
+  warnings. See [ServiceNow publishing](docs/servicenow.md).
 - Before installing a downloaded raw release, verify both its `SHA256SUMS`
   keyless Sigstore bundle and its GitHub artifact attestation; checking an
   unsigned digest alone detects corruption but not an attacker who replaced
@@ -370,19 +384,25 @@ produce an identical `(source_native_key, className)` set across
 independently repeated Topo Lab discovery scans — the condition ServiceNow's
 own IRE relies on to reconcile a CI rather than create a duplicate one.
 That condition has been verified against a real ServiceNow developer
-instance for the `cmdb_ci_computer` class, and for an `IRERelation`
-between it and `cmdb_ci_network_adapter`: submitting the same
-`sys_object_source_info` twice reconciles both items to the same CIs
-(`operation: UPDATE` against the original `sysId`s, matched via
-`sys_object_source`) and the relation between them to `operation:
-NO_CHANGE` — none of the three duplicated. Coverage of Topo's other CI
-classes against a real instance remains open. ServiceNow's IRE response
+instance for `cmdb_ci_computer`, `cmdb_ci_network_adapter`, and their
+`Owns::Owned by` relation. A 22-item/21-relation local-laptop batch applied
+without warnings; an identical repeat returned `NO_CHANGE` for every item and
+relation. A separate real preflight exposed mandatory dependency/key contracts
+for disk, software-package, and VM classes; Topo now rejects those asset types
+rather than guessing fields or creating partial CIs. Additional CI classes and
+relationship types remain open focused slices. ServiceNow's IRE response
 schema is only partially parsed: `PublishBatch` recognizes the
-real-instance-observed `hasError: true` semantic bit at any JSON nesting depth
-and treats it as a non-retryable rejection, while retaining the remaining
-bounded body as diagnostics rather than coupling to proprietary response
-fields. It requires an absolute HTTPS instance URL and a bearer token supplied
-through the same credential-reference contract as every other Topo secret. See
+real-instance-observed `hasError: true` and `hasWarning: true` semantic bits at
+any JSON nesting depth and treats either as a non-retryable rejection, while
+retaining the remaining bounded body as diagnostics rather than coupling to
+proprietary response fields. The strongest validated machine setup uses a
+dedicated internal-integration user with only the native `asset` role, a
+short-lived OAuth client-credentials token, an exact authentication scope,
+token restrictions, and two non-global API Access Policies limited to POST
+`queryEnhanced` and `enhanced`; the same token received HTTP 401 from an
+unrelated Table API. It requires an absolute HTTPS instance URL and a bearer
+token supplied through the same credential-reference contract as every other
+Topo secret. See
 [ServiceNow publishing](docs/servicenow.md).
 
 ## Experimental ServiceNow ECC-compatible MID transport

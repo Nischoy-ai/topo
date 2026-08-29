@@ -43,8 +43,14 @@ func TestMapPayloadIsIdempotentAcrossRepeatedLabScans(t *testing.T) {
 	}
 
 	p := Publisher{Config: Config{InstanceURL: "https://example.service-now.com", DiscoverySource: "Nischoy Topo", DryRun: true}}
-	firstPayload := p.mapPayload([]model.ObservationEnvelope{first.Observation})
-	secondPayload := p.mapPayload([]model.ObservationEnvelope{second.Observation})
+	firstPayload, err := p.mapPayload([]model.ObservationEnvelope{first.Observation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondPayload, err := p.mapPayload([]model.ObservationEnvelope{second.Observation})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	firstKeys := classBySourceKey(firstPayload)
 	secondKeys := classBySourceKey(secondPayload)

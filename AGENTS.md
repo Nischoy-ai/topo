@@ -72,7 +72,17 @@ transports are retained as experiments, not customer installation requirements
 or planned stock-Discovery replacements. Do not add stock Discovery topic
 translators or claim native Discovery Schedule/Status compatibility without a
 new explicit product decision backed by a documented, supported ServiceNow
-interoperability contract. That completes the three protocol integrations
+interoperability contract. Slice 7 implements the supported
+`topo publish servicenow` operator workflow: bounded destination-neutral JSONL,
+offline preview by default, explicit credential-reference-only apply,
+non-committing `queryEnhanced` preflight, bounded retries, and strict
+computer/network-adapter/ownership mappings. A 2026-08-29 real developer-
+instance run published a 22-item/21-relation laptop batch and reconciled an
+identical repeat entirely as `NO_CHANGE`; an exact two-resource OAuth policy
+returned 401 from an unrelated Table API. The same real preflight exposed
+mandatory dependency/key contracts for disks, software packages, and VMs, so
+those mappings are rejected until focused slices prove them rather than
+creating partial CIs — see `docs/servicenow.md`. That completes the three protocol integrations
 `ROADMAP.md`'s M3 line names; remaining M3 work (Kubernetes workload object
 kinds beyond Node/Pod, AWS per-account and Azure per-subscription resource
 inventory, relationship precedence and cross-ID correlation, broader
