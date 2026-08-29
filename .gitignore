@@ -3,5 +3,6 @@
 /coverage.out
 /.env
 *.jsonl
+!examples/servicenow/ire-validation.jsonl
 *.db
 .DS_Store

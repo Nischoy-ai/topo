@@ -22,7 +22,8 @@ AWS Organizations has partial live-account evidence: real SigV4 connectivity,
 multi-account enumeration, the not-enabled error path, and the documented
 least-privilege policy are confirmed. Live AWS OU/delegated-admin/STS paths,
 real Azure discovery (setup is blocked on Tenant Root Group Reader assignment),
-real VMware/Kubernetes/SNMP compatibility, broader ServiceNow class coverage,
+real VMware/Kubernetes/SNMP compatibility, additional reviewed ServiceNow CI
+classes and relationship types,
 additional Kubernetes/cloud resource kinds, relationship precedence and
 cross-ID correlation, broader real-instance ServiceNow IRE class/batch
 coverage, PostgreSQL/HA, and the M3 scale gates remain explicit follow-ups
@@ -41,6 +42,41 @@ make build
 ./bin/topo discover local
 ./bin/topo discover -format servicenow-preview local
 ```
+
+Publish a Topo observation to ServiceNow through IRE. The first command is a
+local preview and makes no network request; `-apply` is the explicit write
+boundary and automatically calls ServiceNow's non-committing `queryEnhanced`
+endpoint before the write. The bearer token is resolved from a credential
+reference and is never accepted as a value argument:
+
+```sh
+./bin/topo discover local > observation.jsonl
+./bin/topo publish servicenow \
+  -input observation.jsonl \
+  -instance https://example.service-now.com > ire-preview.json
+./bin/topo publish servicenow \
+  -input observation.jsonl \
+  -instance https://example.service-now.com \
+  -token-ref file:/absolute/path/to/servicenow-token \
+  -apply
+```
+
+This direct IRE workflow does not install or emulate a MID Server, scoped
+application, custom table, probe, or sensor. Its reviewed mapping boundary and
+required ServiceNow configuration are documented in
+[ServiceNow publishing](docs/servicenow.md).
+
+`discover local` inventories this computer and its own interfaces; it is not a
+credential-free LAN scanner. Topo does not publish ARP-cache neighbors as
+computers because an IP address is not a stable device identity and a neighbor
+row does not establish hostname, OS, hardware identity, or CI class. Remote
+devices currently require an explicit reviewed SSH, WinRM, SNMPv3, VMware,
+cloud, or Kubernetes discovery configuration.
+
+A sanitized supported-boundary fixture for disposable developer-instance
+validation is available at `examples/servicenow/ire-validation.jsonl`; it
+creates real CMDB state when used with `-apply`, so preview it first and never
+use it against production.
 
 Run a clean, repeatable 500-host simulation:
 

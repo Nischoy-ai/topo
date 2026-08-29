@@ -1,7 +1,9 @@
 # ServiceNow publishing
 
-Topo publishes to ServiceNow through the Identification and Reconciliation
-Engine (IRE) `enhanced` API (`POST /api/now/identifyreconcile/enhanced`). It
+Topo publishes to ServiceNow through the documented
+[Identification and Reconciliation API](https://www.servicenow.com/docs/r/api-reference/rest-apis/c_IdentifyReconcileAPI.html),
+using the Engine (IRE) `enhanced` operation
+(`POST /api/now/identifyreconcile/enhanced`). It
 never writes `cmdb_ci` tables directly. Each item carries
 `sys_object_source_info` — a stable `source_name`/`source_native_key` pair —
 which is how ServiceNow's IRE recognizes "this is the same configuration
@@ -32,17 +34,88 @@ product ingestion path are recorded in
 the separate scoped-app prototype is in
 [experimental scoped-app Relay](servicenow-relay.md).
 
-The repository already contains the bounded IRE mapper and publisher used by
-the Relay experiment, and the CLI can preview the exact mapped payload. A
-non-experimental operator workflow that invokes that publisher from Topo's own
-controller or CLI is still a product gap. It must be staged separately with
-credential references, preview-before-write behavior, bounded retries, and
-clear delivery status before this direction is described as a complete
-customer installation flow.
+`topo publish servicenow` is the supported non-experimental operator workflow
+over the existing IRE mapper and publisher. It reads the JSON Lines observation
+format emitted by Topo discovery, previews the exact request locally by
+default, and writes only when the operator supplies `-apply`. Preview does not
+resolve a credential or make a network request. Apply resolves the bearer token
+through the shared credential-reference contract, submits the exact payload to
+ServiceNow's documented non-committing
+`POST /api/now/identifyreconcile/queryEnhanced` endpoint, and calls the write
+endpoint only if that server-side preflight reports neither an error nor a
+warning. The command emits both preflight and apply outcomes as structured JSON
+delivery status.
 
 ```sh
-./bin/topo discover -format servicenow-preview local
+./bin/topo discover local > observation.jsonl
+
+# Offline preview: no token is read and no request is sent.
+./bin/topo publish servicenow \
+  -input observation.jsonl \
+  -instance https://example.service-now.com > ire-preview.json
+
+# Explicit write through IRE.
+./bin/topo publish servicenow \
+  -input observation.jsonl \
+  -instance https://example.service-now.com \
+  -token-ref file:/absolute/path/to/servicenow-token \
+  -apply
 ```
+
+`-input -` reads stdin. Apply defaults to three attempts with one-second
+bounded exponential backoff; only transport failures, HTTP 429, and 5xx are
+retried. Use `-max-attempts` (1-5), `-retry-delay` (at most 30 seconds), and
+`-timeout` (at most ten minutes) to lower those bounds. HTTP 4xx,
+`hasError:true`, `hasWarning:true`, unreadable, malformed, or oversized responses, and
+other ambiguous outcomes are returned visibly and are not replayed
+automatically because an apply request may already have left an incomplete
+identification record. The non-committing preflight behavior is ServiceNow's
+documented contract; it is not a Topo-specific simulation.
+
+The input is bounded to 10 MiB, 100 JSONL envelopes, 1 MiB per envelope, and 64
+JSON nesting levels. One request is bounded to 1,000 unique items, 2,000 unique
+relationships, 4 MiB of JSON, and a 1 MiB response. The instance must be a bare
+absolute HTTPS origin with no URL credentials, path, query, or fragment;
+redirects are refused and every request is cancellable.
+
+## Reviewed mapping boundary
+
+The supported path does not turn an imported observation into a generic CMDB
+writer. It accepts only these asset mappings:
+
+| Topo asset type | ServiceNow class |
+| --- | --- |
+| `host` | `cmdb_ci_computer` |
+| `network_interface` | `cmdb_ci_network_adapter` |
+
+Every item receives only `name`, the registered `discovery_source`, and
+`last_discovered`; network adapters may also receive the reviewed
+`mac_address` field. Arbitrary observation attribute names are not copied to
+IRE. The only accepted relationship is
+`host_has_interface` -> `Owns::Owned by`, and its endpoints must be a host and
+network interface present in the same bounded input. Unknown asset types,
+unknown/raw relationship names, dangling endpoints, and a repeated
+`source_native_key` that changes class are rejected before credential
+resolution. Service/cloud/Kubernetes mappings and VMware relationships require
+separate reviewed slices.
+
+For a disposable developer instance, the sanitized
+`examples/servicenow/ire-validation.jsonl` fixture exercises both supported
+classes in one three-item batch plus two reviewed relationships. Its source
+keys and names are visibly prefixed `topo-ire-validation`; applying it creates
+or updates real CMDB/IRE state, so always inspect the default local preview
+first and do not use the fixture against a production instance. Repeating the
+same apply is the real-instance reconciliation test: the same source keys must
+resolve to the original CIs and the same relationship rows rather than create
+duplicates.
+
+Volumes, software packages, and virtual machines are deliberately rejected at
+this boundary. A 2026-08-29 real-instance preflight showed that the default
+rules require a disk containment relationship, a software matching key, and a
+VM hosting/runs-on relationship. Topo does not guess those fields or publish
+partial CIs. Each class can be added later with its exact identification,
+dependency, relationship, and repeat-reconciliation contract backed by real
+evidence.
 
 This architecture deliberately does not make Topo appear in ServiceNow's
 standard MID Server selector or drive native Discovery Schedule and Discovery
@@ -86,9 +159,9 @@ instance:
   and the source keys they carry — match on both scans.
 - **Response visibility without assuming a schema.** `PublishBatch` captures
   the bounded response body in `Diagnostics` for operator review. It recognizes
-  the `hasError: true` semantic bit observed during real-instance validation at
-  any JSON nesting depth and rejects that publication, without coupling Topo
-  to the rest of ServiceNow's proprietary response schema.
+  the documented `hasError: true` and `hasWarning: true` semantic bits at any
+  JSON nesting depth and rejects that query/publication, without coupling Topo
+  to the rest of ServiceNow's release-dependent response schema.
 
 ## Verified against a real instance
 
@@ -148,17 +221,31 @@ payload shape `mapPayload` produces), not a mock or an assumption:
   likely fail the same way an unregistered discovery source did, though
   that specific failure mode was not separately provoked here.
 
-**What this does not yet cover:** `cmdb_ci_computer` and
-`cmdb_ci_network_adapter` were exercised, single- and two-item requests,
-with one relationship between them — `mapPayload`'s other classes
-(`cmdb_ci_disk`, `cmdb_ci_spkg`, `cmdb_ci_vm_instance`) share the same
-mechanism (inherited from `cmdb_ci` and the same `identifyreconcile`
-endpoint) but have not individually been submitted to a real instance.
-Larger multi-item batches, multiple relations in one request, and this
-instance's specific identification/reconciliation rule configuration for
-classes beyond the default were also not exercised. The full IRE response
-schema is still not parsed by `PublishBatch`; only the real-instance-observed
-`hasError` semantic bit is recognized. A 2xx response with `hasError: true` is
+Additional 2026-08-29 real-instance evidence exercises the complete supported
+operator workflow and a larger batch:
+
+- A client-credentials token scoped to only the two IRE POST resources
+  successfully called `queryEnhanced` and `enhanced`; the same token received
+  HTTP 401 from an unrelated Table API resource.
+- A real `topo discover local` observation preflighted and applied 22 items
+  (one `cmdb_ci_computer`, 21 `cmdb_ci_network_adapter`) and 21
+  `Owns::Owned by` relations with no errors or warnings. The standard CMDB
+  lists showed exactly one matching laptop CI and 21 adapters created that
+  day under discovery source `Nischoy Topo`.
+- Repeating the identical observation produced 22 `NO_CHANGE` item results
+  and 21 `NO_CHANGE` relation results on apply, with no errors or warnings.
+  No duplicate laptop or adapter CI was created.
+- A separate six-item preflight was intentionally attempted against the three
+  previously proposed mappings. ServiceNow returned `hasWarning:true`:
+  `cmdb_ci_disk` and `cmdb_ci_vm_instance` lacked required dependencies, and
+  `cmdb_ci_spkg` lacked its identification key. The CLI correctly withheld the
+  apply request. Those mappings were then removed from the supported boundary.
+
+**What this does not yet cover:** classes beyond `cmdb_ci_computer` and
+`cmdb_ci_network_adapter`, relationship types beyond `Owns::Owned by`,
+retirement/deletion, larger batches than the 22-item/21-relation laptop run,
+or the full IRE response schema. `PublishBatch` recognizes only the observed
+`hasError` and `hasWarning` semantic bits; a 2xx response with either set is
 rejected, while other successful response details remain bounded diagnostics
 rather than a version-coupled contract.
 
@@ -169,6 +256,61 @@ before enabling writes. `PublishBatch` requires an absolute HTTPS instance
 URL and, outside dry-run, a bearer token — see
 [Credential references](credential-references.md) for how to supply it
 without an ordinary CLI value.
+
+The strongest setup verified for a machine publisher uses ServiceNow's
+[OAuth client-credentials grant](https://www.servicenow.com/docs/r/platform-security/authentication/client-credential-grant.html)
+and inbound REST token restrictions:
+
+1. Enable `glide.oauth.inbound.client.credential.grant_type.enabled` and create
+   a dedicated active machine/internal-integration user. Grant only the native
+   `asset` role required by the
+   [IRE API](https://www.servicenow.com/docs/r/api-reference/rest-apis/c_IdentifyReconcileAPI.html),
+   not `admin`, `itil`, or a shared human account.
+2. Create an active OAuth API endpoint for external clients with client type
+   **Integration as a Service**, bind **OAuth Application User** to that
+   machine user, use short-lived opaque access tokens, securely scope it, and
+   enable **Enforce Token Restrictions**. Store the generated client secret in
+   an owner-readable credential file or external secret provider.
+3. Create one authentication scope and bind it to the OAuth entity. Add two
+   REST API authentication-scope records for **Identification and
+   Reconciliation API**, method `POST`, version `latest`, restricted exactly to
+   `/now/identifyreconcile/queryEnhanced` and
+   `/now/identifyreconcile/enhanced`.
+4. Create an OAuth inbound authentication profile for that OAuth entity. Add
+   two active, non-global API Access Policies, again restricted to those exact
+   POST resources and latest version, and attach only that inbound profile.
+   Leave every apply-all setting off. This second layer is required when token
+   restrictions are enforced; a scope string alone is not the access policy.
+5. Request short-lived tokens from `/oauth_token.do` with
+   `grant_type=client_credentials` and the configured scope. Write only the
+   returned access token, with no trailing newline, to an owner-readable file;
+   pass `file:/absolute/path` to Topo. The credential-reference contract
+   preserves file bytes exactly, so a newline-producing formatter will make
+   the bearer token invalid.
+
+Store the resulting access token in an `env:`, owner-readable absolute
+`file:`, `vault:`, or `k8s:` reference. Do not place the access token, OAuth
+client secret, or a user password in the command line, observation file,
+preview output, or chat. Access tokens are time-bounded; refresh them outside
+this initial manual workflow rather than treating one captured token as a
+permanent credential.
+
+## Credential-free local-network boundary
+
+`topo discover local` inventories the laptop and its own interfaces. It does
+not scan or classify other LAN devices. Without device credentials, Topo's
+current reviewed discovery operations cannot establish those devices'
+hostname, OS, hardware identity, or CI class, and an IP address is not accepted
+as a long-lived device identity. Publishing ARP-cache rows as computers would
+therefore create misleading CIs.
+
+A future credential-free neighbor slice may passively observe bounded local
+neighbor protocols and publish only identities it can support with stable
+evidence (for example, a network-adapter identity backed by a MAC address),
+under a local allowlist and without arbitrary probes. Until that slice is
+implemented and validated, use explicit SSH, WinRM, SNMPv3, VMware, cloud, or
+Kubernetes credentials for remote discovery. No credential-free LAN-device
+claim is made by the laptop validation above.
 
 Before enabling destination writes: confirm identification rules exist for
 every class Topo emits, and — a real requirement discovered during

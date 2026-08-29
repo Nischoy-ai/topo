@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-28
+- **Updated:** 2026-08-29
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -32,8 +32,18 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   and that ECC input depends on operation-specific instance sensors. The
   product direction is now Topo-owned discovery published through the
   documented IRE API. Neither experimental transport is a customer
-  installation requirement or a planned stock-Discovery replacement. See
-  "Current milestone: M3" below. The most recent merged
+  installation requirement or a planned stock-Discovery replacement. Slice 7
+  is implemented on `agent/servicenow-ire-publish`: a supported
+  preview-first `topo publish servicenow` workflow over bounded Topo JSONL,
+  credential-reference-only apply, reviewed class/relationship/field
+  mappings, bounded retries, and structured delivery status. A real
+  developer-instance run published one laptop plus 21 adapters and 21
+  relations, then reconciled an identical repeat entirely as `NO_CHANGE`.
+  Exact OAuth policies allowed only the two IRE POST resources and returned
+  401 from an unrelated Table API. A separate real preflight exposed required
+  dependency/key contracts for disk, software, and VM classes, so those
+  mappings were removed rather than creating partial CIs. See "Current
+  milestone: M3" below. The most recent merged
   M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -227,9 +237,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Open pull request:** M3 ServiceNow IRE product-boundary decision and
-  post-PR-49 conflict resolution in
-  <https://github.com/Nischoy-ai/topo/pull/50>.
+- **Current branch:** `agent/servicenow-ire-publish`; no pull request has been
+  opened yet.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
   <https://github.com/Nischoy-ai/topo/pull/22>; persistent storage
@@ -265,7 +274,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   ServiceNow Relay experiment in <https://github.com/Nischoy-ai/topo/pull/47>;
   the ECC-compatible MID experiment in
   <https://github.com/Nischoy-ai/topo/pull/48>; and the development Homebrew
-  prerelease evidence in <https://github.com/Nischoy-ai/topo/pull/49>.
+  prerelease evidence in <https://github.com/Nischoy-ai/topo/pull/49>; and the
+  ServiceNow IRE product-boundary decision in
+  <https://github.com/Nischoy-ai/topo/pull/50>.
 - **Also verified in an earlier milestone, outside any slice/PR:** given
   access to a real ServiceNow developer instance, ServiceNow's own IRE
   reconciliation behavior was confirmed for real, for both items and
@@ -276,8 +287,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   `cmdb_ci_computer` and a `cmdb_ci_network_adapter`, which came back
   `operation: NO_CHANGE` on resubmission. See
   [`docs/servicenow.md`](servicenow.md#verified-against-a-real-instance)
-  for full detail and what remains unverified (the other CI classes,
-  larger batches, multiple relations, the response schema).
+  for full detail. The later 2026-08-29 operator-workflow run expanded this to
+  a 22-item/21-relation batch and proved the exact OAuth restriction boundary;
+  additional CI classes, relationship types, still-larger batches, and the
+  full response schema remain unverified.
 - **Completed milestone:** M2.5 — release readiness and security hardening.
   All seven slices are merged, including remediation of every finding raised
   so far by maintainer self-audit and by the first independent reviewer
@@ -293,11 +306,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   review`.
 - **Current milestone:** M3 — hybrid release candidate. For ServiceNow, the
   supported product direction is Topo-owned discovery plus documented IRE
-  publication. The next ServiceNow slice should expose a non-experimental
-  operator workflow for the existing IRE publisher and broaden real-instance
-  evidence across Topo's remaining mapped classes, relationships, and bounded
-  batch sizes; native stock Discovery topic translation is not on the roadmap.
-  See "Current milestone: M3" below.
+  publication. Slice 7 implements the non-experimental operator workflow for
+  the existing IRE publisher, with real-instance evidence for its complete
+  computer/network-adapter/ownership boundary and a 22-item/21-relation batch;
+  native stock Discovery topic translation is not on the roadmap. See
+  "Current milestone: M3" below.
 - **Verified in the current remediation slice (`TSR-2026-004`, independent review):** an independent reviewer
   (Grok/xAI) found `TSR-2026-004` (reported as `TSR-2026-001` in the
   reviewer's own numbering; renumbered here — see "Independent review" in
@@ -533,9 +546,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Explicitly deferred evidence:** Sanitized captures and regression
   fixtures from Windows Server 2022 and one other supported release;
   real-Windows verification of the Topo Agent's Windows service wrapper;
-  ServiceNow's own IRE behavior for the CI classes not yet exercised
-  against a real instance (`cmdb_ci_disk`, `cmdb_ci_spkg`,
-  `cmdb_ci_vm_instance`) and the IRE response schema itself; SNMP
+  focused supported mappings for `cmdb_ci_disk`, `cmdb_ci_spkg`, and
+  `cmdb_ci_vm_instance` (the real 2026-08-29 preflight proved their current
+  minimal payloads are insufficient) and the full IRE response schema itself; SNMP
   `authPriv` against a real network device; and VMware discovery against a
   real vCenter or ESXi host beyond `vcsim`. Do not fabricate any of these
   from Topo Lab, `vcsim`, or guessed schemas; obtain them from the real
@@ -2483,6 +2496,75 @@ ServiceNow-side control experience is later required, stage a separately
 supported scoped app, IntegrationHub ETL integration, or Service Graph
 Connector; do not revive private stock probe translation by default.
 
+### Slice 7 — supported ServiceNow IRE operator workflow (implemented)
+
+**Objective.** Turn the existing IRE mapper/publisher into the smallest
+supported, non-experimental customer workflow: accept destination-neutral Topo
+observation JSON Lines, preview the exact bounded IRE request without network
+access by default, and publish it only after an operator explicitly enables a
+write. This is a Topo-owned discovery output path, not a MID, ECC, scoped-app,
+or stock Discovery integration.
+
+**Deliverables.** Add `topo publish servicenow` with bounded file/stdin input,
+an absolute HTTPS instance origin, a bearer token resolved only through the
+shared credential-reference contract, a registered discovery-source choice,
+an overall deadline, and a small bounded retry policy for transport failures,
+HTTP 429, and 5xx responses. Preview is the default and must never resolve a
+credential or make a network request; `-apply` is the only write mode and must
+first submit the exact payload to ServiceNow's documented non-committing
+`queryEnhanced` endpoint. It proceeds to the write only when the preflight has
+neither `hasError` nor `hasWarning`. Both modes emit structured JSON delivery
+information. Reject empty or malformed
+input, unsupported schema versions, oversized/deep JSON, excessive envelope,
+item, relation, request, or response counts/sizes, duplicate source keys that
+change class, dangling endpoints, and every asset/relationship without a
+reviewed ServiceNow mapping. The initial reviewed boundary is
+`cmdb_ci_computer` and `cmdb_ci_network_adapter`, plus
+`host_has_interface` -> `Owns::Owned by`; there is no generic `cmdb_ci` or
+raw relationship-name fallback in the supported path. Disk, software-package,
+and VM mappings were proposed, but a real preflight showed mandatory
+dependency/key requirements. They are rejected until focused slices implement
+and prove their exact contracts.
+
+**Acceptance gates.** Deterministic tests must cover JSONL bounds and schema
+validation, preview-without-network/credential access, explicit apply,
+credential redaction, authentication and fixed endpoint construction,
+redirect refusal, cancellation/deadlines, retryable 429/5xx/transport errors,
+non-retryable 4xx/`hasError`/ambiguous oversized responses, retry exhaustion,
+unsupported mappings, dangling and duplicate/conflicting identities, bounded
+batch/result output, and repeat publication. A faithful TLS IRE fixture proves
+the complete CLI-to-request-to-result path in CI. Separately record real
+developer-instance evidence for every supported class, the reviewed
+relationship, bounded multi-item/multi-relation batches, partial errors, and
+repeat reconciliation; simulator evidence is never represented as real
+ServiceNow evidence.
+
+**Real-instance evidence (2026-08-29).** A dedicated machine/internal-
+integration user with only the native `asset` role obtained a 15-minute OAuth
+client-credentials token. Its authentication scope, REST authentication
+scopes, inbound OAuth profile, and two non-global API Access Policies were
+limited exactly to POST `queryEnhanced` and `enhanced`; an unrelated Table API
+request received HTTP 401. A real `topo discover local` observation
+preflighted and applied one computer, 21 network adapters, and 21
+`Owns::Owned by` relations with no errors or warnings. The standard CMDB lists
+showed exactly one matching laptop and 21 adapters. Repeating the identical
+publication returned `NO_CHANGE` for all 22 items and all 21 relations. A
+separate real six-item preflight returned `hasWarning:true` for disk/software/
+VM dependency or key gaps, and the CLI correctly withheld the apply request;
+the unsupported mappings were removed. Simulator/TLS-fixture evidence remains
+separate and deterministic.
+
+**Deliberate non-goals.** This slice does not implement a ServiceNow-side
+scheduler/control panel, MID registration, ECC topics, stock probes/sensors or
+patterns, custom tables/application artifacts, IntegrationHub ETL or a Service
+Graph Connector; write CMDB tables directly; accept Basic authentication or a
+secret-valued CLI flag; map service/cloud/Kubernetes assets, VMware
+relationships, or arbitrary attributes/relationship names; delete/retire CIs;
+infer remote LAN devices from IP addresses or publish ARP-cache entries as
+computers without stable identity evidence;
+claim entitlement to a ServiceNow product; or complete the 1K/10K/100K M3
+scale gate.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up
@@ -2500,11 +2582,12 @@ evidence after the original Kubernetes/AWS/Azure/source-resolution slices.
 The custom scoped-app Relay from slice 5 and ECC-compatible transport from
 slice 6 are retained as experimental evidence, not customer requirements.
 Topo-owned, destination-neutral discovery followed by direct IRE publication
-is the ServiceNow product direction. The next focused ServiceNow slice should
-expose the existing IRE publisher through a non-experimental operator workflow
-and validate more mapped CI classes, relationships, bounded batches, retries,
-and partial failures against a real instance. Do not implement stock Discovery
-topic translators, advertise `ALL`, or claim native Discovery Schedule/Status
+is the ServiceNow product direction. Slice 7 implements the supported
+non-experimental operator workflow for computers, network adapters, and their
+ownership relation. Additional CI classes and relationship types require
+focused slices backed by real IRE dependency/identity evidence. Do not
+implement stock Discovery topic
+translators, advertise `ALL`, or claim native Discovery Schedule/Status
 compatibility without a new explicit product decision and a documented,
 supportable contract. The remaining larger scale gates leading toward Topo
 Graph stay staged independently.

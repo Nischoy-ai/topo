@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Nischoy-ai/topo/pkg/model"
 	"github.com/Nischoy-ai/topo/pkg/publisher"
@@ -26,6 +27,15 @@ type Config struct {
 }
 
 type Publisher struct{ Config Config }
+
+const (
+	MaxEnvelopes       = 100
+	MaxItems           = 1000
+	MaxRelations       = 2000
+	MaxRequestBytes    = 4 << 20
+	MaxResponseBytes   = 1 << 20
+	MaxDiscoverySource = 100
+)
 
 // PublishError classifies an IRE failure for delivery loops. Transport
 // failures, 5xx, and 429 may be retried; configuration/validation failures and
@@ -74,29 +84,65 @@ func (p Publisher) Validate(context.Context) error {
 	if p.Config.DiscoverySource == "" {
 		return errors.New("ServiceNow discovery source is required")
 	}
+	if len(p.Config.DiscoverySource) > MaxDiscoverySource || strings.TrimSpace(p.Config.DiscoverySource) != p.Config.DiscoverySource || strings.IndexFunc(p.Config.DiscoverySource, unicode.IsControl) >= 0 {
+		return fmt.Errorf("ServiceNow discovery source must be 1 to %d bytes, have no surrounding whitespace, and contain no control characters", MaxDiscoverySource)
+	}
 	if !p.Config.DryRun && p.Config.Token == "" {
 		return errors.New("ServiceNow token is required outside dry-run mode")
+	}
+	if !p.Config.DryRun && !validBearerToken(p.Config.Token) {
+		return errors.New("ServiceNow token has an invalid format")
 	}
 	return nil
 }
 
-func (p Publisher) Preview(_ context.Context, envelopes []model.ObservationEnvelope) (any, error) {
-	return p.mapPayload(envelopes), nil
+func (p Publisher) Preview(ctx context.Context, envelopes []model.ObservationEnvelope) (any, error) {
+	if err := p.Validate(ctx); err != nil {
+		return nil, err
+	}
+	return p.mapPayload(envelopes)
 }
 
 func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.ObservationEnvelope) (publisher.Result, error) {
 	if err := p.Validate(ctx); err != nil {
 		return publisher.Result{}, err
 	}
-	payload := p.mapPayload(envelopes)
-	if p.Config.DryRun {
-		return publisher.Result{Destination: "servicenow-ire-query", Published: len(payload.Items), Diagnostics: map[string]any{"payload": payload}}, nil
+	payload, err := p.mapPayload(envelopes)
+	if err != nil {
+		return publisher.Result{}, err
 	}
+	if p.Config.DryRun {
+		return publisher.Result{Destination: "servicenow-ire-preview", Published: len(payload.Items), Diagnostics: map[string]any{"payload": payload}}, nil
+	}
+	return p.sendPayload(ctx, payload, "/api/now/identifyreconcile/enhanced", "servicenow-ire", true)
+}
+
+// QueryBatch asks ServiceNow's documented queryEnhanced endpoint to evaluate
+// the exact payload without committing changes. The supported CLI runs this
+// authenticated server-side preflight immediately before every apply.
+func (p Publisher) QueryBatch(ctx context.Context, envelopes []model.ObservationEnvelope) (publisher.Result, error) {
+	if p.Config.DryRun {
+		return publisher.Result{}, errors.New("ServiceNow IRE query requires authenticated non-dry-run mode")
+	}
+	if err := p.Validate(ctx); err != nil {
+		return publisher.Result{}, err
+	}
+	payload, err := p.mapPayload(envelopes)
+	if err != nil {
+		return publisher.Result{}, err
+	}
+	return p.sendPayload(ctx, payload, "/api/now/identifyreconcile/queryEnhanced", "servicenow-ire-query", false)
+}
+
+func (p Publisher) sendPayload(ctx context.Context, payload IREPayload, endpointPath, destination string, commits bool) (publisher.Result, error) {
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return publisher.Result{}, err
 	}
-	endpoint := strings.TrimRight(p.Config.InstanceURL, "/") + "/api/now/identifyreconcile/enhanced"
+	if len(b) > MaxRequestBytes {
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, fmt.Errorf("ServiceNow IRE request exceeds %d bytes", MaxRequestBytes)
+	}
+	endpoint := strings.TrimRight(p.Config.InstanceURL, "/") + endpointPath
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(b))
 	if err != nil {
 		return publisher.Result{}, err
@@ -104,33 +150,48 @@ func (p Publisher) PublishBatch(ctx context.Context, envelopes []model.Observati
 	req.Header.Set("Authorization", "Bearer "+p.Config.Token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	client := p.Config.HTTPClient
-	if client == nil {
-		client = defaultHTTPClient()
-	}
+	client := boundedHTTPClient(p.Config.HTTPClient)
 	resp, err := client.Do(req)
 	if err != nil {
 		return publisher.Result{}, &PublishError{retryable: true, err: err}
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
+	if readErr != nil {
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, &PublishError{err: fmt.Errorf("read ServiceNow IRE response: %w", readErr)}
+	}
+	if len(body) > MaxResponseBytes {
+		// An apply may already have reconciled CIs. Even query responses remain
+		// non-retryable here so the operator sees an ambiguous protocol result.
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, &PublishError{err: fmt.Errorf("ServiceNow IRE response exceeds %d bytes", MaxResponseBytes)}
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		retryable := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500
-		return publisher.Result{Destination: "servicenow-ire", Rejected: len(payload.Items)}, &PublishError{retryable: retryable, err: fmt.Errorf("ServiceNow IRE returned %s: %s", resp.Status, string(body))}
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, &PublishError{retryable: retryable, err: fmt.Errorf("ServiceNow IRE returned %s: %s", resp.Status, string(body))}
 	}
-	if responseReportsError(body) {
-		return publisher.Result{Destination: "servicenow-ire", Rejected: len(payload.Items)}, &PublishError{err: fmt.Errorf("ServiceNow IRE response reported hasError=true: %s", string(body))}
+	if !json.Valid(body) {
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, &PublishError{err: errors.New("ServiceNow IRE returned a malformed JSON response")}
+	}
+	if responseReportsFlag(body, "hasError") {
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, &PublishError{err: fmt.Errorf("ServiceNow IRE response reported hasError=true: %s", string(body))}
+	}
+	if responseReportsFlag(body, "hasWarning") {
+		return publisher.Result{Destination: destination, Rejected: len(payload.Items)}, &PublishError{err: fmt.Errorf("ServiceNow IRE response reported hasWarning=true: %s", string(body))}
 	}
 	// The response body is captured for operator diagnostics. Apart from the
-	// hasError semantic bit above, the exact IRE response schema remains an
-	// unparsed, version-independent diagnostic; see docs/servicenow.md.
-	return publisher.Result{Destination: "servicenow-ire", Published: len(payload.Items), Diagnostics: map[string]any{"status": resp.StatusCode, "response": string(body)}}, nil
+	// documented hasError/hasWarning semantic bits above, the exact IRE
+	// response schema remains an unparsed, version-independent diagnostic.
+	result := publisher.Result{Destination: destination, Diagnostics: map[string]any{"status": resp.StatusCode, "response": string(body), "evaluated": len(payload.Items)}}
+	if commits {
+		result.Published = len(payload.Items)
+	}
+	return result, nil
 }
 
-// responseReportsError deliberately recognizes only the stable semantic bit
-// observed in real-instance responses, at any nesting depth. It does not
-// couple Topo to the rest of ServiceNow's proprietary response schema.
-func responseReportsError(body []byte) bool {
+// responseReportsFlag deliberately recognizes only documented semantic bits
+// at any nesting depth. It does not couple Topo to the rest of ServiceNow's
+// release-dependent response schema.
+func responseReportsFlag(body []byte, name string) bool {
 	var decoded any
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return false
@@ -140,7 +201,7 @@ func responseReportsError(body []byte) bool {
 		switch typed := value.(type) {
 		case map[string]any:
 			for key, child := range typed {
-				if key == "hasError" {
+				if key == name {
 					if flag, ok := child.(bool); ok && flag {
 						return true
 					}
@@ -164,13 +225,18 @@ func responseReportsError(body []byte) bool {
 // defaultHTTPClient is used whenever Config.HTTPClient is nil. It never
 // follows a redirect: the Authorization header set above must not be
 // replayed against a destination the operator did not configure.
-func defaultHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: 30 * time.Second,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+func boundedHTTPClient(base *http.Client) *http.Client {
+	client := &http.Client{}
+	if base != nil {
+		*client = *base
 	}
+	if client.Timeout <= 0 || client.Timeout > 30*time.Second {
+		client.Timeout = 30 * time.Second
+	}
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	return client
 }
 
 // mapPayload builds the IRE request payload. Each source_native_key appears
@@ -181,16 +247,24 @@ func defaultHTTPClient() *http.Client {
 // in one request risks a duplicate or conflicting reconciliation rather than
 // updating one CI. When an asset appears more than once, the most recent
 // envelope's values win, matching store.Memory's resolved-asset semantics.
-func (p Publisher) mapPayload(envelopes []model.ObservationEnvelope) IREPayload {
+func (p Publisher) mapPayload(envelopes []model.ObservationEnvelope) (IREPayload, error) {
+	if err := validateEnvelopes(envelopes); err != nil {
+		return IREPayload{}, err
+	}
 	out := IREPayload{}
 	index := map[string]int{}
 	for _, e := range envelopes {
 		for _, a := range e.Assets {
 			values := map[string]any{"name": a.Name, "discovery_source": p.Config.DiscoverySource, "last_discovered": e.ObservedAt.Format("2006-01-02 15:04:05")}
-			for k, v := range a.Attributes {
-				values[k] = v
+			// Only fields whose ServiceNow meaning is reviewed are copied. An
+			// imported observation must not become an arbitrary CMDB-field write.
+			if a.Type == model.AssetNetworkInterface {
+				if mac, ok := a.Attributes["mac_address"].(string); ok && mac != "" {
+					values["mac_address"] = mac
+				}
 			}
-			item := IREItem{ClassName: classFor(a.Type), Values: values, SourceInfo: SourceInfo{SourceName: p.Config.DiscoverySource, SourceNativeKey: a.NativeID}}
+			className, _ := classFor(a.Type)
+			item := IREItem{ClassName: className, Values: values, SourceInfo: SourceInfo{SourceName: p.Config.DiscoverySource, SourceNativeKey: a.NativeID}}
 			if pos, exists := index[a.NativeID]; exists {
 				out.Items[pos] = item
 				continue
@@ -214,33 +288,35 @@ func (p Publisher) mapPayload(envelopes []model.ObservationEnvelope) IREPayload 
 				continue
 			}
 			seenRelations[key] = true
-			out.Relations = append(out.Relations, IRERelation{Type: relationFor(r.Type), Parent: from, Child: to})
+			relationType, _ := relationFor(r.Type)
+			out.Relations = append(out.Relations, IRERelation{Type: relationType, Parent: from, Child: to})
 		}
 	}
-	return out
+	return out, nil
 }
 
-func classFor(t model.AssetType) string {
+func classFor(t model.AssetType) (string, bool) {
 	switch t {
 	case model.AssetHost:
-		return "cmdb_ci_computer"
+		return "cmdb_ci_computer", true
 	case model.AssetNetworkInterface:
-		return "cmdb_ci_network_adapter"
-	case model.AssetVolume:
-		return "cmdb_ci_disk"
-	case model.AssetSoftware:
-		return "cmdb_ci_spkg"
-	case model.AssetVirtualMachine:
-		return "cmdb_ci_vm_instance"
+		return "cmdb_ci_network_adapter", true
 	default:
-		return "cmdb_ci"
+		return "", false
 	}
 }
-func relationFor(t string) string {
+func relationFor(t string) (string, bool) {
 	switch t {
 	case "host_has_interface":
-		return "Owns::Owned by"
+		return "Owns::Owned by", true
 	default:
-		return t
+		return "", false
 	}
+}
+
+func validBearerToken(token string) bool {
+	if token == "" || len(token) > 64<<10 {
+		return false
+	}
+	return strings.IndexFunc(token, unicode.IsSpace) < 0 && strings.IndexFunc(token, unicode.IsControl) < 0
 }
