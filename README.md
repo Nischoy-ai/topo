@@ -15,8 +15,13 @@ publisher with real duplicate-CI reconciliation evidence. For ServiceNow,
 Topo remains the discovery engine and publishes normalized observations through
 the documented IRE API. The `topo mid run` ECC transport and PR #47 scoped-app
 Relay remain bounded experiments; neither is a customer installation
-requirement or a supported replacement for ServiceNow Discovery. The detailed
-status and evidence boundaries are maintained in [ROADMAP.md](ROADMAP.md).
+requirement or a supported replacement for ServiceNow Discovery. A proposed
+ServiceNow-managed mode uses the Nischoy Topo scoped application as the control
+plane and durable store for disposable stateless workers, without ECC or native
+Discovery runtime tables; it is designed but not implemented. See the
+[ServiceNow-controlled stateless architecture](docs/servicenow-control-plane.md).
+The detailed status and evidence boundaries are maintained in
+[ROADMAP.md](ROADMAP.md).
 
 AWS Organizations has partial live-account evidence: real SigV4 connectivity,
 multi-account enumeration, the not-enabled error path, and the documented
