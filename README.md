@@ -101,9 +101,10 @@ brew install nischoy-ai/topo-dev/topo
 
 Its exact source commit and toolchain are recorded in the published release
 metadata. It has no Developer ID signature or notarization ticket and does not
-satisfy the deferred beta/N-1 production-channel evidence. It includes the
-experimental `topo mid run` command, but is not a supported ServiceNow MID
-replacement. See
+satisfy the deferred beta/N-1 production-channel evidence. Development build
+`v0.0.0-dev.3` includes the supported `topo publish servicenow` IRE workflow.
+It also retains the experimental `topo mid run` command, but is not a supported
+ServiceNow MID replacement. See
 [package-manager distribution](docs/distribution.md).
 
 Exercise 500 Linux targets through real SSH handshakes and sessions without provisioning VMs:
