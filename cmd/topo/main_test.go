@@ -68,6 +68,37 @@ func TestMIDRunRejectsPositionalArguments(t *testing.T) {
 	}
 }
 
+func TestWorkerRunRequiresExplicitReadOnlyPolicy(t *testing.T) {
+	t.Setenv("SERVICENOW_INSTANCE_URL", "")
+	t.Setenv("TOPO_SERVICENOW_WORKER_TOKEN", "")
+	tests := []struct {
+		args []string
+		want string
+	}{
+		{args: nil, want: "-servicenow-instance"},
+		{args: []string{"-servicenow-instance", "https://example.service-now.com"}, want: "-worker-pool"},
+		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a"}, want: "-site"},
+		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a", "-site", "site-a"}, want: "explicitly allow local.v1"},
+		{args: []string{"-state-dir", "/tmp/not-allowed"}, want: "flag provided but not defined"},
+		{args: []string{"unexpected"}, want: "does not accept positional arguments"},
+	}
+	for _, test := range tests {
+		err := workerRun(test.args)
+		if err == nil || !strings.Contains(err.Error(), test.want) {
+			t.Fatalf("workerRun(%q) error = %v, want %q", test.args, err, test.want)
+		}
+	}
+}
+
+func TestWorkerCommandExposesOnlyRun(t *testing.T) {
+	for _, args := range [][]string{nil, {"install"}, {"run", "unexpected"}} {
+		err := runWorker(args)
+		if err == nil {
+			t.Fatalf("runWorker(%q) succeeded", args)
+		}
+	}
+}
+
 func TestResolvePrivateKeyReference(t *testing.T) {
 	path := filepath.Join("testdata", "key")
 	reference, err := resolvePrivateKeyReference("", path)

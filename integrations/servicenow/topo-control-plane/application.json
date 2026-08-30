@@ -1,0 +1,269 @@
+{
+  "name": "Nischoy Topo",
+  "scope": "x_664635_topo",
+  "version": "0.2.0",
+  "description": "ServiceNow-owned control plane for stateless Nischoy Topo workers",
+  "source": {
+    "format": "servicenow_fluent",
+    "sdk_version": "4.9.0",
+    "config": "now.config.json",
+    "directory": "src/fluent"
+  },
+  "roles": [
+    "x_664635_topo.admin",
+    "x_664635_topo.operator",
+    "x_664635_topo.viewer",
+    "x_664635_topo.worker"
+  ],
+  "script_includes": [
+    {
+      "name": "TopoControlPlane",
+      "access": "package_private",
+      "client_callable": false,
+      "script": "scripts/TopoControlPlane.js"
+    },
+    {
+      "name": "TopoObservationMapper",
+      "access": "package_private",
+      "client_callable": false,
+      "script": "scripts/TopoObservationMapper.js"
+    },
+    {
+      "name": "TopoIREProcessor",
+      "access": "package_private",
+      "client_callable": false,
+      "script": "scripts/TopoIREProcessor.js"
+    }
+  ],
+  "scripted_rest_api": {
+    "name": "Topo Worker API",
+    "api_id": "tasks",
+    "base_path": "/api/x_664635_topo/v1/tasks",
+    "requires_authentication": true,
+    "required_role": "x_664635_topo.worker",
+    "resources": [
+      {"name": "Register worker", "method": "POST", "path": "/workers/register", "script": "scripts/register_worker.js"},
+      {"name": "Worker heartbeat", "method": "POST", "path": "/workers/heartbeat", "script": "scripts/worker_heartbeat.js"},
+      {"name": "Claim task", "method": "POST", "path": "/claim", "script": "scripts/claim_task.js"},
+      {"name": "Renew task lease", "method": "POST", "path": "/{id}/renew", "script": "scripts/renew_task.js"},
+      {"name": "Ingest result chunk", "method": "POST", "path": "/{id}/results", "script": "scripts/ingest_result.js"},
+      {"name": "Complete task", "method": "POST", "path": "/{id}/complete", "script": "scripts/complete_task.js"}
+    ],
+    "oauth_policy": {
+      "grant_only_scripted_resources": true,
+      "deny_table_api": true,
+      "deny_cmdb_api": true,
+      "deny_ire_api": true
+    }
+  },
+  "tables": [
+    {
+      "name": "x_664635_topo_worker_pool",
+      "label": "Topo Worker Pool",
+      "audited": true,
+      "fields": [
+        ["u_pool_id", "String", 128, true],
+        ["u_name", "String", 255, true],
+        ["u_site_id", "String", 128, true],
+        ["u_service_user", "Reference:sys_user", 32, true],
+        ["u_active", "True/False", 0, true],
+        ["u_lease_seconds", "Integer", 0, true],
+        ["u_max_task_seconds", "Integer", 0, true],
+        ["u_max_leases", "Integer", 0, true]
+      ],
+      "unique_indexes": [["u_pool_id"], ["u_service_user", "u_pool_id"]]
+    },
+    {
+      "name": "x_664635_topo_worker",
+      "label": "Topo Worker",
+      "audited": true,
+      "fields": [
+        ["u_worker_id", "String", 128, true],
+        ["u_boot_id", "String", 128, true],
+        ["u_pool", "Reference:x_664635_topo_worker_pool", 32, true],
+        ["u_site_id", "String", 128, true],
+        ["u_version", "String", 64, true],
+        ["u_capabilities", "String", 255, true],
+        ["u_policy_digest", "String", 64, true],
+        ["u_current_leases", "Integer", 0, true],
+        ["u_active", "True/False", 0, true],
+        ["u_started_at", "Date/Time", 0, true],
+        ["u_last_heartbeat", "Date/Time", 0, true]
+      ],
+      "unique_indexes": [["u_worker_id"], ["u_pool", "u_boot_id"]],
+      "indexes": [["u_pool", "u_active", "u_last_heartbeat"]]
+    },
+    {
+      "name": "x_664635_topo_profile",
+      "label": "Topo Discovery Profile",
+      "audited": true,
+      "fields": [
+        ["u_profile_id", "String", 128, true],
+        ["u_revision", "Integer", 0, true],
+        ["u_name", "String", 255, true],
+        ["u_operation", "Choice:local.v1", 40, true],
+        ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
+        ["u_schema_version", "String", 32, true],
+        ["u_active", "True/False", 0, true]
+      ],
+      "unique_indexes": [["u_profile_id", "u_revision"]],
+      "indexes": [["u_worker_pool", "u_active"]]
+    },
+    {
+      "name": "x_664635_topo_schedule",
+      "label": "Topo Schedule",
+      "audited": true,
+      "fields": [
+        ["u_schedule_id", "String", 128, true],
+        ["u_name", "String", 255, true],
+        ["u_profile", "Reference:x_664635_topo_profile", 32, true],
+        ["u_interval_minutes", "Integer", 0, true],
+        ["u_next_run", "Date/Time", 0, true],
+        ["u_active", "True/False", 0, true]
+      ],
+      "unique_indexes": [["u_schedule_id"]],
+      "indexes": [["u_active", "u_next_run"]]
+    },
+    {
+      "name": "x_664635_topo_run",
+      "label": "Topo Run",
+      "audited": true,
+      "fields": [
+        ["u_run_id", "String", 128, true],
+        ["u_profile", "Reference:x_664635_topo_profile", 32, true],
+        ["u_schedule", "Reference:x_664635_topo_schedule", 32, false],
+        ["u_trigger", "Choice:manual,scheduled,retry", 40, true],
+        ["u_state", "Choice:ready,running,complete,failed,cancelled", 40, true],
+        ["u_started_at", "Date/Time", 0, true],
+        ["u_completed_at", "Date/Time", 0, false],
+        ["u_task_count", "Integer", 0, true],
+        ["u_complete_tasks", "Integer", 0, true],
+        ["u_failed_tasks", "Integer", 0, true],
+        ["u_attempts", "Integer", 0, true],
+        ["u_assets", "Integer", 0, true],
+        ["u_relationships", "Integer", 0, true],
+        ["u_collection_errors", "Integer", 0, true],
+        ["u_error", "String", 4000, false]
+      ],
+      "unique_indexes": [["u_run_id"]],
+      "indexes": [["u_schedule", "u_state"], ["u_profile", "u_state"]]
+    },
+    {
+      "name": "x_664635_topo_task",
+      "label": "Topo Task",
+      "audited": true,
+      "fields": [
+        ["u_task_id", "String", 128, true],
+        ["u_run", "Reference:x_664635_topo_run", 32, true],
+        ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
+        ["u_operation", "Choice:local.v1", 40, true],
+        ["u_profile_id", "String", 128, true],
+        ["u_profile_revision", "Integer", 0, true],
+        ["u_state", "Choice:planned,ready,leased,running,results_received,ire_processing,complete,failed,cancelled", 40, true],
+        ["u_attempt_count", "Integer", 0, true],
+        ["u_attempt_id", "String", 128, false],
+        ["u_lease_worker", "Reference:x_664635_topo_worker", 32, false],
+        ["u_lease_boot_id", "String", 128, false],
+        ["u_lease_token_digest", "String", 64, false],
+        ["u_lease_expires", "Date/Time", 0, false],
+        ["u_completion_id", "String", 128, false],
+        ["u_deadline", "Date/Time", 0, true],
+        ["u_chunk_count", "Integer", 0, true],
+        ["u_error", "String", 4000, false]
+      ],
+      "unique_indexes": [["u_task_id"]],
+      "indexes": [["u_worker_pool", "u_state", "sys_created_on"], ["u_state", "u_lease_expires"], ["u_run", "u_state"]]
+    },
+    {
+      "name": "x_664635_topo_result",
+      "label": "Topo Result Chunk",
+      "audited": true,
+      "fields": [
+        ["u_task", "Reference:x_664635_topo_task", 32, true],
+        ["u_attempt_id", "String", 128, true],
+        ["u_chunk_number", "Integer", 0, true],
+        ["u_chunk_count", "Integer", 0, true],
+        ["u_checksum", "String", 64, true],
+        ["u_attachment", "Reference:sys_attachment", 32, false],
+        ["u_payload_bytes", "Integer", 0, true],
+        ["u_processing_state", "Choice:received,processed,failed,superseded", 40, true],
+        ["u_terminal_outcome", "Choice:complete,failed,ambiguous,superseded", 40, false],
+        ["u_processed_at", "Date/Time", 0, false],
+        ["u_delete_after", "Date/Time", 0, false]
+      ],
+      "unique_indexes": [["u_task", "u_attempt_id", "u_chunk_number"]],
+      "indexes": [["u_processing_state", "u_delete_after"]]
+    },
+    {
+      "name": "x_664635_topo_ire_delivery",
+      "label": "Topo IRE Delivery",
+      "audited": true,
+      "fields": [
+        ["u_idempotency_key", "String", 255, true],
+        ["u_run", "Reference:x_664635_topo_run", 32, true],
+        ["u_task", "Reference:x_664635_topo_task", 32, true],
+        ["u_attempt_id", "String", 128, true],
+        ["u_state", "Choice:preflight,applied,rejected,ambiguous", 40, true],
+        ["u_items", "Integer", 0, true],
+        ["u_relationships", "Integer", 0, true],
+        ["u_diagnostics", "String", 4000, false],
+        ["u_preflight_at", "Date/Time", 0, false],
+        ["u_applied_at", "Date/Time", 0, false]
+      ],
+      "unique_indexes": [["u_idempotency_key"], ["u_task", "u_attempt_id"]],
+      "indexes": [["u_run", "u_state"]]
+    }
+  ],
+  "table_acls": {
+    "x_664635_topo_worker_pool": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin"], "write": ["x_664635_topo.admin"], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_worker": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_profile": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.operator"], "write": ["x_664635_topo.admin", "x_664635_topo.operator"], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_schedule": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.operator"], "write": ["x_664635_topo.admin", "x_664635_topo.operator"], "delete": ["x_664635_topo.admin", "x_664635_topo.operator"]},
+    "x_664635_topo_run": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_task": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_result": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_ire_delivery": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]}
+  },
+  "application_menu": {
+    "name": "Nischoy Topo",
+    "required_role": "x_664635_topo.viewer",
+    "modules": [
+      "x_664635_topo_worker_pool",
+      "x_664635_topo_profile",
+      "x_664635_topo_schedule",
+      "x_664635_topo_run",
+      "x_664635_topo_worker",
+      "x_664635_topo_task",
+      "x_664635_topo_result",
+      "x_664635_topo_ire_delivery"
+    ]
+  },
+  "cross_scope_privileges": [
+    {
+      "target_scope": "sn_cmdb",
+      "target_name": "sn_cmdb.IdentificationEngine",
+      "target_type": "sys_script_include",
+      "operation": "execute",
+      "status": "allowed"
+    }
+  ],
+  "scheduled_scripts": [
+    {"name": "Topo enqueue due schedules", "interval_minutes": 1, "script": "scripts/enqueue_due_schedules.js"},
+    {"name": "Topo expire leases and retain results", "interval_minutes": 5, "script": "scripts/maintenance.js"}
+  ],
+  "business_rules": [
+    {
+      "name": "Validate immutable Topo profile revision",
+      "table": "x_664635_topo_profile",
+      "when": "before",
+      "insert": true,
+      "update": true,
+      "script": "scripts/validate_profile.js"
+    }
+  ],
+  "profile_ui_action": {
+    "name": "Run now",
+    "required_role": "x_664635_topo.operator",
+    "script": "scripts/run_now.js"
+  }
+}

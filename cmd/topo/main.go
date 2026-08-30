@@ -29,6 +29,7 @@ import (
 	toporelay "github.com/Nischoy-ai/topo/internal/relay"
 	"github.com/Nischoy-ai/topo/internal/store"
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
+	topoworker "github.com/Nischoy-ai/topo/internal/worker"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	awsdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/aws"
@@ -75,6 +76,8 @@ func run(args []string) error {
 		return runAgent(args[1:])
 	case "relay":
 		return runRelay(args[1:])
+	case "worker":
+		return runWorker(args[1:])
 	case "mid":
 		return runMID(args[1:])
 	case "storage":
@@ -89,7 +92,7 @@ func run(args []string) error {
 	}
 }
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|publish|agent|relay|mid|storage|lab|version>")
+	fmt.Fprintln(os.Stderr, "usage: topo <serve|discover|publish|agent|relay|worker|mid|storage|lab|version>")
 	return errors.New("command required")
 }
 
@@ -892,6 +895,63 @@ func relayRun(args []string) error {
 		Executor:     toporelay.Executor{Config: fileConfig},
 		Publisher:    irePublisher,
 		Spool:        spool,
+		Logger:       logger,
+	})
+}
+
+func runWorker(args []string) error {
+	if len(args) == 0 || args[0] != "run" {
+		return errors.New("usage: topo worker run")
+	}
+	return workerRun(args[1:])
+}
+
+func workerRun(args []string) error {
+	fs := flag.NewFlagSet("worker run", flag.ContinueOnError)
+	instanceURL := fs.String("servicenow-instance", os.Getenv("SERVICENOW_INSTANCE_URL"), "ServiceNow instance origin (absolute HTTPS URL)")
+	tokenRef := fs.String("token-ref", "", "credential reference for the narrowly scoped ServiceNow worker bearer token")
+	workerPool := fs.String("worker-pool", "", "ServiceNow Topo worker pool ID")
+	siteID := fs.String("site", "", "deployment-controlled site label")
+	allowLocal := fs.Bool("allow-local", false, "allow the compiled-in local.v1 operation on this host")
+	pollInterval := fs.Duration("poll-interval", topoworker.DefaultPollInterval, "worker heartbeat and claim interval")
+	maxTaskDuration := fs.Duration("max-task-duration", topoworker.DefaultMaxTaskDuration, "local ceiling for one local.v1 attempt")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("topo worker run does not accept positional arguments")
+	}
+	if *instanceURL == "" {
+		return errors.New("-servicenow-instance is required")
+	}
+	if *workerPool == "" {
+		return errors.New("-worker-pool is required")
+	}
+	if *siteID == "" {
+		return errors.New("-site is required")
+	}
+	policy := topoworker.Policy{WorkerPool: *workerPool, SiteID: *siteID, AllowLocal: *allowLocal, MaxTaskDuration: *maxTaskDuration}
+	if err := policy.Validate(); err != nil {
+		return err
+	}
+	token, err := resolveCredential(*tokenRef, "", "TOPO_SERVICENOW_WORKER_TOKEN", false)
+	if err != nil {
+		return fmt.Errorf("resolve ServiceNow worker token: %w", err)
+	}
+	client, err := topoworker.NewClient(*instanceURL, string(token), nil)
+	if err != nil {
+		return err
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	logger.Info("Topo stateless ServiceNow worker starting", "worker_pool", policy.WorkerPool, "site", policy.SiteID, "capabilities", policy.Capabilities(), "poll_interval", pollInterval.String())
+	return topoworker.Run(ctx, topoworker.RunConfig{
+		Policy:       policy,
+		Version:      version,
+		PollInterval: *pollInterval,
+		Control:      client,
+		Executor:     topoworker.Executor{Policy: policy},
 		Logger:       logger,
 	})
 }
