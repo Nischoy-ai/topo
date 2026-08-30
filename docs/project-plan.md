@@ -2597,7 +2597,7 @@ computers without stable identity evidence;
 claim entitlement to a ServiceNow product; or complete the 1K/10K/100K M3
 scale gate.
 
-### Slice A — ServiceNow-controlled stateless `local.v1` vertical slice (candidate implemented and real-instance accepted)
+### Slice A — ServiceNow-controlled stateless `local.v1` vertical slice (implemented, real-instance accepted, and merged in PR 54)
 
 **Objective.** Implement the smallest complete ServiceNow-managed discovery
 path defined by `docs/servicenow-control-plane.md`: the Nischoy Topo scoped
@@ -2677,8 +2677,67 @@ after clean preflight/apply, with stable item updates and relationship
 raw row and attachment while preserving its completed task, 22/21 run summary,
 and applied IRE delivery. Exact record identifiers and the simulator/real
 evidence boundary are in `docs/servicenow-worker.md`. Commit, push, PR, and CI
-are now represented by [PR 54](https://github.com/Nischoy-ai/topo/pull/54);
-repository CI must be green before merge.
+were merged through green [PR 54](https://github.com/Nischoy-ai/topo/pull/54).
+
+### Slice B — ServiceNow worker-pool scale and partitioning (staged)
+
+**Objective.** Extend the merged stateless ServiceNow-managed path from one
+short serial task into a horizontally scalable, backpressured worker pool with
+deterministic application-owned partitions, renewable leases, and cooperative
+cancellation. Prove the scheduling, task/result-state, reconciliation, and
+retention algorithms at 1K, 10K, and 100K simulated assets without weakening
+Slice A's no-local-state boundary or introducing a remote discovery protocol.
+
+**Deliverables.** Add a versioned target-scope record and immutable canonical
+partition descriptors with stable partition keys, ordinals, counts, bounded
+CIDR selection/exclusion metadata, and task indexes suitable for deterministic
+claim order. Keep operator-created `local.v1` runs as one local partition; use
+test-only synthetic executors and fixtures to exercise many partitions without
+shipping a synthetic operation or pretending `local.v1` is remote discovery.
+Add a locally enforced maximum worker concurrency, server-recorded worker
+capacity, current-load heartbeats, load-aware claims, pool and worker
+backpressure, renewable leases, loss-of-renewal cancellation at lease expiry,
+and cooperative operator cancellation observable through both heartbeat and
+renew responses. Add bounded batch lease reaping and raw-result cleanup that
+makes progress through backlogs larger than one ServiceNow query window, plus
+bounded pool/run status counts without raw payload or target labels. Preserve
+the six-resource worker API and destination-neutral result/IRE boundary.
+
+**Acceptance gates.** Deterministic tests must prove that identical
+profile/target-scope revisions produce byte-identical ordered partition keys;
+partitions are bounded, non-overlapping, exclude denied ranges, and cannot be
+expanded by a worker. Concurrent workers must never exceed either local worker
+capacity or pool lease capacity, must distribute eligible work without two
+live owners, and must drain the same run after worker churn. A task lasting
+past its initial lease must complete only while renewals succeed; renewal loss
+must cancel execution by lease expiry and permit a fresh attempt. Cancelling a
+ready or running multi-task run must stop new claims, reach a durable terminal
+state, reject late result/complete calls, and leave no worker-local retry
+state. Retention must delete at least 100K eligible raw-result records in
+bounded batches while preserving run/task/IRE summaries, and make no deletion
+before the configured terminal outcome. Separate simulator gates must process
+1K, 10K, and 100K stable supported assets across deterministic partitions,
+repeat the same estate without duplicate item or relationship identity, bound
+task/result counts and peak in-memory work per worker, and record wall-time and
+storage-count evidence without presenting it as ServiceNow platform
+performance. A source-driven Fluent upgrade must preserve Slice A records.
+Formatting, exact Go 1.25.13 focused/full tests, `git diff --check`, repository
+vet, full race tests, Linux build, Windows amd64 vet/build, Fluent build, and
+`scripts/security-review-checks.sh` must pass. Any real-instance upgrade,
+cancellation, lease-renewal, or retention evidence remains separate from
+simulator evidence.
+
+**Deliberate non-goals.** No new production operation or discovery protocol;
+no SSH, WinRM, SNMP, VMware, cloud, Kubernetes, LAN sweep, ARP, or NDP task;
+no Password2, credential broker, Vault binding, or credential endpoint (Slice
+C); no new IRE class, field, relationship, or direct CMDB write; no worker
+database, journal, result spool, schedule store, observation history, retry
+queue, or inbound listener; no exactly-once execution claim; no unbounded
+target list, result, metric label, diagnostic, or retention pass; no claim that
+an in-memory simulator proves ServiceNow transaction throughput, attachment
+capacity, node sizing, or customer SLA; no PostgreSQL/HA redesign, native
+Discovery/ECC/MID/probe/pattern/sensor work, Homebrew/package-channel work,
+production signing, or M2.5 independent retest.
 
 ### Relationship to the M2.5 gate
 
