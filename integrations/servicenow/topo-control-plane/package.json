@@ -1,0 +1,15 @@
+{
+  "name": "@nischoy/topo-servicenow-control-plane",
+  "version": "0.2.0",
+  "description": "ServiceNow control plane for stateless Nischoy Topo workers",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "build": "now-sdk build",
+    "deploy": "now-sdk install",
+    "pack": "now-sdk pack"
+  },
+  "devDependencies": {
+    "@servicenow/sdk": "4.9.0"
+  }
+}

@@ -15,11 +15,20 @@ publisher with real duplicate-CI reconciliation evidence. For ServiceNow,
 Topo remains the discovery engine and publishes normalized observations through
 the documented IRE API. The `topo mid run` ECC transport and PR #47 scoped-app
 Relay remain bounded experiments; neither is a customer installation
-requirement or a supported replacement for ServiceNow Discovery. A proposed
-ServiceNow-managed mode uses the Nischoy Topo scoped application as the control
-plane and durable store for disposable stateless workers, without ECC or native
-Discovery runtime tables; it is designed but not implemented. See the
-[ServiceNow-controlled stateless architecture](docs/servicenow-control-plane.md).
+requirement or a supported replacement for ServiceNow Discovery. M3 Slice A
+now implements the candidate `local.v1` vertical slice of a ServiceNow-managed
+mode: the Nischoy Topo scoped application is the control plane and sole durable
+operational store for disposable `topo worker run` processes, without ECC or
+native Discovery runtime tables. The scoped application is source-driven
+ServiceNow Fluent metadata pinned to SDK 4.9.0, rather than hand-created Studio
+records. The worker/scoped-app contract, local Fluent build, real
+developer-instance SDK installation, deterministic simulator suite, and
+separately recorded real runtime acceptance are complete. The real evidence
+covers exact API denial, manual/scheduled execution, claim/crash recovery,
+idempotent results, IRE, and retention; it is not inferred from either
+installation or simulation. See the
+[ServiceNow-controlled stateless architecture](docs/servicenow-control-plane.md)
+and [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
 The detailed status and evidence boundaries are maintained in
 [ROADMAP.md](ROADMAP.md).
 
@@ -70,6 +79,22 @@ This direct IRE workflow does not install or emulate a MID Server, scoped
 application, custom table, probe, or sensor. Its reviewed mapping boundary and
 required ServiceNow configuration are documented in
 [ServiceNow publishing](docs/servicenow.md).
+
+The separate ServiceNow-managed Slice A worker is outbound-only and executes
+only the explicitly locally allowed, compiled-in `local.v1` operation. Its
+bearer token is also a credential reference, and it has no database, journal,
+spool, schedule store, result history, retry queue, or inbound listener:
+
+```sh
+SERVICENOW_INSTANCE_URL=https://example.service-now.com \
+./bin/topo worker run \
+  -token-ref file:/absolute/path/to/servicenow-worker-token \
+  -worker-pool site-a-local -site site-a -allow-local
+```
+
+Managed deployments should mount or inject the referenced secret from their
+secret store rather than entering a token into shell history. See
+[ServiceNow-managed stateless worker](docs/servicenow-worker.md).
 
 `discover local` inventories this computer and its own interfaces; it is not a
 credential-free LAN scanner. Topo does not publish ARP-cache neighbors as
@@ -298,6 +323,14 @@ instance processing recognizes its topic and operation-specific payload. Topo
 does not promise standard Discovery Schedule, Discovery Status, stock sensor,
 or drop-in MID compatibility.
 
+The candidate ServiceNow-managed Slice A path uses eight scoped Topo tables,
+six worker-only Scripted REST resources, digest-only leases, bounded result
+attachments, application-side reviewed mapping, and scoped IRE preflight/apply.
+`topo worker run` initiates every HTTPS connection and keeps no durable
+operational state. This is distinct from both direct publication and the older
+Relay experiment; see
+[ServiceNow-managed stateless worker](docs/servicenow-worker.md).
+
 `topo mid run` is retained as an experimental, default-deny ECC transport. A
 real official-MID reference run proved automatic registration, native
 validation, and a correlated `HeartbeatProbe` exchange, while also proving
@@ -327,6 +360,11 @@ IRE publishing. See [experimental scoped-app Relay](docs/servicenow-relay.md).
   plane.
 - The PR #47 scoped-app Relay's local-profile/encrypted-spool boundary remains
   documented as experimental behavior, not a required architecture.
+- The ServiceNow-managed Slice A worker accepts only the fixed `local.v1`
+  contract, refuses redirects and injected task fields, keeps no durable state,
+  and receives no generic Table, CMDB, or IRE grant. The scoped application
+  stores only a lease-token digest and writes CIs/relationships only through
+  IRE after a clean non-committing preflight.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
 - Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token bound to that collector ID at issuance; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 - Outbound mTLS (opt-in via `-mtls`, requires `-ca-dir`) lets the controller terminate TLS natively and authenticate collectors by their enrolled certificate instead of the bearer API key; a client presenting no certificate at all still reaches `POST /v1/enroll` (authenticated by its one-time token). A verified collector certificate authorizes collector data-plane endpoints but not operator endpoints. See [Running as native mTLS](docs/enrollment.md#running-as-native-mtls).

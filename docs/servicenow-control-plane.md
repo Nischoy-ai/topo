@@ -5,8 +5,16 @@
 This document records the approved target architecture for a managed Topo
 deployment in which the Nischoy Topo scoped application is the discovery
 control plane and ServiceNow is the only durable operational datastore. It was
-agreed on 2026-08-29. It is a design and implementation plan, not a claim that
-the control plane is implemented or validated yet.
+agreed on 2026-08-29. M3 Slice A implements the candidate `local.v1`
+vertical slice in `internal/worker` and a ServiceNow SDK 4.9.0 Fluent
+application in `integrations/servicenow/topo-control-plane`, with deterministic
+simulator evidence. The Fluent package builds successfully and was installed
+from source on the real developer instance. Separate 2026-08-30 real-instance
+evidence now covers runtime API restrictions, manual and scheduled execution,
+a 32-competitor single-winner claim, crash/lease-expiry recovery, idempotent
+result replay, repeated application-side IRE reconciliation, and raw-result
+retention. See [`servicenow-worker.md`](servicenow-worker.md); simulator results
+remain explicitly separate from that evidence.
 
 The existing direct `topo publish servicenow` workflow remains the supported
 standalone publication mode. The scoped-app Relay and ECC-compatible MID
@@ -128,21 +136,25 @@ a product contract. The application never writes CMDB CI tables directly.
 
 ### Nischoy scoped application tables
 
-The names below are proposed logical names. Confirm their final generated
-scope prefix and field types during application implementation.
+The developer instance enforces its assigned company prefix, so the installed
+Slice A application contract uses scope `x_664635_topo`. That scope is kept
+distinct from the older experimental Relay/MID artifacts under
+`x_nischoy_topo`; changing the new Slice A scope did not rename or migrate
+those experiments. The names below include later-slice logical tables as well
+as the eight tables installed by Slice A.
 
 | Table | Purpose |
 | --- | --- |
-| `x_nischoy_topo_worker_pool` | A deployment zone, site, required capability set, concurrency policy, and allowed profile set. |
-| `x_nischoy_topo_worker` | Ephemeral process identity, authenticated deployment identity, version, capabilities, current lease count, and last heartbeat. |
-| `x_nischoy_topo_profile` | Immutable revision of a reviewed declarative discovery profile. |
-| `x_nischoy_topo_target_scope` | CIDRs, exclusions, sites, and worker-pool bindings selected by an operator. |
-| `x_nischoy_topo_schedule` | Recurrence, active window, profile revision, target scope, and enabled state. |
-| `x_nischoy_topo_run` | One scheduled or manual execution and its terminal summary. |
-| `x_nischoy_topo_task` | One bounded partition, state, attempt count, lease owner/token digest, lease expiry, deadline, and terminal result. |
-| `x_nischoy_topo_result` | Idempotency key, chunk metadata, bounded summary, processing state, and optional attachment reference. |
-| `x_nischoy_topo_credential_binding` | Mode, protocol, allowed profile/target scope, and reference to a protected ServiceNow credential record or external provider reference. |
-| `x_nischoy_topo_ire_delivery` | Preflight/apply state, item/relation counts, bounded redacted diagnostics, and timing. |
+| `x_664635_topo_worker_pool` | A deployment zone, site, required capability set, concurrency policy, and allowed profile set. |
+| `x_664635_topo_worker` | Ephemeral process identity, authenticated deployment identity, version, capabilities, current lease count, and last heartbeat. |
+| `x_664635_topo_profile` | Immutable revision of a reviewed declarative discovery profile. |
+| `x_664635_topo_target_scope` | CIDRs, exclusions, sites, and worker-pool bindings selected by an operator. |
+| `x_664635_topo_schedule` | Recurrence, active window, profile revision, target scope, and enabled state. |
+| `x_664635_topo_run` | One scheduled or manual execution and its terminal summary. |
+| `x_664635_topo_task` | One bounded partition, state, attempt count, lease owner/token digest, lease expiry, deadline, and terminal result. |
+| `x_664635_topo_result` | Idempotency key, chunk metadata, bounded summary, processing state, and optional attachment reference. |
+| `x_664635_topo_credential_binding` | Mode, protocol, allowed profile/target scope, and reference to a protected ServiceNow credential record or external provider reference. |
+| `x_664635_topo_ire_delivery` | Preflight/apply state, item/relation counts, bounded redacted diagnostics, and timing. |
 
 Indexes and uniqueness constraints must cover schedule/run relationships, task
 claim selection, lease expiry, `(task, attempt, chunk_number)`, and IRE delivery
@@ -221,18 +233,19 @@ privilege, or host security.
 
 ## Scoped REST surface
 
-Exact names may change, but the semantic surface is fixed and deliberately
-small:
+The versioned Slice A base path is `/api/x_664635_topo/v1/tasks`. Exact names
+may change in later reviewed versions, but the semantic surface is fixed and
+deliberately small:
 
 | Resource | Purpose |
 | --- | --- |
 | `POST /workers/register` | Record process identity, version, capabilities, pool, and local policy digest. |
 | `POST /workers/heartbeat` | Report liveness and load; receive cancellation hints. |
-| `POST /tasks/claim` | Atomically lease one eligible bounded task. |
-| `POST /tasks/{id}/renew` | Extend an owned lease and observe cancellation. |
-| `POST /tasks/{id}/credential` | Resolve the task's authorized ServiceNow-managed credential for the current attempt. |
-| `POST /tasks/{id}/results` | Upload one bounded, checksummed, idempotent observation chunk. |
-| `POST /tasks/{id}/complete` | Declare success or a structured redacted failure after all chunks are acknowledged. |
+| `POST /claim` | Atomically lease one eligible bounded task. |
+| `POST /{id}/renew` | Extend an owned lease and observe cancellation. |
+| `POST /{id}/credential` | Resolve the task's authorized ServiceNow-managed credential for the current attempt. |
+| `POST /{id}/results` | Upload one bounded, checksummed, idempotent observation chunk. |
+| `POST /{id}/complete` | Declare success or a structured redacted failure after all chunks are acknowledged. |
 
 Every resource requires a narrowly scoped worker identity. OAuth token
 restrictions and API access policies must allow only these methods and

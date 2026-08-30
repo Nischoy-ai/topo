@@ -1,0 +1,5 @@
+.now/
+dist/
+node_modules/
+target/
+*.tsbuildinfo

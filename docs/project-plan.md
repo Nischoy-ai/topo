@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-29
+- **Updated:** 2026-08-30
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -53,10 +53,26 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   expire after successful IRE processing; run summaries and normalized CMDB
   state remain. Credential bindings must support both protected
   ServiceNow-encrypted records (including Password2 where real scoped-app
-  evidence supports it) and external Vault references. This is an approved
-  design, not an implemented or validated feature; standalone direct IRE
-  publication remains supported. See
-  `docs/servicenow-control-plane.md`. The most recent merged
+  evidence supports it) and external Vault references. M3 Slice A now has an
+  implemented candidate on `agent/servicenow-stateless-slice-a`: eight scoped
+  operational tables, four separated roles with no worker table ACLs, six
+  fixed worker REST resources, conditional digest-only leases, application-side
+  reviewed mapping/IRE processing/retention, and stateless `topo worker run`
+  for exactly `local.v1`. The scoped app is now an authoritative,
+  source-driven ServiceNow Fluent package pinned to SDK 4.9.0; its local SDK
+  build emits the eight tables and reviewed runtime metadata successfully.
+  Deterministic simulator evidence covers manual/scheduled runs, a 32-worker
+  single-winner claim, crash/lease-expiry retry, idempotent chunks, repeat
+  simulated reconciliation, and cleanup; it is not real ServiceNow evidence.
+  Separate 2026-08-30 Australia-release developer-instance evidence now covers
+  source-driven Fluent installation, exact six-route OAuth restriction plus
+  unrelated Table API denial, manual and scheduled 22-item/21-relation runs, a
+  32-competitor one-winner claim, explicit crash and attempt-two recovery,
+  one-row idempotent chunk replay, repeated clean IRE preflight/apply, and raw
+  result/attachment deletion with the task/run/IRE summary preserved.
+  Standalone direct IRE publication remains supported. See
+  `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
+  recent merged
   M2.5 slice fixed
   `TSR-2026-004`, the first finding from an actual independent reviewer
   (Grok/xAI) rather than maintainer self-audit: publisher HTTPS clients
@@ -253,7 +269,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   against genuinely live systems unverified — implemented and tested
   against faithful simulators only, the same posture as WinRM real-host
   fixtures.
-- **Current branch:** `agent/servicenow-ire-publish`; no pull request has been
+- **Current branch:** `agent/servicenow-stateless-slice-a`; no pull request has been
   opened yet.
 - **Merged pull requests:** SNMP discovery in
   <https://github.com/Nischoy-ai/topo/pull/21>; VMware discovery in
@@ -2580,6 +2596,89 @@ infer remote LAN devices from IP addresses or publish ARP-cache entries as
 computers without stable identity evidence;
 claim entitlement to a ServiceNow product; or complete the 1K/10K/100K M3
 scale gate.
+
+### Slice A — ServiceNow-controlled stateless `local.v1` vertical slice (candidate implemented and real-instance accepted)
+
+**Objective.** Implement the smallest complete ServiceNow-managed discovery
+path defined by `docs/servicenow-control-plane.md`: the Nischoy Topo scoped
+application is the control panel and sole durable operational datastore, while
+one or more disposable `topo worker run` processes poll outbound over HTTPS,
+execute only the compiled-in `local.v1` operation, and return destination-
+neutral Topo observations for application-side IRE processing.
+
+**Deliverables.** Add the minimum scoped-application worker-pool, worker,
+profile, schedule, run, task, result, and IRE-delivery records; separated
+administrator/operator/viewer/worker roles and least-privilege ACL/resource
+guards; manual **Run now** and scheduled run/task creation; worker registration
+and heartbeat; an atomic task claim with random lease token and digest-only
+storage; lease expiry and a fresh-attempt retry; bounded checksummed idempotent
+result-chunk ingestion; application-side schema validation, deduplication,
+reviewed mapping, IRE preflight, apply, terminal run summary, and bounded raw-
+result retention. Add stateless `topo worker run` with read-only startup
+configuration, no inbound listener, no local database/journal/spool/schedule/
+history/retry state, strict HTTPS/redirect behavior, bounded requests and
+responses, a deployment-controlled local policy, and exactly one compiled-in
+operation (`local.v1`). Reuse only the real-instance-validated
+`cmdb_ci_computer`, `cmdb_ci_network_adapter`, and `Owns::Owned by` mapping.
+
+**Acceptance gates.** Deterministic simulator tests must prove manual and
+scheduled execution to a terminal run, worker registration, worker crash plus
+lease expiry and a new attempt, concurrent multi-worker claim safety, live-
+lease and attempt binding, duplicate result-chunk acknowledgement without a
+duplicate record, unknown/arbitrary operation denial, reviewed-only mapping,
+preflight-before-apply, run summaries, and cleanup only after a durable IRE
+outcome. Separate real developer-instance evidence must prove scoped-app
+installation, roles/ACLs and generic Table API denial, **Run now**, scheduled
+execution, a high-concurrency single-lease claim race, crash/lease-expiry
+recovery, idempotent chunk retry, application-side IRE preflight/apply, and an
+identical repeat reconciling without duplicate CIs or relationships. Exact Go
+1.25.13 formatting, focused integration tests, `git diff --check`, repository
+vet, full race tests, Linux build, Windows amd64 vet/build, and
+`scripts/security-review-checks.sh` must pass. Simulator evidence and real
+ServiceNow evidence remain explicitly separate.
+
+**Deliberate non-goals.** No credential bindings, Password2, Vault-backed
+discovery credentials, or authenticated remote protocol (Slice C); no target
+partitioning or 1K/10K/100K scale gate (Slice B); no operation beyond
+`local.v1`; no `ecc_queue`, MID behavior, native Discovery Schedule/Status,
+probe, pattern, sensor, or native Discovery runtime record; no arbitrary
+command, script, PowerShell, WQL, OID, URL, CMDB class, field, relationship, or
+executable payload supplied by ServiceNow; no worker-side durable operational
+state or offline guarantee; no direct CMDB table write; no new IRE mapping; no
+indefinite raw retention; and no Homebrew/package-channel, production-signing,
+or M2.5 independent-retest work in this slice.
+
+**Implementation status (2026-08-30).** The Go worker, source-driven
+ServiceNow Fluent application (SDK 4.9.0), review manifest/scripts, immutable
+profile rule, operator/schedule entry points, in-memory ServiceNow-contract
+fixture, artifact-boundary tests, and operator/security documentation are implemented on
+`agent/servicenow-stateless-slice-a`. Exact Go 1.25.13 focused and full race
+tests, repository vet, Linux build, Windows amd64 vet/build, the pinned
+`scripts/security-review-checks.sh` gate (zero reachable vulnerabilities),
+`node --check` for every scoped JavaScript source, JSON validation, and
+`git diff --check` pass. `npm ci --ignore-scripts && npm run build` compiles the
+Fluent sources successfully into an installable scoped-app package.
+Simulator-only evidence is enumerated separately in
+`docs/servicenow-worker.md`. SDK OAuth authorization and source-driven install
+completed against the Australia-release developer instance as application
+`d4e2151fdcbc7d97f8c155d1ba873e46` under its required company-prefixed scope
+`x_664635_topo`; read-only verification found all eight tables, four roles, 23
+ACLs, six authenticated/authorized versioned POST resources, three
+package-private Script Includes, two scheduled scripts, and the one allowed IRE
+cross-scope execute privilege. A dedicated client-credentials worker identity
+was limited to those six resources and received HTTP 401 from an unrelated
+Table API. Real **Run now** and scheduled runs completed with 22 items and 21
+relationships. Thirty-two concurrent claim clients produced one winner and one
+attempt. A deliberately abandoned lease was reclaimed by a fresh boot at
+expiry and completed on attempt two. An identical chunk retry returned
+`duplicate:true` with one durable result row. Repeated IRE deliveries completed
+after clean preflight/apply, with stable item updates and relationship
+`NO_CHANGE` results. Finally, the maintenance job removed an expired successful
+raw row and attachment while preserving its completed task, 22/21 run summary,
+and applied IRE delivery. Exact record identifiers and the simulator/real
+evidence boundary are in `docs/servicenow-worker.md`. Commit, push, PR, and CI
+are now represented by [PR 54](https://github.com/Nischoy-ai/topo/pull/54);
+repository CI must be green before merge.
 
 ### Relationship to the M2.5 gate
 

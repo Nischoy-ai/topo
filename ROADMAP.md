@@ -186,6 +186,23 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   limited to computer/network-adapter plus `Owns::Owned by` until focused
   slices prove those additional contracts. See
   [docs/servicenow.md](docs/servicenow.md).
+- **Implemented candidate with real-instance acceptance (ServiceNow-managed
+  stateless Slice A):** `topo worker run` polls six fixed scoped REST resources,
+  keeps no durable operational state, and executes only locally authorized
+  `local.v1`. An authoritative ServiceNow Fluent application pinned to SDK
+  4.9.0 builds the scoped control plane without hand-created Studio metadata.
+  The scoped-app source owns worker pools, immutable profile
+  revisions, schedules, runs, conditionally claimed digest-only leases,
+  idempotent bounded result attachments, application-side reviewed mapping,
+  IRE preflight/apply, terminal summaries, and retention. Deterministic tests
+  separately prove manual/scheduled execution, a 32-worker single-winner claim,
+  lease-expiry recovery, duplicate chunk handling, repeat simulated
+  reconciliation, and cleanup. Separate 2026-08-30 developer-instance evidence
+  validates exact worker API restriction and unrelated Table API denial,
+  manual and scheduled 22-item/21-relation runs, a 32-competitor single claim,
+  crash/lease-expiry retry, duplicate-chunk idempotency, repeated IRE
+  reconciliation, and raw-result retention. See
+  [docs/servicenow-worker.md](docs/servicenow-worker.md).
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for

@@ -25,6 +25,11 @@ jobs:
       - run: go build -trimpath ./cmd/topo
       - name: Cross-compile check (Windows agent service code)
         run: GOOS=windows GOARCH=amd64 go vet ./... && GOOS=windows GOARCH=amd64 go build -trimpath -o /dev/null ./cmd/topo
+      - name: Build ServiceNow Fluent application
+        working-directory: integrations/servicenow/topo-control-plane
+        run: |
+          npm ci --ignore-scripts
+          npm run build
       - name: Reproduce release archives from two source paths
         run: scripts/build-release.sh v0.0.0-ci "$GITHUB_SHA" "$RUNNER_TEMP/topo-raw"
       - name: Reproduce Linux and Helm packages from verified archives

@@ -32,6 +32,13 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 - Review ServiceNow IRE preview output before enabling destination writes,
   and configure identification/reconciliation rules for every CI class Topo
   emits; see [ServiceNow publishing](docs/servicenow.md).
+- For the candidate ServiceNow-managed mode, bind a dedicated integration user
+  to exactly one active Topo worker pool and restrict its OAuth token to the six
+  custom worker resources. Do not grant that identity the generic Table API,
+  CMDB, IRE, reporting, schedule, or application-administration access. The
+  worker token is resolved through a credential reference and must not be
+  shared with the direct IRE publisher. See
+  [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
 - `topo mid run` is an experiment, not the supported ServiceNow publication
   path. If reproducing it in a disposable environment, use a dedicated user
   with the built-in
@@ -404,6 +411,47 @@ unrelated Table API. It requires an absolute HTTPS instance URL and a bearer
 token supplied through the same credential-reference contract as every other
 Topo secret. See
 [ServiceNow publishing](docs/servicenow.md).
+
+## ServiceNow-managed stateless workers
+
+M3 Slice A's `topo worker run` is an outbound HTTPS client with no inbound
+listener and no database, journal, spool, schedule store, result history, or
+retry queue. Its startup policy fixes the ServiceNow origin, pool, site,
+`local.v1` authority, and task-duration ceiling. The worker refuses URL
+userinfo/path/query/fragment, redirects, unknown response fields, unknown
+operation versions, and any task object containing extra command, script,
+query, URL, target, class, field, or relationship authority.
+
+The worker role is limited to six Scripted REST resources and receives no
+generic scoped-table ACL. Every resource binds `gs.getUserID()` to a configured
+pool/site, worker record, boot ID, live attempt, and lease. Claiming uses a
+conditional `ready`-to-`leased` update; only a SHA-256 lease-token digest is
+stored. Results are limited to one 1 MiB checksummed JSON chunk in Slice A,
+unique by `(task, attempt, chunk)`, and late attempts are rejected. ServiceNow
+lease expiry—not local retry state—recovers a crashed worker.
+
+The scoped application is defined as source-driven ServiceNow Fluent metadata
+with `@servicenow/sdk` pinned exactly in an npm lock file. Generated application
+metadata is not committed or treated as source. The Fluent package contains no
+worker token, OAuth authorization code, refresh token, client secret, target,
+or discovery credential; SDK authentication belongs in the SDK's protected
+credential store and worker authentication remains a separately provisioned,
+least-privilege identity.
+
+The scoped application treats result JSON as untrusted. It bounds structure,
+validates the Topo envelope against the task/pool, ignores unreviewed
+attributes, maps only computers, network adapters, and `Owns::Owned by`, and
+uses scoped IRE preflight before one apply. It never opens a CMDB CI or
+relationship table for writing. An interrupted or malformed apply response is
+ambiguous and non-replayable. Successful raw attachments expire after 24 hours;
+failed, superseded, and ambiguous results after seven days. Simulator tests do
+not prove ServiceNow's transaction, ACL, attachment, scoped IRE, or
+reconciliation behavior. Separate 2026-08-30 real-instance evidence proves the
+six-resource token cannot call an unrelated Table API, a 32-competitor claim
+has one winner, a crashed lease is retried by a fresh boot, identical chunks
+remain one row, repeated 22/21 deliveries reconcile through IRE, and retention
+removes the raw row and attachment while preserving the run/task/IRE summary.
+See [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
 
 ## Experimental ServiceNow ECC-compatible MID transport
 
