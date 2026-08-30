@@ -335,12 +335,55 @@ IRE, or a real SSH server:
   install/test/build, and the pinned security-review gate pass;
   `govulncheck` reports zero reachable vulnerabilities.
 
-Still required real Slice C1 evidence: source-driven upgrade preservation,
-Password2 encryption/non-audit/non-export behavior, credential-admin and worker
-denial ACLs, the full broker denial matrix, manual and scheduled execution
-against an explicitly approved real or sanitized SSH target, repeat IRE
-reconciliation, and retention. Until those pass, this is a candidate—not an
+Real source-driven upgrade preservation and installed metadata are documented
+below. Still required real Slice C1 evidence: Password2
+encryption/non-audit/non-export behavior, credential-admin and worker denial
+ACLs, the full broker denial matrix, manual and scheduled execution against an
+explicitly approved real or sanitized SSH target, repeat IRE reconciliation,
+and retention. Until those pass, this is a candidate—not an
 install-and-discover acceptance claim.
+
+### Real ServiceNow Slice C1 installation evidence — 2026-08-30
+
+This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+It proves installation metadata and upgrade preservation only; it does not
+prove Password2 runtime behavior or SSH discovery:
+
+- `now-sdk install --auth topo-dev` upgraded the existing application sys_id
+  `d4e2151fdcbc7d97f8c155d1ba873e46` to `0.4.0` from the Fluent source and
+  produced rollback context `b03a95d1938fc790ec251aebb9373cc7`.
+- Read-only SDK queries found exactly twelve `x_664635_topo_*` tables, including
+  the protected SSH credential, immutable credential binding, and secret-free
+  credential-access log; exactly five application roles; and exactly seven
+  authenticated POST worker routes, including `/{id}/credential`.
+- The installed Password2 dictionary row
+  `3d3ad9d193030b90ec251aebb9373c0d` is mandatory, has field auditing disabled,
+  and carries `is_legacy_password2=true,no_data_replicate=true`. The ten
+  credential-related ACLs are active: credential CRUD is credential-admin
+  only; binding read is viewer while writes are credential-admin only; access
+  log read is credential-admin and delete is app-admin. No worker table ACL was
+  added.
+- Pool `12289acd93478790ec251aebb9373ceb`, local profile
+  `ae289acd93478790ec251aebb9373cf0`, disabled proof schedule
+  `2a28dacd93478790ec251aebb9373c0f`, and the three known complete Slice A
+  22-item/21-relationship run summaries remained present after the upgrade.
+- The existing native `topo.worker.execute` auth scope and API-access policy
+  each remain exact-resource allowlists for the original six Slice A POST
+  routes. They do not yet include `POST /{id}/credential`; no wildcard or
+  generic Table API grant was introduced. A fresh worker token must not be used
+  for Password2 discovery until the exact seventh scope/policy pair is added
+  and verified.
+- Both credential and binding tables are empty. No secret, target, broker call,
+  SSH connection, IRE transaction, or CMDB write was attempted as part of this
+  installation check.
+
+Still required real Slice C1 evidence is now narrower: add and verify the exact
+seventh OAuth route, enter a target credential directly into Password2, prove
+the Password2 encryption/non-audit/non-export and full ACL/broker denial
+matrix, and run manual plus scheduled discovery against an explicitly approved
+real or sanitized SSH target through repeat IRE reconciliation and retention.
+Until those pass, this remains a candidate—not an install-and-discover
+acceptance claim.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 

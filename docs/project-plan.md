@@ -100,11 +100,18 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   it retrieves the credential only after target authorization and retains no
   durable state. Focused source/build and simulator tests pass, including an
   end-to-end no-data SSH attempt that retrieves one credential and skips IRE.
-  This is not real ServiceNow or real SSH evidence. The Fluent `0.4.0` upgrade,
-  Password2 encryption/ACL/broker matrix, and manual/scheduled execution
-  against an approved real or sanitized SSH target remain pending explicit
-  real-instance authorization. External Vault support is deferred to Slice C2
-  by the user's 2026-08-30 decision; it remains an eventual requirement.
+  Separate real developer-instance evidence now covers a source-driven Fluent
+  upgrade of the same application to `0.4.0`, preservation of the known Slice
+  A/B configuration and run summaries, all twelve scoped tables and five
+  roles, the seven installed worker routes, the ten credential ACL/role
+  mappings, and the Password2 dictionary contract (`audit=false`, mandatory,
+  and non-replicated). The instance's existing worker OAuth restriction still
+  contains exactly the original six routes, so the credential route is not yet
+  authorized; no Password2 record or SSH target was created. Real Password2
+  encryption/non-export behavior, the broker denial matrix, and manual and
+  scheduled execution against an explicitly approved real or sanitized SSH
+  target remain acceptance gaps. External Vault support is deferred to Slice
+  C2 by the user's 2026-08-30 decision; it remains an eventual requirement.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -2879,7 +2886,7 @@ Password2 pilot completes the external-vault requirement or production-ready
 heterogeneous network discovery; no Homebrew/package-channel, production-
 signing, PostgreSQL/HA, or M2.5 independent-retest work.
 
-**Implementation status.** The local candidate is implemented on
+**Implementation status.** The candidate is implemented on
 `agent/servicenow-password2-ssh-slice-c`. Fluent `0.4.0` builds successfully;
 Node contract tests cover the fixed capability list, username boundary,
 Password2 broker/no-store source, and SSH no-data mapping. Exact Go focused
@@ -2890,10 +2897,18 @@ claim→credential→no-data-result→terminal-summary flow with no simulated IR
 call. Formatting, `git diff --check`, exact Go 1.25.13 full tests, focused
 integration tests, repository vet, full race tests, native and Windows amd64
 build/vet, clean Fluent install/test/build, and the pinned security-review
-gate pass; `govulncheck` reports zero reachable vulnerabilities. The remaining
-acceptance gap is the separately approved real developer-instance/SSH-target
-run and its complete broker/ACL evidence. No Vault provider or Homebrew
-documentation is included.
+gate pass; `govulncheck` reports zero reachable vulnerabilities. A
+source-driven real-instance upgrade installed `0.4.0` over the existing app
+without losing the known Slice A/B configuration or run summaries; read-only
+metadata checks found all twelve tables, five roles, seven REST routes, ten
+credential ACL/role mappings, and the expected Password2 dictionary flags.
+That is installation evidence, not credential or discovery evidence. The
+existing worker OAuth scope/policy remains restricted to the six Slice A
+routes, and no Password2 record, binding, SSH target, or SSH run has been
+created. The remaining acceptance gap is an exact seventh-route OAuth update,
+direct secret entry into Password2, an explicitly approved SSH target, and the
+complete real broker/ACL/manual/scheduled/reconciliation/retention evidence.
+No Vault provider or Homebrew documentation is included.
 
 ### Relationship to the M2.5 gate
 
