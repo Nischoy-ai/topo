@@ -2788,6 +2788,82 @@ Fluent upgrade and focused worker-API evidence are recorded separately in
 `docs/servicenow-worker.md`; they do not make simulator scale timings into
 ServiceNow throughput evidence.
 
+### Slice C1 — Password2-backed ServiceNow-managed Linux SSH pilot (staged)
+
+**Objective.** Deliver the first installable credentialed-network path from
+the Nischoy Topo ServiceNow control panel: an operator selects an immutable
+IPv4 target scope and a reviewed `ssh_linux.v1` profile, then an outbound-only,
+stateless laptop worker uses one ServiceNow Password2-backed SSH credential to
+inventory allowlisted Linux targets through Topo's existing compiled-in SSH
+operation and returns destination-neutral computer/adapter observations for
+the existing reviewed IRE mapping. This user-approved slice deliberately
+defers external Vault bindings; that eventual architecture requirement is not
+removed or represented as implemented.
+
+**Deliverables.** Upgrade the source-driven Fluent application with a dedicated
+credential-administrator role, a protected SSH credential table whose secret
+column is Password2 with field auditing and data replication disabled, and a
+separate immutable credential-binding record tied to one profile revision and
+target-scope revision. Keep both tables unavailable to generic web services;
+give workers no table ACL. Add `ssh_linux.v1` as the only new compiled-in
+operation, require an active IPv4 target scope compiled into at most 1,024
+single-address `/32` tasks, bind each task to the reviewed credential binding,
+and add one fixed attempt-bound credential-broker REST resource. The broker
+must authenticate the pool service user, worker/boot, live task/attempt/lease,
+operation, profile, scope, and binding before returning only a bounded SSH
+username/password response with `Cache-Control: no-store`; it records a
+secret-free access event. Extend `topo worker run` with deployment-owned,
+read-only SSH enablement, an absolute CIDR allowlist file, and an absolute
+OpenSSH `known_hosts` file. The worker intersects every task address with the
+local allowlist before credential retrieval or network access, uses fixed port
+22, existing fixed SSH commands, bounded concurrency/deadlines/output, normal
+host-key verification, and retains neither the password nor retry/result state
+after the attempt. Reuse only `cmdb_ci_computer`,
+`cmdb_ci_network_adapter`, and `Owns::Owned by`, including a no-assets path
+that preserves bounded collection errors without calling IRE. Document the
+developer-install workflow from Fluent deployment through pool/scope/
+credential/binding/profile creation, worker startup, Run Now, scheduling, and
+run/IRE inspection.
+
+**Acceptance gates.** Fluent source/build tests and real developer-instance
+evidence must show the password is encrypted at rest rather than stored or
+returned as ordinary text; the secret field is absent from audit/history,
+list/export/display values and generic Table API access; only the credential
+administrator can create or change it; and application upgrade preserves
+existing Slice A/B records. Exact broker tests must deny a wrong pool identity,
+worker, boot, task, attempt, lease token, operation, profile, scope, binding,
+expired lease, cancelled task, inactive record, and cross-bound credential,
+without returning or logging the secret. A correct live attempt may retrieve
+the credential once or idempotently during its lease, with a bounded no-store
+response, and a worker restart retains no secret. Worker tests must reject SSH
+unless it is locally enabled with regular absolute allowlist and `known_hosts`
+files; reject noncanonical, non-`/32`, IPv6, out-of-allowlist, non-22, or
+targetless authority before credential retrieval or dialing; verify host-key
+mismatch, password failure, cancellation, timeout, output bounds, and fixed-
+command rejection; and prove an unreachable target cannot prevent a different
+task from completing. Deterministic Topo Lab tests must run manual and
+scheduled SSH profiles twice with stable item/relationship identity and repeat
+simulated reconciliation. Separate real evidence must run one manual and one
+scheduled profile through a real stateless worker and Password2 broker on the
+developer instance, against an explicitly approved real or sanitized SSH
+target, and record IRE/retention outcomes without exposing credential or host
+data. Formatting, `git diff --check`, exact Go 1.25.13 focused/full tests,
+repository vet, full race tests, Linux build, Windows amd64 vet/build, Fluent
+tests/build, and `scripts/security-review-checks.sh` must pass.
+
+**Deliberate non-goals.** No Vault, Kubernetes Secret, private-key, certificate,
+or ordered credential-list/fallback mode in this slice; no password spraying
+or credential affinity; no credentialless ARP/NDP/ICMP/port sweep; no IPv6,
+hostname, DNS discovery, user-selected port, command, shell, script, SSH
+option, or host-key bypass; no WinRM, SNMP, VMware, cloud, Kubernetes, or other
+managed operation; no new CI class, field, relationship, or direct CMDB write;
+no worker database, journal, spool, schedule store, observation history, retry
+queue, writable trust-on-first-use file, or inbound listener; no ECC, MID,
+native Discovery runtime table, probe, pattern, or sensor; no claim that one
+Password2 pilot completes the external-vault requirement or production-ready
+heterogeneous network discovery; no Homebrew/package-channel, production-
+signing, PostgreSQL/HA, or M2.5 independent-retest work.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up
