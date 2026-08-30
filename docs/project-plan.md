@@ -90,6 +90,21 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   The candidate is proposed in
   [PR 55](https://github.com/Nischoy-ai/topo/pull/55); do not treat it as
   merged until that PR lands.
+  Slice C1 is now a local candidate on
+  `agent/servicenow-password2-ssh-slice-c`, stacked on PR #55: Fluent `0.4.0`
+  defines twelve tables, five roles, and seven fixed worker resources,
+  including a protected non-audited Password2 field, immutable credential
+  binding, secret-free access events, and a live-attempt-only no-store broker.
+  `topo worker run` adds only compiled-in `ssh_linux.v1`, fixed port 22,
+  worker-local canonical IPv4 allowlisting, and local OpenSSH `known_hosts`;
+  it retrieves the credential only after target authorization and retains no
+  durable state. Focused source/build and simulator tests pass, including an
+  end-to-end no-data SSH attempt that retrieves one credential and skips IRE.
+  This is not real ServiceNow or real SSH evidence. The Fluent `0.4.0` upgrade,
+  Password2 encryption/ACL/broker matrix, and manual/scheduled execution
+  against an approved real or sanitized SSH target remain pending explicit
+  real-instance authorization. External Vault support is deferred to Slice C2
+  by the user's 2026-08-30 decision; it remains an eventual requirement.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -2863,6 +2878,18 @@ native Discovery runtime table, probe, pattern, or sensor; no claim that one
 Password2 pilot completes the external-vault requirement or production-ready
 heterogeneous network discovery; no Homebrew/package-channel, production-
 signing, PostgreSQL/HA, or M2.5 independent-retest work.
+
+**Implementation status.** The local candidate is implemented on
+`agent/servicenow-password2-ssh-slice-c`. Fluent `0.4.0` builds successfully;
+Node contract tests cover the fixed capability list, username boundary,
+Password2 broker/no-store source, and SSH no-data mapping. Exact Go focused
+tests cover startup allowlist/trust loading, local policy digests, strict SSH
+task validation, allowlist-before-credential/dial ordering, secret-redacted
+credential failures, fixed port 22, and a complete controlsim
+claim→credential→no-data-result→terminal-summary flow with no simulated IRE
+call. The full acceptance matrix remains open until the final repository gates
+and the separately approved real developer-instance/SSH-target run are
+complete. No Vault provider or Homebrew documentation is included.
 
 ### Relationship to the M2.5 gate
 

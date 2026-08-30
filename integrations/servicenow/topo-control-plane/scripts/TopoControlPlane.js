@@ -1,7 +1,9 @@
 var TopoControlPlane = Class.create();
 TopoControlPlane.prototype = {
     CONTRACT: 'v1alpha1',
-    OPERATION: 'local.v1',
+    OPERATION_LOCAL: 'local.v1',
+    OPERATION_SSH_LINUX: 'ssh_linux.v1',
+    MAX_SSH_TARGETS: 1024,
     MAX_RESULT_BYTES: 1048576,
     SUCCESS_RETENTION_SECONDS: 86400,
     FAILURE_RETENTION_SECONDS: 604800,
@@ -13,7 +15,7 @@ TopoControlPlane.prototype = {
                 body.schema_version !== this.CONTRACT || !this._safeID(body.boot_id) ||
                 !this._safeID(body.worker_pool) || !this._safeID(body.site_id) ||
                 !this._short(body.version, 64) || !this._hex(body.policy_digest, 64) ||
-                !this._localCapability(body.capabilities) ||
+                !this._capabilities(body.capabilities) ||
                 (typeof body.max_concurrency !== 'undefined' && !this._integer(body.max_concurrency, 1, 32))) {
             return this._result(400, {error: 'invalid worker registration'});
         }
@@ -33,7 +35,8 @@ TopoControlPlane.prototype = {
         existing.query();
         if (existing.next()) {
             if (String(existing.u_policy_digest) !== String(body.policy_digest) ||
-                    String(existing.u_site_id) !== String(body.site_id)) {
+                    String(existing.u_site_id) !== String(body.site_id) ||
+                    String(existing.u_capabilities) !== this._capabilities(body.capabilities).join(',')) {
                 return this._result(409, {error: 'boot identifier is already registered with different policy'});
             }
             existing.u_last_heartbeat = new GlideDateTime();
@@ -50,7 +53,7 @@ TopoControlPlane.prototype = {
         worker.u_pool = pool.getUniqueValue();
         worker.u_site_id = String(body.site_id);
         worker.u_version = String(body.version).substring(0, 64);
-        worker.u_capabilities = this.OPERATION;
+        worker.u_capabilities = this._capabilities(body.capabilities).join(',');
         worker.u_policy_digest = String(body.policy_digest).toLowerCase();
         worker.u_max_leases = typeof body.max_concurrency === 'undefined' ? 1 : body.max_concurrency;
         worker.u_current_leases = 0;
@@ -95,12 +98,13 @@ TopoControlPlane.prototype = {
     claim: function (body) {
         if (!this._only(body, ['schema_version', 'worker_id', 'boot_id', 'capabilities', 'current_leases']) ||
                 body.schema_version !== this.CONTRACT || !this._safeID(body.worker_id) ||
-                !this._safeID(body.boot_id) || !this._localCapability(body.capabilities) ||
+                !this._safeID(body.boot_id) || !this._capabilities(body.capabilities) ||
                 (typeof body.current_leases !== 'undefined' && !this._integer(body.current_leases, 0, 32))) {
             return this._result(400, {error: 'invalid task claim'});
         }
         var worker = this._workerForCaller(String(body.worker_id), String(body.boot_id));
-        if (!worker || String(worker.u_capabilities) !== this.OPERATION) {
+        var capabilities = this._capabilities(body.capabilities);
+        if (!worker || !capabilities || String(worker.u_capabilities) !== capabilities.join(',')) {
             return this._result(403, {error: 'worker identity or capability is not registered'});
         }
         var pool = worker.u_pool.getRefRecord();
@@ -121,7 +125,7 @@ TopoControlPlane.prototype = {
             var candidate = new GlideRecord('x_664635_topo_task');
             candidate.addQuery('u_worker_pool', pool.getUniqueValue());
             candidate.addQuery('u_state', 'ready');
-            candidate.addQuery('u_operation', this.OPERATION);
+            candidate.addQuery('u_operation', 'IN', capabilities.join(','));
             candidate.addQuery('u_cancel_requested', false);
             candidate.orderBy('u_partition_ordinal');
             candidate.orderBy('sys_created_on');
@@ -186,17 +190,28 @@ TopoControlPlane.prototype = {
             worker.u_current_leases = this._workerLeaseCount(worker.getUniqueValue());
             worker.u_last_heartbeat = now;
             worker.update();
-            return this._result(200, {task: {
+            var claimedOperation = String(claimed.u_operation);
+            var claimedTask = {
                 task_id: String(claimed.u_task_id),
                 run_id: String(claimed.u_run.u_run_id),
                 attempt_id: attemptID,
                 lease_token: leaseToken,
                 lease_expires_at: this._iso(leaseExpires),
-                operation: this.OPERATION,
+                operation: claimedOperation,
                 profile_id: String(claimed.u_profile_id),
                 profile_revision: parseInt(claimed.u_profile_revision, 10),
                 deadline: this._iso(deadline)
-            }});
+            };
+            if (claimedOperation === this.OPERATION_SSH_LINUX) {
+                claimedTask.credential_binding_id = String(claimed.u_credential_binding.u_binding_id);
+                claimedTask.target_partition = {
+                    key: String(claimed.u_partition_key),
+                    ordinal: parseInt(claimed.u_partition_ordinal, 10),
+                    count: parseInt(claimed.u_partition_count, 10),
+                    cidrs: [String(claimed.u_partition_cidrs)]
+                };
+            }
+            return this._result(200, {task: claimedTask});
         }
         return this._result(200, {task: null});
     },
@@ -229,6 +244,53 @@ TopoControlPlane.prototype = {
         }
         lease.task.update();
         return this._result(200, {lease_expires_at: this._iso(expiry), cancelled: false});
+    },
+
+    credential: function (taskID, body) {
+        if (!this._safeID(taskID) ||
+                !this._leaseBody(body, ['schema_version', 'worker_id', 'boot_id', 'attempt_id', 'lease_token'])) {
+            return this._result(400, {error: 'invalid credential request'});
+        }
+        var lease = this._ownedLease(taskID, body, false);
+        if (!lease.ok) {
+            this._recordCredentialAccess(null, null, body, 'denied', 'lease_not_owned');
+            return lease.result;
+        }
+        if (String(lease.task.u_operation) !== this.OPERATION_SSH_LINUX ||
+                !String(lease.task.u_credential_binding) || !String(lease.task.u_target_scope)) {
+            this._recordCredentialAccess(lease.task, null, body, 'denied', 'task_not_credentialed_ssh');
+            return this._result(409, {error: 'task has no reviewed SSH credential authority'});
+        }
+        var binding = lease.task.u_credential_binding.getRefRecord();
+        if (!binding.isValidRecord() || !this._isTrue(binding.u_active) ||
+                String(binding.u_protocol) !== 'ssh_password' ||
+                String(binding.u_profile_id) !== String(lease.task.u_profile_id) ||
+                parseInt(binding.u_profile_revision, 10) !== parseInt(lease.task.u_profile_revision, 10) ||
+                String(binding.u_target_scope) !== String(lease.task.u_target_scope)) {
+            this._recordCredentialAccess(lease.task, binding, body, 'denied', 'binding_mismatch');
+            return this._result(409, {error: 'task credential authority is inactive or mismatched'});
+        }
+        var credential = binding.u_credential.getRefRecord();
+        if (!credential.isValidRecord() || !this._isTrue(credential.u_active) ||
+                !this._sshUsername(String(credential.u_username))) {
+            this._recordCredentialAccess(lease.task, binding, body, 'denied', 'credential_inactive');
+            return this._result(409, {error: 'task credential is inactive or invalid'});
+        }
+        var password;
+        try {
+            password = String(credential.u_password.getDecryptedValue());
+        } catch (error) {
+            this._recordCredentialAccess(lease.task, binding, body, 'denied', 'password2_decrypt_failed');
+            return this._result(500, {error: 'task credential could not be resolved'});
+        }
+        if (!password || password.length > 4096) {
+            this._recordCredentialAccess(lease.task, binding, body, 'denied', 'password2_value_invalid');
+            return this._result(500, {error: 'task credential could not be resolved'});
+        }
+        if (!this._recordCredentialAccess(lease.task, binding, body, 'allowed', 'attempt_bound')) {
+            return this._result(500, {error: 'credential access could not be audited'});
+        }
+        return this._result(200, {username: String(credential.u_username), password: password});
     },
 
     ingestResult: function (taskID, body) {
@@ -405,14 +467,53 @@ TopoControlPlane.prototype = {
         }
         var profile = new GlideRecord('x_664635_topo_profile');
         if (!profile.get(String(profileSysID)) || !this._isTrue(profile.u_active) ||
-                String(profile.u_operation) !== this.OPERATION || String(profile.u_schema_version) !== this.CONTRACT ||
-                !this._safeID(String(profile.u_profile_id)) || !this._integer(parseInt(profile.u_revision, 10), 1, 1000000) ||
-                String(profile.u_target_scope) !== '') {
-            throw new Error('profile is not an active local.v1 revision');
+                [this.OPERATION_LOCAL, this.OPERATION_SSH_LINUX].indexOf(String(profile.u_operation)) < 0 ||
+                String(profile.u_schema_version) !== this.CONTRACT || !this._safeID(String(profile.u_profile_id)) ||
+                !this._integer(parseInt(profile.u_revision, 10), 1, 1000000)) {
+            throw new Error('profile is not an active reviewed revision');
         }
         var pool = profile.u_worker_pool.getRefRecord();
         if (!pool.isValidRecord() || !this._isTrue(pool.u_active)) {
             throw new Error('profile worker pool is inactive');
+        }
+        var operation = String(profile.u_operation);
+        var targetScope = null;
+        var credentialBinding = null;
+        var partitions = [{key: 'local', cidr: ''}];
+        if (operation === this.OPERATION_LOCAL) {
+            if (String(profile.u_target_scope) || String(profile.u_credential_binding)) {
+                throw new Error('local.v1 profile must not carry remote target or credential authority');
+            }
+        } else {
+            targetScope = profile.u_target_scope.getRefRecord();
+            credentialBinding = profile.u_credential_binding.getRefRecord();
+            if (!targetScope.isValidRecord() || !this._isTrue(targetScope.u_active) ||
+                    String(targetScope.u_worker_pool) !== pool.getUniqueValue() ||
+                    parseInt(targetScope.u_ipv4_partition_prefix, 10) !== 32) {
+                throw new Error('ssh_linux.v1 requires an active /32 target scope in the profile worker pool');
+            }
+            if (!credentialBinding.isValidRecord() || !this._isTrue(credentialBinding.u_active) ||
+                    String(credentialBinding.u_protocol) !== 'ssh_password' ||
+                    String(credentialBinding.u_profile_id) !== String(profile.u_profile_id) ||
+                    parseInt(credentialBinding.u_profile_revision, 10) !== parseInt(profile.u_revision, 10) ||
+                    String(credentialBinding.u_target_scope) !== targetScope.getUniqueValue()) {
+                throw new Error('ssh_linux.v1 profile credential binding is inactive or mismatched');
+            }
+            var boundCredential = credentialBinding.u_credential.getRefRecord();
+            if (!boundCredential.isValidRecord() || !this._isTrue(boundCredential.u_active)) {
+                throw new Error('ssh_linux.v1 profile credential is inactive');
+            }
+            var compiled = this.compileTargetScope(targetScope);
+            if (compiled.cidrs.length < 1 || compiled.cidrs.length > this.MAX_SSH_TARGETS) {
+                throw new Error('ssh_linux.v1 target scope must compile to between 1 and ' + this.MAX_SSH_TARGETS + ' addresses');
+            }
+            partitions = [];
+            for (var partitionIndex = 0; partitionIndex < compiled.cidrs.length; partitionIndex++) {
+                if (!/^(?:\d{1,3}\.){3}\d{1,3}\/32$/.test(compiled.cidrs[partitionIndex])) {
+                    throw new Error('ssh_linux.v1 target scope produced a non-/32 partition');
+                }
+                partitions.push({key: compiled.keys[partitionIndex], cidr: compiled.cidrs[partitionIndex]});
+            }
         }
         var outstanding = new GlideRecord('x_664635_topo_run');
         outstanding.addQuery('u_profile', profile.getUniqueValue());
@@ -434,7 +535,7 @@ TopoControlPlane.prototype = {
         run.u_trigger = String(trigger);
         run.u_state = 'ready';
         run.u_started_at = now;
-        run.u_task_count = 1;
+        run.u_task_count = partitions.length;
         run.u_complete_tasks = 0;
         run.u_failed_tasks = 0;
         run.u_cancelled_tasks = 0;
@@ -448,26 +549,35 @@ TopoControlPlane.prototype = {
 
         var deadline = new GlideDateTime(now.getValue());
         deadline.addSeconds(this._boundedInteger(pool.u_max_task_seconds, 30, 3600, 300));
-        var task = new GlideRecord('x_664635_topo_task');
-        task.initialize();
-        task.u_task_id = gs.generateGUID();
-        task.u_run = run.getUniqueValue();
-        task.u_worker_pool = pool.getUniqueValue();
-        task.u_operation = this.OPERATION;
-        task.u_profile_id = String(profile.u_profile_id);
-        task.u_profile_revision = parseInt(profile.u_revision, 10);
-        task.u_partition_key = 'local';
-        task.u_partition_ordinal = 0;
-        task.u_partition_count = 1;
-        task.u_partition_cidrs = '';
-        task.u_state = 'ready';
-        task.u_attempt_count = 0;
-        task.u_chunk_count = 0;
-        task.u_cancel_requested = false;
-        task.u_deadline = deadline;
-        if (!task.insert()) {
-            run.deleteRecord();
-            throw new Error('Topo task could not be created');
+        for (var taskIndex = 0; taskIndex < partitions.length; taskIndex++) {
+            var task = new GlideRecord('x_664635_topo_task');
+            task.initialize();
+            task.u_task_id = gs.generateGUID();
+            task.u_run = run.getUniqueValue();
+            task.u_worker_pool = pool.getUniqueValue();
+            task.u_operation = operation;
+            task.u_profile_id = String(profile.u_profile_id);
+            task.u_profile_revision = parseInt(profile.u_revision, 10);
+            if (targetScope) {
+                task.u_target_scope = targetScope.getUniqueValue();
+                task.u_credential_binding = credentialBinding.getUniqueValue();
+            }
+            task.u_partition_key = partitions[taskIndex].key;
+            task.u_partition_ordinal = taskIndex;
+            task.u_partition_count = partitions.length;
+            task.u_partition_cidrs = partitions[taskIndex].cidr;
+            task.u_state = 'ready';
+            task.u_attempt_count = 0;
+            task.u_chunk_count = 0;
+            task.u_cancel_requested = false;
+            task.u_deadline = deadline;
+            if (!task.insert()) {
+                var cleanup = new GlideRecord('x_664635_topo_task');
+                cleanup.addQuery('u_run', run.getUniqueValue());
+                cleanup.deleteMultiple();
+                run.deleteRecord();
+                throw new Error('Topo task partitions could not be created');
+            }
         }
         return String(run.u_run_id);
     },
@@ -856,6 +966,28 @@ TopoControlPlane.prototype = {
             this._safeID(body.attempt_id) && this._safeID(body.lease_token);
     },
 
+    _recordCredentialAccess: function (task, binding, body, outcome, reason) {
+        var event = new GlideRecord('x_664635_topo_credential_access');
+        event.initialize();
+        event.u_event_id = gs.generateGUID();
+        if (task && task.isValidRecord()) {
+            event.u_task = task.getUniqueValue();
+        }
+        event.u_attempt_id = String(body.attempt_id || '').substring(0, 128);
+        event.u_worker_id = String(body.worker_id || '').substring(0, 128);
+        if (binding && binding.isValidRecord()) {
+            event.u_binding = binding.getUniqueValue();
+        }
+        event.u_outcome = String(outcome);
+        event.u_reason = String(reason).substring(0, 128);
+        event.u_accessed_at = new GlideDateTime();
+        if (!event.insert()) {
+            gs.warn('Topo credential access audit event could not be stored; outcome=' + String(outcome));
+            return false;
+        }
+        return true;
+    },
+
     _validateFailure: function (failure) {
         if (!this._only(failure, ['code', 'message', 'retryable']) || !this._safeID(failure.code) ||
                 !this._short(failure.message, 1000) || typeof failure.retryable !== 'boolean') {
@@ -1049,8 +1181,29 @@ TopoControlPlane.prototype = {
         return true;
     },
 
-    _localCapability: function (capabilities) {
-        return Array.isArray(capabilities) && capabilities.length === 1 && capabilities[0] === this.OPERATION;
+    _capabilities: function (capabilities) {
+        if (!Array.isArray(capabilities) || capabilities.length < 1 || capabilities.length > 2) {
+            return false;
+        }
+        var present = {};
+        for (var index = 0; index < capabilities.length; index++) {
+            if ([this.OPERATION_LOCAL, this.OPERATION_SSH_LINUX].indexOf(capabilities[index]) < 0 || present[capabilities[index]]) {
+                return false;
+            }
+            present[capabilities[index]] = true;
+        }
+        var result = [];
+        if (present[this.OPERATION_LOCAL]) {
+            result.push(this.OPERATION_LOCAL);
+        }
+        if (present[this.OPERATION_SSH_LINUX]) {
+            result.push(this.OPERATION_SSH_LINUX);
+        }
+        return result;
+    },
+
+    _sshUsername: function (value) {
+        return typeof value === 'string' && /^[A-Za-z0-9._-]{1,64}$/.test(value);
     },
 
     _safeID: function (value) {

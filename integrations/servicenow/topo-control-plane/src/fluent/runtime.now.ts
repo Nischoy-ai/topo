@@ -6,7 +6,7 @@ ScriptInclude({
     $id: Now.ID['script-include-topo-control-plane'],
     name: 'TopoControlPlane',
     apiName: 'x_664635_topo.TopoControlPlane',
-    description: 'Lease, result, schedule, run-summary, and retention state machine for stateless Topo workers.',
+    description: 'Lease, attempt-bound credential, result, schedule, run-summary, and retention state machine for stateless Topo workers.',
     script: Now.include('../../scripts/TopoControlPlane.js'),
     active: true,
     clientCallable: false,
@@ -45,7 +45,7 @@ RestApi({
     $id: Now.ID['rest-api-topo-worker-v1'],
     name: 'Topo Worker API',
     serviceId: 'tasks',
-    shortDescription: 'Fixed outbound API for stateless Topo workers executing only local.v1.',
+    shortDescription: 'Fixed outbound API for stateless Topo workers executing reviewed local.v1 and ssh_linux.v1 operations.',
     active: true,
     consumes: 'application/json',
     produces: 'application/json',
@@ -57,7 +57,7 @@ RestApi({
             isDefault: true,
             active: true,
             deprecated: false,
-            shortDescription: 'Slice A fixed local.v1 worker contract.',
+            shortDescription: 'Fixed versioned Topo worker contract with attempt-bound Password2 retrieval.',
         },
     ],
     routes: [
@@ -122,6 +122,21 @@ RestApi({
             active: true,
         },
         {
+            $id: Now.ID['rest-route-task-credential'],
+            name: 'Retrieve attempt-bound task credential',
+            version: 1,
+            method: 'POST',
+            path: '/{id}/credential',
+            script: Now.include('../../scripts/credential_task.js'),
+            authentication: true,
+            authorization: true,
+            internalRole: false,
+            enforceAcl: [topoWorkerEndpoint],
+            consumes: 'application/json',
+            produces: 'application/json',
+            active: true,
+        },
+        {
             $id: Now.ID['rest-route-ingest-result'],
             name: 'Ingest result chunk',
             version: 1,
@@ -163,8 +178,34 @@ BusinessRule({
     order: 100,
     active: true,
     access: 'package_private',
-    description: 'Rejects non-local.v1 profiles and mutations to revisions already referenced by runs.',
+    description: 'Validates reviewed local.v1 and ssh_linux.v1 profile revisions and rejects mutations after use.',
     script: Now.include('../../scripts/validate_profile.js'),
+})
+
+BusinessRule({
+    $id: Now.ID['business-rule-validate-ssh-credential'],
+    name: 'Validate Topo SSH Password2 credential',
+    table: 'x_664635_topo_ssh_credential',
+    when: 'before',
+    action: ['insert', 'update'],
+    order: 100,
+    active: true,
+    access: 'package_private',
+    description: 'Validates bounded SSH credential metadata without exposing or auditing the Password2 value.',
+    script: Now.include('../../scripts/validate_ssh_credential.js'),
+})
+
+BusinessRule({
+    $id: Now.ID['business-rule-validate-credential-binding'],
+    name: 'Validate immutable Topo credential binding revision',
+    table: 'x_664635_topo_credential_binding',
+    when: 'before',
+    action: ['insert', 'update'],
+    order: 100,
+    active: true,
+    access: 'package_private',
+    description: 'Binds one Password2 credential to one reviewed profile revision and one target scope.',
+    script: Now.include('../../scripts/validate_credential_binding.js'),
 })
 
 BusinessRule({
@@ -193,7 +234,7 @@ UiAction({
     script: Now.include('../../scripts/run_now.js'),
     roles: [topoOperator],
     order: 100,
-    hint: 'Create a durable ServiceNow-owned run and ready local.v1 task.',
+    hint: 'Create a durable ServiceNow-owned run and reviewed ready task partitions.',
 })
 
 UiAction({

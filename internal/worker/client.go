@@ -108,6 +108,24 @@ func (c *Client) Renew(ctx context.Context, taskID string, request RenewRequest)
 	return response, err
 }
 
+func (c *Client) Credential(ctx context.Context, taskID string, request CredentialRequest) (SSHCredential, error) {
+	if !safeID.MatchString(taskID) {
+		return SSHCredential{}, errors.New("task ID is invalid")
+	}
+	var response SSHCredential
+	headers, err := c.postResponse(ctx, taskPathPrefix+taskID+"/credential", request, &response)
+	if err != nil {
+		return SSHCredential{}, err
+	}
+	if !headerHasNoStore(headers) {
+		return SSHCredential{}, errors.New("ServiceNow credential response is missing Cache-Control: no-store")
+	}
+	if !safeSSHUsername(response.Username) || response.Password == "" || len(response.Password) > 4096 {
+		return SSHCredential{}, errors.New("ServiceNow returned an invalid SSH credential")
+	}
+	return response, nil
+}
+
 func (c *Client) SubmitResult(ctx context.Context, taskID string, request ResultChunkRequest) (ResultChunkResponse, error) {
 	if !safeID.MatchString(taskID) {
 		return ResultChunkResponse{}, errors.New("task ID is invalid")
@@ -127,34 +145,39 @@ func (c *Client) Complete(ctx context.Context, taskID string, request CompleteRe
 }
 
 func (c *Client) post(ctx context.Context, path string, input, output any) error {
+	_, err := c.postResponse(ctx, path, input, output)
+	return err
+}
+
+func (c *Client) postResponse(ctx context.Context, path string, input, output any) (http.Header, error) {
 	body, err := json.Marshal(input)
 	if err != nil {
-		return fmt.Errorf("encode ServiceNow worker request: %w", err)
+		return nil, fmt.Errorf("encode ServiceNow worker request: %w", err)
 	}
 	if len(body) > maxControlRequestBytes {
-		return fmt.Errorf("ServiceNow worker request exceeds %d bytes", maxControlRequestBytes)
+		return nil, fmt.Errorf("ServiceNow worker request exceeds %d bytes", maxControlRequestBytes)
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("build ServiceNow worker request: %w", err)
+		return nil, fmt.Errorf("build ServiceNow worker request: %w", err)
 	}
 	request.Header.Set("Authorization", "Bearer "+c.token)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return &HTTPError{Retryable: true, err: fmt.Errorf("send ServiceNow worker request: %w", err)}
+		return nil, &HTTPError{Retryable: true, err: fmt.Errorf("send ServiceNow worker request: %w", err)}
 	}
 	defer response.Body.Close()
 	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxControlResponseSize+1))
 	if err != nil {
-		return &HTTPError{Retryable: true, err: fmt.Errorf("read ServiceNow worker response: %w", err)}
+		return nil, &HTTPError{Retryable: true, err: fmt.Errorf("read ServiceNow worker response: %w", err)}
 	}
 	if len(responseBody) > maxControlResponseSize {
-		return &HTTPError{StatusCode: response.StatusCode, err: fmt.Errorf("ServiceNow worker response exceeds %d bytes", maxControlResponseSize)}
+		return nil, &HTTPError{StatusCode: response.StatusCode, err: fmt.Errorf("ServiceNow worker response exceeds %d bytes", maxControlResponseSize)}
 	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return &HTTPError{
+		return nil, &HTTPError{
 			StatusCode: response.StatusCode,
 			Retryable:  response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= http.StatusInternalServerError,
 			// The remote response is untrusted and may reflect a request field.
@@ -164,38 +187,38 @@ func (c *Client) post(ctx context.Context, path string, input, output any) error
 		}
 	}
 	if output == nil {
-		return nil
+		return response.Header.Clone(), nil
 	}
 	if len(bytes.TrimSpace(responseBody)) == 0 {
-		return errors.New("ServiceNow worker API returned an empty response")
+		return nil, errors.New("ServiceNow worker API returned an empty response")
 	}
 	var envelope serviceNowResultEnvelope
 	decoder := json.NewDecoder(bytes.NewReader(responseBody))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&envelope); err != nil {
-		return fmt.Errorf("decode ServiceNow worker response: %w", err)
+		return nil, fmt.Errorf("decode ServiceNow worker response: %w", err)
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		if err == nil {
 			err = errors.New("multiple JSON values")
 		}
-		return fmt.Errorf("decode ServiceNow worker response: %w", err)
+		return nil, fmt.Errorf("decode ServiceNow worker response: %w", err)
 	}
 	if len(bytes.TrimSpace(envelope.Result)) == 0 || bytes.Equal(bytes.TrimSpace(envelope.Result), []byte("null")) {
-		return errors.New("ServiceNow worker API returned an empty result")
+		return nil, errors.New("ServiceNow worker API returned an empty result")
 	}
 	decoder = json.NewDecoder(bytes.NewReader(envelope.Result))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(output); err != nil {
-		return fmt.Errorf("decode ServiceNow worker result: %w", err)
+		return nil, fmt.Errorf("decode ServiceNow worker result: %w", err)
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		if err == nil {
 			err = errors.New("multiple JSON values")
 		}
-		return fmt.Errorf("decode ServiceNow worker result: %w", err)
+		return nil, fmt.Errorf("decode ServiceNow worker result: %w", err)
 	}
-	return nil
+	return response.Header.Clone(), nil
 }
 
 func validateTask(task Task) error {
@@ -210,7 +233,7 @@ func validateTask(task Task) error {
 			return fmt.Errorf("ServiceNow task %s is invalid", label)
 		}
 	}
-	if task.Operation != OperationLocalV1 {
+	if task.Operation != OperationLocalV1 && task.Operation != OperationSSHLinuxV1 {
 		return fmt.Errorf("ServiceNow task %q has unsupported operation %q", task.TaskID, task.Operation)
 	}
 	if task.ProfileRevision < 1 {
@@ -225,7 +248,33 @@ func validateTask(task Task) error {
 	if !task.LeaseExpiresAt.After(time.Now().UTC()) || task.LeaseExpiresAt.After(task.Deadline) {
 		return fmt.Errorf("ServiceNow task %q has an expired or out-of-bounds lease", task.TaskID)
 	}
+	switch task.Operation {
+	case OperationLocalV1:
+		if task.CredentialBindingID != "" {
+			return fmt.Errorf("ServiceNow local task %q contains credential authority", task.TaskID)
+		}
+	case OperationSSHLinuxV1:
+		if !safeID.MatchString(task.CredentialBindingID) {
+			return fmt.Errorf("ServiceNow SSH task %q credential binding is invalid", task.TaskID)
+		}
+		if task.TargetPartition == nil || task.TargetPartition.Count > maxSSHTargets || len(task.TargetPartition.CIDRs) != 1 {
+			return fmt.Errorf("ServiceNow SSH task %q must contain one bounded target", task.TaskID)
+		}
+		prefix, err := netip.ParsePrefix(task.TargetPartition.CIDRs[0])
+		if err != nil || !prefix.Addr().Is4() || prefix.Bits() != 32 {
+			return fmt.Errorf("ServiceNow SSH task %q target must be an IPv4 /32", task.TaskID)
+		}
+	}
 	return nil
+}
+
+func headerHasNoStore(headers http.Header) bool {
+	for _, directive := range strings.Split(headers.Get("Cache-Control"), ",") {
+		if strings.EqualFold(strings.TrimSpace(directive), "no-store") {
+			return true
+		}
+	}
+	return false
 }
 
 func validateTargetPartition(partition *TargetPartition) error {

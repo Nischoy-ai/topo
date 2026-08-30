@@ -5,15 +5,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http/httptest"
+	"net/netip"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Nischoy-ai/topo/internal/worker"
 	"github.com/Nischoy-ai/topo/internal/worker/controlsim"
+	"github.com/Nischoy-ai/topo/pkg/model"
+	"golang.org/x/crypto/ssh"
 )
 
 const testToken = "simulator-worker-token"
@@ -89,6 +95,143 @@ func TestManualAndScheduledLocalRunsReconcileAndRetainSummaries(t *testing.T) {
 			t.Fatalf("cleanup removed run summary: %#v", run)
 		}
 	}
+}
+
+func TestPassword2SSHRunUsesAttemptBoundCredentialAndNoDataSkipsIRE(t *testing.T) {
+	t.Parallel()
+	sim := controlsim.New(controlsim.Config{
+		Token:         testToken,
+		SSHCredential: worker.SSHCredential{Username: "topo", Password: "simulator-password"},
+	})
+	server := httptest.NewTLSServer(sim.Handler())
+	defer server.Close()
+	client, err := worker.NewClient(server.URL, testToken, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	localRunID := sim.RunNow("pool-a")
+	runID := sim.RunNowSSH("pool-a", "192.0.2.7/32", "binding-1")
+	policy := worker.Policy{
+		WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true, AllowSSHLinux: true, MaxConcurrency: 2,
+		SSHAllowlist:     []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")},
+		SSHHostKeyDigest: strings.Repeat("a", 64),
+	}
+	executor := worker.Executor{
+		Policy:             policy,
+		SSHHostKeyCallback: func(string, net.Addr, ssh.PublicKey) error { return nil },
+		SSHDialContext: func(context.Context, string, string) (net.Conn, error) {
+			return nil, errors.New("simulated target offline")
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- worker.Run(ctx, worker.RunConfig{
+			Policy: policy, Version: "test", PollInterval: time.Second,
+			Control: client, Executor: executor,
+			Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), BootID: "boot-ssh",
+		})
+	}()
+	waitFor(t, 5*time.Second, func() bool { return runState(sim.Snapshot(), runID) == "complete" })
+	waitFor(t, 5*time.Second, func() bool { return runState(sim.Snapshot(), localRunID) == "complete" })
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := sim.Snapshot()
+	var noData, applied int
+	for _, delivery := range snapshot.Deliveries {
+		if delivery.NoData {
+			noData++
+		}
+		if delivery.Applied {
+			applied++
+		}
+	}
+	if len(snapshot.Deliveries) != 2 || noData != 1 || applied != 1 {
+		t.Fatalf("delivery = %#v", snapshot.Deliveries)
+	}
+	if len(snapshot.CredentialAccesses) != 1 || snapshot.CredentialAccesses[0].Outcome != "allowed" || snapshot.CredentialAccesses[0].Reason != "attempt_bound" {
+		t.Fatalf("credential access = %#v", snapshot.CredentialAccesses)
+	}
+	var collectionErrors int
+	for _, run := range snapshot.Runs {
+		collectionErrors += run.CollectionErrors
+	}
+	if len(snapshot.Runs) != 2 || collectionErrors != 1 {
+		t.Fatalf("run = %#v", snapshot.Runs)
+	}
+}
+
+func TestManualAndScheduledSSHProfilesRepeatStableReconciliation(t *testing.T) {
+	t.Parallel()
+	sim := controlsim.New(controlsim.Config{Token: testToken, SSHCredential: worker.SSHCredential{Username: "topo", Password: "simulator-password"}})
+	server := httptest.NewTLSServer(sim.Handler())
+	defer server.Close()
+	client, err := worker.NewClient(server.URL, testToken, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manualID := sim.RunNowSSH("pool-a", "192.0.2.7/32", "binding-1")
+	sim.UpsertSchedule(controlsim.Schedule{
+		ID: "ssh-schedule", WorkerPool: "pool-a", Operation: worker.OperationSSHLinuxV1,
+		Target: "192.0.2.7/32", CredentialBindingID: "binding-1",
+		Interval: time.Hour, NextRunAt: time.Now().Add(-time.Minute), Active: true,
+	})
+	policy := worker.Policy{
+		WorkerPool: "pool-a", SiteID: "site-a", AllowSSHLinux: true,
+		SSHAllowlist: []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}, SSHHostKeyDigest: strings.Repeat("a", 64),
+	}
+	executor := &stableSSHExecutor{}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- worker.Run(ctx, worker.RunConfig{
+			Policy: policy, Version: "test", PollInterval: time.Second, Control: client,
+			Executor: executor, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), BootID: "boot-ssh-repeat",
+		})
+	}()
+	waitFor(t, 5*time.Second, func() bool { return runState(sim.Snapshot(), manualID) == "complete" })
+	scheduled := sim.EnqueueDue()
+	if len(scheduled) != 1 {
+		t.Fatalf("scheduled = %#v", scheduled)
+	}
+	waitFor(t, 5*time.Second, func() bool { return runState(sim.Snapshot(), scheduled[0]) == "complete" })
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := sim.Snapshot()
+	if len(snapshot.Deliveries) != 2 || len(snapshot.CredentialAccesses) != 2 {
+		t.Fatalf("snapshot = %#v", snapshot)
+	}
+	for _, operation := range append(snapshot.Deliveries[1].ItemOperations, snapshot.Deliveries[1].RelationOps...) {
+		if operation != "NO_CHANGE" {
+			t.Fatalf("repeat operation = %q", operation)
+		}
+	}
+}
+
+type stableSSHExecutor struct{}
+
+func (*stableSSHExecutor) Execute(context.Context, worker.Task) (model.ObservationEnvelope, error) {
+	return model.ObservationEnvelope{}, errors.New("credentialed execution path was not used")
+}
+
+func (*stableSSHExecutor) ExecuteWithCredentials(ctx context.Context, task worker.Task, source worker.CredentialSource) (model.ObservationEnvelope, error) {
+	if _, err := source.SSH(ctx); err != nil {
+		return model.ObservationEnvelope{}, err
+	}
+	return model.ObservationEnvelope{
+		SchemaVersion: model.SchemaVersion, ObservationID: "ssh-observation-" + task.TaskID,
+		SiteID: "site-a", CollectorID: "worker-pool-pool-a", Plugin: "ssh-linux", JobID: task.TaskID,
+		ObservedAt: time.Now().UTC(),
+		Assets: []model.Asset{
+			{Type: model.AssetHost, NativeID: "ssh-host-stable", Name: "ssh-host"},
+			{Type: model.AssetNetworkInterface, NativeID: "ssh-interface-stable", Name: "eth0", Attributes: map[string]any{"mac_address": "02:00:00:00:00:07"}},
+		},
+		Relationships: []model.Relationship{{Type: "host_has_interface", FromNativeID: "ssh-host-stable", ToNativeID: "ssh-interface-stable"}},
+	}, nil
 }
 
 func TestCrashLeaseExpiryCreatesFreshAttempt(t *testing.T) {

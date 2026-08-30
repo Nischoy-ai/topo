@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	ContractVersion  = "v1alpha1"
-	OperationLocalV1 = "local.v1"
-	sha256HexLength  = 64
+	ContractVersion     = "v1alpha1"
+	OperationLocalV1    = "local.v1"
+	OperationSSHLinuxV1 = "ssh_linux.v1"
+	sha256HexLength     = 64
 )
 
 type RegisterRequest struct {
@@ -66,16 +67,17 @@ type TargetPartition struct {
 }
 
 type Task struct {
-	TaskID          string           `json:"task_id"`
-	RunID           string           `json:"run_id"`
-	AttemptID       string           `json:"attempt_id"`
-	LeaseToken      string           `json:"lease_token"`
-	LeaseExpiresAt  time.Time        `json:"lease_expires_at"`
-	Operation       string           `json:"operation"`
-	ProfileID       string           `json:"profile_id"`
-	ProfileRevision int              `json:"profile_revision"`
-	TargetPartition *TargetPartition `json:"target_partition,omitempty"`
-	Deadline        time.Time        `json:"deadline"`
+	TaskID              string           `json:"task_id"`
+	RunID               string           `json:"run_id"`
+	AttemptID           string           `json:"attempt_id"`
+	LeaseToken          string           `json:"lease_token"`
+	LeaseExpiresAt      time.Time        `json:"lease_expires_at"`
+	Operation           string           `json:"operation"`
+	ProfileID           string           `json:"profile_id"`
+	ProfileRevision     int              `json:"profile_revision"`
+	CredentialBindingID string           `json:"credential_binding_id,omitempty"`
+	TargetPartition     *TargetPartition `json:"target_partition,omitempty"`
+	Deadline            time.Time        `json:"deadline"`
 }
 
 // UnmarshalJSON accepts ServiceNow's JSON representation of an integral
@@ -122,6 +124,22 @@ type RenewRequest struct {
 type RenewResponse struct {
 	LeaseExpiresAt time.Time `json:"lease_expires_at"`
 	Cancelled      bool      `json:"cancelled"`
+}
+
+type CredentialRequest struct {
+	SchemaVersion string `json:"schema_version"`
+	WorkerID      string `json:"worker_id"`
+	BootID        string `json:"boot_id"`
+	AttemptID     string `json:"attempt_id"`
+	LeaseToken    string `json:"lease_token"`
+}
+
+// SSHCredential is returned only by the fixed, attempt-bound credential
+// broker. It is retained in memory for one execution and must never be logged,
+// persisted, copied into an observation, or included in an error.
+type SSHCredential struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type ResultChunkRequest struct {

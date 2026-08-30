@@ -913,8 +913,11 @@ func workerRun(args []string) error {
 	workerPool := fs.String("worker-pool", "", "ServiceNow Topo worker pool ID")
 	siteID := fs.String("site", "", "deployment-controlled site label")
 	allowLocal := fs.Bool("allow-local", false, "allow the compiled-in local.v1 operation on this host")
+	allowSSHLinux := fs.Bool("allow-ssh-linux", false, "allow the compiled-in ssh_linux.v1 operation within the local target allowlist")
+	sshTargetAllowlist := fs.String("ssh-target-allowlist", "", "absolute file containing deployment-approved IPv4 CIDRs")
+	sshKnownHosts := fs.String("ssh-known-hosts", "", "absolute OpenSSH known_hosts file for ssh_linux.v1 server identity verification")
 	pollInterval := fs.Duration("poll-interval", topoworker.DefaultPollInterval, "worker heartbeat and claim interval")
-	maxTaskDuration := fs.Duration("max-task-duration", topoworker.DefaultMaxTaskDuration, "local ceiling for one local.v1 attempt")
+	maxTaskDuration := fs.Duration("max-task-duration", topoworker.DefaultMaxTaskDuration, "local ceiling for one reviewed task attempt")
 	maxConcurrency := fs.Int("max-concurrency", topoworker.DefaultMaxConcurrency, "local ceiling for concurrent leased tasks")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -931,7 +934,26 @@ func workerRun(args []string) error {
 	if *siteID == "" {
 		return errors.New("-site is required")
 	}
-	policy := topoworker.Policy{WorkerPool: *workerPool, SiteID: *siteID, AllowLocal: *allowLocal, MaxTaskDuration: *maxTaskDuration, MaxConcurrency: *maxConcurrency}
+	var sshStartup topoworker.SSHStartupConfig
+	if *allowSSHLinux {
+		var err error
+		sshStartup, err = topoworker.LoadSSHStartupConfig(*sshTargetAllowlist, *sshKnownHosts)
+		if err != nil {
+			return err
+		}
+	} else if *sshTargetAllowlist != "" || *sshKnownHosts != "" {
+		return errors.New("SSH startup files require -allow-ssh-linux")
+	}
+	policy := topoworker.Policy{
+		WorkerPool:       *workerPool,
+		SiteID:           *siteID,
+		AllowLocal:       *allowLocal,
+		AllowSSHLinux:    *allowSSHLinux,
+		SSHAllowlist:     sshStartup.Allowlist,
+		SSHHostKeyDigest: sshStartup.KnownHostsDigest,
+		MaxTaskDuration:  *maxTaskDuration,
+		MaxConcurrency:   *maxConcurrency,
+	}
 	if err := policy.Validate(); err != nil {
 		return err
 	}
@@ -952,7 +974,7 @@ func workerRun(args []string) error {
 		Version:      version,
 		PollInterval: *pollInterval,
 		Control:      client,
-		Executor:     topoworker.Executor{Policy: policy},
+		Executor:     topoworker.Executor{Policy: policy, SSHHostKeyCallback: sshStartup.HostKeyCallback},
 		Logger:       logger,
 	})
 }

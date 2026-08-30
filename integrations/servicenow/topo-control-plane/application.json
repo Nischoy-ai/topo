@@ -1,7 +1,7 @@
 {
   "name": "Nischoy Topo",
   "scope": "x_664635_topo",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "ServiceNow-owned control plane for stateless Nischoy Topo workers",
   "source": {
     "format": "servicenow_fluent",
@@ -11,6 +11,7 @@
   },
   "roles": [
     "x_664635_topo.admin",
+    "x_664635_topo.credential_admin",
     "x_664635_topo.operator",
     "x_664635_topo.viewer",
     "x_664635_topo.worker"
@@ -46,6 +47,7 @@
       {"name": "Worker heartbeat", "method": "POST", "path": "/workers/heartbeat", "script": "scripts/worker_heartbeat.js"},
       {"name": "Claim task", "method": "POST", "path": "/claim", "script": "scripts/claim_task.js"},
       {"name": "Renew task lease", "method": "POST", "path": "/{id}/renew", "script": "scripts/renew_task.js"},
+      {"name": "Retrieve attempt-bound task credential", "method": "POST", "path": "/{id}/credential", "script": "scripts/credential_task.js"},
       {"name": "Ingest result chunk", "method": "POST", "path": "/{id}/results", "script": "scripts/ingest_result.js"},
       {"name": "Complete task", "method": "POST", "path": "/{id}/complete", "script": "scripts/complete_task.js"}
     ],
@@ -115,6 +117,54 @@
       "indexes": [["u_worker_pool", "u_active"]]
     },
     {
+      "name": "x_664635_topo_ssh_credential",
+      "label": "Topo SSH Credential",
+      "audited": true,
+      "fields": [
+        ["u_credential_id", "String", 128, true],
+        ["u_name", "String", 255, true],
+        ["u_username", "String", 64, true],
+        ["u_password", "Password2", 255, true],
+        ["u_active", "True/False", 0, true]
+      ],
+      "unique_indexes": [["u_credential_id"]]
+    },
+    {
+      "name": "x_664635_topo_credential_binding",
+      "label": "Topo Credential Binding",
+      "audited": true,
+      "fields": [
+        ["u_binding_id", "String", 128, true],
+        ["u_revision", "Integer", 0, true],
+        ["u_name", "String", 255, true],
+        ["u_protocol", "Choice:ssh_password", 40, true],
+        ["u_profile_id", "String", 128, true],
+        ["u_profile_revision", "Integer", 0, true],
+        ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, true],
+        ["u_credential", "Reference:x_664635_topo_ssh_credential", 32, true],
+        ["u_active", "True/False", 0, true]
+      ],
+      "unique_indexes": [["u_binding_id", "u_revision"]],
+      "indexes": [["u_profile_id", "u_profile_revision", "u_target_scope", "u_active"]]
+    },
+    {
+      "name": "x_664635_topo_credential_access",
+      "label": "Topo Credential Access",
+      "audited": false,
+      "fields": [
+        ["u_event_id", "String", 128, true],
+        ["u_task", "Reference:x_664635_topo_task", 32, false],
+        ["u_attempt_id", "String", 128, false],
+        ["u_worker_id", "String", 128, false],
+        ["u_binding", "Reference:x_664635_topo_credential_binding", 32, false],
+        ["u_outcome", "Choice:allowed,denied", 40, true],
+        ["u_reason", "String", 128, true],
+        ["u_accessed_at", "Date/Time", 0, true]
+      ],
+      "unique_indexes": [["u_event_id"]],
+      "indexes": [["u_task", "u_accessed_at"]]
+    },
+    {
       "name": "x_664635_topo_profile",
       "label": "Topo Discovery Profile",
       "audited": true,
@@ -122,9 +172,10 @@
         ["u_profile_id", "String", 128, true],
         ["u_revision", "Integer", 0, true],
         ["u_name", "String", 255, true],
-        ["u_operation", "Choice:local.v1", 40, true],
+        ["u_operation", "Choice:local.v1,ssh_linux.v1", 40, true],
         ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
         ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, false],
+        ["u_credential_binding", "Reference:x_664635_topo_credential_binding", 32, false],
         ["u_schema_version", "String", 32, true],
         ["u_active", "True/False", 0, true]
       ],
@@ -179,10 +230,11 @@
         ["u_task_id", "String", 128, true],
         ["u_run", "Reference:x_664635_topo_run", 32, true],
         ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
-        ["u_operation", "Choice:local.v1", 40, true],
+        ["u_operation", "Choice:local.v1,ssh_linux.v1", 40, true],
         ["u_profile_id", "String", 128, true],
         ["u_profile_revision", "Integer", 0, true],
         ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, false],
+        ["u_credential_binding", "Reference:x_664635_topo_credential_binding", 32, false],
         ["u_partition_key", "String", 128, false],
         ["u_partition_ordinal", "Integer", 0, true],
         ["u_partition_count", "Integer", 0, true],
@@ -234,7 +286,7 @@
         ["u_run", "Reference:x_664635_topo_run", 32, true],
         ["u_task", "Reference:x_664635_topo_task", 32, true],
         ["u_attempt_id", "String", 128, true],
-        ["u_state", "Choice:preflight,applied,rejected,ambiguous", 40, true],
+        ["u_state", "Choice:preflight,applied,no_data,rejected,ambiguous", 40, true],
         ["u_items", "Integer", 0, true],
         ["u_relationships", "Integer", 0, true],
         ["u_diagnostics", "String", 4000, false],
@@ -249,6 +301,9 @@
     "x_664635_topo_worker_pool": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin"], "write": ["x_664635_topo.admin"], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_worker": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_target_scope": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin"], "write": ["x_664635_topo.admin"], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_ssh_credential": {"read": ["x_664635_topo.admin", "x_664635_topo.credential_admin"], "create": ["x_664635_topo.admin", "x_664635_topo.credential_admin"], "write": ["x_664635_topo.admin", "x_664635_topo.credential_admin"], "delete": ["x_664635_topo.admin", "x_664635_topo.credential_admin"]},
+    "x_664635_topo_credential_binding": {"read": ["x_664635_topo.admin", "x_664635_topo.credential_admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.credential_admin"], "write": ["x_664635_topo.admin", "x_664635_topo.credential_admin"], "delete": ["x_664635_topo.admin", "x_664635_topo.credential_admin"]},
+    "x_664635_topo_credential_access": {"read": ["x_664635_topo.admin", "x_664635_topo.credential_admin"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_profile": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.operator"], "write": ["x_664635_topo.admin", "x_664635_topo.operator"], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_schedule": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.operator"], "write": ["x_664635_topo.admin", "x_664635_topo.operator"], "delete": ["x_664635_topo.admin", "x_664635_topo.operator"]},
     "x_664635_topo_run": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
@@ -261,14 +316,17 @@
     "required_role": "x_664635_topo.viewer",
     "modules": [
       "x_664635_topo_worker_pool",
+      "x_664635_topo_ssh_credential",
       "x_664635_topo_target_scope",
+      "x_664635_topo_credential_binding",
       "x_664635_topo_profile",
       "x_664635_topo_schedule",
       "x_664635_topo_run",
       "x_664635_topo_worker",
       "x_664635_topo_task",
       "x_664635_topo_result",
-      "x_664635_topo_ire_delivery"
+      "x_664635_topo_ire_delivery",
+      "x_664635_topo_credential_access"
     ]
   },
   "cross_scope_privileges": [
@@ -292,6 +350,22 @@
       "insert": true,
       "update": true,
       "script": "scripts/validate_profile.js"
+    },
+    {
+      "name": "Validate Topo SSH Password2 credential",
+      "table": "x_664635_topo_ssh_credential",
+      "when": "before",
+      "insert": true,
+      "update": true,
+      "script": "scripts/validate_ssh_credential.js"
+    },
+    {
+      "name": "Validate immutable Topo credential binding revision",
+      "table": "x_664635_topo_credential_binding",
+      "when": "before",
+      "insert": true,
+      "update": true,
+      "script": "scripts/validate_credential_binding.js"
     },
     {
       "name": "Validate immutable Topo target scope",

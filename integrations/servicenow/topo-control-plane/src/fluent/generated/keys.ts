@@ -35,6 +35,30 @@ declare global {
                         id: '7d7ae717ae0d4fc193a79704cbb43f19'
                         deleted: true
                     }
+                    'acl-credential-access-delete': {
+                        table: 'sys_security_acl'
+                        id: 'dcdf23a7c378491a8308d9bca09edb49'
+                    }
+                    'acl-credential-access-read': {
+                        table: 'sys_security_acl'
+                        id: '03bb864cde7e44aa9b069fa13d2832c6'
+                    }
+                    'acl-credential-binding-create': {
+                        table: 'sys_security_acl'
+                        id: '73b09ac328864c4f959b21c560b82f12'
+                    }
+                    'acl-credential-binding-delete': {
+                        table: 'sys_security_acl'
+                        id: '3f15700940e04befbee582bd457d57c7'
+                    }
+                    'acl-credential-binding-read': {
+                        table: 'sys_security_acl'
+                        id: '16665323049649b392b0a4f3cb49fd37'
+                    }
+                    'acl-credential-binding-write': {
+                        table: 'sys_security_acl'
+                        id: '7289f56eb59349faaa8143301009c986'
+                    }
                     'acl-ire-delivery-delete': {
                         table: 'sys_security_acl'
                         id: 'a26f10b97f064e30bc9dd204b2905b4b'
@@ -94,6 +118,22 @@ declare global {
                     'acl-schedule-write': {
                         table: 'sys_security_acl'
                         id: '167852c267ad48c580abd2587d6a2c17'
+                    }
+                    'acl-ssh-credential-create': {
+                        table: 'sys_security_acl'
+                        id: 'f582b4369f57426b9461ea6347492b8d'
+                    }
+                    'acl-ssh-credential-delete': {
+                        table: 'sys_security_acl'
+                        id: 'e46e926b58f74a5d88d374e08c0e4918'
+                    }
+                    'acl-ssh-credential-read': {
+                        table: 'sys_security_acl'
+                        id: '610f2d5823cc4ede8013212e32315e3f'
+                    }
+                    'acl-ssh-credential-write': {
+                        table: 'sys_security_acl'
+                        id: '0461b9119dcd469bb9ae160fc4ad0d5f'
                     }
                     'acl-target-scope-create': {
                         table: 'sys_security_acl'
@@ -186,13 +226,29 @@ declare global {
                         table: 'sys_module'
                         id: 'ab241de9ac5749b299c23ba9037db972'
                     }
+                    'business-rule-validate-credential-binding': {
+                        table: 'sys_script'
+                        id: '39fca1fb74454dde9a3f1cd495f79667'
+                    }
                     'business-rule-validate-profile': {
                         table: 'sys_script'
                         id: '610abaadc6ee47e5a164127167a5ff55'
                     }
+                    'business-rule-validate-ssh-credential': {
+                        table: 'sys_script'
+                        id: 'de5b2d8c006744abbc1c16e829d5b926'
+                    }
                     'business-rule-validate-target-scope': {
                         table: 'sys_script'
                         id: '57971437e5014c04869646528b1750d9'
+                    }
+                    'module-credential-access': {
+                        table: 'sys_app_module'
+                        id: 'd5a7af7fa3e64dd396ade216740a0bcf'
+                    }
+                    'module-credential-bindings': {
+                        table: 'sys_app_module'
+                        id: 'a1e7293608cf464ab68dd6816e420248'
                     }
                     'module-ire-deliveries': {
                         table: 'sys_app_module'
@@ -213,6 +269,10 @@ declare global {
                     'module-schedules': {
                         table: 'sys_app_module'
                         id: '78ece14659254493a4555121761883bc'
+                    }
+                    'module-ssh-credentials': {
+                        table: 'sys_app_module'
+                        id: 'f24e33a3087141ed97e0109664022582'
                     }
                     'module-target-scopes': {
                         table: 'sys_app_module'
@@ -266,6 +326,10 @@ declare global {
                         table: 'sys_ws_operation'
                         id: '4d9c369f12d2441bb788b83a7b9fd207'
                     }
+                    'rest-route-task-credential': {
+                        table: 'sys_ws_operation'
+                        id: '6942e2e1ec7b40a6a00f527dacf2443c'
+                    }
                     'rest-route-worker-heartbeat': {
                         table: 'sys_ws_operation'
                         id: '7a56486dac1a4c24b3dbd299935248de'
@@ -301,6 +365,14 @@ declare global {
                 }
                 composite: [
                     {
+                        table: 'sys_dictionary'
+                        id: '00934c9a4f014571821940c9b4477218'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'NULL'
+                        }
+                    },
+                    {
                         table: 'sys_choice'
                         id: '011d74ffd2c54042befe98df5602340a'
                         key: {
@@ -309,6 +381,14 @@ declare global {
                             value: 'cancelled'
                             language: 'en'
                             dependent_value: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '0131a0ddc5f94e52b21bf135d62d55a0'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_reason'
                         }
                     },
                     {
@@ -402,6 +482,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: '0c3f54a505ba43b99f4c0bb05b7c62d4'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_password'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: '0c8fe63a5b624dd9a80877789a260c7e'
                         key: {
@@ -416,6 +504,15 @@ declare global {
                         key: {
                             name: 'x_664635_topo_schedule'
                             element: 'u_profile'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '0d14db38283c4bb294b028cb72944dc8'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_profile_revision'
+                            language: 'en'
                         }
                     },
                     {
@@ -454,6 +551,24 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '1097098afbb74059b7936a7cc3f4f9cd'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_password'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '11a7ae6e82aa4e60bfad2b8098155a60'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_username'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '12200487829a40a4ac0aa11a7d4fadae'
                         key: {
@@ -463,10 +578,46 @@ declare global {
                     },
                     {
                         table: 'sys_dictionary'
+                        id: '12bb3fdb4a874a13a48ebf127feb1598'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_binding'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '140302fdafbc46b2abfb93798d379a08'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_profile_id'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
                         id: '156e26af67c44010a50237e900bb9dcb'
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_started_at'
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: '16015c574d6441b3b72d7911cacf68dc'
+                        key: {
+                            name: 'x_664635_topo_ire_delivery'
+                            element: 'u_state'
+                            value: 'no_data'
+                            language: 'en'
+                            dependent_value: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '163181768f844dd89f09ff253e931dcc'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_profile_revision'
                         }
                     },
                     {
@@ -505,6 +656,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: '18cc97dfca504ad8bad3e4f94c636da4'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_credential'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: '1917176656ad4f70a193200cf5f5fe53'
                         key: {
                             name: 'x_664635_topo_target_scope'
@@ -518,6 +678,15 @@ declare global {
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_error'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '1a15c1abe5f6408fbe6c7d521214d45f'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_accessed_at'
                             language: 'en'
                         }
                     },
@@ -544,6 +713,14 @@ declare global {
                             name: 'x_664635_topo_task'
                             element: 'u_cancel_requested'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '1c4f5eb3e42d451192fd296a20036022'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_credential_id'
                         }
                     },
                     {
@@ -604,6 +781,14 @@ declare global {
                             name: 'x_664635_topo_run'
                             element: 'u_completed_at'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '2068458c73184106849451450d1e88fc'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_task'
                         }
                     },
                     {
@@ -795,6 +980,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '2929e1fc0e694a7290aae6c2be12c748'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_reason'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '292ee7ed6ee7427394bae220df4ef7b1'
                         key: {
@@ -803,11 +997,28 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: '2a33a4bb7525414f9c11feed116d25a1'
+                        key: {
+                            logical_table_name: 'x_664635_topo_credential_binding'
+                            col_name_string: 'u_binding_id,u_revision'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '2a87c7896f0443459272dfb1c47bf207'
                         key: {
                             name: 'x_664635_topo_task'
                             element: 'u_partition_cidrs'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '2a91d280062c40c586246e2c16b93bc8'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_name'
+                            language: 'en'
                         }
                     },
                     {
@@ -829,6 +1040,15 @@ declare global {
                                     name: 'x_664635_topo.worker'
                                 }
                             }
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '2da508e5eb29430f8b4077a65f27fed9'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_worker_id'
+                            language: 'en'
                         }
                     },
                     {
@@ -942,6 +1162,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '359b1f94a8114ba4a13987ae57028d59'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_target_scope'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_db_object'
                         id: '360a43827f2f4534b210d36469d4a336'
                         key: {
@@ -1008,6 +1237,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '3a5de6e530ec492597d488f9fa692240'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_attempt_id'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '3d548384dc834e34a65add77dd747b3c'
                         key: {
@@ -1029,6 +1267,15 @@ declare global {
                         key: {
                             name: 'x_664635_topo_task'
                             element: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '3fe9ad194d594315a358d4e9fc753a8f'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_name'
+                            language: 'en'
                         }
                     },
                     {
@@ -1063,11 +1310,27 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: '41cb989f00bc49a5b533af490dcd2054'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_credential_binding'
+                        }
+                    },
+                    {
                         table: 'sys_choice_set'
                         id: '41e880fd3dca4f95bdc2f84c660a00d1'
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_trigger'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '42291b6a4c784bf689e1d3d8e1af4515'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_credential'
                         }
                     },
                     {
@@ -1114,6 +1377,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: '4744bde7c6f1470cb663ffe1973b95fe'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_binding'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: '478beceedd814090bac4ec7f6720e931'
                         key: {
                             name: 'x_664635_topo_profile'
@@ -1141,6 +1413,15 @@ declare global {
                                     name: 'x_664635_topo.operator'
                                 }
                             }
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '4d467f5ffb6f4835b44c736b720ec55e'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_credential_id'
+                            language: 'en'
                         }
                     },
                     {
@@ -1278,6 +1559,13 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_db_object'
+                        id: '579ae01c5b154bd7a550ee496c99805d'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '57dc3b31799b4b358fe5f680d55c3acb'
                         key: {
@@ -1355,6 +1643,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '5c37fec2f02b420384ec17e2c7ef8619'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_active'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '5ce9a734221a4eb6a9f4713e467ed088'
                         key: {
@@ -1420,6 +1717,30 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: '6129db1cfc6248869e1880c6635da334'
+                        key: {
+                            sys_security_acl: '03bb864cde7e44aa9b069fa13d2832c6'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: '62000061206e4e4989025f29dc83bda3'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_outcome'
+                            value: 'allowed'
+                            language: 'en'
+                            dependent_value: 'NULL'
+                        }
+                    },
+                    {
                         table: 'sys_index'
                         id: '62448817b9664f6699ef31e5eacbef93'
                         key: {
@@ -1469,6 +1790,41 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '6597a06fd3344fa9b5fd6bf60c236916'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_task'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '667ebc870a6c489d8e2a7367e45bcd50'
+                        key: {
+                            sys_security_acl: '610f2d5823cc4ede8013212e32315e3f'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '672b6a493c594c7b82ca7718c76ee95c'
+                        key: {
+                            sys_security_acl: '16665323049649b392b0a4f3cb49fd37'
+                            sys_user_role: {
+                                id: '1b5b4fc5ef7b46878a368eeaf6787606'
+                                key: {
+                                    name: 'x_664635_topo.viewer'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_index'
                         id: '683fe929c97b419ca6da3d457aa940b7'
                         key: {
@@ -1511,11 +1867,27 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_choice_set'
+                        id: '6a4b277669ba4b29bd2718c750124991'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_protocol'
+                        }
+                    },
+                    {
                         table: 'sys_index'
                         id: '6a77f759e0c5423d88455337f00fd08b'
                         key: {
                             logical_table_name: 'x_664635_topo_task'
                             col_name_string: 'u_state,u_lease_expires'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '6aa1d770be0b4909bf78ae72c5ffff00'
+                        key: {
+                            name: 'x_664635_topo_profile'
+                            element: 'u_credential_binding'
                         }
                     },
                     {
@@ -1603,6 +1975,19 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: '6d31e98e38234bdf89ae6fa5c96c3383'
+                        key: {
+                            sys_security_acl: 'f582b4369f57426b9461ea6347492b8d'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: '6d4ea0489aa64e13af023e29f3b64e7e'
                         key: {
@@ -1640,6 +2025,22 @@ declare global {
                         key: {
                             name: 'x_664635_topo_result'
                             element: 'u_chunk_number'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '6f61f6ce49a24d678fe909846fe493d4'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_accessed_at'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '6f9798512f114d068e8d6c33ea2d6f71'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_active'
                         }
                     },
                     {
@@ -1766,6 +2167,13 @@ declare global {
                     },
                     {
                         table: 'ua_table_licensing_config'
+                        id: '78c65d5af35e420cbf63c94cd59568a0'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                        }
+                    },
+                    {
+                        table: 'ua_table_licensing_config'
                         id: '79a166fd66c0491f8357a2d8d93cd7d7'
                         key: {
                             name: 'x_664635_topo_target_scope'
@@ -1846,11 +2254,44 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_user_role_contains'
+                        id: '7daa287812c64f7384943a88e7f8993d'
+                        key: {
+                            role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                            contains: {
+                                id: '1b5b4fc5ef7b46878a368eeaf6787606'
+                                key: {
+                                    name: 'x_664635_topo.viewer'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '7e1585ef688944879992cfd71b04a560'
                         key: {
                             name: 'x_664635_topo_ire_delivery'
                             element: 'u_state'
+                        }
+                    },
+                    {
+                        table: 'sys_db_object'
+                        id: '7ea6513371ba4098a1c7d20c541bb1d7'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '7ed31588092b4384ade3f6cb8130d687'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'NULL'
                         }
                     },
                     {
@@ -1954,6 +2395,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: '8429d0c363054bc8aa4339f725910919'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'NULL'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: '84788e55d9b24beaa511d129a12f22e8'
                         key: {
                             name: 'x_664635_topo_worker'
@@ -2030,11 +2480,46 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_choice'
+                        id: '88a2e98884854236994ae37f867c76ab'
+                        key: {
+                            name: 'x_664635_topo_profile'
+                            element: 'u_operation'
+                            value: 'ssh_linux.v1'
+                            language: 'en'
+                            dependent_value: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_index'
+                        id: '88cb2300545a4bf8aad6bd29adb2d019'
+                        key: {
+                            logical_table_name: 'x_664635_topo_credential_binding'
+                            col_name_string: 'u_profile_id,u_profile_revision,u_target_scope,u_active'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: '8a075555af8c453e8d352557162a4d9e'
                         key: {
                             name: 'x_664635_topo_profile'
                             element: 'u_name'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_user_role'
+                        id: '8aa678a9907946498965cab0c62b557b'
+                        key: {
+                            name: 'x_664635_topo.credential_admin'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '8ad974b1cac74fdc82917568f5e4211b'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_event_id'
                             language: 'en'
                         }
                     },
@@ -2065,6 +2550,33 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_choice'
+                        id: '90c19cfed3a34ba29fc8d8942a17d5f0'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_outcome'
+                            value: 'denied'
+                            language: 'en'
+                            dependent_value: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_index'
+                        id: '90f9594b2cb34a09934977a75a81a9a2'
+                        key: {
+                            logical_table_name: 'x_664635_topo_credential_access'
+                            col_name_string: 'u_event_id'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '91e448a2f1864be097473d19fdca67a8'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'NULL'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '92e1e054948d4bfe9033ad9ecf3035a1'
                         key: {
@@ -2089,6 +2601,19 @@ declare global {
                         key: {
                             name: 'x_664635_topo_profile'
                             element: 'u_revision'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '937f09abbf064167a8810ce98708d065'
+                        key: {
+                            sys_security_acl: 'dcdf23a7c378491a8308d9bca09edb49'
+                            sys_user_role: {
+                                id: '17eced5d40bc42028df4fbb9f216bdf2'
+                                key: {
+                                    name: 'x_664635_topo.admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -2161,6 +2686,14 @@ declare global {
                         key: {
                             name: 'x_664635_topo_schedule'
                             element: 'u_schedule_id'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '9a3b33bba47b4a39b951bfadfcb3ec9d'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_name'
                         }
                     },
                     {
@@ -2263,6 +2796,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: 'a40c8ba5aa584d98aa301f2dc030798a'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'NULL'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: 'a442d4e671374467a2655e785698acfe'
                         key: {
@@ -2347,6 +2889,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: 'a7168731792d4c91be6f71288f96c607'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'NULL'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: 'a71b197c6df84f18afcd39502cb4644c'
                         key: {
                             name: 'x_664635_topo_ire_delivery'
@@ -2367,6 +2918,23 @@ declare global {
                         id: 'a79dc0eaa3354160b02ed62f6022ed17'
                         key: {
                             name: 'x_664635_topo_ire_delivery'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'a86f3e24bcd14e5ab4c87a829fc5c774'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_active'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'a9506f08dcdf4ac2baf622b01a95fbf9'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_protocol'
+                            language: 'en'
                         }
                     },
                     {
@@ -2432,6 +3000,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: 'acb65ec616444f7f9bb5f5be4a206622'
+                        key: {
+                            logical_table_name: 'x_664635_topo_credential_access'
+                            col_name_string: 'u_task,u_accessed_at'
+                        }
+                    },
+                    {
                         table: 'sys_choice'
                         id: 'acd9984171324713a3312ff7e26b667b'
                         key: {
@@ -2458,6 +3034,13 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_db_object'
+                        id: 'af2e525910cc481bb30eb97f5800289c'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                        }
+                    },
+                    {
                         table: 'sys_choice'
                         id: 'afac94df86c642eeb308f3e7906687aa'
                         key: {
@@ -2478,11 +3061,27 @@ declare global {
                         }
                     },
                     {
+                        table: 'ua_table_licensing_config'
+                        id: 'aff1ddc8ca9442589b5215f5eb7892e3'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'b009283e1d4b47b1b550ed450c924f4c'
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_task_count'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'b13ca3bd2a3d49788a72e6c5a3d8ac07'
+                        key: {
+                            name: 'x_664635_topo_profile'
+                            element: 'u_credential_binding'
                             language: 'en'
                         }
                     },
@@ -2502,6 +3101,14 @@ declare global {
                                     name: 'x_664635_topo.viewer'
                                 }
                             }
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'b1848cddf0674f4b8312e25dd5fc6555'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_protocol'
                         }
                     },
                     {
@@ -2548,6 +3155,23 @@ declare global {
                             name: 'x_664635_topo_ire_delivery'
                             element: 'u_diagnostics'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'b48c87d1cfe343c28a18a11e27a416bd'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_credential_binding'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'b52458e375b545e6963f702a42711c36'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_event_id'
                         }
                     },
                     {
@@ -2629,6 +3253,14 @@ declare global {
                     },
                     {
                         table: 'sys_dictionary'
+                        id: 'b7dfed4d2a9c401d8f26d0d9d70f8da2'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_username'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
                         id: 'b8144d67f648423eb8be95a8b0e435bd'
                         key: {
                             name: 'x_664635_topo_run'
@@ -2644,12 +3276,38 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_user_role_contains'
+                        id: 'b8d8d052a9f546719cae68f75220d06f'
+                        key: {
+                            role: {
+                                id: '17eced5d40bc42028df4fbb9f216bdf2'
+                                key: {
+                                    name: 'x_664635_topo.admin'
+                                }
+                            }
+                            contains: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'b8f6ad76671f4b00b20b8dee0d6120f4'
                         key: {
                             name: 'x_664635_topo_worker_pool'
                             element: 'u_max_task_seconds'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_choice_set'
+                        id: 'b92440c73d3e4be9bd393df648e0977b'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_outcome'
                         }
                     },
                     {
@@ -2709,6 +3367,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'be72761a06a643509f049642a1766368'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_worker_id'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'c11a0eeba0534871a378c07235992bb4'
                         key: {
@@ -2748,6 +3414,14 @@ declare global {
                         key: {
                             name: 'x_664635_topo_schedule'
                             element: 'u_active'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'c2909aa584694483b72302763e5b8e02'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_revision'
                         }
                     },
                     {
@@ -2816,6 +3490,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: 'c4ec3638abfe42b5bc5cdeae1e1dc958'
+                        key: {
+                            logical_table_name: 'x_664635_topo_ssh_credential'
+                            col_name_string: 'u_credential_id'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'c5a7561a509845cabe735c3b6593bb99'
                         key: {
@@ -2857,6 +3539,19 @@ declare global {
                             name: 'x_664635_topo_run'
                             element: 'u_started_at'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'c98828e4b2a24de9be1b71128648b9d9'
+                        key: {
+                            sys_security_acl: '7289f56eb59349faaa8143301009c986'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -2905,6 +3600,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'cb00e5f2e1a64365a09ed87da8c2d2e3'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_profile_id'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'cbfd23a760184a038059949196dd45d5'
                         key: {
@@ -2929,6 +3632,14 @@ declare global {
                             name: 'x_664635_topo_task'
                             element: 'u_partition_cidrs'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'ccfab71b48924c5e91b3228bf3cc5a4b'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_target_scope'
                         }
                     },
                     {
@@ -2987,6 +3698,19 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: 'd0008f8909a64fe083a7a114d00f0def'
+                        key: {
+                            sys_security_acl: '3f15700940e04befbee582bd457d57c7'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: 'd004fb8f7aa04e7f8ba311e8d7add3ae'
                         key: {
@@ -3027,6 +3751,19 @@ declare global {
                             name: 'x_664635_topo_task'
                             element: 'u_state'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'd0e78e7dc61b465ebb1a6a6e2b6d019c'
+                        key: {
+                            sys_security_acl: '73b09ac328864c4f959b21c560b82f12'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -3129,6 +3866,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'd87310fd193f41ec9376ede7e6eda75c'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_name'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'd9a7a782974a4802b757f75e996c8ece'
                         key: {
@@ -3148,11 +3893,31 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: 'da9048e3d1dd4ac3b9cd3c2953624053'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_binding_id'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: 'dae39ba84f5e4748ad7553e1c2bb9ab5'
                         key: {
                             name: 'x_664635_topo_task'
                             element: 'u_task_id'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: 'dc13bc4e58ea4edb951b3c2255e3b8a2'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_operation'
+                            value: 'ssh_linux.v1'
+                            language: 'en'
+                            dependent_value: 'NULL'
                         }
                     },
                     {
@@ -3201,12 +3966,42 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: 'e1474f87fcd2467794e37ad215ab04ed'
+                        key: {
+                            sys_security_acl: '0461b9119dcd469bb9ae160fc4ad0d5f'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'e1a2c7d58dfa47c8b36fba2192d8165b'
                         key: {
                             name: 'x_664635_topo_worker'
                             element: 'u_current_leases'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'e2bedbb978a148eca428de4c74358ae7'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_outcome'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'e3548018d7dc44b689f01b39fa673e30'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_outcome'
                         }
                     },
                     {
@@ -3328,12 +4123,36 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: 'edf9ae7353e94ad4b88089536c38fa27'
+                        key: {
+                            sys_security_acl: 'e46e926b58f74a5d88d374e08c0e4918'
+                            sys_user_role: {
+                                id: '8aa678a9907946498965cab0c62b557b'
+                                key: {
+                                    name: 'x_664635_topo.credential_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'ef1154bc8d9046f48db3d0fc81973c99'
                         key: {
                             name: 'x_664635_topo_ire_delivery'
                             element: 'u_items'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: 'f09c48bd873d4e20a92ac1c72ee089a0'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_protocol'
+                            value: 'ssh_password'
+                            language: 'en'
+                            dependent_value: 'NULL'
                         }
                     },
                     {
@@ -3380,6 +4199,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: 'f2e321d1ed7843728764e7adf84d0b28'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_revision'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: 'f405b8a770c045cebad8e44a381785a0'
                         key: {
                             name: 'x_664635_topo_result'
@@ -3393,6 +4221,15 @@ declare global {
                         key: {
                             name: 'x_664635_topo_result'
                             element: 'u_terminal_outcome'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'f6961700a731455d837a7ee5838a3b49'
+                        key: {
+                            name: 'x_664635_topo_ssh_credential'
+                            element: 'u_active'
+                            language: 'en'
                         }
                     },
                     {
@@ -3428,6 +4265,14 @@ declare global {
                     },
                     {
                         table: 'sys_dictionary'
+                        id: 'f84ba3e8c17d4b7ca172fade487fc248'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_binding_id'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
                         id: 'f8ca230179e847cab3106bcf75e39950'
                         key: {
                             name: 'x_664635_topo_worker'
@@ -3448,6 +4293,21 @@ declare global {
                         key: {
                             logical_table_name: 'x_664635_topo_result'
                             col_name_string: 'u_processing_state,u_delete_after'
+                        }
+                    },
+                    {
+                        table: 'ua_table_licensing_config'
+                        id: 'fa2b502e37a4451891c5916b1d127e52'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'fa744e49840f4d09842fca96e3e3f442'
+                        key: {
+                            name: 'x_664635_topo_credential_access'
+                            element: 'u_attempt_id'
                         }
                     },
                     {
