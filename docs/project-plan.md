@@ -2677,7 +2677,8 @@ after clean preflight/apply, with stable item updates and relationship
 raw row and attachment while preserving its completed task, 22/21 run summary,
 and applied IRE delivery. Exact record identifiers and the simulator/real
 evidence boundary are in `docs/servicenow-worker.md`. Commit, push, PR, and CI
-remain before this candidate is proposed for merge.
+are now represented by [PR 54](https://github.com/Nischoy-ai/topo/pull/54);
+repository CI must be green before merge.
 
 ### Relationship to the M2.5 gate
 
