@@ -87,6 +87,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   claimants, lease extension, cancellation through renew, HTTP 409 late-call
   denial, terminal reporting, and slot release without an IRE/CMDB write. That
   focused evidence remains distinct from simulator scale results.
+  The candidate is proposed in
+  [PR 55](https://github.com/Nischoy-ai/topo/pull/55); do not treat it as
+  merged until that PR lands.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -2773,8 +2776,8 @@ backpressure, an eight-partition run drained after a four-lease worker crash,
 renewal past the initial lease, renewal-loss cancellation plus fresh retry,
 ready/running cancellation, and late result/success rejection. Simulator
 repeat gates completed 1K/10K/100K supported computer/adapter estates with
-500/5,000/50,000 ownership relationships in approximately 1.027/1.087/1.777
-seconds on the recorded development run, with every repeat item and relation
+500/5,000/50,000 ownership relationships in approximately 1.026/1.083/1.802
+seconds on the final candidate run, with every repeat item and relation
 reported as simulated `NO_CHANGE`. A 100,000-row eligible raw-result backlog
 drained in batches of at most 257 with no raw payload bytes remaining. These
 numbers are not ServiceNow throughput evidence. Fluent `npm test` and SDK

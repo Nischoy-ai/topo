@@ -245,7 +245,7 @@ Slice B adds deterministic evidence for:
   result and success calls and a terminal cancellation acknowledgement;
 - identical 1K, 10K, and 100K simulated estates across 1, 10, and 100
   partitions. On the 2026-08-30 development run they completed and repeated in
-  approximately 1.027 s, 1.087 s, and 1.777 s. The 100K case retained exactly
+  approximately 1.026 s, 1.083 s, and 1.802 s. The 100K case retained exactly
   100,000 supported computer/adapter items and 50,000 ownership relationships;
   every repeat item and relationship operation was simulated `NO_CHANGE`; and
 - 100,000 eligible successful raw results drained in batches of at most 257,
