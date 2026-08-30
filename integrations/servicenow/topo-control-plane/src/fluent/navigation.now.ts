@@ -42,6 +42,20 @@ Record({
 })
 
 Record({
+    $id: Now.ID['module-target-scopes'],
+    table: 'sys_app_module',
+    data: {
+        title: 'Target Scopes',
+        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        name: 'x_664635_topo_target_scope',
+        link_type: 'LIST',
+        roles: [topoViewer],
+        order: 150,
+        active: true,
+    },
+})
+
+Record({
     $id: Now.ID['module-schedules'],
     table: 'sys_app_module',
     data: {

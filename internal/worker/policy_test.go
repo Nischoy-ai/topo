@@ -19,6 +19,7 @@ func TestPolicyRequiresExplicitLocalAuthority(t *testing.T) {
 		{WorkerPool: "bad/pool", SiteID: "site-a", AllowLocal: true},
 		{WorkerPool: "pool-a", SiteID: "", AllowLocal: true},
 		{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true, MaxTaskDuration: 11 * time.Minute},
+		{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true, MaxConcurrency: MaxWorkerConcurrency + 1},
 	} {
 		if err := policy.Validate(); err == nil {
 			t.Fatalf("policy %#v was accepted", policy)
@@ -46,5 +47,12 @@ func TestPolicyDigestIsStableAndPolicySensitive(t *testing.T) {
 	}
 	if changed == one {
 		t.Fatal("policy digest did not change with site")
+	}
+	changed, err = (Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true, MaxConcurrency: 2}).Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed == one {
+		t.Fatal("policy digest did not change with local concurrency")
 	}
 }

@@ -16,6 +16,17 @@ result replay, repeated application-side IRE reconciliation, and raw-result
 retention. See [`servicenow-worker.md`](servicenow-worker.md); simulator results
 remain explicitly separate from that evidence.
 
+M3 Slice B is an implemented candidate in the same worker and Fluent package.
+It adds deterministic target-scope/partition metadata, unique pool/worker
+capacity reservations, load-aware concurrent execution, lease renewal,
+cooperative cancellation, worker-churn recovery, and bounded 1K/10K/100K plus
+retention-volume simulator gates without adding a production operation. The
+Fluent `0.3.0` upgrade now preserves known Slice A records on the developer
+instance, and a separate admin-seeded real fixture proves a two-slot/eight-
+claimant capacity race, renewal, cancellation observation, and late-call
+denial through the worker API. It made no IRE/CMDB write and does not turn
+simulator timing into ServiceNow platform performance.
+
 The existing direct `topo publish servicenow` workflow remains the supported
 standalone publication mode. The scoped-app Relay and ECC-compatible MID
 transport remain experiments. This architecture supersedes the Relay as the
@@ -141,7 +152,8 @@ Slice A application contract uses scope `x_664635_topo`. That scope is kept
 distinct from the older experimental Relay/MID artifacts under
 `x_nischoy_topo`; changing the new Slice A scope did not rename or migrate
 those experiments. The names below include later-slice logical tables as well
-as the eight tables installed by Slice A.
+as the eight tables installed by Slice A and the target-scope table defined by
+the Slice B Fluent candidate.
 
 | Table | Purpose |
 | --- | --- |
@@ -531,12 +543,24 @@ mapping:
 5. Run two workers against one task and prove one live lease plus idempotent
    recovery.
 
-### Slice B: worker-pool scale and partitioning
+### Slice B: worker-pool scale and partitioning — implemented candidate
 
 Add deterministic target partitions, load-aware claims, cancellation, lease
 renewal, concurrency tests, retention-volume tests, and simulator gates for
 1K/10K/100K assets. No new discovery protocol is required to prove scheduling
 and storage scale.
+
+The candidate keeps production `local.v1` runs as one targetless local
+partition. Multi-partition scale fixtures inject a test-only executor; there is
+no synthetic production operation. Go planning supports canonical IPv4 and
+IPv6 scopes for later reviewed operations, while the current Fluent target-
+scope form compiles IPv4 only and cannot be bound to `local.v1`. Active tasks
+reserve unique pool and worker capacity-slot keys, renew attempt-bound leases,
+and receive cancellation through both heartbeat and renewal. Deterministic
+tests cover 1K/10K/100K stable supported items and relationships, worker churn,
+renewal loss, cancellation/late-call rejection, and a 100K eligible-result
+retention backlog. See [`servicenow-worker.md`](servicenow-worker.md) for exact
+simulator evidence and the outstanding real-instance boundary.
 
 ### Slice C: credentials
 

@@ -5,13 +5,21 @@
 M3 Slice A implements the first bounded vertical slice of the architecture in
 [`servicenow-control-plane.md`](servicenow-control-plane.md). The Go worker,
 the source-driven ServiceNow Fluent application, and deterministic simulator
-evidence are implemented. The Fluent application was installed from source on
+evidence are implemented and merged. The Fluent application was installed from source on
 the real developer instance under its required company-prefixed scope,
 `x_664635_topo`. The separate 2026-08-30 real-instance evidence below validates
 the bounded runtime path; installed metadata and simulator output are not used
 as substitutes for that evidence.
 
-Slice A supports exactly one operation: `local.v1`. It discovers the machine
+Slice B is an implemented candidate on top of that baseline. It adds immutable
+target-scope planning metadata, deterministic partitions, local and pool
+backpressure, renewable leases, cooperative cancellation, and bounded
+retention/scale tests. Its Fluent `0.3.0` upgrade is installed on the developer
+instance, and the separately labelled real evidence below covers record
+preservation and focused API behavior. It does not turn simulator scale timing
+into ServiceNow platform evidence.
+
+The production path still supports exactly one operation: `local.v1`. It discovers the machine
 running the worker, returns a destination-neutral Topo observation, and lets
 the Nischoy Topo scoped application validate, map, preflight, and apply that
 observation through IRE. It does not contain discovery credentials or remote
@@ -25,14 +33,15 @@ The reviewable, installable scoped-application source is under
 - `src/fluent/*.now.ts` is the authoritative ServiceNow Fluent definition of
   the tables, indexes, roles, ACLs, application menu, Script Includes,
   six-route Scripted REST API, scheduled scripts, IRE cross-scope privilege,
-  immutable-profile rule, and **Run now** UI action;
+  immutable profile/target-scope rules, **Run now**, and **Cancel run** UI actions;
 - `now.config.json`, `package.json`, and `package-lock.json` make the
   application reproducibly buildable with exactly ServiceNow SDK 4.9.0;
 - `application.json` is a test-enforced review contract summarizing that
   deployable Fluent surface; it is not an installer;
 - `TopoControlPlane.js` owns worker registration, heartbeat, run/task creation,
-  conditional claims, leases, result ingestion, terminal summaries, lease
-  recovery, and retention;
+  conditional claims, unique capacity-slot reservations, renewable leases,
+  cancellation, result ingestion, terminal summaries, lease recovery, and
+  retention;
 - `TopoObservationMapper.js` validates the destination-neutral observation and
   maps only `host` to `cmdb_ci_computer`, `network_interface` to
   `cmdb_ci_network_adapter`, and `host_has_interface` to `Owns::Owned by`;
@@ -58,24 +67,27 @@ IRE behavior.
 
 ## Scoped data model
 
-The Nischoy application is the sole durable operational store. Slice A creates
-these audited scoped records:
+The Nischoy application is the sole durable operational store. Slice B's
+source-driven package defines these audited scoped records:
 
-| Table | Slice A purpose |
+| Table | Purpose |
 | --- | --- |
 | `x_664635_topo_worker_pool` | Site, authenticated deployment user, concurrency, lease, and task-duration policy. |
-| `x_664635_topo_worker` | Ephemeral boot identity, version, fixed capability, policy digest, load, and heartbeat. |
+| `x_664635_topo_worker` | Ephemeral boot identity, version, fixed capability, policy digest, advertised capacity, authoritative current load, and heartbeat. |
+| `x_664635_topo_target_scope` | Immutable revision of bounded canonical IPv4 selection/exclusion policy and its deterministic partition-plan digest. It is not used by production `local.v1`. |
 | `x_664635_topo_profile` | Immutable versioned `local.v1` profile bound to one pool. |
 | `x_664635_topo_schedule` | Recurrence and next-run time for a profile revision. |
-| `x_664635_topo_run` | Manual/scheduled execution state and bounded terminal counts/error. |
-| `x_664635_topo_task` | One local partition, attempt, digest-only lease, deadline, state, and bounded error. |
+| `x_664635_topo_run` | Manual/scheduled execution, cancellation state, and bounded terminal counts/error. |
+| `x_664635_topo_task` | One immutable partition descriptor, attempt, digest-only lease, unique pool/worker capacity slots, deadline, cancellation state, and bounded error. |
 | `x_664635_topo_result` | Unique chunk metadata, checksum, bounded attachment reference, processing outcome, and expiry. |
 | `x_664635_topo_ire_delivery` | Unique attempt delivery, preflight/apply state, counts, and bounded diagnostics. |
 
-The important unique keys are `(profile_id, revision)`,
+The important unique keys are `(profile_id, revision)`, `(scope_id, revision)`,
 `(task, attempt_id, chunk_number)`, and `(task, attempt_id)` for IRE delivery.
-Claim selection is indexed by `(worker_pool, state, sys_created_on)` and expired
-leases by `(state, lease_expires)`.
+Active task rows reserve one globally unique pool lease slot and one globally
+unique worker lease slot. Claim selection is indexed by
+`(worker_pool, state, partition_ordinal, sys_created_on)` and expired leases by
+`(state, lease_expires)`.
 
 The application roles are:
 
@@ -95,7 +107,9 @@ a distinct worker identity and the worker itself never calls IRE.
 ## Run, claim, and recovery behavior
 
 **Run now** and the minute schedule evaluator both create one run plus one
-bounded `local.v1` task. Slice A suppresses another active run for the same
+bounded `local.v1` task. Slice B deliberately keeps this as one local
+partition; only test fixtures expand synthetic multi-partition runs. The app
+suppresses another active run for the same
 profile revision. A task deadline is fixed when it is created.
 
 Claiming uses a conditional `GlideRecord.updateMultiple()` whose query includes
@@ -103,6 +117,14 @@ the candidate `sys_id` and `u_state=ready`. Only the process whose fresh
 attempt ID survives that compare-and-swap receives the random lease token.
 The application stores only its SHA-256 digest. A 32-competitor real-instance
 race produced one winner and one attempt, as recorded below.
+
+Slice B adds two unique nullable slot keys on each active task. A claim reserves
+one slot from the pool ceiling and one from the registered worker ceiling in
+the same conditional task transition. Database uniqueness resolves concurrent
+slot contenders; terminal completion, cancellation, and expiry release both
+slots. The worker independently enforces `-max-concurrency` (1 by default,
+maximum 32), reports current in-memory leases, and never trusts the server to
+expand that local ceiling.
 
 Delivery is at-least-once:
 
@@ -118,6 +140,12 @@ Delivery is at-least-once:
 6. If a worker crashes, the application moves the expired lease back to
    `ready`; the next claimant receives a new attempt ID and token. Late results
    from the old attempt fail lease validation.
+7. Long tasks renew at half of the remaining lease (at most every 30 seconds).
+   If renewal cannot succeed by expiry, the operation context is cancelled and
+   no worker-local retry state is created.
+8. **Cancel run** terminalizes unleased partitions immediately and marks active
+   attempts for cooperative cancellation. Heartbeats and renewals carry the
+   cancellation hint; late result and successful completion calls are rejected.
 
 The worker never stores a task, result, token, schedule, retry decision, or
 observation on disk. If delivery acknowledgement is lost, it retains nothing;
@@ -140,14 +168,15 @@ topo worker run \
   -token-ref file:/run/secrets/topo-servicenow-worker-token \
   -worker-pool site-a-local \
   -site site-a \
+  -max-concurrency 4 \
   -allow-local
 ```
 
 `-servicenow-instance` must be one absolute HTTPS origin with no userinfo,
 path, query, or fragment. Redirects are refused. `-worker-pool`, `-site`,
-`-allow-local`, `-poll-interval`, and `-max-task-duration` are read-only local
-policy. There is intentionally no state/spool/database/journal flag and no
-inbound listener.
+`-allow-local`, `-poll-interval`, `-max-task-duration`, and
+`-max-concurrency` are read-only local policy. There is intentionally no
+state/spool/database/journal flag and no inbound listener.
 
 `-allow-local` is explicit because even the one compiled-in operation requires
 deployment authorization. ServiceNow can select `local.v1`, but it cannot
@@ -178,6 +207,7 @@ Focused local gates are:
 (
   cd integrations/servicenow/topo-control-plane
   npm ci --ignore-scripts
+  npm test
   npm run build
 )
 for file in integrations/servicenow/topo-control-plane/scripts/*.js; do
@@ -200,7 +230,83 @@ The simulator suite separately proves:
 - repeat stable observations produce simulated `NO_CHANGE` operations; and
 - raw cleanup preserves run summaries.
 
-### Real ServiceNow evidence — 2026-08-30
+Slice B adds deterministic evidence for:
+
+- canonical IPv4/IPv6 Go partition plans with stable SHA-256 keys, exclusions,
+  non-overlap, ordinals/counts, and a 100,000-partition ceiling; the current
+  Fluent control-panel compiler intentionally accepts IPv4 only because no
+  target-bearing production operation exists yet;
+- pool backpressure of five live leases across two workers capped locally at
+  four, plus an eight-partition run drained after the first worker disappeared
+  with four leases and a fresh worker completed four attempt-two recoveries;
+- successful renewal of a 350 ms operation beyond an 80 ms initial lease,
+  cancellation at expiry when renewals fail, and recovery by a fresh boot;
+- ready and active multi-partition cancellation, including rejection of late
+  result and success calls and a terminal cancellation acknowledgement;
+- identical 1K, 10K, and 100K simulated estates across 1, 10, and 100
+  partitions. On the 2026-08-30 development run they completed and repeated in
+  approximately 1.027 s, 1.087 s, and 1.777 s. The 100K case retained exactly
+  100,000 supported computer/adapter items and 50,000 ownership relationships;
+  every repeat item and relationship operation was simulated `NO_CHANGE`; and
+- 100,000 eligible successful raw results drained in batches of at most 257,
+  leaving bounded tombstones with zero raw payload bytes. This measures the
+  algorithm and test process, not ServiceNow attachment throughput or an SLA.
+
+### Real ServiceNow Slice B evidence — 2026-08-30
+
+This evidence is from `dev441060.service-now.com`, separate from `controlsim`:
+
+- `now-sdk install --auth topo-dev` upgraded the same application sys_id
+  `d4e2151fdcbc7d97f8c155d1ba873e46` to `0.3.0` from the Fluent source and
+  produced rollback context `56fc68d1938bc790ec251aebb9373c20`. Read-only SDK
+  queries found exactly the nine `x_664635_topo_*` tables, including target
+  scope `22fc68d1938bc790ec251aebb9373ca0`, all seven new task partition/cancel/
+  capacity fields, worker `u_max_leases`, run `u_cancelled_tasks`, four target-
+  scope ACLs, the active immutable-target-scope rule, and **Cancel run** action.
+- The upgrade preserved pool `12289acd93478790ec251aebb9373ceb`, active profile
+  `ae289acd93478790ec251aebb9373cf0`, disabled proof schedule
+  `2a28dacd93478790ec251aebb9373c0f`, and the three known Slice A 22-item/
+  21-relationship runs. Their run IDs, terminal states, task counts, assets,
+  and relationships were unchanged; the additive cancellation count is zero.
+- A fresh short-lived worker token registered a max-concurrency-4 worker and
+  heartbeated successfully against the preserved `pdi-local-a`/`pdi-local`
+  binding. The same token still received HTTP 401 from an unrelated scoped
+  Table API. Token/client-secret values remained in owner-only files or
+  process memory and were never printed.
+- Admin-only evidence fixture target scope
+  `535078d9938bc790ec251aebb9373c3e` canonicalized overlapping input to
+  `192.0.2.0/24`, retained exclusion `192.0.2.128/26`, compiled three `/26`
+  partitions, and stored plan digest
+  `fefb36fc898b70986d22d956b858813ee9b2fb4605800761f907bda68822cffd`.
+  The scope is inactive and was never attached to a production `local.v1`
+  profile.
+- Isolated inactive pool `c35074d9938bc790ec251aebb9373c01`
+  had exactly two lease slots. Eight concurrent real worker-API claimants over
+  four admin-seeded ready tasks produced exactly two winners, two distinct pool
+  slots, two distinct worker slots, and two attempt-one tasks. After 1.1
+  seconds, renewal extended one 30-second lease. Setting its cancellation flag
+  caused the next renew to return `cancelled:true`; a late result and late
+  successful completion each returned HTTP 409, while structured cancellation
+  completed with HTTP 200. The other live attempt completed as a structured
+  fixture failure.
+- Run `1f5030d9938bc790ec251aebb9373c0b` now retains three cancelled tasks, one
+  failed task, two total attempts, and no occupied pool or worker slot. Its pool
+  and profile are inactive. The fixture used admin-only Table API writes solely
+  to create multi-task scale state that production `local.v1` cannot create;
+  all claims, renewal, cancellation observation, late-call denial, and terminal
+  reports used the six worker resources. It performed no result acceptance,
+  IRE call, or CMDB write and is not evidence for **Run now** construction.
+- An earlier inactive fixture is excluded from claim evidence because ISO-8601
+  values seeded through the Table API were truncated to midnight. The app
+  correctly failed those already-expired tasks before claim. The successful
+  fixture used ServiceNow UTC date-time form (`YYYY-MM-DD HH:mm:ss`).
+
+Still not real Slice B evidence: 1K/10K/100K platform throughput, a 100K raw-
+attachment backlog, a long-running production discovery operation, or a
+target-bearing discovery operation. Those remain simulator/future-protocol
+gates and are not inferred from the focused fixture.
+
+### Real ServiceNow Slice A evidence — 2026-08-30
 
 This evidence is from the Australia-release developer instance
 `dev441060.service-now.com`, not `controlsim`:
@@ -250,10 +356,14 @@ ServiceNow serializes an integral Glide value as `1.0`. The client accepts only
 that bounded envelope and integral numeric form; unknown envelope or task
 fields remain rejected.
 
-## Slice A exclusions
+It does not prove Slice B behavior by itself; the separately labelled evidence
+above does. Neither real section proves Slice B's simulator-only scale and
+retention-volume gates.
 
-Slice A has no credential-binding or target-scope table, Password2/Vault
-resolution, remote discovery protocol, target partitioning, worker-side spool,
+## Slice B boundaries
+
+Slice B has no credential-binding table, Password2/Vault resolution, remote
+discovery protocol, target-bearing production task, worker-side spool,
 offline guarantee, stock Discovery integration, ECC record, MID behavior,
 native Discovery Schedule/Status record, probe, pattern, or sensor. The older
 Relay and MID artifacts remain intact and experimental.

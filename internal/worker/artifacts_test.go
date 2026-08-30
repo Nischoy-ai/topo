@@ -44,7 +44,7 @@ type controlPlaneSDKConfig struct {
 	Name    string `json:"name"`
 }
 
-func TestControlPlaneManifestHasBoundedSliceASurface(t *testing.T) {
+func TestControlPlaneManifestHasBoundedSliceBSurface(t *testing.T) {
 	directory := controlPlaneDirectory(t)
 	body, err := os.ReadFile(filepath.Join(directory, "application.json"))
 	if err != nil {
@@ -85,6 +85,7 @@ func TestControlPlaneManifestHasBoundedSliceASurface(t *testing.T) {
 	wantTables := map[string]bool{
 		"x_664635_topo_worker_pool":  false,
 		"x_664635_topo_worker":       false,
+		"x_664635_topo_target_scope": false,
 		"x_664635_topo_profile":      false,
 		"x_664635_topo_schedule":     false,
 		"x_664635_topo_run":          false,
@@ -94,7 +95,7 @@ func TestControlPlaneManifestHasBoundedSliceASurface(t *testing.T) {
 	}
 	for _, table := range manifest.Tables {
 		if _, expected := wantTables[table.Name]; !expected {
-			t.Fatalf("unexpected Slice A table %q", table.Name)
+			t.Fatalf("unexpected Slice B table %q", table.Name)
 		}
 		wantTables[table.Name] = true
 		if permissions, ok := manifest.TableACLs[table.Name]; !ok {
@@ -111,18 +112,22 @@ func TestControlPlaneManifestHasBoundedSliceASurface(t *testing.T) {
 	}
 	for table, found := range wantTables {
 		if !found {
-			t.Fatalf("required Slice A table %q is missing", table)
+			t.Fatalf("required Slice B table %q is missing", table)
 		}
 	}
-	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_worker_pool", "u_state", "sys_created_on"}, false)
+	assertManifestIndex(t, manifest, "x_664635_topo_target_scope", []string{"u_scope_id", "u_revision"}, true)
+	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_worker_pool", "u_state", "u_partition_ordinal", "sys_created_on"}, false)
+	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_run", "u_partition_key"}, false)
 	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_state", "u_lease_expires"}, false)
+	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_pool_lease_slot"}, true)
+	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_worker_lease_slot"}, true)
 	assertManifestIndex(t, manifest, "x_664635_topo_result", []string{"u_task", "u_attempt_id", "u_chunk_number"}, true)
 	assertManifestIndex(t, manifest, "x_664635_topo_ire_delivery", []string{"u_task", "u_attempt_id"}, true)
 
 	manifestText := string(body)
-	for _, deferred := range []string{"x_664635_topo_credential", "x_664635_topo_target_scope", "Password2", "vault:"} {
+	for _, deferred := range []string{"x_664635_topo_credential", "Password2", "vault:"} {
 		if strings.Contains(manifestText, deferred) {
-			t.Fatalf("Slice A manifest expanded into deferred credential/target-scope work %q", deferred)
+			t.Fatalf("Slice B manifest expanded into deferred credential work %q", deferred)
 		}
 	}
 	if strings.Contains(manifestText, "u_lease_token\"") {
@@ -156,6 +161,11 @@ func TestControlPlaneScriptsEnforceReviewedBoundary(t *testing.T) {
 		"cmdb_ci_network_adapter",
 		"Owns::Owned by",
 		"new GlideSysAttachment().deleteAttachment",
+		"compileTargetScope",
+		"u_cancel_requested",
+		"u_max_leases",
+		"u_pool_lease_slot",
+		"u_worker_lease_slot",
 	} {
 		if !strings.Contains(scripts, required) {
 			t.Fatalf("control-plane scripts do not contain required invariant %q", required)
@@ -169,7 +179,6 @@ func TestControlPlaneScriptsEnforceReviewedBoundary(t *testing.T) {
 		"new gliderecord('cmdb_ci",
 		"new gliderecord(\"cmdb_ci",
 		"credential_binding",
-		"target_scope",
 		"powershell",
 		"wql",
 	} {
@@ -192,7 +201,7 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 	if err := json.Unmarshal(packageBody, &packageConfig); err != nil {
 		t.Fatal(err)
 	}
-	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.2.0" {
+	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.3.0" {
 		t.Fatalf("unexpected Fluent package identity: %#v", packageConfig)
 	}
 	if packageConfig.DevDependencies["@servicenow/sdk"] != "4.9.0" {

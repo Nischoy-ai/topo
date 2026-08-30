@@ -95,6 +95,22 @@ declare global {
                         table: 'sys_security_acl'
                         id: '167852c267ad48c580abd2587d6a2c17'
                     }
+                    'acl-target-scope-create': {
+                        table: 'sys_security_acl'
+                        id: 'd7d9723b15894519ab1d8ff01a0f58e0'
+                    }
+                    'acl-target-scope-delete': {
+                        table: 'sys_security_acl'
+                        id: '71f3f3e11f5b43de97db445a15d9f39d'
+                    }
+                    'acl-target-scope-read': {
+                        table: 'sys_security_acl'
+                        id: '988580d07e044310aacea5fbfa372813'
+                    }
+                    'acl-target-scope-write': {
+                        table: 'sys_security_acl'
+                        id: '0d4799f60dbe43e2bf159db6f74e6594'
+                    }
                     'acl-task-delete': {
                         table: 'sys_security_acl'
                         id: '6337c1b1a2024cd395b3d4bc53157542'
@@ -174,6 +190,10 @@ declare global {
                         table: 'sys_script'
                         id: '610abaadc6ee47e5a164127167a5ff55'
                     }
+                    'business-rule-validate-target-scope': {
+                        table: 'sys_script'
+                        id: '57971437e5014c04869646528b1750d9'
+                    }
                     'module-ire-deliveries': {
                         table: 'sys_app_module'
                         id: '0a11b50878214a248bc17fdb683732cb'
@@ -193,6 +213,10 @@ declare global {
                     'module-schedules': {
                         table: 'sys_app_module'
                         id: '78ece14659254493a4555121761883bc'
+                    }
+                    'module-target-scopes': {
+                        table: 'sys_app_module'
+                        id: 'd20c1d0230364186be058cb0817daf84'
                     }
                     'module-tasks': {
                         table: 'sys_app_module'
@@ -270,8 +294,23 @@ declare global {
                         table: 'sys_ui_action'
                         id: 'bc99801c6b814fa199bc6401118d5450'
                     }
+                    'ui-action-run-cancel': {
+                        table: 'sys_ui_action'
+                        id: 'da4fb34f50684b1da40076f181b4a1f9'
+                    }
                 }
                 composite: [
+                    {
+                        table: 'sys_choice'
+                        id: '011d74ffd2c54042befe98df5602340a'
+                        key: {
+                            name: 'x_664635_topo_result'
+                            element: 'u_terminal_outcome'
+                            value: 'cancelled'
+                            language: 'en'
+                            dependent_value: 'NULL'
+                        }
+                    },
                     {
                         table: 'sys_dictionary'
                         id: '04940e7792fd4b1ba4435ad9f8e2ada6'
@@ -294,11 +333,33 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '0576fd89903746a3a306d5828f91e5a4'
+                        key: {
+                            name: 'x_664635_topo_profile'
+                            element: 'u_target_scope'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '061ee046b5e34da7aaf5f4702caa03d7'
                         key: {
                             name: 'x_664635_topo_worker'
                             element: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '0901fd034b934cd88a4de229867e6aa0'
+                        key: {
+                            sys_security_acl: '0d4799f60dbe43e2bf159db6f74e6594'
+                            sys_user_role: {
+                                id: '17eced5d40bc42028df4fbb9f216bdf2'
+                                key: {
+                                    name: 'x_664635_topo.admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -358,6 +419,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: '0d22f49f7a594e138261abeaf113a81a'
+                        key: {
+                            logical_table_name: 'x_664635_topo_task'
+                            col_name_string: 'u_run,u_partition_key'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '0dd6bd2760784978b2247d92e2105797'
                         key: {
@@ -409,6 +478,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: '17136199649a47818a770f43cc77b2e2'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_cidrs'
+                        }
+                    },
+                    {
                         table: 'sys_user_role'
                         id: '17eced5d40bc42028df4fbb9f216bdf2'
                         key: {
@@ -424,6 +501,15 @@ declare global {
                             value: 'ire_processing'
                             language: 'en'
                             dependent_value: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '1917176656ad4f70a193200cf5f5fe53'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_worker_pool'
+                            language: 'en'
                         }
                     },
                     {
@@ -448,6 +534,15 @@ declare global {
                         key: {
                             name: 'x_664635_topo_worker_pool'
                             element: 'u_max_leases'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '1bade85a87394ea295212f340440761d'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_cancel_requested'
                             language: 'en'
                         }
                     },
@@ -539,6 +634,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '217851c65fe4420facda068d644a581c'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_ipv4_partition_prefix'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_choice_set'
                         id: '2296d8373b774439a2ffffb4642ded48'
                         key: {
@@ -587,6 +691,19 @@ declare global {
                         key: {
                             logical_table_name: 'x_664635_topo_worker'
                             col_name_string: 'u_worker_id'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '24ea53dd18fb41d7aa7c30fc6962b51a'
+                        key: {
+                            sys_security_acl: '71f3f3e11f5b43de97db445a15d9f39d'
+                            sys_user_role: {
+                                id: '17eced5d40bc42028df4fbb9f216bdf2'
+                                key: {
+                                    name: 'x_664635_topo.admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -683,6 +800,22 @@ declare global {
                         key: {
                             name: 'x_664635_topo_task'
                             element: 'u_lease_boot_id'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '2a87c7896f0443459272dfb1c47bf207'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_cidrs'
+                        }
+                    },
+                    {
+                        table: 'sys_index'
+                        id: '2c49b5955afe4216851a8e311a6a0288'
+                        key: {
+                            logical_table_name: 'x_664635_topo_task'
+                            col_name_string: 'u_cancel_requested,u_state'
                         }
                     },
                     {
@@ -800,6 +933,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '352bdad07a9d47849301aac2a42c6ce4'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_revision'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_db_object'
                         id: '360a43827f2f4534b210d36469d4a336'
                         key: {
@@ -848,6 +990,13 @@ declare global {
                                     name: 'x_664635_topo.admin'
                                 }
                             }
+                        }
+                    },
+                    {
+                        table: 'sys_db_object'
+                        id: '38e7f194aa204d69a0afdd7166a70aed'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
                         }
                     },
                     {
@@ -923,11 +1072,37 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: '42dc42cb87e0467884bb44ae07628d7b'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_plan_digest'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: '4411c75e808e4460a016c5c5eca7c2d1'
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_schedule'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '4532cefc34024bc6aa8b53e035ac5aba'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'NULL'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '461bd5edc75341e7b3e237e706df4b4e'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_active'
                         }
                     },
                     {
@@ -956,12 +1131,33 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_ui_action_role'
+                        id: '48320858510a4ea2869f0c20bd28a198'
+                        key: {
+                            sys_ui_action: 'da4fb34f50684b1da40076f181b4a1f9'
+                            sys_user_role: {
+                                id: 'e7efe44391f4457392ee832289d27716'
+                                key: {
+                                    name: 'x_664635_topo.operator'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: '4d5e7d2ef3374a96bd15456f4f7f8a7c'
                         key: {
                             name: 'x_664635_topo_result'
                             element: 'u_chunk_count'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '4d7e2c6d0baf44ddb219d090b723ecd2'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_revision'
                         }
                     },
                     {
@@ -983,6 +1179,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: '4fd5e601c74e4095bfd6c585d4fffc80'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_scope_id'
+                        }
+                    },
+                    {
                         table: 'ua_table_licensing_config'
                         id: '501c51dc6c434b8eab2984c4fbfde840'
                         key: {
@@ -1000,6 +1204,15 @@ declare global {
                                     name: 'x_664635_topo.admin'
                                 }
                             }
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '52c11ee7ed4b441a981db1d7d33c6bcd'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_ordinal'
+                            language: 'en'
                         }
                     },
                     {
@@ -1034,6 +1247,23 @@ declare global {
                             name: 'x_664635_topo_ire_delivery'
                             element: 'u_state'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '54d437556dba4894ab8f424aae0edcbf'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_name'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '55f4adcc53a24bfab75822a7cbc07c43'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_ipv4_partition_prefix'
                         }
                     },
                     {
@@ -1101,6 +1331,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: '5b3a962737294ceb9fc4659847de2cd8'
+                        key: {
+                            logical_table_name: 'x_664635_topo_target_scope'
+                            col_name_string: 'u_worker_pool,u_active'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '5bd26a006f994eb2b758bbb9c72a3cff'
                         key: {
@@ -1114,6 +1352,14 @@ declare global {
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '5ce9a734221a4eb6a9f4713e467ed088'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_worker_pool'
                         }
                     },
                     {
@@ -1144,6 +1390,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: '5f2baf95b68c4b9393767033bc6673f5'
+                        key: {
+                            name: 'x_664635_topo_worker'
+                            element: 'u_max_leases'
+                        }
+                    },
+                    {
                         table: 'sys_security_acl_role'
                         id: '602647cf66dc471f9ff1becba16e9dc5'
                         key: {
@@ -1163,6 +1417,14 @@ declare global {
                             name: 'x_664635_topo_schedule'
                             element: 'u_name'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_index'
+                        id: '62448817b9664f6699ef31e5eacbef93'
+                        key: {
+                            logical_table_name: 'x_664635_topo_target_scope'
+                            col_name_string: 'u_scope_id,u_revision'
                         }
                     },
                     {
@@ -1274,6 +1536,19 @@ declare global {
                             name: 'x_664635_topo_worker'
                             element: 'u_last_heartbeat'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '6b30638786e04789a22c6624442a903e'
+                        key: {
+                            sys_security_acl: '988580d07e044310aacea5fbfa372813'
+                            sys_user_role: {
+                                id: '1b5b4fc5ef7b46878a368eeaf6787606'
+                                key: {
+                                    name: 'x_664635_topo.viewer'
+                                }
+                            }
                         }
                     },
                     {
@@ -1390,6 +1665,14 @@ declare global {
                     },
                     {
                         table: 'sys_dictionary'
+                        id: '7201ef96d892445ab735d0a8353c5714'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_count'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
                         id: '7229860fb942448b8fe39a0c849c3369'
                         key: {
                             name: 'x_664635_topo_result'
@@ -1397,8 +1680,18 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '72a2f0e66d2d4a939d107a0922091967'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_pool_lease_slot'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_index'
                         id: '72d74d20a8b243a28e7c8db733977960'
+                        deleted: true
                         key: {
                             logical_table_name: 'x_664635_topo_task'
                             col_name_string: 'u_worker_pool,u_state,sys_created_on'
@@ -1438,6 +1731,32 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: '76a748070872493bb686ae4ce2471620'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_key'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '78680e27dbfc45e0a7164a7d8a9e68ab'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_exclusions'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: '78a75eaf661e418bbf48734e58b66d54'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_count'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '78aaf8c1114c4fa19d3a2a75dc8b24e8'
                         key: {
@@ -1446,11 +1765,26 @@ declare global {
                         }
                     },
                     {
+                        table: 'ua_table_licensing_config'
+                        id: '79a166fd66c0491f8357a2d8d93cd7d7'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: '79e839424a2d43ac93645b2183630deb'
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_collection_errors'
+                        }
+                    },
+                    {
+                        table: 'sys_index'
+                        id: '7a1682f326e047eb830006cd1e432cd6'
+                        key: {
+                            logical_table_name: 'x_664635_topo_task'
+                            col_name_string: 'u_worker_lease_slot'
                         }
                     },
                     {
@@ -1611,6 +1945,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: '83912506c42046be8bbc7da1ad7c3cef'
+                        key: {
+                            name: 'x_664635_topo_profile'
+                            element: 'u_target_scope'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: '84788e55d9b24beaa511d129a12f22e8'
                         key: {
@@ -1712,6 +2054,14 @@ declare global {
                             name: 'x_664635_topo_run'
                             element: 'u_relationships'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: '8ee5cf955927405c90c6866c3dbf72d7'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_key'
                         }
                     },
                     {
@@ -1838,6 +2188,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'a05a09a53f1147a19fa256d0f1d29926'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'NULL'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'a064e5164451468896d8265c0fcfbdea'
                         key: {
@@ -1888,6 +2246,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'a38898d8945944c0ad6080004023712a'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_ordinal'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'a391c32c69994fa697a3ba7f0b74b8fe'
                         key: {
@@ -1926,6 +2292,19 @@ declare global {
                         id: 'a4b41d6d118c41399dfeb7776c10f444'
                         key: {
                             sys_security_acl: 'ed1271edd1534f42baaa9ad1d976d9d9'
+                            sys_user_role: {
+                                id: '17eced5d40bc42028df4fbb9f216bdf2'
+                                key: {
+                                    name: 'x_664635_topo.admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'a50c18408a9d42279be1a9c448d84d2b'
+                        key: {
+                            sys_security_acl: 'd7d9723b15894519ab1d8ff01a0f58e0'
                             sys_user_role: {
                                 id: '17eced5d40bc42028df4fbb9f216bdf2'
                                 key: {
@@ -1988,6 +2367,17 @@ declare global {
                         id: 'a79dc0eaa3354160b02ed62f6022ed17'
                         key: {
                             name: 'x_664635_topo_ire_delivery'
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: 'aa978d5743fb4eeca4a1bae0635aa020'
+                        key: {
+                            name: 'x_664635_topo_run'
+                            element: 'u_state'
+                            value: 'cancelling'
+                            language: 'en'
+                            dependent_value: 'NULL'
                         }
                     },
                     {
@@ -2115,6 +2505,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: 'b32a9e4242c64a389d4d83a318fe3210'
+                        key: {
+                            logical_table_name: 'x_664635_topo_task'
+                            col_name_string: 'u_pool_lease_slot'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: 'b34b895502fc45abb4a90b10a4a5603c'
                         key: {
@@ -2163,6 +2561,14 @@ declare global {
                                     name: 'x_664635_topo.viewer'
                                 }
                             }
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'b5895be70e1c4058966ec179537732eb'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_pool_lease_slot'
                         }
                     },
                     {
@@ -2294,11 +2700,37 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: 'bc73792d8c9f4a6ab67c22f62b3595d7'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_target_scope'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'c11a0eeba0534871a378c07235992bb4'
+                        key: {
+                            name: 'x_664635_topo_worker'
+                            element: 'u_max_leases'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: 'c173b7b33f9e4caab211bb133875d927'
                         key: {
                             name: 'x_664635_topo_run'
                             element: 'u_task_count'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'c1894f18e7284b5db52a0a712854c7a4'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_plan_digest'
                         }
                     },
                     {
@@ -2339,6 +2771,23 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: 'c38c1a10c7e345a4a0e6f197ca9accae'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_scope_id'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'c3a22709fe22465caadf045fdaf10c63'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_cancel_requested'
+                        }
+                    },
+                    {
                         table: 'sys_dictionary'
                         id: 'c3d5db7ba2a14508a95ac0cc03af826e'
                         key: {
@@ -2355,6 +2804,24 @@ declare global {
                             value: 'cancelled'
                             language: 'en'
                             dependent_value: 'NULL'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'c4a561015c5048deb60e273c20f810e7'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_cidrs'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'c5a7561a509845cabe735c3b6593bb99'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_exclusions'
+                            language: 'en'
                         }
                     },
                     {
@@ -2401,6 +2868,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: 'c9b6ea6e8c2f405fa7983fbe0bc89035'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_worker_lease_slot'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: 'c9bf0d412ab8417c91b59c37c98263ab'
                         key: {
                             name: 'x_664635_topo_worker'
@@ -2443,6 +2919,15 @@ declare global {
                         key: {
                             name: 'x_664635_topo_task'
                             element: 'u_error'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'cca6de9d1b6640fd99911363179931d7'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_partition_cidrs'
                             language: 'en'
                         }
                     },
@@ -2502,6 +2987,23 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'd004fb8f7aa04e7f8ba311e8d7add3ae'
+                        key: {
+                            name: 'x_664635_topo_run'
+                            element: 'u_cancelled_tasks'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
+                        id: 'd01ca66d192f4c64965f6683c8532e2b'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_active'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_index'
                         id: 'd0795aa5910c4396bf32dcc83f83a6dd'
                         key: {
@@ -2552,6 +3054,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_index'
+                        id: 'd4ad30b9fa294807aecca66b611a0ebb'
+                        key: {
+                            logical_table_name: 'x_664635_topo_task'
+                            col_name_string: 'u_worker_pool,u_state,u_partition_ordinal,sys_created_on'
+                        }
+                    },
+                    {
                         table: 'sys_db_object'
                         id: 'd50166f0ef544d19b0ad90fdc9080749'
                         key: {
@@ -2565,6 +3075,14 @@ declare global {
                             name: 'x_664635_topo_schedule'
                             element: 'NULL'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'd5decacde5e944a89c1d95321f2f20f8'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_site_id'
                         }
                     },
                     {
@@ -2621,6 +3139,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: 'da841bb43dc14f488058f33059b5e6ef'
+                        key: {
+                            name: 'x_664635_topo_run'
+                            element: 'u_cancelled_tasks'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: 'dae39ba84f5e4748ad7553e1c2bb9ab5'
                         key: {
                             name: 'x_664635_topo_task'
@@ -2666,6 +3193,15 @@ declare global {
                     },
                     {
                         table: 'sys_documentation'
+                        id: 'df94d70283954f9b83d9ceb0c7da1a14'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_site_id'
+                            language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_documentation'
                         id: 'e1a2c7d58dfa47c8b36fba2192d8165b'
                         key: {
                             name: 'x_664635_topo_worker'
@@ -2679,6 +3215,14 @@ declare global {
                         key: {
                             name: 'x_664635_topo_task'
                             element: 'u_lease_token_digest'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'e43b574d51a44b9887a4b75677be4668'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_target_scope'
                         }
                     },
                     {
@@ -2776,6 +3320,14 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_dictionary'
+                        id: 'eb82d21c05ba4aba80390ab62b6ef433'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_partition_count'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: 'ef1154bc8d9046f48db3d0fc81973c99'
                         key: {
@@ -2793,6 +3345,15 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_documentation'
+                        id: 'f13e802da01349aab6e3432828e2d312'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_partition_count'
+                            language: 'en'
+                        }
+                    },
+                    {
                         table: 'sys_index'
                         id: 'f1cb18b9413b4687bbd3649fe6efce7c'
                         key: {
@@ -2807,6 +3368,14 @@ declare global {
                             name: 'x_664635_topo_task'
                             element: 'u_lease_worker'
                             language: 'en'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'f2c38dadacbe4dddb9b6017075cd4293'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_worker_lease_slot'
                         }
                     },
                     {
@@ -2847,6 +3416,14 @@ declare global {
                         id: 'f6e052eb37804e20a926545a15e9142a'
                         key: {
                             name: 'x_664635_topo_run'
+                        }
+                    },
+                    {
+                        table: 'sys_dictionary'
+                        id: 'f74daec6c96e4d2c9bbdbcca6a7fb0b7'
+                        key: {
+                            name: 'x_664635_topo_target_scope'
+                            element: 'u_name'
                         }
                     },
                     {

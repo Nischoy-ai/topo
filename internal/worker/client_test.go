@@ -103,6 +103,31 @@ func TestClientAcceptsServiceNowIntegralGlideNumber(t *testing.T) {
 	}
 }
 
+func TestClientValidatesImmutableTargetPartition(t *testing.T) {
+	t.Parallel()
+	validTask := Task{TaskID: "task-1", RunID: "run-1", AttemptID: "attempt-1", LeaseToken: "token-1", LeaseExpiresAt: time.Now().Add(time.Minute), Operation: OperationLocalV1, ProfileID: "profile-1", ProfileRevision: 1, Deadline: time.Now().Add(2 * time.Minute), TargetPartition: &TargetPartition{Key: strings.Repeat("a", 64), Ordinal: 0, Count: 1, CIDRs: []string{"192.0.2.0/24"}}}
+	if err := validateTask(validTask); err != nil {
+		t.Fatal(err)
+	}
+	tests := []*TargetPartition{
+		{Key: "bad key", Ordinal: 0, Count: 1},
+		{Key: strings.Repeat("a", 64), Ordinal: 1, Count: 1, CIDRs: []string{"192.0.2.0/24"}},
+		{Key: strings.Repeat("a", 64), Ordinal: 0, Count: 1},
+		{Key: strings.Repeat("a", 64), Ordinal: 0, Count: 1, CIDRs: []string{"192.0.2.1/24"}},
+		{Key: strings.Repeat("a", 64), Ordinal: 0, Count: 1, CIDRs: []string{"not-a-cidr"}},
+	}
+	for _, partition := range tests {
+		task := validTask
+		task.TargetPartition = partition
+		if err := validateTask(task); err == nil {
+			t.Fatalf("partition %#v was accepted", partition)
+		}
+	}
+	if _, err := (Executor{Policy: Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true}}).Execute(t.Context(), validTask); err == nil || !strings.Contains(err.Error(), "does not accept") {
+		t.Fatalf("local.v1 accepted remote partition: %v", err)
+	}
+}
+
 func TestClientRejectsUnknownServiceNowEnvelopeField(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

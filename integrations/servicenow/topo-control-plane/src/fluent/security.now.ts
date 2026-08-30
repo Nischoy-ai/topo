@@ -91,6 +91,39 @@ Acl({
 })
 
 Acl({
+    $id: Now.ID['acl-target-scope-read'],
+    type: 'record',
+    operation: 'read',
+    table: 'x_664635_topo_target_scope',
+    roles: [topoViewer],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-target-scope-create'],
+    type: 'record',
+    operation: 'create',
+    table: 'x_664635_topo_target_scope',
+    roles: [topoAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-target-scope-write'],
+    type: 'record',
+    operation: 'write',
+    table: 'x_664635_topo_target_scope',
+    roles: [topoAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-target-scope-delete'],
+    type: 'record',
+    operation: 'delete',
+    table: 'x_664635_topo_target_scope',
+    roles: [topoAdmin],
+    active: true,
+})
+
+Acl({
     $id: Now.ID['acl-profile-read'],
     type: 'record',
     operation: 'read',

@@ -26,6 +26,9 @@ func (e Executor) Execute(ctx context.Context, task Task) (model.ObservationEnve
 	if task.Operation != OperationLocalV1 || !e.Policy.AllowLocal {
 		return model.ObservationEnvelope{}, fmt.Errorf("operation %q is not allowed by local worker policy", task.Operation)
 	}
+	if task.TargetPartition != nil {
+		return model.ObservationEnvelope{}, errors.New("local.v1 does not accept a remote target partition")
+	}
 	now := time.Now
 	if e.Now != nil {
 		now = e.Now
@@ -40,9 +43,6 @@ func (e Executor) Execute(ctx context.Context, task Task) (model.ObservationEnve
 	deadline := current.Add(e.Policy.taskDuration())
 	if task.Deadline.Before(deadline) {
 		deadline = task.Deadline
-	}
-	if task.LeaseExpiresAt.Before(deadline) {
-		deadline = task.LeaseExpiresAt
 	}
 	discoverCtx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
