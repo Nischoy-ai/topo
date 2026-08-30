@@ -2887,9 +2887,13 @@ tests cover startup allowlist/trust loading, local policy digests, strict SSH
 task validation, allowlist-before-credential/dial ordering, secret-redacted
 credential failures, fixed port 22, and a complete controlsim
 claim→credential→no-data-result→terminal-summary flow with no simulated IRE
-call. The full acceptance matrix remains open until the final repository gates
-and the separately approved real developer-instance/SSH-target run are
-complete. No Vault provider or Homebrew documentation is included.
+call. Formatting, `git diff --check`, exact Go 1.25.13 full tests, focused
+integration tests, repository vet, full race tests, native and Windows amd64
+build/vet, clean Fluent install/test/build, and the pinned security-review
+gate pass; `govulncheck` reports zero reachable vulnerabilities. The remaining
+acceptance gap is the separately approved real developer-instance/SSH-target
+run and its complete broker/ACL evidence. No Vault provider or Homebrew
+documentation is included.
 
 ### Relationship to the M2.5 gate
 

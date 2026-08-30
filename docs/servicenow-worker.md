@@ -325,6 +325,15 @@ IRE, or a real SSH server:
   unreachable-target observation, records one secret-free allowed access,
   skips simulated IRE, and retains a terminal run summary with one collection
   error.
+- A separate manual-plus-scheduled simulator pair retrieves its attempt-bound
+  credential for each run, produces the same computer/adapter/ownership source
+  identities, and reports only simulated `NO_CHANGE` on the repeat. A mixed
+  local/SSH worker also completes a local IRE fixture while an unreachable SSH
+  task terminates independently as `no_data`.
+- Formatting, diff checks, exact Go 1.25.13 full and focused tests, vet, full
+  race tests, native and Windows amd64 build/vet, clean Fluent
+  install/test/build, and the pinned security-review gate pass;
+  `govulncheck` reports zero reachable vulnerabilities.
 
 Still required real Slice C1 evidence: source-driven upgrade preservation,
 Password2 encryption/non-audit/non-export behavior, credential-admin and worker
