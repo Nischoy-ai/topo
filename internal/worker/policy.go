@@ -12,6 +12,11 @@ import (
 
 const DefaultMaxTaskDuration = 30 * time.Second
 
+const (
+	DefaultMaxConcurrency = 1
+	MaxWorkerConcurrency  = 32
+)
+
 var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
 // Policy is read-only deployment configuration. The worker never rewrites it
@@ -21,6 +26,7 @@ type Policy struct {
 	SiteID          string
 	AllowLocal      bool
 	MaxTaskDuration time.Duration
+	MaxConcurrency  int
 }
 
 func (p Policy) Validate() error {
@@ -39,7 +45,17 @@ func (p Policy) Validate() error {
 	if p.MaxTaskDuration < time.Second || p.MaxTaskDuration > 10*time.Minute {
 		return errors.New("maximum task duration must be between 1s and 10m")
 	}
+	if p.concurrency() < 1 || p.concurrency() > MaxWorkerConcurrency {
+		return fmt.Errorf("maximum worker concurrency must be between 1 and %d", MaxWorkerConcurrency)
+	}
 	return nil
+}
+
+func (p Policy) concurrency() int {
+	if p.MaxConcurrency == 0 {
+		return DefaultMaxConcurrency
+	}
+	return p.MaxConcurrency
 }
 
 func (p Policy) taskDuration() time.Duration {
@@ -66,12 +82,14 @@ func (p Policy) Digest() (string, error) {
 		SiteID         string   `json:"site_id"`
 		Operations     []string `json:"operations"`
 		MaxTaskSeconds int64    `json:"max_task_seconds"`
+		MaxConcurrency int      `json:"max_concurrency"`
 	}{
 		SchemaVersion:  ContractVersion,
 		WorkerPool:     p.WorkerPool,
 		SiteID:         p.SiteID,
 		Operations:     p.Capabilities(),
 		MaxTaskSeconds: int64(p.taskDuration() / time.Second),
+		MaxConcurrency: p.concurrency(),
 	})
 	if err != nil {
 		return "", fmt.Errorf("encode worker policy: %w", err)

@@ -9,11 +9,12 @@ TopoControlPlane.prototype = {
     initialize: function () {},
 
     register: function (body) {
-        if (!this._only(body, ['schema_version', 'boot_id', 'worker_pool', 'site_id', 'version', 'capabilities', 'policy_digest', 'started_at']) ||
+        if (!this._only(body, ['schema_version', 'boot_id', 'worker_pool', 'site_id', 'version', 'capabilities', 'policy_digest', 'max_concurrency', 'started_at']) ||
                 body.schema_version !== this.CONTRACT || !this._safeID(body.boot_id) ||
                 !this._safeID(body.worker_pool) || !this._safeID(body.site_id) ||
                 !this._short(body.version, 64) || !this._hex(body.policy_digest, 64) ||
-                !this._localCapability(body.capabilities)) {
+                !this._localCapability(body.capabilities) ||
+                (typeof body.max_concurrency !== 'undefined' && !this._integer(body.max_concurrency, 1, 32))) {
             return this._result(400, {error: 'invalid worker registration'});
         }
 
@@ -36,6 +37,7 @@ TopoControlPlane.prototype = {
                 return this._result(409, {error: 'boot identifier is already registered with different policy'});
             }
             existing.u_last_heartbeat = new GlideDateTime();
+            existing.u_max_leases = typeof body.max_concurrency === 'undefined' ? 1 : body.max_concurrency;
             existing.u_active = true;
             existing.update();
             return this._result(200, {worker_id: String(existing.u_worker_id)});
@@ -50,6 +52,7 @@ TopoControlPlane.prototype = {
         worker.u_version = String(body.version).substring(0, 64);
         worker.u_capabilities = this.OPERATION;
         worker.u_policy_digest = String(body.policy_digest).toLowerCase();
+        worker.u_max_leases = typeof body.max_concurrency === 'undefined' ? 1 : body.max_concurrency;
         worker.u_current_leases = 0;
         worker.u_active = true;
         worker.u_started_at = this._dateOrNow(body.started_at);
@@ -79,7 +82,8 @@ TopoControlPlane.prototype = {
         var task = new GlideRecord('x_664635_topo_task');
         task.addQuery('u_lease_worker', worker.getUniqueValue());
         task.addQuery('u_lease_boot_id', String(body.boot_id));
-        task.addQuery('u_state', 'cancelled');
+        task.addQuery('u_cancel_requested', true);
+        task.addQuery('u_state', 'IN', 'leased,running,results_received,ire_processing');
         task.setLimit(100);
         task.query();
         while (task.next()) {
@@ -89,9 +93,10 @@ TopoControlPlane.prototype = {
     },
 
     claim: function (body) {
-        if (!this._only(body, ['schema_version', 'worker_id', 'boot_id', 'capabilities']) ||
+        if (!this._only(body, ['schema_version', 'worker_id', 'boot_id', 'capabilities', 'current_leases']) ||
                 body.schema_version !== this.CONTRACT || !this._safeID(body.worker_id) ||
-                !this._safeID(body.boot_id) || !this._localCapability(body.capabilities)) {
+                !this._safeID(body.boot_id) || !this._localCapability(body.capabilities) ||
+                (typeof body.current_leases !== 'undefined' && !this._integer(body.current_leases, 0, 32))) {
             return this._result(400, {error: 'invalid task claim'});
         }
         var worker = this._workerForCaller(String(body.worker_id), String(body.boot_id));
@@ -104,8 +109,8 @@ TopoControlPlane.prototype = {
         }
 
         this._expireLeases(pool.getUniqueValue());
-        var maximum = this._boundedInteger(pool.u_max_leases, 1, 10000, 32);
-        if (this._poolLeaseCount(pool.getUniqueValue()) >= maximum) {
+        var slots = this._availableLeaseSlots(pool, worker);
+        if (!slots) {
             return this._result(200, {task: null});
         }
 
@@ -117,6 +122,8 @@ TopoControlPlane.prototype = {
             candidate.addQuery('u_worker_pool', pool.getUniqueValue());
             candidate.addQuery('u_state', 'ready');
             candidate.addQuery('u_operation', this.OPERATION);
+            candidate.addQuery('u_cancel_requested', false);
+            candidate.orderBy('u_partition_ordinal');
             candidate.orderBy('sys_created_on');
             candidate.setLimit(1);
             candidate.query();
@@ -147,13 +154,32 @@ TopoControlPlane.prototype = {
             cas.setValue('u_lease_worker', worker.getUniqueValue());
             cas.setValue('u_lease_boot_id', String(body.boot_id));
             cas.setValue('u_lease_token_digest', this._sha256(leaseToken));
+            cas.setValue('u_pool_lease_slot', slots.pool);
+            cas.setValue('u_worker_lease_slot', slots.worker);
             cas.setValue('u_lease_expires', leaseExpires);
-            cas.updateMultiple();
+            try {
+                cas.updateMultiple();
+            } catch (claimError) {
+                // Unique pool/worker lease-slot indexes are the capacity
+                // reservation. A concurrent claimant may win either slot;
+                // re-read availability rather than exceeding the ceiling.
+                slots = this._availableLeaseSlots(pool, worker);
+                if (!slots) {
+                    return this._result(200, {task: null});
+                }
+                continue;
+            }
 
             var claimed = new GlideRecord('x_664635_topo_task');
             if (!claimed.get(candidate.getUniqueValue()) || String(claimed.u_state) !== 'leased' ||
                     String(claimed.u_attempt_id) !== attemptID ||
-                    String(claimed.u_lease_worker) !== worker.getUniqueValue()) {
+                    String(claimed.u_lease_worker) !== worker.getUniqueValue() ||
+                    String(claimed.u_pool_lease_slot) !== slots.pool ||
+                    String(claimed.u_worker_lease_slot) !== slots.worker) {
+                slots = this._availableLeaseSlots(pool, worker);
+                if (!slots) {
+                    return this._result(200, {task: null});
+                }
                 continue;
             }
             this._markRunRunning(claimed.u_run.getRefRecord());
@@ -183,8 +209,8 @@ TopoControlPlane.prototype = {
         if (!lease.ok) {
             return lease.result;
         }
-        if (String(lease.task.u_state) === 'cancelled') {
-            return this._result(409, {error: 'task is cancelled'});
+        if (this._isTrue(lease.task.u_cancel_requested) || String(lease.task.u_state) === 'cancelled') {
+            return this._result(200, {lease_expires_at: this._iso(new GlideDateTime(String(lease.task.u_lease_expires))), cancelled: true});
         }
         var now = new GlideDateTime();
         var pool = lease.worker.u_pool.getRefRecord();
@@ -216,6 +242,9 @@ TopoControlPlane.prototype = {
         var lease = this._ownedLease(taskID, body, false);
         if (!lease.ok) {
             return lease.result;
+        }
+        if (this._isTrue(lease.task.u_cancel_requested)) {
+            return this._result(409, {error: 'task is cancelled'});
         }
         if (String(body.checksum_sha256).toLowerCase() !== this._sha256(body.observation_json)) {
             return this._result(422, {error: 'result checksum does not match observation_json'});
@@ -295,15 +324,26 @@ TopoControlPlane.prototype = {
             if (!failure.ok || body.chunk_count !== 0) {
                 return this._result(400, {error: 'failed completion requires one bounded structured failure and no chunks'});
             }
-            lease.task.u_state = 'failed';
-            lease.task.u_error = failure.message;
+            if (this._isTrue(lease.task.u_cancel_requested) || String(body.failure.code) === 'cancelled') {
+                lease.task.u_state = 'cancelled';
+                lease.task.u_error = 'cancelled';
+                lease.task.u_cancel_requested = false;
+            } else {
+                lease.task.u_state = 'failed';
+                lease.task.u_error = failure.message;
+            }
+            this._releaseLeaseSlots(lease.task);
             lease.task.update();
-            this._markAttemptResults(lease.task, String(body.attempt_id), 'failed', 'failed', this.FAILURE_RETENTION_SECONDS);
+            var failureOutcome = String(lease.task.u_state) === 'cancelled' ? 'cancelled' : 'failed';
+            this._markAttemptResults(lease.task, String(body.attempt_id), 'failed', failureOutcome, this.FAILURE_RETENTION_SECONDS);
             var failedRun = this._refreshRun(lease.task.u_run.getRefRecord());
-            return this._result(200, {task_state: 'failed', run_state: failedRun});
+            return this._result(200, {task_state: String(lease.task.u_state), run_state: failedRun});
         }
         if (body.failure !== null && typeof body.failure !== 'undefined') {
             return this._result(400, {error: 'successful completion cannot include failure detail'});
+        }
+        if (this._isTrue(lease.task.u_cancel_requested)) {
+            return this._result(409, {error: 'task is cancelled'});
         }
         if (body.chunk_count !== 1 || String(lease.task.u_state) !== 'results_received' || parseInt(lease.task.u_chunk_count, 10) !== 1) {
             return this._result(409, {error: 'successful completion requires one acknowledged result chunk'});
@@ -346,6 +386,7 @@ TopoControlPlane.prototype = {
             lease.task.u_error = this._boundedError(error);
             outcome = {assets: 0, relationships: 0, collection_errors: 0};
         }
+        this._releaseLeaseSlots(lease.task);
         lease.task.update();
         var run = lease.task.u_run.getRefRecord();
         if (run.isValidRecord()) {
@@ -365,7 +406,8 @@ TopoControlPlane.prototype = {
         var profile = new GlideRecord('x_664635_topo_profile');
         if (!profile.get(String(profileSysID)) || !this._isTrue(profile.u_active) ||
                 String(profile.u_operation) !== this.OPERATION || String(profile.u_schema_version) !== this.CONTRACT ||
-                !this._safeID(String(profile.u_profile_id)) || !this._integer(parseInt(profile.u_revision, 10), 1, 1000000)) {
+                !this._safeID(String(profile.u_profile_id)) || !this._integer(parseInt(profile.u_revision, 10), 1, 1000000) ||
+                String(profile.u_target_scope) !== '') {
             throw new Error('profile is not an active local.v1 revision');
         }
         var pool = profile.u_worker_pool.getRefRecord();
@@ -374,7 +416,7 @@ TopoControlPlane.prototype = {
         }
         var outstanding = new GlideRecord('x_664635_topo_run');
         outstanding.addQuery('u_profile', profile.getUniqueValue());
-        outstanding.addQuery('u_state', 'IN', 'ready,running');
+        outstanding.addQuery('u_state', 'IN', 'ready,running,cancelling');
         outstanding.setLimit(1);
         outstanding.query();
         if (outstanding.next()) {
@@ -395,6 +437,7 @@ TopoControlPlane.prototype = {
         run.u_task_count = 1;
         run.u_complete_tasks = 0;
         run.u_failed_tasks = 0;
+        run.u_cancelled_tasks = 0;
         run.u_attempts = 0;
         run.u_assets = 0;
         run.u_relationships = 0;
@@ -413,15 +456,48 @@ TopoControlPlane.prototype = {
         task.u_operation = this.OPERATION;
         task.u_profile_id = String(profile.u_profile_id);
         task.u_profile_revision = parseInt(profile.u_revision, 10);
+        task.u_partition_key = 'local';
+        task.u_partition_ordinal = 0;
+        task.u_partition_count = 1;
+        task.u_partition_cidrs = '';
         task.u_state = 'ready';
         task.u_attempt_count = 0;
         task.u_chunk_count = 0;
+        task.u_cancel_requested = false;
         task.u_deadline = deadline;
         if (!task.insert()) {
             run.deleteRecord();
             throw new Error('Topo task could not be created');
         }
         return String(run.u_run_id);
+    },
+
+    cancelRun: function (runSysID) {
+        var run = new GlideRecord('x_664635_topo_run');
+        if (!run.get(String(runSysID))) {
+            throw new Error('Topo run was not found');
+        }
+        if (['complete', 'failed', 'cancelled'].indexOf(String(run.u_state)) >= 0) {
+            return String(run.u_state);
+        }
+        run.u_state = 'cancelling';
+        run.update();
+        var tasks = new GlideRecord('x_664635_topo_task');
+        tasks.addQuery('u_run', run.getUniqueValue());
+        tasks.query();
+        while (tasks.next()) {
+            var state = String(tasks.u_state);
+            if (state === 'planned' || state === 'ready') {
+                tasks.u_state = 'cancelled';
+                tasks.u_error = 'cancelled';
+                tasks.u_cancel_requested = false;
+                tasks.update();
+            } else if (['leased', 'running', 'results_received'].indexOf(state) >= 0) {
+                tasks.u_cancel_requested = true;
+                tasks.update();
+            }
+        }
+        return this._refreshRun(run);
     },
 
     enqueueDueSchedules: function () {
@@ -462,6 +538,7 @@ TopoControlPlane.prototype = {
         while (stale.next()) {
             stale.u_state = 'failed';
             stale.u_error = 'IRE completion was interrupted; outcome is ambiguous and was not replayed';
+            this._releaseLeaseSlots(stale);
             stale.update();
             this._markAttemptResults(stale, String(stale.u_attempt_id), 'failed', 'ambiguous', this.FAILURE_RETENTION_SECONDS);
             this._markAmbiguousDelivery(stale);
@@ -540,6 +617,7 @@ TopoControlPlane.prototype = {
         var allowed = ['leased', 'running', 'results_received'];
         if (allowCancelled) {
             allowed.push('cancelled');
+            allowed.push('ire_processing');
         }
         if (allowed.indexOf(state) < 0) {
             return {ok: false, result: this._result(409, {error: 'task lease is not active'})};
@@ -562,7 +640,7 @@ TopoControlPlane.prototype = {
         task.addQuery('u_attempt_id', String(body.attempt_id));
         task.addQuery('u_lease_worker', worker.getUniqueValue());
         task.addQuery('u_lease_token_digest', this._sha256(String(body.lease_token)));
-        task.addQuery('u_state', 'IN', 'complete,failed');
+        task.addQuery('u_state', 'IN', 'complete,failed,cancelled');
         task.setLimit(1);
         task.query();
         if (!task.next()) {
@@ -585,22 +663,31 @@ TopoControlPlane.prototype = {
         expired.query();
         while (expired.next()) {
             var attemptID = String(expired.u_attempt_id);
+            var cancelled = this._isTrue(expired.u_cancel_requested);
+            var nextState = cancelled ? 'cancelled' : 'ready';
             var cas = new GlideRecord('x_664635_topo_task');
             cas.addQuery('sys_id', expired.getUniqueValue());
             cas.addQuery('u_state', 'IN', 'leased,running,results_received');
             cas.addQuery('u_attempt_id', attemptID);
             cas.addQuery('u_lease_expires', '<=', now);
-            cas.setValue('u_state', 'ready');
+            cas.setValue('u_state', nextState);
             cas.setValue('u_attempt_id', '');
             cas.setValue('u_lease_worker', '');
             cas.setValue('u_lease_boot_id', '');
             cas.setValue('u_lease_token_digest', '');
+            cas.setValue('u_pool_lease_slot', '');
+            cas.setValue('u_worker_lease_slot', '');
             cas.setValue('u_lease_expires', '');
             cas.setValue('u_chunk_count', 0);
+            cas.setValue('u_cancel_requested', false);
+            if (cancelled) {
+                cas.setValue('u_error', 'cancelled');
+            }
             cas.updateMultiple();
             var verify = new GlideRecord('x_664635_topo_task');
-            if (verify.get(expired.getUniqueValue()) && String(verify.u_state) === 'ready' && String(verify.u_attempt_id) === '') {
-                this._markAttemptResults(verify, attemptID, 'superseded', 'superseded', this.FAILURE_RETENTION_SECONDS);
+            if (verify.get(expired.getUniqueValue()) && String(verify.u_state) === nextState && String(verify.u_attempt_id) === '') {
+                this._markAttemptResults(verify, attemptID, cancelled ? 'failed' : 'superseded', cancelled ? 'cancelled' : 'superseded', this.FAILURE_RETENTION_SECONDS);
+                this._refreshRun(verify.u_run.getRefRecord());
             }
         }
     },
@@ -640,6 +727,7 @@ TopoControlPlane.prototype = {
         tasks.query();
         var complete = 0;
         var failed = 0;
+        var cancelled = 0;
         var active = 0;
         var attempts = 0;
         var error = '';
@@ -647,23 +735,28 @@ TopoControlPlane.prototype = {
             attempts += this._boundedInteger(tasks.u_attempt_count, 0, 1000000, 0);
             if (String(tasks.u_state) === 'complete') {
                 complete++;
-            } else if (String(tasks.u_state) === 'failed' || String(tasks.u_state) === 'cancelled') {
+            } else if (String(tasks.u_state) === 'failed') {
                 failed++;
                 if (!error) {
                     error = String(tasks.u_error).substring(0, 4000);
                 }
+            } else if (String(tasks.u_state) === 'cancelled') {
+                cancelled++;
             } else {
                 active++;
             }
         }
         run.u_complete_tasks = complete;
         run.u_failed_tasks = failed;
+        run.u_cancelled_tasks = cancelled;
         run.u_attempts = attempts;
         run.u_error = error;
         if (active > 0) {
-            run.u_state = complete + failed > 0 ? 'running' : String(run.u_state);
+            if (String(run.u_state) !== 'cancelling') {
+                run.u_state = complete + failed + cancelled > 0 ? 'running' : String(run.u_state);
+            }
         } else {
-            run.u_state = failed > 0 ? 'failed' : 'complete';
+            run.u_state = failed > 0 ? 'failed' : (cancelled > 0 ? 'cancelled' : 'complete');
             run.u_completed_at = new GlideDateTime();
         }
         run.update();
@@ -702,6 +795,61 @@ TopoControlPlane.prototype = {
         return count.next() ? parseInt(count.getAggregate('COUNT'), 10) : 0;
     },
 
+    _availableLeaseSlots: function (pool, worker) {
+        var poolMaximum = this._boundedInteger(pool.u_max_leases, 1, 10000, 32);
+        var workerMaximum = this._boundedInteger(worker.u_max_leases, 1, 32, 1);
+        var poolSysID = String(pool.getUniqueValue());
+        var workerSysID = String(worker.getUniqueValue());
+        var usedPool = {};
+        var usedWorker = {};
+        var poolCount = 0;
+        var workerCount = 0;
+        var active = new GlideRecord('x_664635_topo_task');
+        active.addQuery('u_worker_pool', poolSysID);
+        active.addQuery('u_state', 'IN', 'leased,running,results_received,ire_processing');
+        active.setLimit(poolMaximum);
+        active.query();
+        while (active.next()) {
+            poolCount++;
+            var poolSlot = String(active.u_pool_lease_slot);
+            if (poolSlot) {
+                usedPool[poolSlot] = true;
+            }
+            if (String(active.u_lease_worker) === workerSysID) {
+                workerCount++;
+                var workerSlot = String(active.u_worker_lease_slot);
+                if (workerSlot) {
+                    usedWorker[workerSlot] = true;
+                }
+            }
+        }
+        if (poolCount >= poolMaximum || workerCount >= workerMaximum) {
+            return null;
+        }
+        var availablePool = '';
+        for (var poolIndex = 0; poolIndex < poolMaximum; poolIndex++) {
+            var poolKey = poolSysID + ':' + poolIndex;
+            if (!usedPool[poolKey]) {
+                availablePool = poolKey;
+                break;
+            }
+        }
+        var availableWorker = '';
+        for (var workerIndex = 0; workerIndex < workerMaximum; workerIndex++) {
+            var workerKey = workerSysID + ':' + workerIndex;
+            if (!usedWorker[workerKey]) {
+                availableWorker = workerKey;
+                break;
+            }
+        }
+        return availablePool && availableWorker ? {pool: availablePool, worker: availableWorker} : null;
+    },
+
+    _releaseLeaseSlots: function (task) {
+        task.u_pool_lease_slot = '';
+        task.u_worker_lease_slot = '';
+    },
+
     _leaseBody: function (body, fields) {
         return this._only(body, fields) && body.schema_version === this.CONTRACT &&
             this._safeID(body.worker_id) && this._safeID(body.boot_id) &&
@@ -725,6 +873,163 @@ TopoControlPlane.prototype = {
         result.u_delete_after = deleteAfter;
         result.update();
         return this._boundedError(diagnostic);
+    },
+
+    compileTargetScope: function (record) {
+        var scopeID = String(record.u_scope_id);
+        var revision = parseInt(record.u_revision, 10);
+        var partitionPrefix = parseInt(record.u_ipv4_partition_prefix, 10);
+        if (!this._safeID(scopeID) || !this._integer(revision, 1, 1000000) ||
+                !this._integer(partitionPrefix, 8, 32)) {
+            throw new Error('scope ID, revision, or IPv4 partition prefix is invalid');
+        }
+        var pool = record.u_worker_pool.getRefRecord();
+        if (!pool.isValidRecord() || String(pool.u_site_id) !== String(record.u_site_id)) {
+            throw new Error('target scope site must match its worker pool site');
+        }
+        var included = this._normalizeIPv4Ranges(this._parseIPv4CIDRs(String(record.u_cidrs), true));
+        var excluded = this._normalizeIPv4Ranges(this._parseIPv4CIDRs(String(record.u_exclusions), false));
+        var allowed = included;
+        for (var exclusionIndex = 0; exclusionIndex < excluded.length; exclusionIndex++) {
+            var next = [];
+            var exclusion = excluded[exclusionIndex];
+            for (var segmentIndex = 0; segmentIndex < allowed.length; segmentIndex++) {
+                var segment = allowed[segmentIndex];
+                if (exclusion.end < segment.start || exclusion.start > segment.end) {
+                    next.push(segment);
+                    continue;
+                }
+                if (exclusion.start > segment.start) {
+                    next.push({start: segment.start, end: exclusion.start - 1});
+                }
+                if (exclusion.end < segment.end) {
+                    next.push({start: exclusion.end + 1, end: segment.end});
+                }
+            }
+            allowed = next;
+        }
+
+        var cidrs = [];
+        for (var allowedIndex = 0; allowedIndex < allowed.length; allowedIndex++) {
+            var planned = this._partitionIPv4Range(allowed[allowedIndex], partitionPrefix, 100000 - cidrs.length);
+            cidrs = cidrs.concat(planned);
+            if (cidrs.length > 100000) {
+                throw new Error('target scope exceeds 100000 deterministic partitions');
+            }
+        }
+        if (cidrs.length === 0) {
+            throw new Error('target scope exclusions remove every selected address');
+        }
+        var keys = [];
+        for (var index = 0; index < cidrs.length; index++) {
+            keys.push(this._sha256(scopeID + '\n' + revision + '\n' + cidrs[index]));
+        }
+        var canonicalIncluded = [];
+        for (var includeIndex = 0; includeIndex < included.length; includeIndex++) {
+            canonicalIncluded.push(included[includeIndex].cidr);
+        }
+        var canonicalExcluded = [];
+        for (var denyIndex = 0; denyIndex < excluded.length; denyIndex++) {
+            canonicalExcluded.push(excluded[denyIndex].cidr);
+        }
+        record.u_cidrs = canonicalIncluded.join('\n');
+        record.u_exclusions = canonicalExcluded.join('\n');
+        record.u_partition_count = cidrs.length;
+        record.u_plan_digest = this._sha256(keys.join('\n'));
+        return {cidrs: cidrs, keys: keys};
+    },
+
+    _parseIPv4CIDRs: function (value, required) {
+        if (typeof value !== 'string' || value.length > 4000 || /[\u0000-\u001f\u007f]/.test(value.replace(/[\r\n]/g, ''))) {
+            throw new Error('CIDR text is oversized or contains control characters');
+        }
+        var lines = value.split(/\r?\n/);
+        var result = [];
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            var text = String(lines[lineIndex]).replace(/^\s+|\s+$/g, '');
+            if (!text) {
+                continue;
+            }
+            if (text.indexOf(':') >= 0) {
+                throw new Error('Slice B compiles canonical IPv4 CIDRs only');
+            }
+            var match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/.exec(text);
+            if (!match) {
+                throw new Error('CIDR line ' + (lineIndex + 1) + ' is invalid');
+            }
+            var octets = [];
+            for (var octetIndex = 1; octetIndex <= 4; octetIndex++) {
+                var octet = parseInt(match[octetIndex], 10);
+                if (!this._integer(octet, 0, 255)) {
+                    throw new Error('CIDR line ' + (lineIndex + 1) + ' is invalid');
+                }
+                octets.push(octet);
+            }
+            var bits = parseInt(match[5], 10);
+            if (!this._integer(bits, 0, 32)) {
+                throw new Error('CIDR line ' + (lineIndex + 1) + ' is invalid');
+            }
+            var address = ((octets[0] * 256 + octets[1]) * 256 + octets[2]) * 256 + octets[3];
+            var size = Math.pow(2, 32 - bits);
+            var start = Math.floor(address / size) * size;
+            result.push({start: start, end: start + size - 1, bits: bits, cidr: this._ipv4Text(start) + '/' + bits});
+        }
+        if (required && result.length === 0) {
+            throw new Error('at least one IPv4 CIDR is required');
+        }
+        if (result.length > 4096) {
+            throw new Error('target scope exceeds 4096 CIDR entries');
+        }
+        return result;
+    },
+
+    _normalizeIPv4Ranges: function (ranges) {
+        ranges.sort(function (left, right) {
+            return left.start === right.start ? right.end - left.end : left.start - right.start;
+        });
+        var result = [];
+        for (var index = 0; index < ranges.length; index++) {
+            var current = ranges[index];
+            var previous = result.length > 0 ? result[result.length - 1] : null;
+            if (previous && previous.start <= current.start && previous.end >= current.end) {
+                continue;
+            }
+            result.push(current);
+        }
+        return result;
+    },
+
+    _partitionIPv4Range: function (range, partitionPrefix, budget) {
+        var result = [];
+        var maximumBlock = Math.pow(2, 32 - partitionPrefix);
+        var current = range.start;
+        while (current <= range.end) {
+            if (budget - result.length <= 0) {
+                throw new Error('target scope exceeds 100000 deterministic partitions');
+            }
+            var block = 1;
+            while (block < 4294967296 && current % (block * 2) === 0) {
+                block *= 2;
+            }
+            block = Math.min(block, maximumBlock);
+            while (current + block - 1 > range.end) {
+                block /= 2;
+            }
+            var bits = 32 - Math.round(Math.log(block) / Math.LN2);
+            result.push(this._ipv4Text(current) + '/' + bits);
+            current += block;
+        }
+        return result;
+    },
+
+    _ipv4Text: function (value) {
+        var first = Math.floor(value / 16777216);
+        value -= first * 16777216;
+        var second = Math.floor(value / 65536);
+        value -= second * 65536;
+        var third = Math.floor(value / 256);
+        var fourth = value - third * 256;
+        return first + '.' + second + '.' + third + '.' + fourth;
     },
 
     _only: function (value, fields) {

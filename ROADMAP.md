@@ -203,6 +203,22 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   crash/lease-expiry retry, duplicate-chunk idempotency, repeated IRE
   reconciliation, and raw-result retention. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
+- **Implemented candidate with focused real-instance acceptance (ServiceNow-managed
+  stateless Slice B):** the Fluent `0.3.0` source adds immutable target-scope
+  revisions, deterministic bounded partition metadata, unique pool/worker
+  capacity-slot reservations, load-aware claims, renewable leases, cooperative
+  cancellation, and bounded cleanup without adding a production operation or
+  worker-local state. Exact Go tests process identical 1K/10K/100K supported
+  computer/adapter estates across deterministic partitions; the repeats keep
+  100,000 item and 50,000 ownership-relationship identities and simulate only
+  `NO_CHANGE`. Separate tests cover worker churn, lease-renewal loss, late
+  cancellation denial, and 100,000 eligible raw results in bounded retention
+  batches. These are simulator/source-build findings, not ServiceNow platform
+  throughput claims. The approved Fluent upgrade preserved Slice A records;
+  a separate admin-seeded real fixture proves bounded capacity reservations,
+  lease extension, cancellation, late-call denial, terminal reporting, and
+  slot release without an IRE/CMDB write. See
+  [docs/servicenow-worker.md](docs/servicenow-worker.md).
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for

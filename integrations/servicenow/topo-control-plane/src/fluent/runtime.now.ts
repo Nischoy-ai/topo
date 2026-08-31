@@ -167,6 +167,19 @@ BusinessRule({
     script: Now.include('../../scripts/validate_profile.js'),
 })
 
+BusinessRule({
+    $id: Now.ID['business-rule-validate-target-scope'],
+    name: 'Validate immutable Topo target scope',
+    table: 'x_664635_topo_target_scope',
+    when: 'before',
+    action: ['insert', 'update'],
+    order: 100,
+    active: true,
+    access: 'package_private',
+    description: 'Canonicalizes bounded IPv4 CIDRs and compiles deterministic non-overlapping partition metadata.',
+    script: Now.include('../../scripts/validate_target_scope.js'),
+})
+
 UiAction({
     $id: Now.ID['ui-action-profile-run-now'],
     name: 'Run now',
@@ -181,6 +194,22 @@ UiAction({
     roles: [topoOperator],
     order: 100,
     hint: 'Create a durable ServiceNow-owned run and ready local.v1 task.',
+})
+
+UiAction({
+    $id: Now.ID['ui-action-run-cancel'],
+    name: 'Cancel run',
+    actionName: 'x_664635_topo_cancel_run',
+    table: 'x_664635_topo_run',
+    active: true,
+    form: { showButton: true, showLink: false, showContextMenu: true, style: 'destructive' },
+    showInsert: false,
+    showUpdate: true,
+    condition: "current.u_state == 'ready' || current.u_state == 'running' || current.u_state == 'cancelling'",
+    script: Now.include('../../scripts/cancel_run.js'),
+    roles: [topoOperator],
+    order: 110,
+    hint: 'Cooperatively cancel ready and running Topo task partitions.',
 })
 
 ScheduledScript({

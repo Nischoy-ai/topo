@@ -1,7 +1,7 @@
 {
   "name": "Nischoy Topo",
   "scope": "x_664635_topo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ServiceNow-owned control plane for stateless Nischoy Topo workers",
   "source": {
     "format": "servicenow_fluent",
@@ -85,6 +85,7 @@
         ["u_version", "String", 64, true],
         ["u_capabilities", "String", 255, true],
         ["u_policy_digest", "String", 64, true],
+        ["u_max_leases", "Integer", 0, true],
         ["u_current_leases", "Integer", 0, true],
         ["u_active", "True/False", 0, true],
         ["u_started_at", "Date/Time", 0, true],
@@ -92,6 +93,26 @@
       ],
       "unique_indexes": [["u_worker_id"], ["u_pool", "u_boot_id"]],
       "indexes": [["u_pool", "u_active", "u_last_heartbeat"]]
+    },
+    {
+      "name": "x_664635_topo_target_scope",
+      "label": "Topo Target Scope",
+      "audited": true,
+      "fields": [
+        ["u_scope_id", "String", 128, true],
+        ["u_revision", "Integer", 0, true],
+        ["u_name", "String", 255, true],
+        ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
+        ["u_site_id", "String", 128, true],
+        ["u_cidrs", "String", 4000, true],
+        ["u_exclusions", "String", 4000, false],
+        ["u_ipv4_partition_prefix", "Integer", 0, true],
+        ["u_partition_count", "Integer", 0, true],
+        ["u_plan_digest", "String", 64, false],
+        ["u_active", "True/False", 0, true]
+      ],
+      "unique_indexes": [["u_scope_id", "u_revision"]],
+      "indexes": [["u_worker_pool", "u_active"]]
     },
     {
       "name": "x_664635_topo_profile",
@@ -103,6 +124,7 @@
         ["u_name", "String", 255, true],
         ["u_operation", "Choice:local.v1", 40, true],
         ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
+        ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, false],
         ["u_schema_version", "String", 32, true],
         ["u_active", "True/False", 0, true]
       ],
@@ -133,12 +155,13 @@
         ["u_profile", "Reference:x_664635_topo_profile", 32, true],
         ["u_schedule", "Reference:x_664635_topo_schedule", 32, false],
         ["u_trigger", "Choice:manual,scheduled,retry", 40, true],
-        ["u_state", "Choice:ready,running,complete,failed,cancelled", 40, true],
+        ["u_state", "Choice:ready,running,cancelling,complete,failed,cancelled", 40, true],
         ["u_started_at", "Date/Time", 0, true],
         ["u_completed_at", "Date/Time", 0, false],
         ["u_task_count", "Integer", 0, true],
         ["u_complete_tasks", "Integer", 0, true],
         ["u_failed_tasks", "Integer", 0, true],
+        ["u_cancelled_tasks", "Integer", 0, true],
         ["u_attempts", "Integer", 0, true],
         ["u_assets", "Integer", 0, true],
         ["u_relationships", "Integer", 0, true],
@@ -159,20 +182,28 @@
         ["u_operation", "Choice:local.v1", 40, true],
         ["u_profile_id", "String", 128, true],
         ["u_profile_revision", "Integer", 0, true],
+        ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, false],
+        ["u_partition_key", "String", 128, false],
+        ["u_partition_ordinal", "Integer", 0, true],
+        ["u_partition_count", "Integer", 0, true],
+        ["u_partition_cidrs", "String", 4000, false],
         ["u_state", "Choice:planned,ready,leased,running,results_received,ire_processing,complete,failed,cancelled", 40, true],
         ["u_attempt_count", "Integer", 0, true],
         ["u_attempt_id", "String", 128, false],
         ["u_lease_worker", "Reference:x_664635_topo_worker", 32, false],
         ["u_lease_boot_id", "String", 128, false],
         ["u_lease_token_digest", "String", 64, false],
+        ["u_pool_lease_slot", "String", 64, false],
+        ["u_worker_lease_slot", "String", 64, false],
         ["u_lease_expires", "Date/Time", 0, false],
         ["u_completion_id", "String", 128, false],
         ["u_deadline", "Date/Time", 0, true],
         ["u_chunk_count", "Integer", 0, true],
+        ["u_cancel_requested", "True/False", 0, true],
         ["u_error", "String", 4000, false]
       ],
-      "unique_indexes": [["u_task_id"]],
-      "indexes": [["u_worker_pool", "u_state", "sys_created_on"], ["u_state", "u_lease_expires"], ["u_run", "u_state"]]
+      "unique_indexes": [["u_task_id"], ["u_pool_lease_slot"], ["u_worker_lease_slot"]],
+      "indexes": [["u_worker_pool", "u_state", "u_partition_ordinal", "sys_created_on"], ["u_state", "u_lease_expires"], ["u_run", "u_state"], ["u_run", "u_partition_key"], ["u_cancel_requested", "u_state"]]
     },
     {
       "name": "x_664635_topo_result",
@@ -187,7 +218,7 @@
         ["u_attachment", "Reference:sys_attachment", 32, false],
         ["u_payload_bytes", "Integer", 0, true],
         ["u_processing_state", "Choice:received,processed,failed,superseded", 40, true],
-        ["u_terminal_outcome", "Choice:complete,failed,ambiguous,superseded", 40, false],
+        ["u_terminal_outcome", "Choice:complete,failed,cancelled,ambiguous,superseded", 40, false],
         ["u_processed_at", "Date/Time", 0, false],
         ["u_delete_after", "Date/Time", 0, false]
       ],
@@ -217,6 +248,7 @@
   "table_acls": {
     "x_664635_topo_worker_pool": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin"], "write": ["x_664635_topo.admin"], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_worker": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
+    "x_664635_topo_target_scope": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin"], "write": ["x_664635_topo.admin"], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_profile": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.operator"], "write": ["x_664635_topo.admin", "x_664635_topo.operator"], "delete": ["x_664635_topo.admin"]},
     "x_664635_topo_schedule": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": ["x_664635_topo.admin", "x_664635_topo.operator"], "write": ["x_664635_topo.admin", "x_664635_topo.operator"], "delete": ["x_664635_topo.admin", "x_664635_topo.operator"]},
     "x_664635_topo_run": {"read": ["x_664635_topo.admin", "x_664635_topo.operator", "x_664635_topo.viewer"], "create": [], "write": [], "delete": ["x_664635_topo.admin"]},
@@ -229,6 +261,7 @@
     "required_role": "x_664635_topo.viewer",
     "modules": [
       "x_664635_topo_worker_pool",
+      "x_664635_topo_target_scope",
       "x_664635_topo_profile",
       "x_664635_topo_schedule",
       "x_664635_topo_run",
@@ -259,11 +292,18 @@
       "insert": true,
       "update": true,
       "script": "scripts/validate_profile.js"
+    },
+    {
+      "name": "Validate immutable Topo target scope",
+      "table": "x_664635_topo_target_scope",
+      "when": "before",
+      "insert": true,
+      "update": true,
+      "script": "scripts/validate_target_scope.js"
     }
   ],
-  "profile_ui_action": {
-    "name": "Run now",
-    "required_role": "x_664635_topo.operator",
-    "script": "scripts/run_now.js"
-  }
+  "ui_actions": [
+    {"name": "Run now", "table": "x_664635_topo_profile", "required_role": "x_664635_topo.operator", "script": "scripts/run_now.js"},
+    {"name": "Cancel run", "table": "x_664635_topo_run", "required_role": "x_664635_topo.operator", "script": "scripts/cancel_run.js"}
+  ]
 }

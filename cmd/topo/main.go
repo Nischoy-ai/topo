@@ -915,6 +915,7 @@ func workerRun(args []string) error {
 	allowLocal := fs.Bool("allow-local", false, "allow the compiled-in local.v1 operation on this host")
 	pollInterval := fs.Duration("poll-interval", topoworker.DefaultPollInterval, "worker heartbeat and claim interval")
 	maxTaskDuration := fs.Duration("max-task-duration", topoworker.DefaultMaxTaskDuration, "local ceiling for one local.v1 attempt")
+	maxConcurrency := fs.Int("max-concurrency", topoworker.DefaultMaxConcurrency, "local ceiling for concurrent leased tasks")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -930,7 +931,7 @@ func workerRun(args []string) error {
 	if *siteID == "" {
 		return errors.New("-site is required")
 	}
-	policy := topoworker.Policy{WorkerPool: *workerPool, SiteID: *siteID, AllowLocal: *allowLocal, MaxTaskDuration: *maxTaskDuration}
+	policy := topoworker.Policy{WorkerPool: *workerPool, SiteID: *siteID, AllowLocal: *allowLocal, MaxTaskDuration: *maxTaskDuration, MaxConcurrency: *maxConcurrency}
 	if err := policy.Validate(); err != nil {
 		return err
 	}

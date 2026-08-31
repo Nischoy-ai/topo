@@ -15,17 +15,19 @@ import (
 const (
 	ContractVersion  = "v1alpha1"
 	OperationLocalV1 = "local.v1"
+	sha256HexLength  = 64
 )
 
 type RegisterRequest struct {
-	SchemaVersion string    `json:"schema_version"`
-	BootID        string    `json:"boot_id"`
-	WorkerPool    string    `json:"worker_pool"`
-	SiteID        string    `json:"site_id"`
-	Version       string    `json:"version"`
-	Capabilities  []string  `json:"capabilities"`
-	PolicyDigest  string    `json:"policy_digest"`
-	StartedAt     time.Time `json:"started_at"`
+	SchemaVersion  string    `json:"schema_version"`
+	BootID         string    `json:"boot_id"`
+	WorkerPool     string    `json:"worker_pool"`
+	SiteID         string    `json:"site_id"`
+	Version        string    `json:"version"`
+	Capabilities   []string  `json:"capabilities"`
+	PolicyDigest   string    `json:"policy_digest"`
+	MaxConcurrency int       `json:"max_concurrency"`
+	StartedAt      time.Time `json:"started_at"`
 }
 
 type RegisterResponse struct {
@@ -49,18 +51,31 @@ type ClaimRequest struct {
 	WorkerID      string   `json:"worker_id"`
 	BootID        string   `json:"boot_id"`
 	Capabilities  []string `json:"capabilities"`
+	CurrentLeases int      `json:"current_leases"`
+}
+
+// TargetPartition is immutable application-owned selection metadata. Slice B
+// plans canonical CIDR partitions for later reviewed operations; local.v1
+// production tasks continue to omit it because local discovery has no remote
+// target authority.
+type TargetPartition struct {
+	Key     string   `json:"key"`
+	Ordinal int      `json:"ordinal"`
+	Count   int      `json:"count"`
+	CIDRs   []string `json:"cidrs"`
 }
 
 type Task struct {
-	TaskID          string    `json:"task_id"`
-	RunID           string    `json:"run_id"`
-	AttemptID       string    `json:"attempt_id"`
-	LeaseToken      string    `json:"lease_token"`
-	LeaseExpiresAt  time.Time `json:"lease_expires_at"`
-	Operation       string    `json:"operation"`
-	ProfileID       string    `json:"profile_id"`
-	ProfileRevision int       `json:"profile_revision"`
-	Deadline        time.Time `json:"deadline"`
+	TaskID          string           `json:"task_id"`
+	RunID           string           `json:"run_id"`
+	AttemptID       string           `json:"attempt_id"`
+	LeaseToken      string           `json:"lease_token"`
+	LeaseExpiresAt  time.Time        `json:"lease_expires_at"`
+	Operation       string           `json:"operation"`
+	ProfileID       string           `json:"profile_id"`
+	ProfileRevision int              `json:"profile_revision"`
+	TargetPartition *TargetPartition `json:"target_partition,omitempty"`
+	Deadline        time.Time        `json:"deadline"`
 }
 
 // UnmarshalJSON accepts ServiceNow's JSON representation of an integral

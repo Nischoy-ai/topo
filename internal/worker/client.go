@@ -3,11 +3,13 @@ package worker
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
@@ -214,8 +216,39 @@ func validateTask(task Task) error {
 	if task.ProfileRevision < 1 {
 		return fmt.Errorf("ServiceNow task %q profile_revision must be positive", task.TaskID)
 	}
+	if err := validateTargetPartition(task.TargetPartition); err != nil {
+		return fmt.Errorf("ServiceNow task %q target partition is invalid: %w", task.TaskID, err)
+	}
 	if task.LeaseExpiresAt.IsZero() || task.Deadline.IsZero() {
 		return fmt.Errorf("ServiceNow task %q is missing its lease or deadline", task.TaskID)
+	}
+	if !task.LeaseExpiresAt.After(time.Now().UTC()) || task.LeaseExpiresAt.After(task.Deadline) {
+		return fmt.Errorf("ServiceNow task %q has an expired or out-of-bounds lease", task.TaskID)
+	}
+	return nil
+}
+
+func validateTargetPartition(partition *TargetPartition) error {
+	if partition == nil {
+		return nil
+	}
+	if len(partition.Key) != sha256HexLength {
+		return errors.New("partition key is invalid")
+	}
+	if _, err := hex.DecodeString(partition.Key); err != nil {
+		return errors.New("partition key is invalid")
+	}
+	if partition.Count < 1 || partition.Count > DefaultMaxPartitions || partition.Ordinal < 0 || partition.Ordinal >= partition.Count {
+		return errors.New("partition ordinal or count is invalid")
+	}
+	if len(partition.CIDRs) < 1 || len(partition.CIDRs) > maxPartitionCIDRs {
+		return fmt.Errorf("partition must contain 1-%d CIDRs", maxPartitionCIDRs)
+	}
+	for _, value := range partition.CIDRs {
+		prefix, err := netip.ParsePrefix(value)
+		if err != nil || prefix.Addr().Zone() != "" || prefix != prefix.Masked() || prefix.String() != value {
+			return fmt.Errorf("partition CIDR %q is not canonical", value)
+		}
 	}
 	return nil
 }
