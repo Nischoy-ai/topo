@@ -87,11 +87,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   claimants, lease extension, cancellation through renew, HTTP 409 late-call
   denial, terminal reporting, and slot release without an IRE/CMDB write. That
   focused evidence remains distinct from simulator scale results.
-  The candidate is proposed in
-  [PR 55](https://github.com/Nischoy-ai/topo/pull/55); do not treat it as
-  merged until that PR lands.
-  Slice C1 is now a local candidate on
-  `agent/servicenow-password2-ssh-slice-c`, stacked on PR #55: Fluent `0.4.0`
+  The candidate merged in
+  [PR 55](https://github.com/Nischoy-ai/topo/pull/55).
+  Slice C1 is now a candidate on
+  `agent/servicenow-password2-ssh-slice-c`, proposed in draft PR #56 against
+  merged `main`: Fluent `0.4.0`
   defines twelve tables, five roles, and seven fixed worker resources,
   including a protected non-audited Password2 field, immutable credential
   binding, secret-free access events, and a live-attempt-only no-store broker.
@@ -105,13 +105,19 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   A/B configuration and run summaries, all twelve scoped tables and five
   roles, the seven installed worker routes, the ten credential ACL/role
   mappings, and the Password2 dictionary contract (`audit=false`, mandatory,
-  and non-replicated). The instance's existing worker OAuth restriction still
-  contains exactly the original six routes, so the credential route is not yet
-  authorized; no Password2 record or SSH target was created. Real Password2
-  encryption/non-export behavior, the broker denial matrix, and manual and
-  scheduled execution against an explicitly approved real or sanitized SSH
-  target remain acceptance gaps. External Vault support is deferred to Slice
-  C2 by the user's 2026-08-30 decision; it remains an eventual requirement.
+  and non-replicated). Focused 2026-08-31 runtime evidence adds an exact
+  credential-route-only OAuth scope/policy mapping, a disposable Password2
+  record entered through the form, a non-routable `192.0.2.10/32` manual Run
+  Now fixture, real worker registration/claim, a 200 attempt-bound broker
+  response with `no-store`/`no-cache`, a 403 wrong-attempt denial, secret-free
+  allowed/denied access rows, and continued 401 denial from the generic
+  credential Table API. The test task was terminalized without dialing the
+  TEST-NET address, submitting a result, invoking IRE, or writing CMDB. The
+  remaining real acceptance gaps are the full ACL/broker denial matrix and
+  manual plus scheduled execution against an explicitly approved real or
+  sanitized SSH target through repeat IRE and retention. External Vault
+  support is deferred to Slice C2 by the user's 2026-08-30 decision; it remains
+  an eventual requirement.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -2902,13 +2908,25 @@ source-driven real-instance upgrade installed `0.4.0` over the existing app
 without losing the known Slice A/B configuration or run summaries; read-only
 metadata checks found all twelve tables, five roles, seven REST routes, ten
 credential ACL/role mappings, and the expected Password2 dictionary flags.
-That is installation evidence, not credential or discovery evidence. The
-existing worker OAuth scope/policy remains restricted to the six Slice A
-routes, and no Password2 record, binding, SSH target, or SSH run has been
-created. The remaining acceptance gap is an exact seventh-route OAuth update,
-direct secret entry into Password2, an explicitly approved SSH target, and the
-complete real broker/ACL/manual/scheduled/reconciliation/retention evidence.
-No Vault provider or Homebrew documentation is included.
+That installation evidence is now supplemented by a focused real credential-
+broker run. An exact active OAuth scope and API-access policy allow only POST
+v1 `/x_664635_topo/v1/tasks/{id}/credential` for the existing worker inbound
+profile, with every wildcard disabled. A disposable credential was entered
+through the Password2 form; reopening the record did not display the value,
+the Password2 field produced no `sys_audit` row, and a fresh worker token
+continued to receive 401 from the generic credential Table API. A manual Run
+Now profile targeting only documentation TEST-NET address `192.0.2.10/32`
+produced one `ssh_linux.v1` task. A real registered worker identity claimed
+it; its exact live attempt received a 200 broker response with the expected
+username, a non-empty password, `Cache-Control: no-store`, and `Pragma:
+no-cache`. A modified attempt received 403, and ServiceNow retained separate
+secret-free `allowed/attempt_bound` and `denied/lease_not_owned` access rows.
+The worker reported a bounded structured test failure immediately afterward;
+the run became failed without a network connection, result, IRE call, or CMDB
+write. Remaining acceptance gaps are the complete role/ACL and broker denial
+matrix plus manual and scheduled execution through repeat IRE and retention
+against an explicitly approved real or sanitized SSH endpoint. No Vault
+provider or Homebrew documentation is included.
 
 ### Relationship to the M2.5 gate
 

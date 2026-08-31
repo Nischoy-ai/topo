@@ -19,7 +19,8 @@ instance, and the separately labelled real evidence below covers record
 preservation and focused API behavior. It does not turn simulator scale timing
 into ServiceNow platform evidence.
 
-Slice C1 is now a locally verified candidate. Fluent `0.4.0` adds a protected
+Slice C1 is now a locally and partially real-instance-verified candidate.
+Fluent `0.4.0` adds a protected
 Password2 SSH credential, an immutable profile/scope/credential binding, a
 secret-free access log, and one fixed attempt-bound credential route. The
 worker adds locally authorized `ssh_linux.v1` over port 22 with a deployment-
@@ -30,10 +31,12 @@ The production path supports two compiled-in operations: `local.v1` discovers
 the worker machine, while `ssh_linux.v1` discovers explicitly selected Linux
 targets. Both return destination-neutral Topo observations; the scoped
 application alone validates, maps, preflights, and applies supported data
-through IRE. This candidate is not yet real-instance evidence: install,
-Password2/ACL/broker validation, and a real or sanitized SSH target run must be
-recorded separately before the laptop-to-control-panel workflow is called
-accepted.
+through IRE. The real developer instance now separately proves installation,
+focused Password2 behavior, the exact credential-route OAuth boundary, one
+live-attempt broker success, one wrong-attempt denial, and secret-free access
+rows. The complete ACL/broker denial matrix and a manual-plus-scheduled real or
+sanitized SSH target run remain required before the laptop-to-control-panel
+workflow is called accepted.
 
 ## Components
 
@@ -335,13 +338,12 @@ IRE, or a real SSH server:
   install/test/build, and the pinned security-review gate pass;
   `govulncheck` reports zero reachable vulnerabilities.
 
-Real source-driven upgrade preservation and installed metadata are documented
-below. Still required real Slice C1 evidence: Password2
-encryption/non-audit/non-export behavior, credential-admin and worker denial
-ACLs, the full broker denial matrix, manual and scheduled execution against an
-explicitly approved real or sanitized SSH target, repeat IRE reconciliation,
-and retention. Until those pass, this is a candidate—not an
-install-and-discover acceptance claim.
+Real source-driven upgrade preservation, installed metadata, and focused
+Password2 broker evidence are documented below. Still required real Slice C1
+evidence: the complete credential-admin/worker ACL and broker denial matrix,
+manual and scheduled execution against an explicitly approved real or
+sanitized SSH target, repeat IRE reconciliation, and retention. Until those
+pass, this is a candidate—not an install-and-discover acceptance claim.
 
 ### Real ServiceNow Slice C1 installation evidence — 2026-08-30
 
@@ -377,13 +379,48 @@ prove Password2 runtime behavior or SSH discovery:
   SSH connection, IRE transaction, or CMDB write was attempted as part of this
   installation check.
 
-Still required real Slice C1 evidence is now narrower: add and verify the exact
-seventh OAuth route, enter a target credential directly into Password2, prove
-the Password2 encryption/non-audit/non-export and full ACL/broker denial
-matrix, and run manual plus scheduled discovery against an explicitly approved
-real or sanitized SSH target through repeat IRE reconciliation and retention.
-Until those pass, this remains a candidate—not an install-and-discover
-acceptance claim.
+The next section supplements this installation-only evidence with the exact
+seventh OAuth route, a disposable Password2 record, and a focused broker run.
+
+### Real ServiceNow Slice C1 Password2 broker evidence — 2026-08-31
+
+This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+It deliberately used a documentation-only TEST-NET address and did not execute
+SSH, submit discovery data, invoke IRE, or write CMDB:
+
+- Active REST API auth scope `4eee652593c38b90ec251aebb9373c8c`
+  and API-access policy `322fe92d93078b90ec251aebb9373cf0` grant the existing
+  `Topo Worker OAuth` inbound profile only POST, version 1,
+  `/x_664635_topo/v1/tasks/{id}/credential`. Resource, method, version, and
+  global wildcards are all disabled; no Table, CMDB, IRE, admin, or other
+  route permission was added.
+- Disposable credential `topo-slice-c1-disposable` was entered directly into
+  the installed Password2 form. Reopening the record rendered no secret value,
+  the password field produced no matching `sys_audit` row, and a fresh
+  `topo.worker.execute` token still received HTTP 401 from the generic
+  `x_664635_topo_ssh_credential` Table API.
+- Manual Run Now profile `topo-slice-c1-ssh-test` binds that credential to the
+  immutable scope `topo-slice-c1-testnet`, whose single canonical partition is
+  `192.0.2.10/32`. Run `14a135a193478b90ec251aebb9373cb6` created exactly one
+  fixed `ssh_linux.v1` task, `90a135a193478b90ec251aebb9373cb7`.
+- A fresh worker identity registered with only `ssh_linux.v1`, claimed the
+  task, and called the broker with the exact worker, boot, task, attempt, and
+  lease. The broker returned HTTP 200, the expected username and a non-empty
+  password, `Cache-Control: no-store`, and `Pragma: no-cache`; neither the
+  response value nor OAuth/lease tokens were printed or retained.
+- Repeating the request with a modified attempt ID returned HTTP 403
+  `task lease is not owned by this worker attempt`. ServiceNow retained one
+  secret-free `Allowed / attempt_bound` access row and one secret-free
+  `Denied / lease_not_owned` row. The exact attempt was then completed with a
+  bounded structured evidence-only failure, leaving both task and run failed
+  and no live lease.
+
+This proves focused Password2 resolution and attempt binding, not SSH or IRE.
+Still required real Slice C1 evidence is the full credential-role/ACL and
+broker denial matrix plus manual and scheduled discovery against an explicitly
+approved real or sanitized SSH target through repeat IRE reconciliation and
+retention. Until those pass, this remains a candidate—not an
+install-and-discover acceptance claim.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 
