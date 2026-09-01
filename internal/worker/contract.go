@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
+	"math/big"
 	"time"
 )
 
@@ -66,6 +66,41 @@ type TargetPartition struct {
 	CIDRs   []string `json:"cidrs"`
 }
 
+// UnmarshalJSON accepts ServiceNow's JSON representation of integral Glide
+// integers (for example 0.0) while retaining strict object and value parsing.
+func (p *TargetPartition) UnmarshalJSON(data []byte) error {
+	type partitionAlias TargetPartition
+	var wire struct {
+		partitionAlias
+		Ordinal json.Number `json:"ordinal"`
+		Count   json.Number `json:"count"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	if err := decoder.Decode(&wire); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			err = errors.New("multiple JSON values")
+		}
+		return err
+	}
+	ordinal, err := serviceNowInteger(wire.Ordinal, "target_partition.ordinal")
+	if err != nil {
+		return err
+	}
+	count, err := serviceNowInteger(wire.Count, "target_partition.count")
+	if err != nil {
+		return err
+	}
+	*p = TargetPartition(wire.partitionAlias)
+	p.Ordinal = ordinal
+	p.Count = count
+	return nil
+}
+
 type Task struct {
 	TaskID              string           `json:"task_id"`
 	RunID               string           `json:"run_id"`
@@ -100,13 +135,26 @@ func (t *Task) UnmarshalJSON(data []byte) error {
 		}
 		return err
 	}
-	revision, err := wire.ProfileRevision.Float64()
-	if err != nil || math.IsNaN(revision) || math.IsInf(revision, 0) || math.Trunc(revision) != revision || revision < math.MinInt || revision > math.MaxInt {
-		return fmt.Errorf("profile_revision must be an integer")
+	revision, err := serviceNowInteger(wire.ProfileRevision, "profile_revision")
+	if err != nil {
+		return err
 	}
 	*t = Task(wire.taskAlias)
-	t.ProfileRevision = int(revision)
+	t.ProfileRevision = revision
 	return nil
+}
+
+func serviceNowInteger(value json.Number, field string) (int, error) {
+	number, ok := new(big.Rat).SetString(value.String())
+	if !ok || !number.IsInt() || !number.Num().IsInt64() {
+		return 0, fmt.Errorf("%s must be an integer", field)
+	}
+	value64 := number.Num().Int64()
+	integer := int(value64)
+	if int64(integer) != value64 {
+		return 0, fmt.Errorf("%s must be an integer", field)
+	}
+	return integer, nil
 }
 
 type ClaimResponse struct {

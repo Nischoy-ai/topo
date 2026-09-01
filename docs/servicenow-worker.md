@@ -19,7 +19,7 @@ instance, and the separately labelled real evidence below covers record
 preservation and focused API behavior. It does not turn simulator scale timing
 into ServiceNow platform evidence.
 
-Slice C1 is now a locally and partially real-instance-verified candidate.
+Slice C1 is now a locally and substantially real-instance-verified candidate.
 Fluent `0.4.0` adds a protected
 Password2 SSH credential, an immutable profile/scope/credential binding, a
 secret-free access log, and one fixed attempt-bound credential route. The
@@ -33,10 +33,10 @@ targets. Both return destination-neutral Topo observations; the scoped
 application alone validates, maps, preflights, and applies supported data
 through IRE. The real developer instance now separately proves installation,
 focused Password2 behavior, the exact credential-route OAuth boundary, one
-live-attempt broker success, one wrong-attempt denial, and secret-free access
-rows. The complete ACL/broker denial matrix and a manual-plus-scheduled real or
-sanitized SSH target run remain required before the laptop-to-control-panel
-workflow is called accepted.
+live-attempt broker success, one wrong-attempt denial, secret-free access rows,
+manual and scheduled sanitized-Docker SSH discovery, repeat IRE reconciliation,
+and raw-result retention. The complete credential-role and broker denial
+matrix remains required before the Slice C1 security acceptance is complete.
 
 ## Components
 
@@ -338,12 +338,11 @@ IRE, or a real SSH server:
   install/test/build, and the pinned security-review gate pass;
   `govulncheck` reports zero reachable vulnerabilities.
 
-Real source-driven upgrade preservation, installed metadata, and focused
-Password2 broker evidence are documented below. Still required real Slice C1
-evidence: the complete credential-admin/worker ACL and broker denial matrix,
-manual and scheduled execution against an explicitly approved real or
-sanitized SSH target, repeat IRE reconciliation, and retention. Until those
-pass, this is a candidate—not an install-and-discover acceptance claim.
+Real source-driven upgrade preservation, installed metadata, focused Password2
+broker evidence, and sanitized Docker SSH/IRE/retention evidence are documented
+below. Still required real Slice C1 evidence is the complete credential-admin/
+worker role and broker denial matrix. Until that passes, this remains a
+candidate rather than a completed Slice C1 security acceptance claim.
 
 ### Real ServiceNow Slice C1 installation evidence — 2026-08-30
 
@@ -416,11 +415,54 @@ SSH, submit discovery data, invoke IRE, or write CMDB:
   and no live lease.
 
 This proves focused Password2 resolution and attempt binding, not SSH or IRE.
-Still required real Slice C1 evidence is the full credential-role/ACL and
-broker denial matrix plus manual and scheduled discovery against an explicitly
-approved real or sanitized SSH target through repeat IRE reconciliation and
-retention. Until those pass, this remains a candidate—not an
-install-and-discover acceptance claim.
+The next section supplies the separately labelled SSH and IRE evidence. The
+full credential-role/ACL and broker denial matrix still remains required.
+
+### Real ServiceNow Slice C1 Docker SSH/IRE evidence — 2026-08-31
+
+This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+The target was a disposable Debian 12 Docker container bound only to laptop
+loopback `127.0.0.1:22`; its source, password file, allowlist, and pinned public
+host keys lived under `/private/tmp`, outside the repository. No credential,
+OAuth token, or lease token was printed or retained as evidence:
+
+- Credential `topo-slice-c1-docker`, immutable scope
+  `topo-slice-c1-docker-loopback` (`127.0.0.1/32`), binding
+  `topo-slice-c1-docker-binding`, and profile
+  `topo-slice-c1-docker-ssh` were created through the installed control-panel
+  forms. The worker independently allowed only `127.0.0.1/32`, pinned the
+  container's runtime host keys, enabled only `ssh_linux.v1`, and exposed no
+  listener or durable state.
+- The direct destination-neutral observation contained one synthetic Linux
+  host plus eleven interfaces and eleven `host_has_interface` relations. The
+  one collection error was the expected bounded `ssh_partial` result for the
+  container's absent `systemctl`; it did not prevent supported inventory.
+- Manual run `12a0af2993c3cb90ec251aebb9373c79` completed in one attempt with
+  12 items, 11 relationships, and one collection error. IRE preflight and
+  apply were clean; the first delivery recorded 23 `INSERT` operations.
+- Identical manual run `ae11a3ad93c3cb90ec251aebb9373ced` completed with the
+  same 12/11 identities. Its clean repeat apply recorded 12 `UPDATE` item
+  operations and 11 relationship `NO_CHANGE` operations, rather than new
+  relationships or source identities.
+- Disabled proof schedule `topo-slice-c1-docker-schedule` produced scheduled
+  run `54c163219307cb90ec251aebb9373cbb`, which completed in one attempt with
+  the same 12/11 summary. The schedule advanced its next-run time and was then
+  disabled.
+- The first successful raw chunk was initially `Processed` with its normal
+  24-hour deletion deadline. That one disposable deadline was backdated and
+  the Fluent-installed maintenance job executed once. Result row
+  `aaa06f2d93c3cb90ec251aebb9373c29` and attachment
+  `e2a06f2d93c3cb90ec251aebb9373c2a` disappeared; the completed 12/11 run and
+  applied IRE-delivery record remained.
+- The first real claim also exposed that ServiceNow serializes target
+  partition ordinal/count values as integral decimals (`0.0`/`1.0`), just as
+  it had done for profile revision. The strict Go decoder now accepts only
+  mathematically integral, in-range forms for all three fields and rejects a
+  fractional value; focused worker/control-simulator tests pass.
+
+This completes the real sanitized-target, manual/scheduled, repeat-IRE, and
+retention gates. It is not throughput evidence, a production network scan, or
+proof of the still-pending complete credential-role/broker denial matrix.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 

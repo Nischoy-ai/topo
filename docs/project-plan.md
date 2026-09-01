@@ -2923,10 +2923,21 @@ no-cache`. A modified attempt received 403, and ServiceNow retained separate
 secret-free `allowed/attempt_bound` and `denied/lease_not_owned` access rows.
 The worker reported a bounded structured test failure immediately afterward;
 the run became failed without a network connection, result, IRE call, or CMDB
-write. Remaining acceptance gaps are the complete role/ACL and broker denial
-matrix plus manual and scheduled execution through repeat IRE and retention
-against an explicitly approved real or sanitized SSH endpoint. No Vault
-provider or Homebrew documentation is included.
+write. A separate sanitized Debian 12 Docker fixture bound only to laptop
+loopback then completed manual run `12a0af2993c3cb90ec251aebb9373c79`
+and scheduled run `54c163219307cb90ec251aebb9373cbb` through the real Password2
+broker and IRE, each with 12 supported items, 11 relationships, and one bounded
+container-only `ssh_partial` collection error. Identical manual repeat
+`ae11a3ad93c3cb90ec251aebb9373ced` reconciled the 12 items as `UPDATE` and all
+11 relationships as `NO_CHANGE`. The disabled proof schedule remains as
+control-panel evidence. Backdating one processed result's normal 24-hour
+deadline and executing the installed maintenance job removed its raw row and
+attachment while preserving the completed 12/11 run and applied IRE summary.
+That first target-bearing claim also exposed integral Glide decimal forms for
+partition ordinal/count; the strict client now accepts only mathematically
+integral in-range values and rejects fractional input, with focused tests.
+The remaining acceptance gap is the complete real credential-role/ACL and
+broker denial matrix. No Vault provider or Homebrew documentation is included.
 
 ### Relationship to the M2.5 gate
 

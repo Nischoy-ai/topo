@@ -31,11 +31,14 @@ denial. Slice C1 is a locally verified Fluent `0.4.0` candidate for one
 Password2-backed `ssh_linux.v1` profile: ServiceNow compiles at most 1,024
 IPv4 `/32` tasks, while the stateless worker independently enforces a local
 CIDR allowlist, local `known_hosts`, fixed port 22, and the existing reviewed
-SSH commands. External Vault support remains a separate deferred slice. A
-focused real-instance test now proves Password2 form entry, exact-route OAuth,
-live-attempt broker success, wrong-attempt denial, secret-free access auditing,
-and continued generic Table API denial against a non-routable TEST-NET task;
-the full ACL/broker matrix and real or sanitized SSH-target execution remain
+SSH commands. External Vault support remains a separate deferred slice. Real-
+instance evidence now covers Password2 form entry, exact-route OAuth, live-
+attempt broker success, wrong-attempt denial, secret-free access auditing,
+continued generic Table API denial, and manual plus scheduled discovery of a
+sanitized Docker SSH target. The first apply inserted 12 supported CIs and 11
+relationships; an identical repeat reconciled the CIs and reported all 11
+relationships as `NO_CHANGE`; raw-result cleanup preserved the run and IRE
+summaries. The complete credential-role and broker denial matrix remains
 pending. The Slice A/B worker/scoped-app contract, local Fluent build, real
 developer-instance SDK installation, deterministic simulator suite, and
 separately recorded real runtime acceptance are complete. The real evidence
@@ -396,10 +399,10 @@ IRE publishing. See [experimental scoped-app Relay](docs/servicenow-relay.md).
   preflight.
   Password2 is available only through a live attempt-bound, no-store broker
   after the worker rejects targets outside its deployment-owned allowlist;
-  secret access is audited without the secret. Focused real Password2/broker
-  evidence is recorded, while the full denial matrix and an explicitly
-  approved real or sanitized SSH target remain pending; external Vault support
-  is not part of this candidate.
+  secret access is audited without the secret. Real Password2/broker and
+  sanitized Docker SSH/IRE/retention evidence is recorded; the full credential-
+  role and broker denial matrix remains pending, and external Vault support is
+  not part of this candidate.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
 - Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token bound to that collector ID at issuance; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 - Outbound mTLS (opt-in via `-mtls`, requires `-ca-dir`) lets the controller terminate TLS natively and authenticate collectors by their enrolled certificate instead of the bearer API key; a client presenting no certificate at all still reaches `POST /v1/enroll` (authenticated by its one-time token). A verified collector certificate authorizes collector data-plane endpoints but not operator endpoints. See [Running as native mTLS](docs/enrollment.md#running-as-native-mtls).

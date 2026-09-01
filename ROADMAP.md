@@ -219,8 +219,8 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   lease extension, cancellation, late-call denial, terminal reporting, and
   slot release without an IRE/CMDB write. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
-- **Implemented candidate; focused real broker evidence complete, real target
-  acceptance pending (ServiceNow-managed
+- **Implemented candidate; focused real broker and sanitized-target evidence
+  complete, full security matrix pending (ServiceNow-managed
   Password2 Linux SSH Slice C1):** Fluent `0.4.0` adds a credential-admin-only
   Password2 table, immutable profile/scope/credential bindings, secret-free
   access events, and a seventh fixed attempt-bound worker resource. The only
@@ -231,9 +231,13 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   cache, or retry queue. Local Fluent builds, strict contract tests, and an
   end-to-end simulator no-data run pass. Separate developer-instance evidence
   now proves disposable Password2 entry, exact-route OAuth, one live-attempt
-  broker success, wrong-attempt denial, secret-free auditing, and generic
-  credential Table API denial on a non-routable TEST-NET task. It does not
-  prove the full ACL/broker matrix, SSH execution, or IRE reconciliation.
+  broker success, wrong-attempt denial, secret-free auditing, generic
+  credential Table API denial, and manual plus scheduled discovery of a
+  sanitized Docker SSH target. The first IRE apply inserted 12 supported CIs
+  and 11 relationships; the repeat reconciled all CIs and returned 11
+  relationship `NO_CHANGE` operations; raw-result retention removed the
+  backdated chunk and attachment while preserving durable summaries. The full
+  credential-role and broker denial matrix remains pending.
   External Vault bindings remain a separate deferred Slice C2. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's

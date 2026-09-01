@@ -99,10 +99,10 @@ func TestClientRejectsUnknownOperation(t *testing.T) {
 	}
 }
 
-func TestClientAcceptsServiceNowIntegralGlideNumber(t *testing.T) {
+func TestClientAcceptsServiceNowIntegralGlideNumbers(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"result":{"task":{"task_id":"task-1","run_id":"run-1","attempt_id":"attempt-1","lease_token":"token-1","lease_expires_at":"2099-01-01T00:00:00Z","operation":"local.v1","profile_id":"local","profile_revision":1.0,"deadline":"2099-01-01T00:00:00Z"}}}`))
+		_, _ = w.Write([]byte(`{"result":{"task":{"task_id":"task-1","run_id":"run-1","attempt_id":"attempt-1","lease_token":"token-1","lease_expires_at":"2099-01-01T00:00:00Z","operation":"ssh_linux.v1","profile_id":"ssh-linux","profile_revision":1.0,"credential_binding_id":"binding-1","target_partition":{"key":"` + strings.Repeat("a", 64) + `","ordinal":0.0,"count":1.0,"cidrs":["127.0.0.1/32"]},"deadline":"2099-01-01T00:00:00Z"}}}`))
 	}))
 	defer server.Close()
 	client, _ := NewClient(server.URL, "worker-token", server.Client())
@@ -110,8 +110,20 @@ func TestClientAcceptsServiceNowIntegralGlideNumber(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if response.Task == nil || response.Task.ProfileRevision != 1 {
+	if response.Task == nil || response.Task.ProfileRevision != 1 || response.Task.TargetPartition == nil || response.Task.TargetPartition.Ordinal != 0 || response.Task.TargetPartition.Count != 1 {
 		t.Fatalf("task = %#v", response.Task)
+	}
+}
+
+func TestClientRejectsFractionalServiceNowGlideNumber(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"result":{"task":{"task_id":"task-1","run_id":"run-1","attempt_id":"attempt-1","lease_token":"token-1","lease_expires_at":"2099-01-01T00:00:00Z","operation":"ssh_linux.v1","profile_id":"ssh-linux","profile_revision":1.0,"credential_binding_id":"binding-1","target_partition":{"key":"` + strings.Repeat("a", 64) + `","ordinal":0.5,"count":1.0,"cidrs":["127.0.0.1/32"]},"deadline":"2099-01-01T00:00:00Z"}}}`))
+	}))
+	defer server.Close()
+	client, _ := NewClient(server.URL, "worker-token", server.Client())
+	if _, err := client.Claim(context.Background(), ClaimRequest{}); err == nil || !strings.Contains(err.Error(), "target_partition.ordinal must be an integer") {
+		t.Fatalf("error = %v", err)
 	}
 }
 
