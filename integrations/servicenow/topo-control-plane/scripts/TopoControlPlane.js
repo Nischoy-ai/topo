@@ -256,6 +256,10 @@ TopoControlPlane.prototype = {
             this._recordCredentialAccess(null, null, body, 'denied', 'lease_not_owned');
             return lease.result;
         }
+        if (this._isTrue(lease.task.u_cancel_requested)) {
+            this._recordCredentialAccess(lease.task, null, body, 'denied', 'task_cancelled');
+            return this._result(409, {error: 'task is cancelled'});
+        }
         if (String(lease.task.u_operation) !== this.OPERATION_SSH_LINUX ||
                 !String(lease.task.u_credential_binding) || !String(lease.task.u_target_scope)) {
             this._recordCredentialAccess(lease.task, null, body, 'denied', 'task_not_credentialed_ssh');
@@ -781,13 +785,13 @@ TopoControlPlane.prototype = {
             cas.addQuery('u_attempt_id', attemptID);
             cas.addQuery('u_lease_expires', '<=', now);
             cas.setValue('u_state', nextState);
-            cas.setValue('u_attempt_id', '');
-            cas.setValue('u_lease_worker', '');
-            cas.setValue('u_lease_boot_id', '');
-            cas.setValue('u_lease_token_digest', '');
-            cas.setValue('u_pool_lease_slot', '');
-            cas.setValue('u_worker_lease_slot', '');
-            cas.setValue('u_lease_expires', '');
+            cas.setValue('u_attempt_id', null);
+            cas.setValue('u_lease_worker', null);
+            cas.setValue('u_lease_boot_id', null);
+            cas.setValue('u_lease_token_digest', null);
+            cas.setValue('u_pool_lease_slot', null);
+            cas.setValue('u_worker_lease_slot', null);
+            cas.setValue('u_lease_expires', null);
             cas.setValue('u_chunk_count', 0);
             cas.setValue('u_cancel_requested', false);
             if (cancelled) {

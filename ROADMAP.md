@@ -219,9 +219,8 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   lease extension, cancellation, late-call denial, terminal reporting, and
   slot release without an IRE/CMDB write. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
-- **Implemented candidate; focused real broker and sanitized-target evidence
-  complete, full security matrix pending (ServiceNow-managed
-  Password2 Linux SSH Slice C1):** Fluent `0.4.0` adds a credential-admin-only
+- **Implemented candidate; staged real acceptance complete (ServiceNow-managed
+  Password2 Linux SSH Slice C1):** Fluent `0.4.3` adds a credential-admin-only
   Password2 table, immutable profile/scope/credential bindings, secret-free
   access events, and a seventh fixed attempt-bound worker resource. The only
   new operation is compiled-in `ssh_linux.v1`: at most 1,024 IPv4 `/32` tasks,
@@ -236,8 +235,10 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   sanitized Docker SSH target. The first IRE apply inserted 12 supported CIs
   and 11 relationships; the repeat reconciled all CIs and returned 11
   relationship `NO_CHANGE` operations; raw-result retention removed the
-  backdated chunk and attachment while preserving durable summaries. The full
-  credential-role and broker denial matrix remains pending.
+  backdated chunk and attachment while preserving durable summaries. A full
+  real role/ACL and broker-denial matrix proves every staged wrong identity,
+  binding, inactive, cancelled, expired, terminal, and cross-bound case,
+  idempotent success, secret-free auditing, and lease-expiry retry/slot release.
   External Vault bindings remain a separate deferred Slice C2. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's

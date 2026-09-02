@@ -19,8 +19,8 @@ instance, and the separately labelled real evidence below covers record
 preservation and focused API behavior. It does not turn simulator scale timing
 into ServiceNow platform evidence.
 
-Slice C1 is now a locally and substantially real-instance-verified candidate.
-Fluent `0.4.0` adds a protected
+Slice C1 is now a locally and real-instance-verified candidate. Fluent `0.4.3`
+adds a protected
 Password2 SSH credential, an immutable profile/scope/credential binding, a
 secret-free access log, and one fixed attempt-bound credential route. The
 worker adds locally authorized `ssh_linux.v1` over port 22 with a deployment-
@@ -33,10 +33,11 @@ targets. Both return destination-neutral Topo observations; the scoped
 application alone validates, maps, preflights, and applies supported data
 through IRE. The real developer instance now separately proves installation,
 focused Password2 behavior, the exact credential-route OAuth boundary, one
-live-attempt broker success, one wrong-attempt denial, secret-free access rows,
+live-attempt broker behavior, the complete role/ACL and broker-denial matrix,
+secret-free access rows,
 manual and scheduled sanitized-Docker SSH discovery, repeat IRE reconciliation,
-and raw-result retention. The complete credential-role and broker denial
-matrix remains required before the Slice C1 security acceptance is complete.
+and raw-result retention. All staged Slice C1 acceptance gates are complete;
+the PR remains a candidate until review and merge.
 
 ## Components
 
@@ -81,7 +82,7 @@ IRE behavior.
 
 ## Scoped data model
 
-The Nischoy application is the sole durable operational store. Fluent `0.4.0`
+The Nischoy application is the sole durable operational store. Fluent `0.4.3`
 defines these scoped records:
 
 | Table | Purpose |
@@ -314,7 +315,7 @@ This evidence is local and deterministic; it is not evidence about ServiceNow
 Password2 encryption, scoped ACL enforcement, the real Scripted REST runtime,
 IRE, or a real SSH server:
 
-- Fluent `0.4.0` builds with SDK 4.9.0 and defines twelve scoped tables, five
+- Fluent `0.4.3` builds with SDK 4.9.0 and defines twelve scoped tables, five
   roles, seven fixed authenticated worker routes, and no worker table ACL.
 - Node contract tests accept only `local.v1`/`ssh_linux.v1`, validate the
   bounded username and no-store broker source, accept an SSH no-assets result
@@ -338,11 +339,10 @@ IRE, or a real SSH server:
   install/test/build, and the pinned security-review gate pass;
   `govulncheck` reports zero reachable vulnerabilities.
 
-Real source-driven upgrade preservation, installed metadata, focused Password2
-broker evidence, and sanitized Docker SSH/IRE/retention evidence are documented
-below. Still required real Slice C1 evidence is the complete credential-admin/
-worker role and broker denial matrix. Until that passes, this remains a
-candidate rather than a completed Slice C1 security acceptance claim.
+Real source-driven upgrade preservation, installed metadata, Password2 broker
+and ACL evidence, and sanitized Docker SSH/IRE/retention evidence are documented
+below. The complete staged Slice C1 acceptance matrix now passes; this remains a
+candidate until its pull request is reviewed and merged.
 
 ### Real ServiceNow Slice C1 installation evidence — 2026-08-30
 
@@ -415,8 +415,8 @@ SSH, submit discovery data, invoke IRE, or write CMDB:
   and no live lease.
 
 This proves focused Password2 resolution and attempt binding, not SSH or IRE.
-The next section supplies the separately labelled SSH and IRE evidence. The
-full credential-role/ACL and broker denial matrix still remains required.
+The next sections supply the separately labelled SSH/IRE and complete security-
+matrix evidence.
 
 ### Real ServiceNow Slice C1 Docker SSH/IRE evidence — 2026-08-31
 
@@ -461,8 +461,57 @@ OAuth token, or lease token was printed or retained as evidence:
   fractional value; focused worker/control-simulator tests pass.
 
 This completes the real sanitized-target, manual/scheduled, repeat-IRE, and
-retention gates. It is not throughput evidence, a production network scan, or
-proof of the still-pending complete credential-role/broker denial matrix.
+retention gates. It is not throughput evidence or a production network scan.
+
+### Real ServiceNow Slice C1 security acceptance matrix — 2026-09-01
+
+This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+The test harness lived under `/private/tmp`, outside the repository; it read
+owner-only OAuth material without printing it, retained credentials only in
+process memory, and emitted status/shape assertions rather than secret values.
+It did not dial a target, submit a result, invoke IRE, or write CMDB:
+
+- Disposable users proved the installed ACL boundary by impersonation.
+  Credential administrators could create credentials and bindings and read,
+  but not create, access events. Operators and viewers could read bindings but
+  not credentials or access events. Workers could read none of the credential,
+  binding, access-event, or task records; users with no application role could
+  read none of the three credential-related tables. A worker OAuth token
+  continued to receive HTTP 401 from the generic
+  credential Table API.
+- The exact live attempt and an idempotent repeat both returned HTTP 200 with a
+  non-empty bounded credential shape plus `Cache-Control: no-store` and
+  `Pragma: no-cache`. Wrong pool, worker, boot, task, attempt, and lease-token
+  identities returned HTTP 403. Wrong operation, profile, scope, binding, and a
+  credential belonging to another binding returned HTTP 409.
+- Inactive binding and inactive Password2 credential records returned HTTP
+  409. Restoring those records made the exact request succeed again, proving
+  that the status-only form mutation did not replace the protected value.
+  A cancelled task, expired lease, and terminal attempt each returned HTTP
+  409. Every success and denial retained the no-store/no-cache headers.
+- The expired task was safely reclaimed as attempt two and terminalized. The
+  final task retained `attempt_count=2` and released both pool and worker
+  capacity slots. The cancellation denial and lease expiry checks exposed two
+  real defects: the broker had not rejected `u_cancel_requested`, and
+  `updateMultiple` with empty strings had left stale unique lease slots on
+  expiry. Fluent `0.4.3` now denies cancelled tasks before credential
+  resolution and atomically clears every lease identity/capacity field with
+  scoped-compatible null values. The same matrix passed after installation.
+- Credential-access rows recorded only worker, attempt, task/binding where
+  appropriate, outcome, and reason. Success used `allowed/attempt_bound`;
+  identity and terminal denials used `denied/lease_not_owned`; cancellation
+  used `denied/task_cancelled`. No password, bearer token, or lease token was
+  present in the inspected fields.
+- The binding, credential active state, profile/task fixture, and 30-second
+  pool lease policy were restored after the probes. Disposable ACL users and
+  evidence records remain only in the throwaway developer instance. One
+  pre-fix cancelled task retains explicit retired slot markers documenting the
+  stale-slot defect; the post-fix retry record released its slots to null. No
+  production configuration was changed.
+
+Together with the separately recorded Docker SSH/IRE/retention run, this
+completes every staged Slice C1 acceptance gate. External Vault bindings remain
+the deliberate Slice C2 follow-up and are not implied by this evidence.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 

@@ -80,4 +80,29 @@ assert.match(controlSource, /u_password\.getDecryptedValue\(\)/)
 assert.match(controlSource, /_recordCredentialAccess/)
 assert.doesNotMatch(controlSource, /vault:/i)
 
+const credentialSource = controlSource.slice(
+    controlSource.indexOf('credential: function'),
+    controlSource.indexOf('ingestResult: function'),
+)
+assert.match(credentialSource, /u_cancel_requested/)
+assert.match(credentialSource, /task_cancelled/)
+assert.match(credentialSource, /return this\._result\(409, \{error: 'task is cancelled'\}\)/)
+
+const expirySource = controlSource.slice(
+    controlSource.indexOf('_expireLeases: function'),
+    controlSource.indexOf('_markAttemptResults: function'),
+)
+for (const field of [
+    'u_attempt_id',
+    'u_lease_worker',
+    'u_lease_boot_id',
+    'u_lease_token_digest',
+    'u_pool_lease_slot',
+    'u_worker_lease_slot',
+    'u_lease_expires',
+]) {
+    assert.match(expirySource, new RegExp(`setValue\\('${field}', null\\)`))
+    assert.doesNotMatch(expirySource, new RegExp(`setValue\\('${field}', ''\\)`))
+}
+
 console.log('Password2 SSH contract tests passed')

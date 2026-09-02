@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-30
+- **Updated:** 2026-09-01
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -91,7 +91,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   [PR 55](https://github.com/Nischoy-ai/topo/pull/55).
   Slice C1 is now a candidate on
   `agent/servicenow-password2-ssh-slice-c`, proposed in draft PR #56 against
-  merged `main`: Fluent `0.4.0`
+  merged `main`: Fluent `0.4.3`
   defines twelve tables, five roles, and seven fixed worker resources,
   including a protected non-audited Password2 field, immutable credential
   binding, secret-free access events, and a live-attempt-only no-store broker.
@@ -101,7 +101,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   durable state. Focused source/build and simulator tests pass, including an
   end-to-end no-data SSH attempt that retrieves one credential and skips IRE.
   Separate real developer-instance evidence now covers a source-driven Fluent
-  upgrade of the same application to `0.4.0`, preservation of the known Slice
+  upgrade of the same application through `0.4.3`, preservation of the known Slice
   A/B configuration and run summaries, all twelve scoped tables and five
   roles, the seven installed worker routes, the ten credential ACL/role
   mappings, and the Password2 dictionary contract (`audit=false`, mandatory,
@@ -112,10 +112,16 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   response with `no-store`/`no-cache`, a 403 wrong-attempt denial, secret-free
   allowed/denied access rows, and continued 401 denial from the generic
   credential Table API. The test task was terminalized without dialing the
-  TEST-NET address, submitting a result, invoking IRE, or writing CMDB. The
-  remaining real acceptance gaps are the full ACL/broker denial matrix and
-  manual plus scheduled execution against an explicitly approved real or
-  sanitized SSH target through repeat IRE and retention. External Vault
+  TEST-NET address, submitting a result, invoking IRE, or writing CMDB.
+  Separate sanitized Docker evidence proves manual and scheduled execution,
+  repeat IRE reconciliation, and raw-result retention. A 2026-09-01 real ACL
+  matrix proves the credential-admin/operator/viewer/worker/no-role boundaries;
+  the complete broker matrix denies every staged wrong identity, binding,
+  state, expiry, cancellation, terminal, inactive, and cross-bound case while
+  preserving no-store/no-cache headers and secret-free auditing. It exposed
+  and revalidated fixes for a missing cancellation check and stale unique
+  capacity slots after lease expiry. All staged Slice C1 acceptance gates now
+  pass; PR #56 remains a candidate until review and merge. External Vault
   support is deferred to Slice C2 by the user's 2026-08-30 decision; it remains
   an eventual requirement.
   Standalone direct IRE publication remains supported. See
@@ -2893,7 +2899,7 @@ heterogeneous network discovery; no Homebrew/package-channel, production-
 signing, PostgreSQL/HA, or M2.5 independent-retest work.
 
 **Implementation status.** The candidate is implemented on
-`agent/servicenow-password2-ssh-slice-c`. Fluent `0.4.0` builds successfully;
+`agent/servicenow-password2-ssh-slice-c`. Fluent `0.4.3` builds successfully;
 Node contract tests cover the fixed capability list, username boundary,
 Password2 broker/no-store source, and SSH no-data mapping. Exact Go focused
 tests cover startup allowlist/trust loading, local policy digests, strict SSH
@@ -2904,7 +2910,7 @@ call. Formatting, `git diff --check`, exact Go 1.25.13 full tests, focused
 integration tests, repository vet, full race tests, native and Windows amd64
 build/vet, clean Fluent install/test/build, and the pinned security-review
 gate pass; `govulncheck` reports zero reachable vulnerabilities. A
-source-driven real-instance upgrade installed `0.4.0` over the existing app
+source-driven real-instance upgrade installed `0.4.3` over the existing app
 without losing the known Slice A/B configuration or run summaries; read-only
 metadata checks found all twelve tables, five roles, seven REST routes, ten
 credential ACL/role mappings, and the expected Password2 dictionary flags.
@@ -2935,9 +2941,23 @@ deadline and executing the installed maintenance job removed its raw row and
 attachment while preserving the completed 12/11 run and applied IRE summary.
 That first target-bearing claim also exposed integral Glide decimal forms for
 partition ordinal/count; the strict client now accepts only mathematically
-integral in-range values and rejects fractional input, with focused tests.
-The remaining acceptance gap is the complete real credential-role/ACL and
-broker denial matrix. No Vault provider or Homebrew documentation is included.
+integral in-range values and rejects fractional input, with focused tests. A
+separate 2026-09-01 real acceptance matrix impersonated disposable credential-
+admin, operator, viewer, worker, and no-role users and proved the intended ACL
+separation. The exact broker request and its idempotent repeat returned 200;
+wrong pool, worker, boot, task, attempt, and lease returned 403; wrong
+operation, profile, scope, binding, cross-bound credential, inactive binding,
+inactive credential, cancellation, expiry, and terminal state returned 409.
+All responses retained no-store/no-cache headers, and access rows contained
+only secret-free outcome/reason metadata. The matrix exposed two real defects:
+cancelled tasks could still resolve a credential, and expired leases cleared
+capacity fields with ineffective empty strings. Fluent `0.4.3` denies
+cancellation before resolution and clears every lease identity/capacity field
+with scoped-compatible null values; reinstallation and the complete matrix
+passed, including attempt-two expiry recovery and slot release. The fixture
+state and pool policy were restored without network, IRE, or CMDB activity.
+All staged Slice C1 gates are complete; PR #56 remains an unmerged candidate.
+No Vault provider or Homebrew documentation is included.
 
 ### Relationship to the M2.5 gate
 

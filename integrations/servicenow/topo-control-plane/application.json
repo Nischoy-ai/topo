@@ -1,7 +1,7 @@
 {
   "name": "Nischoy Topo",
   "scope": "x_664635_topo",
-  "version": "0.4.0",
+  "version": "0.4.3",
   "description": "ServiceNow-owned control plane for stateless Nischoy Topo workers",
   "source": {
     "format": "servicenow_fluent",

@@ -211,7 +211,7 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 	if err := json.Unmarshal(packageBody, &packageConfig); err != nil {
 		t.Fatal(err)
 	}
-	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.4.0" {
+	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.4.3" {
 		t.Fatalf("unexpected Fluent package identity: %#v", packageConfig)
 	}
 	if packageConfig.DevDependencies["@servicenow/sdk"] != "4.9.0" {

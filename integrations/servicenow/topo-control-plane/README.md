@@ -49,7 +49,10 @@ to the validation developer instance. This is intentionally separate from the
 older experimental Relay/MID source under `x_nischoy_topo`; installing Slice A
 does not migrate or rename those experiments.
 
-Version `0.4.0` adds the Password2-only Linux SSH pilot: protected credentials,
+Version `0.4.3` contains the Password2-only Linux SSH pilot from `0.4.0`,
+denies credential retrieval as soon as ServiceNow requests cancellation, and
+explicitly nulls every attempt/lease field when a lease expires so a stale
+unique slot cannot block retry. The pilot provides protected credentials,
 immutable profile/scope bindings, secret-free credential-access events, the
 fixed attempt-bound `/credential` route, and reviewed `ssh_linux.v1` `/32`
 tasks. Workers still have no table ACL, generic Table/CMDB/IRE access, durable
