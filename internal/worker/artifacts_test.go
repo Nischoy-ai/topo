@@ -44,7 +44,7 @@ type controlPlaneSDKConfig struct {
 	Name    string `json:"name"`
 }
 
-func TestControlPlaneManifestHasBoundedSliceBSurface(t *testing.T) {
+func TestControlPlaneManifestHasBoundedPassword2SSHSurface(t *testing.T) {
 	directory := controlPlaneDirectory(t)
 	body, err := os.ReadFile(filepath.Join(directory, "application.json"))
 	if err != nil {
@@ -62,6 +62,7 @@ func TestControlPlaneManifestHasBoundedSliceBSurface(t *testing.T) {
 		"POST /workers/heartbeat",
 		"POST /workers/register",
 		"POST /{id}/complete",
+		"POST /{id}/credential",
 		"POST /{id}/renew",
 		"POST /{id}/results",
 	}
@@ -83,15 +84,18 @@ func TestControlPlaneManifestHasBoundedSliceBSurface(t *testing.T) {
 	}
 
 	wantTables := map[string]bool{
-		"x_664635_topo_worker_pool":  false,
-		"x_664635_topo_worker":       false,
-		"x_664635_topo_target_scope": false,
-		"x_664635_topo_profile":      false,
-		"x_664635_topo_schedule":     false,
-		"x_664635_topo_run":          false,
-		"x_664635_topo_task":         false,
-		"x_664635_topo_result":       false,
-		"x_664635_topo_ire_delivery": false,
+		"x_664635_topo_credential_access":  false,
+		"x_664635_topo_credential_binding": false,
+		"x_664635_topo_worker_pool":        false,
+		"x_664635_topo_worker":             false,
+		"x_664635_topo_target_scope":       false,
+		"x_664635_topo_profile":            false,
+		"x_664635_topo_schedule":           false,
+		"x_664635_topo_run":                false,
+		"x_664635_topo_task":               false,
+		"x_664635_topo_result":             false,
+		"x_664635_topo_ire_delivery":       false,
+		"x_664635_topo_ssh_credential":     false,
 	}
 	for _, table := range manifest.Tables {
 		if _, expected := wantTables[table.Name]; !expected {
@@ -116,6 +120,9 @@ func TestControlPlaneManifestHasBoundedSliceBSurface(t *testing.T) {
 		}
 	}
 	assertManifestIndex(t, manifest, "x_664635_topo_target_scope", []string{"u_scope_id", "u_revision"}, true)
+	assertManifestIndex(t, manifest, "x_664635_topo_ssh_credential", []string{"u_credential_id"}, true)
+	assertManifestIndex(t, manifest, "x_664635_topo_credential_binding", []string{"u_binding_id", "u_revision"}, true)
+	assertManifestIndex(t, manifest, "x_664635_topo_credential_access", []string{"u_event_id"}, true)
 	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_worker_pool", "u_state", "u_partition_ordinal", "sys_created_on"}, false)
 	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_run", "u_partition_key"}, false)
 	assertManifestIndex(t, manifest, "x_664635_topo_task", []string{"u_state", "u_lease_expires"}, false)
@@ -125,7 +132,7 @@ func TestControlPlaneManifestHasBoundedSliceBSurface(t *testing.T) {
 	assertManifestIndex(t, manifest, "x_664635_topo_ire_delivery", []string{"u_task", "u_attempt_id"}, true)
 
 	manifestText := string(body)
-	for _, deferred := range []string{"x_664635_topo_credential", "Password2", "vault:"} {
+	for _, deferred := range []string{"vault:", "k8s:", "external_vault"} {
 		if strings.Contains(manifestText, deferred) {
 			t.Fatalf("Slice B manifest expanded into deferred credential work %q", deferred)
 		}
@@ -166,6 +173,10 @@ func TestControlPlaneScriptsEnforceReviewedBoundary(t *testing.T) {
 		"u_max_leases",
 		"u_pool_lease_slot",
 		"u_worker_lease_slot",
+		"getDecryptedValue()",
+		"_recordCredentialAccess",
+		"ssh_linux.v1",
+		"validated SSH no-data observation",
 	} {
 		if !strings.Contains(scripts, required) {
 			t.Fatalf("control-plane scripts do not contain required invariant %q", required)
@@ -178,7 +189,6 @@ func TestControlPlaneScriptsEnforceReviewedBoundary(t *testing.T) {
 		"cmdb_rel_ci",
 		"new gliderecord('cmdb_ci",
 		"new gliderecord(\"cmdb_ci",
-		"credential_binding",
 		"powershell",
 		"wql",
 	} {
@@ -201,7 +211,7 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 	if err := json.Unmarshal(packageBody, &packageConfig); err != nil {
 		t.Fatal(err)
 	}
-	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.3.0" {
+	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.4.3" {
 		t.Fatalf("unexpected Fluent package identity: %#v", packageConfig)
 	}
 	if packageConfig.DevDependencies["@servicenow/sdk"] != "4.9.0" {
@@ -251,6 +261,9 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 		"CrossScopePrivilege({",
 		"allowWebServiceAccess: false",
 		"name: 'x_664635_topo.worker'",
+		"name: 'x_664635_topo.credential_admin'",
+		"Password2Column({",
+		"path: '/{id}/credential'",
 		"targetName: 'sn_cmdb.IdentificationEngine'",
 	} {
 		if !strings.Contains(source, required) {

@@ -33,13 +33,21 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
   and configure identification/reconciliation rules for every CI class Topo
   emits; see [ServiceNow publishing](docs/servicenow.md).
 - For the candidate ServiceNow-managed mode, bind a dedicated integration user
-  to exactly one active Topo worker pool and restrict its OAuth token to the six
+  to exactly one active Topo worker pool and restrict its OAuth token to the seven
   custom worker resources. Do not grant that identity the generic Table API,
   CMDB, IRE, reporting, schedule, or application-administration access. The
   worker token is resolved through a credential reference and must not be
   shared with the direct IRE publisher. Set `-max-concurrency` to a deployment-
   reviewed local ceiling; ServiceNow pool capacity cannot increase it. See
   [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
+- For the Password2 SSH pilot, assign `x_664635_topo.credential_admin` only to
+  dedicated credential custodians. Workers get no credential-table ACL and
+  retrieve a password only from the fixed live-lease broker route after local
+  CIDR authorization. Mount canonical IPv4 allowlist and OpenSSH `known_hosts`
+  files read-only, keep normal host-key verification enabled, and never reuse
+  the worker OAuth identity as a credential administrator. Password2 is the
+  only implemented managed credential mode in Slice C1; external Vault support
+  and real-instance acceptance remain pending.
 - `topo mid run` is an experiment, not the supported ServiceNow publication
   path. If reproducing it in a disposable environment, use a dedicated user
   with the built-in
@@ -415,17 +423,19 @@ Topo secret. See
 
 ## ServiceNow-managed stateless workers
 
-M3 Slice A/B's `topo worker run` is an outbound HTTPS client with no inbound
+M3's `topo worker run` is an outbound HTTPS client with no inbound
 listener and no database, journal, spool, schedule store, result history, or
 retry queue. Its startup policy fixes the ServiceNow origin, pool, site,
-`local.v1` authority, task-duration ceiling, and concurrency ceiling. The worker refuses URL
+compiled-operation authority, task-duration ceiling, and concurrency ceiling. The worker refuses URL
 userinfo/path/query/fragment, redirects, unknown response fields, unknown
 operation versions, and any task object containing extra command, script,
-query, URL, class, field, or relationship authority. Optional future target
-partitions must have canonical bounded CIDRs and SHA-256 partition identity;
-production `local.v1` rejects every target partition.
+query, URL, class, field, or relationship authority. Target partitions must
+have canonical bounded CIDRs and SHA-256 partition identity. Production
+`local.v1` rejects them; `ssh_linux.v1` requires exactly one IPv4 `/32`, fixed
+port 22, local CIDR authorization before credential retrieval, and local
+OpenSSH `known_hosts` verification.
 
-The worker role is limited to six Scripted REST resources and receives no
+The worker role is limited to seven Scripted REST resources and receives no
 generic scoped-table ACL. Every resource binds `gs.getUserID()` to a configured
 pool/site, worker record, boot ID, live attempt, and lease. Claiming uses a
 conditional `ready`-to-`leased` update; only a SHA-256 lease-token digest is
@@ -434,6 +444,15 @@ keys on each active task, so concurrent claims cannot exceed either server
 ceiling while the worker independently enforces its local maximum. Results are limited to one 1 MiB checksummed JSON chunk,
 unique by `(task, attempt, chunk)`, and late attempts are rejected. ServiceNow
 lease expiry—not local retry state—recovers a crashed worker.
+
+Slice C1's seventh resource is a Password2 credential broker, not a generic
+secret API. It revalidates the caller/pool, worker boot, live attempt and lease,
+operation, immutable profile/scope/binding, and active credential before one
+bounded `no-store` response. The credential table is credential-admin-only,
+generic web-service access is disabled, the Password2 field is not audited or
+replicated, and access events contain no secret. Workers never receive table
+ACLs or durable secret storage. These are source-enforced candidate properties;
+real developer-instance ACL/encryption/broker evidence remains pending.
 
 Leases renew only through the attempt-bound fixed resource. Renewal failure
 cancels execution at expiry. Operator cancellation is cooperative and is

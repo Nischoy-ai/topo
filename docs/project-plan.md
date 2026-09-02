@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-08-30
+- **Updated:** 2026-09-01
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -87,9 +87,43 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   claimants, lease extension, cancellation through renew, HTTP 409 late-call
   denial, terminal reporting, and slot release without an IRE/CMDB write. That
   focused evidence remains distinct from simulator scale results.
-  The candidate is proposed in
-  [PR 55](https://github.com/Nischoy-ai/topo/pull/55); do not treat it as
-  merged until that PR lands.
+  The candidate merged in
+  [PR 55](https://github.com/Nischoy-ai/topo/pull/55).
+  Slice C1 is now a candidate on
+  `agent/servicenow-password2-ssh-slice-c`, proposed in draft PR #56 against
+  merged `main`: Fluent `0.4.3`
+  defines twelve tables, five roles, and seven fixed worker resources,
+  including a protected non-audited Password2 field, immutable credential
+  binding, secret-free access events, and a live-attempt-only no-store broker.
+  `topo worker run` adds only compiled-in `ssh_linux.v1`, fixed port 22,
+  worker-local canonical IPv4 allowlisting, and local OpenSSH `known_hosts`;
+  it retrieves the credential only after target authorization and retains no
+  durable state. Focused source/build and simulator tests pass, including an
+  end-to-end no-data SSH attempt that retrieves one credential and skips IRE.
+  Separate real developer-instance evidence now covers a source-driven Fluent
+  upgrade of the same application through `0.4.3`, preservation of the known Slice
+  A/B configuration and run summaries, all twelve scoped tables and five
+  roles, the seven installed worker routes, the ten credential ACL/role
+  mappings, and the Password2 dictionary contract (`audit=false`, mandatory,
+  and non-replicated). Focused 2026-08-31 runtime evidence adds an exact
+  credential-route-only OAuth scope/policy mapping, a disposable Password2
+  record entered through the form, a non-routable `192.0.2.10/32` manual Run
+  Now fixture, real worker registration/claim, a 200 attempt-bound broker
+  response with `no-store`/`no-cache`, a 403 wrong-attempt denial, secret-free
+  allowed/denied access rows, and continued 401 denial from the generic
+  credential Table API. The test task was terminalized without dialing the
+  TEST-NET address, submitting a result, invoking IRE, or writing CMDB.
+  Separate sanitized Docker evidence proves manual and scheduled execution,
+  repeat IRE reconciliation, and raw-result retention. A 2026-09-01 real ACL
+  matrix proves the credential-admin/operator/viewer/worker/no-role boundaries;
+  the complete broker matrix denies every staged wrong identity, binding,
+  state, expiry, cancellation, terminal, inactive, and cross-bound case while
+  preserving no-store/no-cache headers and secret-free auditing. It exposed
+  and revalidated fixes for a missing cancellation check and stale unique
+  capacity slots after lease expiry. All staged Slice C1 acceptance gates now
+  pass; PR #56 remains a candidate until review and merge. External Vault
+  support is deferred to Slice C2 by the user's 2026-08-30 decision; it remains
+  an eventual requirement.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -2787,6 +2821,143 @@ pass; `govulncheck` reports zero reachable vulnerabilities. The approved real
 Fluent upgrade and focused worker-API evidence are recorded separately in
 `docs/servicenow-worker.md`; they do not make simulator scale timings into
 ServiceNow throughput evidence.
+
+### Slice C1 — Password2-backed ServiceNow-managed Linux SSH pilot (staged)
+
+**Objective.** Deliver the first installable credentialed-network path from
+the Nischoy Topo ServiceNow control panel: an operator selects an immutable
+IPv4 target scope and a reviewed `ssh_linux.v1` profile, then an outbound-only,
+stateless laptop worker uses one ServiceNow Password2-backed SSH credential to
+inventory allowlisted Linux targets through Topo's existing compiled-in SSH
+operation and returns destination-neutral computer/adapter observations for
+the existing reviewed IRE mapping. This user-approved slice deliberately
+defers external Vault bindings; that eventual architecture requirement is not
+removed or represented as implemented.
+
+**Deliverables.** Upgrade the source-driven Fluent application with a dedicated
+credential-administrator role, a protected SSH credential table whose secret
+column is Password2 with field auditing and data replication disabled, and a
+separate immutable credential-binding record tied to one profile revision and
+target-scope revision. Keep both tables unavailable to generic web services;
+give workers no table ACL. Add `ssh_linux.v1` as the only new compiled-in
+operation, require an active IPv4 target scope compiled into at most 1,024
+single-address `/32` tasks, bind each task to the reviewed credential binding,
+and add one fixed attempt-bound credential-broker REST resource. The broker
+must authenticate the pool service user, worker/boot, live task/attempt/lease,
+operation, profile, scope, and binding before returning only a bounded SSH
+username/password response with `Cache-Control: no-store`; it records a
+secret-free access event. Extend `topo worker run` with deployment-owned,
+read-only SSH enablement, an absolute CIDR allowlist file, and an absolute
+OpenSSH `known_hosts` file. The worker intersects every task address with the
+local allowlist before credential retrieval or network access, uses fixed port
+22, existing fixed SSH commands, bounded concurrency/deadlines/output, normal
+host-key verification, and retains neither the password nor retry/result state
+after the attempt. Reuse only `cmdb_ci_computer`,
+`cmdb_ci_network_adapter`, and `Owns::Owned by`, including a no-assets path
+that preserves bounded collection errors without calling IRE. Document the
+developer-install workflow from Fluent deployment through pool/scope/
+credential/binding/profile creation, worker startup, Run Now, scheduling, and
+run/IRE inspection.
+
+**Acceptance gates.** Fluent source/build tests and real developer-instance
+evidence must show the password is encrypted at rest rather than stored or
+returned as ordinary text; the secret field is absent from audit/history,
+list/export/display values and generic Table API access; only the credential
+administrator can create or change it; and application upgrade preserves
+existing Slice A/B records. Exact broker tests must deny a wrong pool identity,
+worker, boot, task, attempt, lease token, operation, profile, scope, binding,
+expired lease, cancelled task, inactive record, and cross-bound credential,
+without returning or logging the secret. A correct live attempt may retrieve
+the credential once or idempotently during its lease, with a bounded no-store
+response, and a worker restart retains no secret. Worker tests must reject SSH
+unless it is locally enabled with regular absolute allowlist and `known_hosts`
+files; reject noncanonical, non-`/32`, IPv6, out-of-allowlist, non-22, or
+targetless authority before credential retrieval or dialing; verify host-key
+mismatch, password failure, cancellation, timeout, output bounds, and fixed-
+command rejection; and prove an unreachable target cannot prevent a different
+task from completing. Deterministic Topo Lab tests must run manual and
+scheduled SSH profiles twice with stable item/relationship identity and repeat
+simulated reconciliation. Separate real evidence must run one manual and one
+scheduled profile through a real stateless worker and Password2 broker on the
+developer instance, against an explicitly approved real or sanitized SSH
+target, and record IRE/retention outcomes without exposing credential or host
+data. Formatting, `git diff --check`, exact Go 1.25.13 focused/full tests,
+repository vet, full race tests, Linux build, Windows amd64 vet/build, Fluent
+tests/build, and `scripts/security-review-checks.sh` must pass.
+
+**Deliberate non-goals.** No Vault, Kubernetes Secret, private-key, certificate,
+or ordered credential-list/fallback mode in this slice; no password spraying
+or credential affinity; no credentialless ARP/NDP/ICMP/port sweep; no IPv6,
+hostname, DNS discovery, user-selected port, command, shell, script, SSH
+option, or host-key bypass; no WinRM, SNMP, VMware, cloud, Kubernetes, or other
+managed operation; no new CI class, field, relationship, or direct CMDB write;
+no worker database, journal, spool, schedule store, observation history, retry
+queue, writable trust-on-first-use file, or inbound listener; no ECC, MID,
+native Discovery runtime table, probe, pattern, or sensor; no claim that one
+Password2 pilot completes the external-vault requirement or production-ready
+heterogeneous network discovery; no Homebrew/package-channel, production-
+signing, PostgreSQL/HA, or M2.5 independent-retest work.
+
+**Implementation status.** The candidate is implemented on
+`agent/servicenow-password2-ssh-slice-c`. Fluent `0.4.3` builds successfully;
+Node contract tests cover the fixed capability list, username boundary,
+Password2 broker/no-store source, and SSH no-data mapping. Exact Go focused
+tests cover startup allowlist/trust loading, local policy digests, strict SSH
+task validation, allowlist-before-credential/dial ordering, secret-redacted
+credential failures, fixed port 22, and a complete controlsim
+claim→credential→no-data-result→terminal-summary flow with no simulated IRE
+call. Formatting, `git diff --check`, exact Go 1.25.13 full tests, focused
+integration tests, repository vet, full race tests, native and Windows amd64
+build/vet, clean Fluent install/test/build, and the pinned security-review
+gate pass; `govulncheck` reports zero reachable vulnerabilities. A
+source-driven real-instance upgrade installed `0.4.3` over the existing app
+without losing the known Slice A/B configuration or run summaries; read-only
+metadata checks found all twelve tables, five roles, seven REST routes, ten
+credential ACL/role mappings, and the expected Password2 dictionary flags.
+That installation evidence is now supplemented by a focused real credential-
+broker run. An exact active OAuth scope and API-access policy allow only POST
+v1 `/x_664635_topo/v1/tasks/{id}/credential` for the existing worker inbound
+profile, with every wildcard disabled. A disposable credential was entered
+through the Password2 form; reopening the record did not display the value,
+the Password2 field produced no `sys_audit` row, and a fresh worker token
+continued to receive 401 from the generic credential Table API. A manual Run
+Now profile targeting only documentation TEST-NET address `192.0.2.10/32`
+produced one `ssh_linux.v1` task. A real registered worker identity claimed
+it; its exact live attempt received a 200 broker response with the expected
+username, a non-empty password, `Cache-Control: no-store`, and `Pragma:
+no-cache`. A modified attempt received 403, and ServiceNow retained separate
+secret-free `allowed/attempt_bound` and `denied/lease_not_owned` access rows.
+The worker reported a bounded structured test failure immediately afterward;
+the run became failed without a network connection, result, IRE call, or CMDB
+write. A separate sanitized Debian 12 Docker fixture bound only to laptop
+loopback then completed manual run `12a0af2993c3cb90ec251aebb9373c79`
+and scheduled run `54c163219307cb90ec251aebb9373cbb` through the real Password2
+broker and IRE, each with 12 supported items, 11 relationships, and one bounded
+container-only `ssh_partial` collection error. Identical manual repeat
+`ae11a3ad93c3cb90ec251aebb9373ced` reconciled the 12 items as `UPDATE` and all
+11 relationships as `NO_CHANGE`. The disabled proof schedule remains as
+control-panel evidence. Backdating one processed result's normal 24-hour
+deadline and executing the installed maintenance job removed its raw row and
+attachment while preserving the completed 12/11 run and applied IRE summary.
+That first target-bearing claim also exposed integral Glide decimal forms for
+partition ordinal/count; the strict client now accepts only mathematically
+integral in-range values and rejects fractional input, with focused tests. A
+separate 2026-09-01 real acceptance matrix impersonated disposable credential-
+admin, operator, viewer, worker, and no-role users and proved the intended ACL
+separation. The exact broker request and its idempotent repeat returned 200;
+wrong pool, worker, boot, task, attempt, and lease returned 403; wrong
+operation, profile, scope, binding, cross-bound credential, inactive binding,
+inactive credential, cancellation, expiry, and terminal state returned 409.
+All responses retained no-store/no-cache headers, and access rows contained
+only secret-free outcome/reason metadata. The matrix exposed two real defects:
+cancelled tasks could still resolve a credential, and expired leases cleared
+capacity fields with ineffective empty strings. Fluent `0.4.3` denies
+cancellation before resolution and clears every lease identity/capacity field
+with scoped-compatible null values; reinstallation and the complete matrix
+passed, including attempt-two expiry recovery and slot release. The fixture
+state and pool policy were restored without network, IRE, or CMDB activity.
+All staged Slice C1 gates are complete; PR #56 remains an unmerged candidate.
+No Vault provider or Homebrew documentation is included.
 
 ### Relationship to the M2.5 gate
 

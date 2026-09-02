@@ -14,7 +14,7 @@ TopoIREProcessor.prototype = {
         delivery.setLimit(1);
         delivery.query();
         if (delivery.next()) {
-            if (String(delivery.u_state) === 'applied') {
+            if (String(delivery.u_state) === 'applied' || String(delivery.u_state) === 'no_data') {
                 return {
                     assets: parseInt(delivery.u_items, 10) || 0,
                     relationships: parseInt(delivery.u_relationships, 10) || 0,
@@ -52,6 +52,17 @@ TopoIREProcessor.prototype = {
             this._finishDelivery(delivery, 'rejected', 'observation validation rejected before IRE');
             this._finishResult(result, 'failed', 'failed', this.FAILURE_RETENTION_SECONDS);
             throw new Error(this._boundedError(validationError));
+        }
+
+        if (mapped.assets === 0) {
+            delivery.u_state = 'no_data';
+            delivery.u_preflight_at = new GlideDateTime();
+            delivery.u_items = 0;
+            delivery.u_relationships = 0;
+            delivery.u_diagnostics = 'validated SSH no-data observation; IRE preflight and apply skipped';
+            delivery.update();
+            this._finishResult(result, 'processed', 'complete', this.SUCCESS_RETENTION_SECONDS);
+            return mapped;
         }
 
         var input = global.JSON.stringify(mapped.payload);

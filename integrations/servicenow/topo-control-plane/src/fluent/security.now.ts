@@ -9,8 +9,15 @@ export const topoViewer = Role({
 
 export const topoWorker = Role({
     name: 'x_664635_topo.worker',
-    description: 'Execute only the six outbound-worker Scripted REST resources; no generic table or CMDB access.',
+    description: 'Execute only the seven outbound-worker Scripted REST resources; no generic table or CMDB access.',
     grantable: true,
+})
+
+export const topoCredentialAdmin = Role({
+    name: 'x_664635_topo.credential_admin',
+    description: 'Administer protected Topo Password2 credentials and immutable credential bindings.',
+    grantable: true,
+    containsRoles: [topoViewer],
 })
 
 export const topoOperator = Role({
@@ -25,7 +32,90 @@ export const topoAdmin = Role({
     description: 'Administer the Topo scoped control plane and worker pools.',
     grantable: true,
     scopedAdmin: true,
-    containsRoles: [topoOperator],
+    containsRoles: [topoOperator, topoCredentialAdmin],
+})
+
+Acl({
+    $id: Now.ID['acl-ssh-credential-read'],
+    type: 'record',
+    operation: 'read',
+    table: 'x_664635_topo_ssh_credential',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-ssh-credential-create'],
+    type: 'record',
+    operation: 'create',
+    table: 'x_664635_topo_ssh_credential',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-ssh-credential-write'],
+    type: 'record',
+    operation: 'write',
+    table: 'x_664635_topo_ssh_credential',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-ssh-credential-delete'],
+    type: 'record',
+    operation: 'delete',
+    table: 'x_664635_topo_ssh_credential',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+
+Acl({
+    $id: Now.ID['acl-credential-binding-read'],
+    type: 'record',
+    operation: 'read',
+    table: 'x_664635_topo_credential_binding',
+    roles: [topoViewer],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-credential-binding-create'],
+    type: 'record',
+    operation: 'create',
+    table: 'x_664635_topo_credential_binding',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-credential-binding-write'],
+    type: 'record',
+    operation: 'write',
+    table: 'x_664635_topo_credential_binding',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-credential-binding-delete'],
+    type: 'record',
+    operation: 'delete',
+    table: 'x_664635_topo_credential_binding',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+
+Acl({
+    $id: Now.ID['acl-credential-access-read'],
+    type: 'record',
+    operation: 'read',
+    table: 'x_664635_topo_credential_access',
+    roles: [topoCredentialAdmin],
+    active: true,
+})
+Acl({
+    $id: Now.ID['acl-credential-access-delete'],
+    type: 'record',
+    operation: 'delete',
+    table: 'x_664635_topo_credential_access',
+    roles: [topoAdmin],
+    active: true,
 })
 
 export const topoWorkerEndpoint = Acl({

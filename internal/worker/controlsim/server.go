@@ -12,12 +12,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Nischoy-ai/topo/internal/worker"
+	"github.com/Nischoy-ai/topo/pkg/model"
 	"github.com/Nischoy-ai/topo/pkg/publisher/servicenow"
 )
 
@@ -29,6 +31,7 @@ type Config struct {
 	SuccessRawTTL time.Duration
 	FailureRawTTL time.Duration
 	PoolMaxLeases int
+	SSHCredential worker.SSHCredential
 	Now           func() time.Time
 }
 
@@ -50,6 +53,8 @@ type Server struct {
 	items          map[string]string
 	relations      map[string]string
 	deliveries     []IREDelivery
+	credential     worker.SSHCredential
+	credentialLog  []CredentialAccess
 }
 
 type WorkerRecord struct {
@@ -66,37 +71,39 @@ type WorkerRecord struct {
 }
 
 type RunRecord struct {
-	ID            string
-	Trigger       string
-	State         string
-	TaskIDs       []string
-	StartedAt     time.Time
-	CompletedAt   time.Time
-	Assets        int
-	Relationships int
-	Attempts      int
-	Error         string
+	ID               string
+	Trigger          string
+	State            string
+	TaskIDs          []string
+	StartedAt        time.Time
+	CompletedAt      time.Time
+	Assets           int
+	Relationships    int
+	CollectionErrors int
+	Attempts         int
+	Error            string
 }
 
 type TaskRecord struct {
-	ID              string
-	RunID           string
-	WorkerPool      string
-	Operation       string
-	ProfileID       string
-	ProfileRevision int
-	State           string
-	Attempt         int
-	AttemptID       string
-	WorkerID        string
-	BootID          string
-	LeaseDigest     string
-	LeaseExpiresAt  time.Time
-	Deadline        time.Time
-	ChunkCount      int
-	TargetPartition *worker.TargetPartition
-	CancelRequested bool
-	Error           string
+	ID                  string
+	RunID               string
+	WorkerPool          string
+	Operation           string
+	ProfileID           string
+	ProfileRevision     int
+	State               string
+	Attempt             int
+	AttemptID           string
+	WorkerID            string
+	BootID              string
+	LeaseDigest         string
+	LeaseExpiresAt      time.Time
+	Deadline            time.Time
+	ChunkCount          int
+	TargetPartition     *worker.TargetPartition
+	CredentialBindingID string
+	CancelRequested     bool
+	Error               string
 }
 
 type ResultRecord struct {
@@ -113,11 +120,14 @@ type ResultRecord struct {
 }
 
 type Schedule struct {
-	ID         string
-	WorkerPool string
-	Interval   time.Duration
-	NextRunAt  time.Time
-	Active     bool
+	ID                  string
+	WorkerPool          string
+	Operation           string
+	Target              string
+	CredentialBindingID string
+	Interval            time.Duration
+	NextRunAt           time.Time
+	Active              bool
 }
 
 type IREDelivery struct {
@@ -126,19 +136,29 @@ type IREDelivery struct {
 	AttemptID      string
 	Preflighted    bool
 	Applied        bool
+	NoData         bool
 	ItemOperations []string
 	RelationOps    []string
 	CompletedAt    time.Time
 }
 
+type CredentialAccess struct {
+	TaskID    string
+	AttemptID string
+	WorkerID  string
+	Outcome   string
+	Reason    string
+}
+
 type Snapshot struct {
-	Workers    []WorkerRecord
-	Runs       []RunRecord
-	Tasks      []TaskRecord
-	Results    []ResultRecord
-	Deliveries []IREDelivery
-	Items      int
-	Relations  int
+	Workers            []WorkerRecord
+	Runs               []RunRecord
+	Tasks              []TaskRecord
+	Results            []ResultRecord
+	Deliveries         []IREDelivery
+	CredentialAccesses []CredentialAccess
+	Items              int
+	Relations          int
 }
 
 func New(config Config) *Server {
@@ -163,6 +183,7 @@ func New(config Config) *Server {
 		successRawTTL:  config.SuccessRawTTL,
 		failureRawTTL:  config.FailureRawTTL,
 		poolMaxLeases:  config.PoolMaxLeases,
+		credential:     config.SSHCredential,
 		renewAvailable: true,
 		now:            config.Now,
 		workers:        map[string]*WorkerRecord{},
@@ -181,6 +202,16 @@ func (s *Server) RunNow(workerPool string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.createRunLocked("manual", workerPool, 1)
+}
+
+func (s *Server) RunNowSSH(workerPool, target, credentialBindingID string) string {
+	prefix, err := netip.ParsePrefix(target)
+	if err != nil || !prefix.Addr().Is4() || prefix.Bits() != 32 || prefix != prefix.Masked() || credentialBindingID == "" {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.createSSHRunLocked("manual", workerPool, target, credentialBindingID)
 }
 
 // RunNowPartitions is a simulator-only scale fixture. It never adds a
@@ -240,7 +271,11 @@ func (s *Server) EnqueueDue() []string {
 		if !schedule.Active || schedule.NextRunAt.After(now) {
 			continue
 		}
-		ids = append(ids, s.createRunLocked("scheduled", schedule.WorkerPool, 1))
+		if schedule.Operation == worker.OperationSSHLinuxV1 {
+			ids = append(ids, s.createSSHRunLocked("scheduled", schedule.WorkerPool, schedule.Target, schedule.CredentialBindingID))
+		} else {
+			ids = append(ids, s.createRunLocked("scheduled", schedule.WorkerPool, 1))
+		}
 		schedule.NextRunAt = now.Add(schedule.Interval)
 	}
 	return ids
@@ -334,11 +369,29 @@ func (s *Server) Snapshot() Snapshot {
 		copy.RelationOps = append([]string(nil), delivery.RelationOps...)
 		snapshot.Deliveries = append(snapshot.Deliveries, copy)
 	}
+	snapshot.CredentialAccesses = append(snapshot.CredentialAccesses, s.credentialLog...)
 	snapshot.Items = len(s.items)
 	snapshot.Relations = len(s.relations)
 	sort.Slice(snapshot.Runs, func(i, j int) bool { return snapshot.Runs[i].ID < snapshot.Runs[j].ID })
 	sort.Slice(snapshot.Tasks, func(i, j int) bool { return snapshot.Tasks[i].ID < snapshot.Tasks[j].ID })
 	return snapshot
+}
+
+func (s *Server) createSSHRunLocked(trigger, workerPool, target, credentialBindingID string) string {
+	s.nextID++
+	runID := fmt.Sprintf("run-%08d", s.nextID)
+	now := s.now().UTC()
+	s.nextID++
+	taskID := fmt.Sprintf("task-%08d", s.nextID)
+	key := sha256.Sum256([]byte("simulator-ssh-scope\n1\n" + target))
+	s.runs[runID] = &RunRecord{ID: runID, Trigger: trigger, State: "ready", StartedAt: now, TaskIDs: []string{taskID}}
+	s.tasks[taskID] = &TaskRecord{
+		ID: taskID, RunID: runID, WorkerPool: workerPool, Operation: worker.OperationSSHLinuxV1,
+		ProfileID: "ssh-linux-v1", ProfileRevision: 1, CredentialBindingID: credentialBindingID,
+		State: "ready", Deadline: now.Add(10 * time.Minute),
+		TargetPartition: &worker.TargetPartition{Key: hex.EncodeToString(key[:]), Ordinal: 0, Count: 1, CIDRs: []string{target}},
+	}
+	return runID
 }
 
 func (s *Server) createRunLocked(trigger, workerPool string, partitions int) string {
@@ -406,7 +459,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	if request.MaxConcurrency == 0 {
 		request.MaxConcurrency = worker.DefaultMaxConcurrency
 	}
-	if request.SchemaVersion != worker.ContractVersion || request.BootID == "" || request.WorkerPool == "" || request.SiteID == "" || len(request.Capabilities) != 1 || request.Capabilities[0] != worker.OperationLocalV1 || request.MaxConcurrency < 1 || request.MaxConcurrency > worker.MaxWorkerConcurrency {
+	if request.SchemaVersion != worker.ContractVersion || request.BootID == "" || request.WorkerPool == "" || request.SiteID == "" || !validCapabilities(request.Capabilities) || request.MaxConcurrency < 1 || request.MaxConcurrency > worker.MaxWorkerConcurrency {
 		http.Error(w, `{"error":"invalid registration"}`, http.StatusBadRequest)
 		return
 	}
@@ -452,7 +505,7 @@ func (s *Server) claim(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	record, ok := s.workers[request.WorkerID]
-	if !ok || record.BootID != request.BootID || len(request.Capabilities) != 1 || request.Capabilities[0] != worker.OperationLocalV1 || request.CurrentLeases < 0 || request.CurrentLeases > record.MaxConcurrency {
+	if !ok || record.BootID != request.BootID || !equalStrings(request.Capabilities, record.Capabilities) || request.CurrentLeases < 0 || request.CurrentLeases > record.MaxConcurrency {
 		http.Error(w, `{"error":"invalid worker claim"}`, http.StatusForbidden)
 		return
 	}
@@ -481,7 +534,7 @@ func (s *Server) claim(w http.ResponseWriter, r *http.Request) {
 	}
 	ids := make([]string, 0, len(s.tasks))
 	for id, task := range s.tasks {
-		if task.State == "ready" && task.WorkerPool == record.WorkerPool {
+		if task.State == "ready" && task.WorkerPool == record.WorkerPool && contains(request.Capabilities, task.Operation) {
 			ids = append(ids, id)
 		}
 	}
@@ -514,16 +567,17 @@ func (s *Server) claim(w http.ResponseWriter, r *http.Request) {
 		partition = &copy
 	}
 	encode(w, http.StatusOK, worker.ClaimResponse{Task: &worker.Task{
-		TaskID:          task.ID,
-		RunID:           task.RunID,
-		AttemptID:       task.AttemptID,
-		LeaseToken:      token,
-		LeaseExpiresAt:  task.LeaseExpiresAt,
-		Operation:       task.Operation,
-		ProfileID:       task.ProfileID,
-		ProfileRevision: task.ProfileRevision,
-		TargetPartition: partition,
-		Deadline:        task.Deadline,
+		TaskID:              task.ID,
+		RunID:               task.RunID,
+		AttemptID:           task.AttemptID,
+		LeaseToken:          token,
+		LeaseExpiresAt:      task.LeaseExpiresAt,
+		Operation:           task.Operation,
+		ProfileID:           task.ProfileID,
+		ProfileRevision:     task.ProfileRevision,
+		CredentialBindingID: task.CredentialBindingID,
+		TargetPartition:     partition,
+		Deadline:            task.Deadline,
 	}})
 }
 
@@ -546,9 +600,33 @@ func (s *Server) taskResource(w http.ResponseWriter, r *http.Request) {
 		s.complete(w, r, parts[0])
 	case "renew":
 		s.renew(w, r, parts[0])
+	case "credential":
+		s.credentialForTask(w, r, parts[0])
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+func (s *Server) credentialForTask(w http.ResponseWriter, r *http.Request, taskID string) {
+	var request worker.CredentialRequest
+	if !decode(w, r, &request) {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	task, ok := s.validLeaseLocked(taskID, request.WorkerID, request.BootID, request.AttemptID, request.LeaseToken)
+	if !ok {
+		s.credentialLog = append(s.credentialLog, CredentialAccess{TaskID: taskID, AttemptID: request.AttemptID, WorkerID: request.WorkerID, Outcome: "denied", Reason: "lease_not_owned"})
+		http.Error(w, `{"error":"invalid or expired lease"}`, http.StatusConflict)
+		return
+	}
+	if task.Operation != worker.OperationSSHLinuxV1 || task.CredentialBindingID == "" || s.credential.Username == "" || s.credential.Password == "" {
+		s.credentialLog = append(s.credentialLog, CredentialAccess{TaskID: taskID, AttemptID: request.AttemptID, WorkerID: request.WorkerID, Outcome: "denied", Reason: "binding_or_credential_invalid"})
+		http.Error(w, `{"error":"credential unavailable"}`, http.StatusConflict)
+		return
+	}
+	s.credentialLog = append(s.credentialLog, CredentialAccess{TaskID: taskID, AttemptID: request.AttemptID, WorkerID: request.WorkerID, Outcome: "allowed", Reason: "attempt_bound"})
+	encode(w, http.StatusOK, s.credential)
 }
 
 func (s *Server) renew(w http.ResponseWriter, r *http.Request, taskID string) {
@@ -659,6 +737,21 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request, taskID string)
 		return
 	}
 	result := s.results[resultKey(taskID, request.AttemptID, 0)]
+	if task.Operation == worker.OperationSSHLinuxV1 {
+		var noData model.ObservationEnvelope
+		if err := json.Unmarshal(result.Payload, &noData); err == nil && noData.SchemaVersion == model.SchemaVersion &&
+			noData.Plugin == "ssh-linux" && noData.JobID == task.ID && len(noData.Assets) == 0 &&
+			len(noData.Relationships) == 0 && len(noData.Errors) > 0 {
+			s.deliveries = append(s.deliveries, IREDelivery{RunID: run.ID, TaskID: task.ID, AttemptID: task.AttemptID, NoData: true, CompletedAt: s.now().UTC()})
+			task.State = "complete"
+			run.CollectionErrors += len(noData.Errors)
+			s.refreshRunLocked(run)
+			result.ProcessedAt = s.now().UTC()
+			result.Terminal = "complete"
+			encode(w, http.StatusOK, worker.CompleteResponse{TaskState: task.State, RunState: run.State})
+			return
+		}
+	}
 	envelopes, err := servicenow.DecodeJSONLines(bytes.NewReader(result.Payload))
 	if err != nil {
 		s.failIRELocked(task, run, result, err)
@@ -816,4 +909,40 @@ func randomHex() string {
 		panic(err)
 	}
 	return hex.EncodeToString(value)
+}
+
+func validCapabilities(values []string) bool {
+	if len(values) < 1 || len(values) > 2 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, value := range values {
+		if (value != worker.OperationLocalV1 && value != worker.OperationSSHLinuxV1) || seen[value] {
+			return false
+		}
+		seen[value] = true
+	}
+	return (!seen[worker.OperationLocalV1] || values[0] == worker.OperationLocalV1) &&
+		(!seen[worker.OperationSSHLinuxV1] || values[len(values)-1] == worker.OperationSSHLinuxV1)
+}
+
+func equalStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
+}
+
+func contains(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
 }

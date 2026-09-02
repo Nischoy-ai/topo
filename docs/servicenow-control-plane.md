@@ -562,12 +562,24 @@ renewal loss, cancellation/late-call rejection, and a 100K eligible-result
 retention backlog. See [`servicenow-worker.md`](servicenow-worker.md) for exact
 simulator evidence and the outstanding real-instance boundary.
 
-### Slice C: credentials
+### Slice C1: Password2-backed Linux SSH pilot — implemented candidate; real acceptance pending
 
-Implement and test ServiceNow-managed Password2-backed bindings and external
-Vault-backed bindings. Use one existing authenticated protocol such as Linux
-SSH, with target scopes constrained by the local allowlist. Record real
-ServiceNow encryption/ACL/broker evidence separately from simulator evidence.
+The Fluent `0.4.0` and worker candidate implement ServiceNow-managed Password2-backed bindings with the fixed
+`ssh_linux.v1` operation, single-address IPv4 target partitions, locally
+enforced CIDR allowlists, and local `known_hosts` trust. Record real ServiceNow
+encryption/ACL/broker evidence separately from simulator evidence. The worker
+receives no table ACL and resolves the credential only through an attempt-
+bound, no-store broker response after target authorization. Local source/build
+and deterministic simulator gates pass. Real developer-instance upgrade,
+Password2 encryption/ACL/broker behavior, and real or sanitized SSH-target
+execution remain required and must not be inferred from simulation.
+
+### Slice C2: external secret providers — deferred by user decision
+
+Add external Vault-backed bindings and re-prove the same operation and denial
+matrix with a real short-lived or rotated credential. Deferring C2 does not
+make Password2 equivalent to an external vault and does not remove the
+eventual two-mode architecture requirement.
 
 ### Slice D: credentialless LAN discovery
 

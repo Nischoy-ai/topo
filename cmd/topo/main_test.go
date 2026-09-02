@@ -78,7 +78,9 @@ func TestWorkerRunRequiresExplicitReadOnlyPolicy(t *testing.T) {
 		{args: nil, want: "-servicenow-instance"},
 		{args: []string{"-servicenow-instance", "https://example.service-now.com"}, want: "-worker-pool"},
 		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a"}, want: "-site"},
-		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a", "-site", "site-a"}, want: "explicitly allow local.v1"},
+		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a", "-site", "site-a"}, want: "explicitly allow at least one"},
+		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a", "-site", "site-a", "-ssh-target-allowlist", "/tmp/targets"}, want: "require -allow-ssh-linux"},
+		{args: []string{"-servicenow-instance", "https://example.service-now.com", "-worker-pool", "pool-a", "-site", "site-a", "-allow-ssh-linux"}, want: "path must be absolute"},
 		{args: []string{"-state-dir", "/tmp/not-allowed"}, want: "flag provided but not defined"},
 		{args: []string{"unexpected"}, want: "does not accept positional arguments"},
 	}

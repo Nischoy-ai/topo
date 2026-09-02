@@ -26,12 +26,17 @@ type ControlPlane interface {
 	Heartbeat(context.Context, HeartbeatRequest) (HeartbeatResponse, error)
 	Claim(context.Context, ClaimRequest) (ClaimResponse, error)
 	Renew(context.Context, string, RenewRequest) (RenewResponse, error)
+	Credential(context.Context, string, CredentialRequest) (SSHCredential, error)
 	SubmitResult(context.Context, string, ResultChunkRequest) (ResultChunkResponse, error)
 	Complete(context.Context, string, CompleteRequest) (CompleteResponse, error)
 }
 
 type TaskExecutor interface {
 	Execute(context.Context, Task) (model.ObservationEnvelope, error)
+}
+
+type credentialedTaskExecutor interface {
+	ExecuteWithCredentials(context.Context, Task, CredentialSource) (model.ObservationEnvelope, error)
 }
 
 type RunConfig struct {
@@ -48,6 +53,22 @@ type RunConfig struct {
 type registration struct {
 	workerID string
 	bootID   string
+}
+
+type attemptCredentialSource struct {
+	control ControlPlane
+	reg     registration
+	task    Task
+}
+
+func (s attemptCredentialSource) SSH(ctx context.Context) (SSHCredential, error) {
+	return s.control.Credential(ctx, s.task.TaskID, CredentialRequest{
+		SchemaVersion: ContractVersion,
+		WorkerID:      s.reg.workerID,
+		BootID:        s.reg.bootID,
+		AttemptID:     s.task.AttemptID,
+		LeaseToken:    s.task.LeaseToken,
+	})
 }
 
 type activeTasks struct {
@@ -214,7 +235,13 @@ func executeTask(rootCtx, taskCtx context.Context, taskCancel context.CancelFunc
 	}
 	defer stopLease()
 
-	observation, err := config.Executor.Execute(taskCtx, task)
+	var observation model.ObservationEnvelope
+	var err error
+	if executor, ok := config.Executor.(credentialedTaskExecutor); ok {
+		observation, err = executor.ExecuteWithCredentials(taskCtx, task, attemptCredentialSource{control: config.Control, reg: reg, task: task})
+	} else {
+		observation, err = config.Executor.Execute(taskCtx, task)
+	}
 	if err != nil {
 		if rootCtx.Err() != nil {
 			return
@@ -227,7 +254,11 @@ func executeTask(rootCtx, taskCtx context.Context, taskCancel context.CancelFunc
 			reportFailure(rootCtx, config.Control, reg, task, "cancelled", errTaskCancelled, logger)
 			return
 		}
-		reportFailure(rootCtx, config.Control, reg, task, "operation_failed", err, logger)
+		code := "operation_failed"
+		if errors.Is(err, ErrCredentialResolution) {
+			code = "credential_resolution_failed"
+		}
+		reportFailure(rootCtx, config.Control, reg, task, code, err, logger)
 		_ = stopLease()
 		return
 	}

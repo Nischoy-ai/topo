@@ -17,22 +17,29 @@ TopoObservationMapper.prototype = {
         } catch (error) {
             throw new Error('observation is not valid JSON');
         }
+        var taskOperation = String(task.u_operation);
+        var expectedPlugin = taskOperation === 'local.v1' ? 'local-host' :
+            (taskOperation === 'ssh_linux.v1' ? 'ssh-linux' : '');
         if (!this._only(envelope, ['schema_version', 'observation_id', 'site_id', 'collector_id', 'plugin', 'job_id', 'observed_at', 'assets', 'relationships', 'errors', 'labels']) ||
                 envelope.schema_version !== 'v1alpha1' || !this._identity(envelope.observation_id) ||
                 !this._identity(envelope.site_id) || !this._identity(envelope.collector_id) ||
-                envelope.plugin !== 'local-host' || !this._timestamp(envelope.observed_at) ||
+                !expectedPlugin || envelope.plugin !== expectedPlugin || !this._timestamp(envelope.observed_at) ||
                 String(envelope.job_id || '') !== String(task.u_task_id)) {
-            throw new Error('observation envelope does not match the leased local.v1 task');
+            throw new Error('observation envelope does not match the leased reviewed task');
         }
         var pool = task.u_worker_pool.getRefRecord();
         if (!pool.isValidRecord() || String(envelope.site_id) !== String(pool.u_site_id) ||
                 String(envelope.collector_id) !== 'worker-pool-' + String(pool.u_pool_id)) {
             throw new Error('observation site or collector identity does not match the worker pool');
         }
-        if (!Array.isArray(envelope.assets) || envelope.assets.length < 1 || envelope.assets.length > this.MAX_ITEMS ||
+        if (!Array.isArray(envelope.assets) || envelope.assets.length > this.MAX_ITEMS ||
                 (typeof envelope.relationships !== 'undefined' && (!Array.isArray(envelope.relationships) || envelope.relationships.length > this.MAX_RELATIONS)) ||
                 (typeof envelope.errors !== 'undefined' && (!Array.isArray(envelope.errors) || envelope.errors.length > 100))) {
             throw new Error('observation item, relationship, or collection-error bounds were exceeded');
+        }
+        if (envelope.assets.length === 0 && (taskOperation !== 'ssh_linux.v1' || !Array.isArray(envelope.errors) || envelope.errors.length === 0 ||
+                (Array.isArray(envelope.relationships) && envelope.relationships.length > 0))) {
+            throw new Error('an empty observation is accepted only as an SSH no-data result with a collection error');
         }
         this._validateStringMap(envelope.labels, 32, 128, 1024, true);
 

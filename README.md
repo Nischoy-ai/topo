@@ -27,7 +27,22 @@ local/pool backpressure while retaining exactly `local.v1` in production. Its
 1K/10K/100K and 100K-result-retention evidence remains simulator-only. The
 approved real-instance upgrade separately proves Slice A record preservation,
 bounded capacity reservations, lease renewal, cancellation, and late-call
-denial. The worker/scoped-app contract, local Fluent build, real
+denial. Slice C1 is a locally and real-instance-verified Fluent `0.4.3`
+candidate for one
+Password2-backed `ssh_linux.v1` profile: ServiceNow compiles at most 1,024
+IPv4 `/32` tasks, while the stateless worker independently enforces a local
+CIDR allowlist, local `known_hosts`, fixed port 22, and the existing reviewed
+SSH commands. External Vault support remains a separate deferred slice. Real-
+instance evidence now covers Password2 form entry, exact-route OAuth, live-
+attempt broker success, wrong-attempt denial, secret-free access auditing,
+continued generic Table API denial, and manual plus scheduled discovery of a
+sanitized Docker SSH target. The first apply inserted 12 supported CIs and 11
+relationships; an identical repeat reconciled the CIs and reported all 11
+relationships as `NO_CHANGE`; raw-result cleanup preserved the run and IRE
+summaries. A complete real credential-role and broker-denial matrix also
+passes, including cancellation, expiry/retry, inactive and cross-bound records,
+idempotent retrieval, no-store headers, and secret-free auditing. The Slice A/B
+worker/scoped-app contract, local Fluent build, real
 developer-instance SDK installation, deterministic simulator suite, and
 separately recorded real runtime acceptance are complete. The real evidence
 covers exact API denial, manual/scheduled execution, claim/crash recovery,
@@ -87,7 +102,8 @@ required ServiceNow configuration are documented in
 [ServiceNow publishing](docs/servicenow.md).
 
 The separate ServiceNow-managed worker is outbound-only and executes
-only the explicitly locally allowed, compiled-in `local.v1` operation. Its
+only explicitly locally allowed compiled-in operations (`local.v1` and the
+Password2 pilot's `ssh_linux.v1`). Its
 bearer token is also a credential reference, and it has no database, journal,
 spool, schedule store, result history, retry queue, or inbound listener:
 
@@ -101,6 +117,10 @@ SERVICENOW_INSTANCE_URL=https://example.service-now.com \
 Managed deployments should mount or inject the referenced secret from their
 secret store rather than entering a token into shell history. See
 [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
+
+For SSH, the same command uses `-allow-ssh-linux` plus absolute, read-only
+`-ssh-target-allowlist` and `-ssh-known-hosts` files. ServiceNow never supplies
+a command, port, URL, class, field, relationship, or host-key bypass.
 
 `discover local` inventories this computer and its own interfaces; it is not a
 credential-free LAN scanner. Topo does not publish ARP-cache neighbors as
@@ -329,13 +349,15 @@ instance processing recognizes its topic and operation-specific payload. Topo
 does not promise standard Discovery Schedule, Discovery Status, stock sensor,
 or drop-in MID compatibility.
 
-The ServiceNow-managed path uses six worker-only Scripted REST resources,
+The ServiceNow-managed path uses seven worker-only Scripted REST resources,
 digest-only leases, bounded result attachments, application-side reviewed
 mapping, and scoped IRE preflight/apply. Slice A installed eight scoped Topo
 tables; the Slice B Fluent candidate adds a ninth target-scope table plus
 deterministic partition metadata, renewable leases, cooperative cancellation,
 and unique pool/worker capacity reservations without adding another worker API
-resource or production operation.
+resource or production operation. Slice C1's Fluent `0.4.3` candidate adds
+three protected credential/binding/access tables and one fixed attempt-bound
+Password2 route for `ssh_linux.v1`; the worker still has no generic table ACL.
 `topo worker run` initiates every HTTPS connection and keeps no durable
 operational state. This is distinct from both direct publication and the older
 Relay experiment; see
@@ -370,13 +392,19 @@ IRE publishing. See [experimental scoped-app Relay](docs/servicenow-relay.md).
   plane.
 - The PR #47 scoped-app Relay's local-profile/encrypted-spool boundary remains
   documented as experimental behavior, not a required architecture.
-- The ServiceNow-managed Slice A/B worker accepts only the fixed `local.v1`
+- The ServiceNow-managed worker accepts only fixed `local.v1` and locally
+  enabled `ssh_linux.v1`
   contract, refuses redirects and injected task fields, keeps no durable state,
   and receives no generic Table, CMDB, or IRE grant. The scoped application
   stores only a lease-token digest, bounds concurrent leases with unique
   capacity slots, cooperatively cancels expired/operator-cancelled attempts,
   and writes CIs/relationships only through IRE after a clean non-committing
   preflight.
+  Password2 is available only through a live attempt-bound, no-store broker
+  after the worker rejects targets outside its deployment-owned allowlist;
+  secret access is audited without the secret. Real Password2/broker,
+  credential-role/denial-matrix, and sanitized Docker SSH/IRE/retention
+  evidence is recorded. External Vault support is not part of this candidate.
 - The Topo Agent authenticates with the same bearer API-key contract as any other controller client; its offline spool is AES-256-GCM encrypted at rest with a key from the same credential-reference contract, bounded in total size, and detects tampering rather than returning corrupted data.
 - Collector enrollment (opt-in via `-ca-dir`) issues each collector its own short-lived certificate through a single-use, time-bounded token bound to that collector ID at issuance; the collector's private key is generated locally and never transmitted. See [Collector enrollment](docs/enrollment.md).
 - Outbound mTLS (opt-in via `-mtls`, requires `-ca-dir`) lets the controller terminate TLS natively and authenticate collectors by their enrolled certificate instead of the bearer API key; a client presenting no certificate at all still reaches `POST /v1/enroll` (authenticated by its one-time token). A verified collector certificate authorizes collector data-plane endpoints but not operator endpoints. See [Running as native mTLS](docs/enrollment.md#running-as-native-mtls).

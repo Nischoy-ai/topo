@@ -19,9 +19,9 @@ npm test
 npm run build
 ```
 
-The SDK compiles the nine scoped tables, indexes, roles, ACLs, navigation,
-Script Includes, six-route Scripted REST API, immutable profile/target-scope
-business rules, **Run now** and **Cancel run** UI actions, two scheduled
+The SDK compiles the twelve scoped tables, indexes, roles, ACLs, navigation,
+Script Includes, seven-route Scripted REST API, immutable profile/target-scope/
+credential-binding business rules, **Run now** and **Cancel run** UI actions, two scheduled
 scripts, and the narrowly scoped IRE cross-scope privilege into `dist/app`.
 Generated output is intentionally ignored; source and `package-lock.json` are
 reviewed and committed.
@@ -41,7 +41,7 @@ npm run deploy -- --auth topo-dev
 The SDK install is the only supported application-creation/update path. Do not
 recreate these records through Studio forms, background scripts, update-set
 XML, the Table API, or direct metadata writes. After installation, create a
-separate least-privilege worker identity and API policy for the six routes; do
+separate least-privilege worker identity and API policy for the seven routes; do
 not reuse the direct IRE publisher identity.
 
 The Slice A/B contract is scoped as `x_664635_topo`, the company prefix assigned
@@ -49,9 +49,12 @@ to the validation developer instance. This is intentionally separate from the
 older experimental Relay/MID source under `x_nischoy_topo`; installing Slice A
 does not migrate or rename those experiments.
 
-Version `0.3.0` adds Slice B's target-scope planning metadata, deterministic
-partition/task fields, unique pool/worker lease-slot reservations, renewal,
-load-aware backpressure, and cooperative cancellation. Production still
-creates exactly one `local.v1` local partition and exposes the same six worker
-resources. Password2, Vault, credential endpoints, and remote discovery remain
-deferred to later slices.
+Version `0.4.3` contains the Password2-only Linux SSH pilot from `0.4.0`,
+denies credential retrieval as soon as ServiceNow requests cancellation, and
+explicitly nulls every attempt/lease field when a lease expires so a stale
+unique slot cannot block retry. The pilot provides protected credentials,
+immutable profile/scope bindings, secret-free credential-access events, the
+fixed attempt-bound `/credential` route, and reviewed `ssh_linux.v1` `/32`
+tasks. Workers still have no table ACL, generic Table/CMDB/IRE access, durable
+state, arbitrary-command surface, or inbound listener. External Vault binding
+is deliberately deferred to Slice C2; it is not silently treated as complete.
