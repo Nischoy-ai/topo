@@ -3042,7 +3042,10 @@ pilot path.
 **Implementation status (2026-09-03).** Fluent `0.4.4`, the validated app
 normalizer, release integration, source installer, non-claiming worker
 preflight, dormant Linux unit, package checks, and pilot guide are implemented
-on `agent/servicenow-pilot-onboarding`. Two independent SDK builds with
+on `agent/servicenow-pilot-onboarding`. The repository README now leads with
+the same customer journey in three explicit steps: install the ServiceNow app,
+install Topo on the worker server, and start a scan from the control panel.
+Two independent SDK builds with
 different generated BOM values and ZIP metadata normalize to the same bounded
 artifact; a complete temporary release/package assembly covers that app and
 its metadata in `SHA256SUMS`, `package-metadata.json`, and the offline bundle.

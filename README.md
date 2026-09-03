@@ -4,6 +4,55 @@ Nischoy Topo is an open-source, destination-neutral discovery data plane for hyb
 
 Topo is an independent public product repository under the Nischoy organization. It does not depend on Nischoy's private website or commercial source repositories.
 
+## Start ServiceNow discovery in three steps
+
+### 1. Install the app on ServiceNow
+
+Install the Nischoy Topo scoped application on a non-production ServiceNow
+instance. The supported pilot path uses the packaged Fluent source installer
+and a preconfigured ServiceNow SDK OAuth alias:
+
+```sh
+scripts/install-servicenow-app.sh <sdk-oauth-alias>
+```
+
+In the app, create the worker pool, explicit target scope, Password2 SSH
+credential, credential binding, and discovery profile.
+
+### 2. Install Topo on your worker server
+
+Install the matching Topo release on a Linux server that can reach ServiceNow
+and the approved targets:
+
+```sh
+# Debian or Ubuntu
+sudo dpkg -i topo_<version>_amd64.deb
+
+# Fedora or RHEL family
+sudo rpm -Uvh topo-<version>-1.x86_64.rpm
+```
+
+Add the worker's OAuth token file, target allowlist, and verified SSH
+`known_hosts`, run `topo worker check`, then enable `topo-worker.service`.
+
+### 3. Start a scan
+
+In ServiceNow, open **Nischoy Topo → Discovery Profiles**, select the
+profile, and choose **Run now**. Follow progress in **Runs** and review the IRE
+delivery before enabling a recurring schedule.
+
+That is the operating loop: ServiceNow controls and stores the work; the
+stateless Topo worker polls outbound, performs only approved compiled-in
+discovery, and returns observations. For the complete secure setup, exact OAuth
+routes, verification commands, and cleanup procedure, follow the
+[pilot quickstart](docs/pilot-quickstart.md).
+
+> The current Password2 pilot discovers explicit IPv4 Linux targets over SSH
+> port 22. It is not a subnet scanner and should first be evaluated on a
+> non-production ServiceNow instance with non-privileged test credentials.
+
+## Project status
+
 This repository implements local, Linux SSH, Windows WinRM, SNMPv3, VMware,
 Kubernetes Node/Pod, AWS Organizations, and Azure tenant/subscription discovery;
 bounded credential references; an authenticated controller with outbound mTLS,
