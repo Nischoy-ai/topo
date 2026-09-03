@@ -18,7 +18,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'SSH Credentials',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_ssh_credential',
         link_type: 'LIST',
         roles: [topoCredentialAdmin],
@@ -32,7 +32,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Credential Bindings',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_credential_binding',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -46,7 +46,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Credential Access',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_credential_access',
         link_type: 'LIST',
         roles: [topoCredentialAdmin],
@@ -60,7 +60,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Worker Pools',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_worker_pool',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -74,7 +74,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Discovery Profiles',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_profile',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -88,7 +88,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Target Scopes',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_target_scope',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -102,7 +102,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Schedules',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_schedule',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -116,7 +116,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Runs',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_run',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -130,7 +130,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Workers',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_worker',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -144,7 +144,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Tasks',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_task',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -158,7 +158,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'Result Chunks',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_result',
         link_type: 'LIST',
         roles: [topoViewer],
@@ -172,7 +172,7 @@ Record({
     table: 'sys_app_module',
     data: {
         title: 'IRE Deliveries',
-        application: Now.ref('sys_app_application', { title: 'Nischoy Topo' }),
+        application: topoMenu,
         name: 'x_664635_topo_ire_delivery',
         link_type: 'LIST',
         roles: [topoViewer],

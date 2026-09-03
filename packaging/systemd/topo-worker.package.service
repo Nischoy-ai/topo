@@ -1,0 +1,65 @@
+[Unit]
+Description=Topo Worker - outbound-only stateless ServiceNow discovery worker
+Documentation=https://github.com/Nischoy-ai/topo/blob/main/docs/pilot-quickstart.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=topo-worker
+Group=topo-worker
+
+# Package installation deliberately does not create this file or start the
+# service. Copy the packaged example and create the three restricted files
+# referenced below before enabling it.
+EnvironmentFile=/etc/topo-worker/topo-worker.env
+
+ExecStartPre=/usr/bin/topo worker check \
+    -servicenow-instance ${SERVICENOW_INSTANCE_URL} \
+    -token-ref file:/etc/topo-worker/worker-token \
+    -worker-pool ${TOPO_WORKER_POOL} \
+    -site ${TOPO_WORKER_SITE} \
+    -allow-ssh-linux \
+    -ssh-target-allowlist /etc/topo-worker/targets.allow \
+    -ssh-known-hosts /etc/topo-worker/known_hosts \
+    -max-concurrency ${TOPO_WORKER_MAX_CONCURRENCY}
+
+ExecStart=/usr/bin/topo worker run \
+    -servicenow-instance ${SERVICENOW_INSTANCE_URL} \
+    -token-ref file:/etc/topo-worker/worker-token \
+    -worker-pool ${TOPO_WORKER_POOL} \
+    -site ${TOPO_WORKER_SITE} \
+    -allow-ssh-linux \
+    -ssh-target-allowlist /etc/topo-worker/targets.allow \
+    -ssh-known-hosts /etc/topo-worker/known_hosts \
+    -max-concurrency ${TOPO_WORKER_MAX_CONCURRENCY}
+
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# The worker keeps no durable operational state and needs no writable working,
+# cache, spool, journal, or retry directory.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

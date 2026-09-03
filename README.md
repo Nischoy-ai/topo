@@ -21,19 +21,19 @@ mode: the Nischoy Topo scoped application is the control plane and sole durable
 operational store for disposable `topo worker run` processes, without ECC or
 native Discovery runtime tables. The scoped application is source-driven
 ServiceNow Fluent metadata pinned to SDK 4.9.0, rather than hand-created Studio
-records. Slice B adds a candidate Fluent `0.3.0` upgrade with deterministic
+records. Merged Slice B added Fluent `0.3.0` with deterministic
 target-partition metadata, renewable leases, cooperative cancellation, and
 local/pool backpressure while retaining exactly `local.v1` in production. Its
 1K/10K/100K and 100K-result-retention evidence remains simulator-only. The
 approved real-instance upgrade separately proves Slice A record preservation,
 bounded capacity reservations, lease renewal, cancellation, and late-call
-denial. Slice C1 is a locally and real-instance-verified Fluent `0.4.3`
-candidate for one
+denial. Merged Slice C1 is the locally and real-instance-verified Fluent
+`0.4.3` baseline for one
 Password2-backed `ssh_linux.v1` profile: ServiceNow compiles at most 1,024
 IPv4 `/32` tasks, while the stateless worker independently enforces a local
 CIDR allowlist, local `known_hosts`, fixed port 22, and the existing reviewed
 SSH commands. External Vault support remains a separate deferred slice. Real-
-instance evidence now covers Password2 form entry, exact-route OAuth, live-
+instance evidence covers Password2 form entry, exact-route OAuth, live-
 attempt broker success, wrong-attempt denial, secret-free access auditing,
 continued generic Table API denial, and manual plus scheduled discovery of a
 sanitized Docker SSH target. The first apply inserted 12 supported CIs and 11
@@ -47,7 +47,10 @@ developer-instance SDK installation, deterministic simulator suite, and
 separately recorded real runtime acceptance are complete. The real evidence
 covers exact API denial, manual/scheduled execution, claim/crash recovery,
 idempotent results, IRE, and retention; it is not inferred from either
-installation or simulation. See the
+installation or simulation. The current Fluent `0.4.4` onboarding revision
+adds a reproducible release ZIP, a dormant hardened Linux worker unit, and a
+registration-plus-heartbeat-only `topo worker check`; follow the
+[pilot quickstart](docs/pilot-quickstart.md). See the
 [ServiceNow-controlled stateless architecture](docs/servicenow-control-plane.md)
 and [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
 The detailed status and evidence boundaries are maintained in
@@ -68,8 +71,8 @@ It also includes **Topo Lab**, a deterministic estate simulator for exercising d
 
 ## Quick start
 
-Requires Go 1.25 or later. Release and security-review evidence uses exact Go
-1.25.13.
+Requires Go 1.26 or later. Release and security-review evidence uses exact Go
+1.26.8.
 
 ```sh
 make test
@@ -355,13 +358,17 @@ mapping, and scoped IRE preflight/apply. Slice A installed eight scoped Topo
 tables; the Slice B Fluent candidate adds a ninth target-scope table plus
 deterministic partition metadata, renewable leases, cooperative cancellation,
 and unique pool/worker capacity reservations without adding another worker API
-resource or production operation. Slice C1's Fluent `0.4.3` candidate adds
+resource or production operation. Merged Slice C1's Fluent `0.4.3` adds
 three protected credential/binding/access tables and one fixed attempt-bound
 Password2 route for `ssh_linux.v1`; the worker still has no generic table ACL.
 `topo worker run` initiates every HTTPS connection and keeps no durable
 operational state. This is distinct from both direct publication and the older
 Relay experiment; see
 [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
+The [ServiceNow Linux pilot quickstart](docs/pilot-quickstart.md) is the
+operator path for installing the Fluent app, configuring one Password2-backed
+SSH profile, preflighting the worker without claiming work, and running the
+first manual and scheduled discoveries.
 
 `topo mid run` is retained as an experimental, default-deny ECC transport. A
 real official-MID reference run proved automatic registration, native

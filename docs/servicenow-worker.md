@@ -11,7 +11,7 @@ the real developer instance under its required company-prefixed scope,
 the bounded runtime path; installed metadata and simulator output are not used
 as substitutes for that evidence.
 
-Slice B is an implemented candidate on top of that baseline. It adds immutable
+Slice B is implemented and merged on top of that baseline. It adds immutable
 target-scope planning metadata, deterministic partitions, local and pool
 backpressure, renewable leases, cooperative cancellation, and bounded
 retention/scale tests. Its Fluent `0.3.0` upgrade is installed on the developer
@@ -19,7 +19,7 @@ instance, and the separately labelled real evidence below covers record
 preservation and focused API behavior. It does not turn simulator scale timing
 into ServiceNow platform evidence.
 
-Slice C1 is now a locally and real-instance-verified candidate. Fluent `0.4.3`
+Slice C1 is locally and real-instance verified and merged. Fluent `0.4.3`
 adds a protected
 Password2 SSH credential, an immutable profile/scope/credential binding, a
 secret-free access log, and one fixed attempt-bound credential route. The
@@ -36,8 +36,12 @@ focused Password2 behavior, the exact credential-route OAuth boundary, one
 live-attempt broker behavior, the complete role/ACL and broker-denial matrix,
 secret-free access rows,
 manual and scheduled sanitized-Docker SSH discovery, repeat IRE reconciliation,
-and raw-result retention. All staged Slice C1 acceptance gates are complete;
-the PR remains a candidate until review and merge.
+and raw-result retention. All staged Slice C1 acceptance gates are complete.
+The C1.1 onboarding candidate adds a non-claiming worker preflight, dormant
+Linux worker packaging, a reproducible release app artifact, and a
+[pilot quickstart](pilot-quickstart.md) without expanding that discovery or
+credential boundary. Fluent `0.4.4` and the preflight are installed and
+verified on the disposable developer instance.
 
 ## Components
 
@@ -74,15 +78,17 @@ for a newly created application because its assigned company code is `664635`;
 Slice A therefore uses `x_664635_topo` as its installed API and table contract
 without rewriting either experiment.
 
-The worker implementation is `internal/worker`, with the CLI entry point
-`topo worker run`. The `internal/worker/controlsim` server is a deterministic,
+The worker implementation is `internal/worker`, with CLI entry points
+`topo worker check` and `topo worker run`. `check` performs only registration
+and one zero-lease heartbeat; it never enters the claim loop. The
+`internal/worker/controlsim` server is a deterministic,
 in-memory contract fixture for CI. It is not a ServiceNow emulator and makes no
 claim about scoped Glide APIs, ServiceNow transactions, ACL enforcement, or
 IRE behavior.
 
 ## Scoped data model
 
-The Nischoy application is the sole durable operational store. Fluent `0.4.3`
+The Nischoy application is the sole durable operational store. Fluent `0.4.4`
 defines these scoped records:
 
 | Table | Purpose |
@@ -188,6 +194,17 @@ OAuth token to the seven Scripted REST resources. Supply the resulting token via
 the shared credential-reference contract; never put its value on the command
 line.
 
+Validate the same read-only startup policy without claiming work first:
+
+```sh
+topo worker check \
+  -token-ref file:/run/secrets/topo-servicenow-worker-token \
+  -worker-pool site-a-local \
+  -site site-a \
+  -max-concurrency 4 \
+  -allow-local
+```
+
 ```sh
 export SERVICENOW_INSTANCE_URL=https://instance.service-now.com
 
@@ -270,7 +287,7 @@ Focused local gates are:
 for file in integrations/servicenow/topo-control-plane/scripts/*.js; do
   node --check "$file"
 done
-env GOTOOLCHAIN=go1.25.13 go test -race ./internal/worker/... ./cmd/topo
+env GOTOOLCHAIN=go1.26.8 go test -race ./internal/worker/... ./cmd/topo
 ```
 
 Application creation and updates use `now-sdk install` from that directory.
@@ -512,6 +529,45 @@ It did not dial a target, submit a result, invoke IRE, or write CMDB:
 Together with the separately recorded Docker SSH/IRE/retention run, this
 completes every staged Slice C1 acceptance gate. External Vault bindings remain
 the deliberate Slice C2 follow-up and are not implied by this evidence.
+
+### Real ServiceNow C1.1 onboarding preflight evidence — 2026-09-02
+
+This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+It proves source upgrade and the non-claiming preflight only; it is not a new
+discovery, IRE, CMDB, package-channel, or consumer ZIP-install proof:
+
+- `scripts/install-servicenow-app.sh topo-dev` used the SDK's preconfigured
+  OAuth alias to install Fluent `0.4.4` over the same application sys_id
+  `d4e2151fdcbc7d97f8c155d1ba873e46`. The install created rollback context
+  `1c6c299e930f03d0ec251aebb9373ca0` and preserved active pool
+  `pdi-local-a` (`12289acd93478790ec251aebb9373ceb`). No credential value was
+  accepted by the helper or printed.
+- A fresh short-lived token with exact scope `topo.worker.execute` ran
+  `topo worker check` with only `local.v1`. ServiceNow returned worker ID
+  `aaad6112934f03d0ec251aebb9373cda` and boot ID
+  `f7777c6aae5be6b0acc0c5fdfd0972b8`. A read-only SDK query found the matching
+  active worker row, the preserved pool reference, `u_current_leases=0`, and
+  the stored heartbeat at `2026-09-03 00:06:08` UTC.
+- The same query found no task whose lease worker was that registration.
+  This corroborates the code-level call audit: `check` registers once,
+  heartbeats once, and never calls claim, renewal, credential, result, or
+  completion.
+- The first attempt exposed a local onboarding defect before any HTTP request:
+  newline-terminated token files were rejected. The worker now trims
+  surrounding whitespace only at the OAuth token boundary; regression tests
+  cover the conventional owner-only token-file form without changing
+  byte-exact password or private-key handling.
+
+The release app normalizer also produced an identical validated ZIP from two
+independent SDK builds after canonicalizing only SDK-generated BOM UUID/time
+and ZIP metadata. The pinned SDK is a build-only development dependency and
+the shipped app has no npm runtime dependency tree. Its 4.9.0 development tree
+currently reports nine moderate and two high transitive npm advisories; that
+build-tool exposure remains explicit and is not described as a clean audit.
+The required Go vulnerability gate separately found reachable SSH deadlocks
+`GO-2026-6354`/`GO-2026-6355`; the user-approved candidate moves to exact Go
+1.26.8 and `x/crypto` 0.56.0. The full pinned gate then reports zero reachable
+vulnerabilities and passes native plus Windows amd64 tests/builds.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 

@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-01
+- **Updated:** 2026-09-02
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -89,9 +89,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   focused evidence remains distinct from simulator scale results.
   The candidate merged in
   [PR 55](https://github.com/Nischoy-ai/topo/pull/55).
-  Slice C1 is now a candidate on
-  `agent/servicenow-password2-ssh-slice-c`, proposed in draft PR #56 against
-  merged `main`: Fluent `0.4.3`
+  Slice C1 is merged in
+  [PR 56](https://github.com/Nischoy-ai/topo/pull/56): Fluent `0.4.3`
   defines twelve tables, five roles, and seven fixed worker resources,
   including a protected non-audited Password2 field, immutable credential
   binding, secret-free access events, and a live-attempt-only no-store broker.
@@ -120,10 +119,23 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   state, expiry, cancellation, terminal, inactive, and cross-bound case while
   preserving no-store/no-cache headers and secret-free auditing. It exposed
   and revalidated fixes for a missing cancellation check and stale unique
-  capacity slots after lease expiry. All staged Slice C1 acceptance gates now
-  pass; PR #56 remains a candidate until review and merge. External Vault
+  capacity slots after lease expiry. All staged Slice C1 acceptance gates pass
+  and PR #56 is merged. External Vault
   support is deferred to Slice C2 by the user's 2026-08-30 decision; it remains
-  an eventual requirement.
+  an eventual requirement. Slice C1.1 is implemented as a candidate on
+  `agent/servicenow-pilot-onboarding`: it packages that proven Password2 Linux
+  path into a repeatable, dormant-by-default pilot installation and first-run
+  workflow without expanding discovery or credential scope. Fluent `0.4.4`
+  was installed from source over the same application on the disposable
+  developer instance, preserving the known pool. A real `topo worker check`
+  then registered and heartbeated worker `aaad6112934f03d0ec251aebb9373cda`
+  with `local.v1`, zero current leases, and no task ever leased to that worker.
+  The required 2026-09-02 vulnerability gate then found reachable
+  `GO-2026-6354`/`GO-2026-6355` SSH deadlocks in `x/crypto` 0.55.0. With the
+  user's 2026-09-03 approval, the candidate moves the exact release/security
+  baseline to Go 1.26.8 and `x/crypto` 0.56.0, the first compatible fixed
+  release; this is a required security remediation, not an expansion of
+  discovery authority.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -2898,8 +2910,8 @@ Password2 pilot completes the external-vault requirement or production-ready
 heterogeneous network discovery; no Homebrew/package-channel, production-
 signing, PostgreSQL/HA, or M2.5 independent-retest work.
 
-**Implementation status.** The candidate is implemented on
-`agent/servicenow-password2-ssh-slice-c`. Fluent `0.4.3` builds successfully;
+**Implementation status.** The implementation is merged in
+[PR 56](https://github.com/Nischoy-ai/topo/pull/56). Fluent `0.4.3` builds successfully;
 Node contract tests cover the fixed capability list, username boundary,
 Password2 broker/no-store source, and SSH no-data mapping. Exact Go focused
 tests cover startup allowlist/trust loading, local policy digests, strict SSH
@@ -2956,8 +2968,103 @@ cancellation before resolution and clears every lease identity/capacity field
 with scoped-compatible null values; reinstallation and the complete matrix
 passed, including attempt-two expiry recovery and slot release. The fixture
 state and pool policy were restored without network, IRE, or CMDB activity.
-All staged Slice C1 gates are complete; PR #56 remains an unmerged candidate.
-No Vault provider or Homebrew documentation is included.
+All staged Slice C1 gates are complete. No Vault provider or Homebrew
+documentation is included.
+
+### Slice C1.1 — pilot installation and first-run onboarding (implemented candidate)
+
+**Objective.** Turn the merged Password2-backed Linux SSH path into the
+smallest repeatable early-adopter workflow: a customer installs the reviewed
+Fluent scoped application on a supported non-production ServiceNow instance,
+installs the same Topo release through a package or raw archive, validates the
+outbound worker configuration without taking a task, and starts manual or
+scheduled discovery from the Topo control panel. Keep every security boundary
+and discovery limitation proven by Slice C1 visible rather than obscuring it
+behind an unsafe bootstrap.
+
+**Deliverables.** Build a versioned, installable ServiceNow SDK package from
+the authoritative Fluent source, validate its bounded application inventory,
+and include it with release checksums, provenance, attestations, and offline
+bundle inputs. Provide a small source-install helper for developer/pilot
+instances that invokes the pinned SDK with a preconfigured OAuth alias and
+never accepts or prints a secret. Add `topo worker check`, using the same
+instance, token-reference, pool/site, capability, allowlist, and host-trust
+validation as `topo worker run`, but performing only registration and one
+heartbeat: it must not claim, lease, broker a credential, dial a target, or
+retain state. Add a hardened, dormant-by-default Linux worker systemd unit and
+environment example to DEB/RPM packages; the operator supplies the worker
+token file, IPv4 allowlist, and `known_hosts`, and packages neither enable nor
+start the service. Add one concise pilot quickstart covering SDK/source app
+installation, ServiceNow role and exact OAuth setup, pool/scope/Password2
+credential/binding/profile setup, Homebrew/DEB/RPM/raw binary installation,
+worker preflight/start, Run Now/schedule, inspection, upgrade, and cleanup.
+Integrate the artifact and checks into CI and release workflows and correct
+the post-merge Slice C1 handoff.
+
+**Acceptance gates.** Two SDK packs from identical source must normalize to an
+identical release artifact even when the SDK writes changing ZIP metadata.
+Validation must reject traversal, duplicate, overlarge, incomplete, or
+contract-drifting packages and confirm the expected scope, version, tables,
+roles, and fixed REST resources. The source installer must reject malformed
+authentication aliases and unexpected arguments, use only a preconfigured SDK
+OAuth alias, and contain no credential option.
+Focused worker tests must prove `check` uses the same startup policy as `run`,
+resolves the worker token only through a credential reference, calls Register
+and Heartbeat exactly once, never calls Claim or any credential/result/complete
+method, bounds output/errors, and does not expose token material. Package tests
+must prove the worker unit/examples are present, no live configuration is
+created, no service is enabled or started, and operator files survive removal.
+CI must build/test/pack/validate the app; release assembly must checksum and
+attest the app package and include it in the offline bundle. The quickstart
+must distinguish the already-proven simulator and real developer-instance
+evidence from new installation evidence and must not call development package
+channels production-ready. Formatting, `git diff --check`, exact Go 1.26.8
+focused and full tests, repository vet, full race tests, native and Windows
+amd64 builds/vet, Fluent tests/build/pack validation, package-focused tests,
+and `scripts/security-review-checks.sh` must pass. Before proposing the
+candidate, reinstall or upgrade the source app on `dev441060`, run `topo worker
+check` against its exact worker API policy, and record that real evidence
+separately from local/simulator checks without disclosing any secret.
+
+**Deliberate non-goals.** No external Vault support, ordered credential list,
+credential guessing, subnet/range sweep, DNS/hostname target, IPv6, private
+key, new protocol, new CI mapping, or new ServiceNow operational table; no
+secret, OAuth client, integration user, Password2 record, worker token, target,
+allowlist, or host key generated by an installer; no browser-click automation;
+no app Store certification, ServiceNow Application Repository entitlement,
+production-instance claim, package-channel publication, protected signing-key
+provisioning, or real beta/N-1 promotion evidence; no service auto-enable or
+auto-start; no database, journal, spool, retry queue, inbound listener, ECC,
+MID, native Discovery runtime table, probe, pattern, or sensor. Those are
+independent follow-ups or explicit later slices, not reasons to weaken this
+pilot path.
+
+**Implementation status (2026-09-03).** Fluent `0.4.4`, the validated app
+normalizer, release integration, source installer, non-claiming worker
+preflight, dormant Linux unit, package checks, and pilot guide are implemented
+on `agent/servicenow-pilot-onboarding`. Two independent SDK builds with
+different generated BOM values and ZIP metadata normalize to the same bounded
+artifact; a complete temporary release/package assembly covers that app and
+its metadata in `SHA256SUMS`, `package-metadata.json`, and the offline bundle.
+Focused tests reject malformed archives, contract drift, unsafe installer
+arguments, and any `worker check` path that claims or calls the credential,
+result, or completion resources. The installed `0.4.4` app on
+`dev441060.service-now.com` retained the existing pool and application sys_id
+`d4e2151fdcbc7d97f8c155d1ba873e46`. A fresh exact-scope worker token then ran
+`topo worker check`: ServiceNow registered worker
+`aaad6112934f03d0ec251aebb9373cda`, stored its `local.v1` heartbeat with zero
+current leases, and had no task leased to that worker. This is real
+developer-instance preflight evidence, not simulator discovery or a consumer
+ZIP-install proof. The pinned SDK is build-only and the shipped app has no npm
+runtime dependency tree; the current SDK 4.9.0 development tree nevertheless
+reports nine moderate and two high transitive npm advisories, so it remains a
+tracked build-tool exposure rather than an unqualified clean-audit claim.
+The required security gate found reachable SSH deadlocks
+`GO-2026-6354`/`GO-2026-6355` in `x/crypto` 0.55.0 after the original 1.25.13
+test matrix passed. The user approved moving the exact baseline to Go 1.26.8;
+the candidate pins `x/crypto` 0.56.0. The pinned `govulncheck` then reported
+zero reachable vulnerabilities, and the complete format, vet, race, native
+build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Relationship to the M2.5 gate
 

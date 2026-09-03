@@ -50,6 +50,29 @@ type RunConfig struct {
 	BootID       string
 }
 
+// CheckConfig contains the same read-only policy and control-plane identity as
+// RunConfig, but it deliberately has no executor or polling configuration. A
+// check registers one ephemeral boot and sends one zero-lease heartbeat; it
+// never enters the claim loop.
+type CheckConfig struct {
+	Policy  Policy
+	Version string
+	Control ControlPlane
+	Now     func() time.Time
+	BootID  string
+}
+
+// CheckResult is safe to print to an operator. It contains no bearer token,
+// lease material, credential, target, or ServiceNow response body.
+type CheckResult struct {
+	Status       string   `json:"status"`
+	WorkerID     string   `json:"worker_id"`
+	BootID       string   `json:"boot_id"`
+	WorkerPool   string   `json:"worker_pool"`
+	SiteID       string   `json:"site"`
+	Capabilities []string `json:"capabilities"`
+}
+
 type registration struct {
 	workerID string
 	bootID   string
@@ -120,6 +143,53 @@ func Run(ctx context.Context, config RunConfig) error {
 			runCycle(ctx, config, reg, logger, state)
 		}
 	}
+}
+
+// Check validates that the deployment-owned worker policy can authenticate to
+// the configured control plane. It intentionally stops after registration and
+// a heartbeat so a preflight can never acquire work or resolve a credential.
+func Check(ctx context.Context, config CheckConfig) (CheckResult, error) {
+	if err := config.Policy.Validate(); err != nil {
+		return CheckResult{}, err
+	}
+	if config.Control == nil {
+		return CheckResult{}, errors.New("worker control plane is required")
+	}
+	runConfig := RunConfig{
+		Policy:  config.Policy,
+		Version: config.Version,
+		Control: config.Control,
+		Now:     config.Now,
+		BootID:  config.BootID,
+	}
+	reg, err := register(ctx, runConfig)
+	if err != nil {
+		return CheckResult{}, errors.New(truncate(err.Error(), maxFailureBytes))
+	}
+	now := time.Now
+	if config.Now != nil {
+		now = config.Now
+	}
+	heartbeatCtx, cancel := context.WithTimeout(ctx, controlRequestTimeout)
+	_, err = config.Control.Heartbeat(heartbeatCtx, HeartbeatRequest{
+		SchemaVersion: ContractVersion,
+		WorkerID:      reg.workerID,
+		BootID:        reg.bootID,
+		CurrentLeases: 0,
+		SentAt:        now().UTC(),
+	})
+	cancel()
+	if err != nil {
+		return CheckResult{}, fmt.Errorf("heartbeat ServiceNow worker: %s", truncate(err.Error(), maxFailureBytes))
+	}
+	return CheckResult{
+		Status:       "ready",
+		WorkerID:     reg.workerID,
+		BootID:       reg.bootID,
+		WorkerPool:   config.Policy.WorkerPool,
+		SiteID:       config.Policy.SiteID,
+		Capabilities: config.Policy.Capabilities(),
+	}, nil
 }
 
 func register(ctx context.Context, config RunConfig) (registration, error) {

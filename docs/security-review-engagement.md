@@ -253,7 +253,12 @@ The maintainers identified and remediated two categories before this engagement.
 
 **1. Go toolchain and dependency vulnerabilities**
 
-The previous Go 1.23.12 baseline reported 41 reachable vulnerabilities. The project now uses exact Go 1.25.13, `golang.org/x/crypto` v0.52.0, `github.com/Azure/go-ntlmssp` v0.1.1, and pinned `govulncheck` v1.7.0.
+The previous Go 1.23.12 baseline reported 41 reachable vulnerabilities. The
+original review baseline used exact Go 1.25.13 and `golang.org/x/crypto`
+v0.52.0. The active post-review baseline now uses exact Go 1.26.8,
+`golang.org/x/crypto` v0.56.0, `github.com/Azure/go-ntlmssp` v0.1.1, and pinned
+`govulncheck` v1.7.0; the 2026-09-03 uplift remediates the newly published
+reachable SSH deadlocks `GO-2026-6354` and `GO-2026-6355`.
 
 The current scan reports zero reachable vulnerabilities. A module-level advisory remains for `golang.org/x/crypto/openpgp`, but Topo imports `x/crypto/ssh` rather than `openpgp`.
 

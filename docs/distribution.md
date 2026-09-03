@@ -69,7 +69,7 @@ With explicit operator authorization, a separate public development tap was
 published at <https://github.com/Nischoy-ai/homebrew-topo-dev>. Its
 `v0.0.0-dev.3` prerelease contains raw archives built twice from merged Topo
 commit `c2332fcbeec734b7d19ba07b1ef193881a2545fd`, recorded in
-`release-metadata.json`, with exact Go 1.25.13 from separate source paths; the
+`release-metadata.json`, with exact Go 1.26.8 from separate source paths; the
 two outputs matched byte-for-byte. Every published asset was downloaded again
 and verified against the published `SHA256SUMS`. The formula passed
 `brew style`, strict online `brew audit`, a real Apple Silicon upgrade from

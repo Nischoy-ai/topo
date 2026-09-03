@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-expected_go=go1.25.13
-toolchain=go1.25.13
+expected_go=go1.26.8
+toolchain=go1.26.8
 govulncheck=golang.org/x/vuln/cmd/govulncheck@v1.7.0
 
 actual_go=$(GOTOOLCHAIN="$toolchain" go env GOVERSION)

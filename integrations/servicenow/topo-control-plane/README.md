@@ -14,9 +14,10 @@ state.
 Use Node.js 20 or newer:
 
 ```sh
-npm ci --ignore-scripts
+npm ci --ignore-scripts --no-audit --no-fund
 npm test
 npm run build
+npm run pack
 ```
 
 The SDK compiles the twelve scoped tables, indexes, roles, ACLs, navigation,
@@ -25,6 +26,11 @@ credential-binding business rules, **Run now** and **Cancel run** UI actions, tw
 scripts, and the narrowly scoped IRE cross-scope privilege into `dist/app`.
 Generated output is intentionally ignored; source and `package-lock.json` are
 reviewed and committed.
+
+`scripts/build-servicenow-app.sh` from the repository root runs this build
+twice for a release, validates the SDK inventory and exact application
+contract, and normalizes changing ZIP container metadata into a byte-
+reproducible release artifact.
 
 ## Install
 
@@ -38,6 +44,10 @@ npx now-sdk auth --add dev-instance.service-now.com --type oauth --alias topo-de
 npm run deploy -- --auth topo-dev
 ```
 
+From the repository root, `scripts/install-servicenow-app.sh topo-dev` performs
+the clean install/update sequence with that preconfigured OAuth alias. The
+helper has no password, token, authorization-code, or client-secret option.
+
 The SDK install is the only supported application-creation/update path. Do not
 recreate these records through Studio forms, background scripts, update-set
 XML, the Table API, or direct metadata writes. After installation, create a
@@ -49,7 +59,7 @@ to the validation developer instance. This is intentionally separate from the
 older experimental Relay/MID source under `x_nischoy_topo`; installing Slice A
 does not migrate or rename those experiments.
 
-Version `0.4.3` contains the Password2-only Linux SSH pilot from `0.4.0`,
+Version `0.4.4` contains the Password2-only Linux SSH pilot from `0.4.3`,
 denies credential retrieval as soon as ServiceNow requests cancellation, and
 explicitly nulls every attempt/lease field when a lease expires so a stale
 unique slot cannot block retry. The pilot provides protected credentials,
@@ -58,3 +68,6 @@ fixed attempt-bound `/credential` route, and reviewed `ssh_linux.v1` `/32`
 tasks. Workers still have no table ACL, generic Table/CMDB/IRE access, durable
 state, arbitrary-command surface, or inbound listener. External Vault binding
 is deliberately deferred to Slice C2; it is not silently treated as complete.
+This onboarding revision also uses stable Fluent application-menu references
+and explicit UTC starts for its two periodic jobs so separately built
+installation packages preserve the same application metadata.

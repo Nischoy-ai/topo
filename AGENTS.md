@@ -117,7 +117,7 @@ The completed M2.5 slices, kept for reference:
    never reverse-migrating or overwriting the failed database in place.
 4. **Done.** Reproducible signed artifacts, SBOMs, checksums, and
    build provenance. Build Linux/macOS/Windows amd64/arm64 archives twice from
-   different paths with exact Go 1.25.13, reject any byte drift, sign the
+   different paths with exact Go 1.26.8, reject any byte drift, sign the
    checksum manifest keylessly, generate signed GitHub provenance and SBOM
    attestations, pin release actions by commit, verify evidence before a tag
    can create a GitHub Release, and document independent consumer verification.
@@ -280,7 +280,7 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
    (`system`: `sysDescr`/`sysObjectID`/`sysUpTime`/`sysName`, and
    `interfaces`: `ifDescr`/`ifPhysAddress` via GETBULK) over SNMPv3 using
    `github.com/gosnmp/gosnmp`, pinned to `v1.42.1` — selected under the
-   project's earlier Go 1.23 baseline and retained under the current Go 1.25
+   project's earlier Go 1.23 baseline and retained under the current Go 1.26
    security baseline. Production requires `authPriv` with SHA
    authentication and AES privacy, with no weaker fallback, mirroring how
    WinRM's production path requires NTLM+HTTPS. Asset identity is the
@@ -299,7 +299,7 @@ The SNMP and VMware discovery milestone (M2) is complete, both slices:
    (a bounded property-collector container view; no configuration, power,
    or lifecycle operation is ever issued) using `github.com/vmware/govmomi`,
    pinned to `v0.52.0` — selected under the earlier Go 1.23 baseline and
-   retained under the current Go 1.25 security baseline. Asset identity is a
+   retained under the current Go 1.26 security baseline. Asset identity is a
    host's hardware UUID or a VM's
    VC-managed instance UUID (falling back to its BIOS UUID for standalone
    ESXi hosts with no vCenter to assign one), never an IP address or
@@ -391,7 +391,7 @@ The complete scope, acceptance gates, and follow-on order are in
 
 ## Engineering workflow
 
-- Use Go 1.25 compatibility and exact Go 1.25.13 for release/security evidence
+- Use Go 1.26 compatibility and exact Go 1.26.8 for release/security evidence
   until the roadmap explicitly changes it. The M2.5 external-review preparation
   slice raised this baseline from Go 1.23 after `govulncheck` found reachable
   vulnerabilities with no supported 1.23 fix.

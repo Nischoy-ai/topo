@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Nischoy-ai/topo/internal/servicenowpackage"
 )
 
 const (
@@ -316,6 +318,35 @@ func RefreshPackageMetadata(dir string) error {
 		}
 		metadata.Artifacts = append(metadata.Artifacts, artifact)
 	}
+	serviceNowPath := filepath.Join(dir, servicenowpackage.ArtifactName)
+	if _, err := os.Stat(serviceNowPath); err == nil {
+		metadataPath := filepath.Join(dir, "servicenow-app-metadata.json")
+		contents, err := os.ReadFile(metadataPath)
+		if err != nil {
+			return fmt.Errorf("read ServiceNow app metadata: %w", err)
+		}
+		var app servicenowpackage.Metadata
+		if err := json.Unmarshal(contents, &app); err != nil {
+			return fmt.Errorf("parse ServiceNow app metadata: %w", err)
+		}
+		digest, err := fileSHA256(serviceNowPath)
+		if err != nil {
+			return err
+		}
+		if app.SchemaVersion != 1 || app.Scope != servicenowpackage.Scope || app.AppVersion != servicenowpackage.AppVersion || app.SDKVersion != servicenowpackage.SDKVersion || app.Artifact != servicenowpackage.ArtifactName || app.SHA256 != digest {
+			return errors.New("ServiceNow app metadata does not match the validated release artifact")
+		}
+		metadata.Assembler["servicenow-sdk"] = servicenowpackage.SDKVersion
+		metadata.Artifacts = append(metadata.Artifacts, packageArtifact{
+			Filename: servicenowpackage.ArtifactName, Format: "servicenow-app", ArtifactSHA256: digest,
+		})
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("inspect ServiceNow app artifact: %w", err)
+	} else if _, metadataErr := os.Stat(filepath.Join(dir, "servicenow-app-metadata.json")); metadataErr == nil {
+		return errors.New("ServiceNow app metadata exists without its release artifact")
+	} else if !errors.Is(metadataErr, os.ErrNotExist) {
+		return fmt.Errorf("inspect ServiceNow app metadata: %w", metadataErr)
+	}
 	return writePackageMetadata(dir, metadata)
 }
 
@@ -342,7 +373,7 @@ func WriteOfflineBundle(root, artifactDir, outputPath, version string) error {
 		return fmt.Errorf("read artifact directory: %w", err)
 	}
 	top := "topo_" + strings.TrimPrefix(version, "v") + "_offline"
-	files := make([]chartFile, 0, len(entries)+5)
+	files := make([]chartFile, 0, len(entries)+6)
 	for _, entry := range entries {
 		if entry.IsDir() || strings.HasSuffix(entry.Name(), ".payload.sha256") || entry.Name() == filepath.Base(outputPath) {
 			continue
@@ -356,7 +387,7 @@ func WriteOfflineBundle(root, artifactDir, outputPath, version string) error {
 			Mode: 0o644,
 		})
 	}
-	for _, name := range []string{"LICENSE", "README.md", "docs/packages.md", "docs/releases.md", "docs/storage.md"} {
+	for _, name := range []string{"LICENSE", "README.md", "docs/packages.md", "docs/pilot-quickstart.md", "docs/releases.md", "docs/storage.md"} {
 		files = append(files, chartFile{
 			Name: top + "/" + filepath.ToSlash(name),
 			Path: filepath.Join(root, filepath.FromSlash(name)),
