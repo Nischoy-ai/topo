@@ -58,10 +58,39 @@ Make the `ghcr.io/nischoy-ai/charts/topo` package public after its first
 workflow-created publication. The repository-scoped `GITHUB_TOKEN` receives
 only `packages: write` in the final publication job.
 
-These production repositories and secrets do not exist as of 2026-08-28. No
-official public tag or package channel should be represented as available until
-this setup, a beta promotion, and then the first N-1-gated stable promotion
-have succeeded.
+### Read-only prerequisite preflight
+
+Before creating a tag, run:
+
+```sh
+scripts/check-production-distribution.sh
+```
+
+The preflight uses the already-authenticated GitHub CLI and emits one bounded
+JSON report. It checks that the two beta distribution repositories are active
+and public, Pages is HTTPS-only from `main` at the repository root, each
+environment prevents self-review and has at least two reviewers, administrator
+bypass is disabled, exactly `main` may deploy, and the exact required
+environment-secret names are present. GitHub's secret-list endpoint exposes
+names only; the preflight never requests values, discards command stderr, and
+does not mutate GitHub. A non-ready report exits nonzero.
+
+As of 2026-09-03, `Nischoy-ai/topo-packages` and
+`Nischoy-ai/homebrew-tap` exist as public repositories, the package Pages site
+is built with HTTPS enforcement, and `native-package-signing` plus
+`distribution-beta` exist with self-review prevention and `main`-only custom
+branch policies. The fail-closed report remains non-ready because both
+environments still permit administrator bypass, have only one eligible
+reviewer, and contain none of the required secret names. Add a second trusted
+reviewer, disable bypass through the GitHub environment settings, and place
+the credential values directly in the environments—never in chat, source
+control, shell arguments, or ordinary CI. `Nischoy-ai/winget-pkgs`,
+`distribution-stable`, and stable secrets remain intentionally unprovisioned
+until the separate N-1 stable slice.
+
+No official public tag or package channel should be represented as available
+until the preflight passes and a real beta promotion succeeds. A production
+claim additionally requires the later N-1-gated stable promotion.
 
 ## Development-only Homebrew pilot
 

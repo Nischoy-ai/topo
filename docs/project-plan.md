@@ -3069,6 +3069,77 @@ the candidate pins `x/crypto` 0.56.0. The pinned `govulncheck` then reported
 zero reachable vulnerabilities, and the complete format, vet, race, native
 build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
+### Slice C1.2 — first signed beta distribution (staged)
+
+**Objective.** Close the next customer-adoption gap by publishing one genuine,
+security-gated beta from merged `main` and making the exact release bytes
+installable through Nischoy's beta APT/RPM repositories, official Homebrew tap,
+and OCI Helm registry. This is operational release evidence, not another
+simulation or a relaxation of the existing signing gates.
+
+**Deliverables.** Add a fail-closed maintainer preflight that reports only the
+presence and policy of the required GitHub repositories, environments, secret
+*names*, GitHub Pages configuration, and package visibility without reading or
+printing secret values. Provision `Nischoy-ai/topo-packages` and
+`Nischoy-ai/homebrew-tap` as public repositories and prepare the protected
+`native-package-signing` and `distribution-beta` environments. The owner must
+place the RPM/repository OpenPGP identity, Windows Authenticode identity, Apple
+Developer ID/notarization identity, and least-privilege cross-repository token
+directly in those environments; none may pass through chat, source control, or
+ordinary CI. Cut one immutable prerelease tag from a green commit reachable
+from `main`, let the existing release workflow build and verify all signed
+assets (including the ServiceNow application), then promote those exact bytes
+to beta APT/RPM/Homebrew/Helm channels. Download the published release and
+channel metadata again, verify their signatures/attestations and byte identity,
+and record clean Ubuntu, Fedora, and macOS installation evidence. Keep the
+three-step README accurate for the channels that actually become available.
+
+**Acceptance gates.** The preflight must reject a missing/private/misconfigured
+repository, absent or unprotected environment, missing secret name, incorrect
+Pages source, non-public GHCR chart, or over-broad/unknown configuration while
+redacting all values. Unit tests must exercise success, malformed API data,
+missing prerequisites, unexpected duplicates, and command failure without
+network access. The tag must resolve to an already-green commit reachable from
+`main`; every release job must pass under exact Go 1.26.8, and the final release
+must contain signed RPMs, Authenticode MSIs, Developer-ID-signed/notarized macOS
+archives, the validated ServiceNow ZIP, SBOM, checksums, Sigstore bundle, and
+GitHub attestations. Independent download verification must bind the manifest
+to the release-workflow identity and each artifact to this repository. The beta
+promotion must publish signed APT/RPM metadata, the official Homebrew beta
+formula, and a public pull-verified Helm chart; clean installations must
+execute the installed `topo version` and leave the worker service dormant until
+configured. Simulator evidence, pull-request CI, and the existing mutable
+development Homebrew tap do not satisfy these gates. Formatting,
+`git diff --check`, exact Go 1.26.8 tests, focused integration tests,
+`go vet ./...`, `go test -race ./...`, native and Windows amd64 builds/vet, and
+`scripts/security-review-checks.sh` must pass before the candidate is proposed.
+
+**Deliberate non-goals.** No stable channel or N-1 upgrade claim; no WinGet
+catalog submission (stable-only in the current workflow); no ServiceNow Store,
+Technology Partner Program, certification, or unrelated-customer app install;
+no claim that a Fluent ZIP is a supported Store substitute; no external Vault,
+credential list, subnet sweep, new protocol, CI mapping, or discovery
+operation; no weakening or bypass of RPM, Authenticode, Developer ID,
+notarization, Sigstore, attestation, environment-review, or repository-signing
+requirements. The private Application Repository remains suitable only for
+instances in one customer's organization and is not a Nischoy distribution
+channel.
+
+**Implementation status (2026-09-03).** The two beta repositories now exist
+publicly, and `topo-packages` Pages is built from `main` at the repository root
+with HTTPS enforcement. The `native-package-signing` and `distribution-beta`
+environments exist with self-review prevention and exact `main` branch
+policies. A new bounded, read-only preflight checks those repositories, Pages,
+environment protections, branch policies, and only environment-secret names;
+focused race tests cover its ready path, missing/unsafe configuration,
+malformed and oversized API responses, duplicate names, and command-error
+redaction. Its real report is correctly non-ready: administrator bypass is
+still enabled, each environment has only one eligible reviewer, and all ten
+native-signing plus all three beta-distribution secret names are absent. No
+release tag or package was published. A second trusted reviewer and the
+owner-provisioned signing identities are required before the fail-closed tag
+workflow can safely proceed.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up
