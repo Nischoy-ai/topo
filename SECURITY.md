@@ -109,6 +109,14 @@ ordinary CI, and distribution tokens have no Topo source write scope. See
 [release artifacts and verification](docs/releases.md) and
 [package-manager distribution](docs/distribution.md).
 
+Maintainers can run `scripts/check-production-distribution.sh` before tagging.
+It queries only repository/environment policy and environment-secret names,
+never secret values; bounds GitHub responses, discards command stderr, and
+fails closed when reviewers, bypass policy, branches, Pages, repositories, or
+required names are wrong. Passing this configuration preflight does not prove
+that a stored credential is valid or least-privileged—the signed release and
+promotion workflows must still exercise each identity without exposing it.
+
 ## Controller authorization boundary
 
 When `topo serve` is configured with `-api-key-ref`, the bearer key is the

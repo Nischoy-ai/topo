@@ -252,6 +252,15 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   not add a protocol, target sweep, credential mode, CI mapping, production
   channel claim, or Store/Application Repository certification. See
   [docs/pilot-quickstart.md](docs/pilot-quickstart.md).
+- **In progress (first signed beta distribution):** the public
+  `Nischoy-ai/topo-packages` and `Nischoy-ai/homebrew-tap` repositories now
+  exist, package Pages is HTTPS-only from `main`, and the protected native
+  signing and beta distribution environments are restricted to `main` with
+  self-review prevention. A read-only, secret-name-only preflight is
+  implemented and correctly blocks release while administrator bypass, a
+  second reviewer, and the owner-provisioned RPM, Authenticode, Apple, notary,
+  repository-signing, and least-privilege distribution credentials remain
+  absent. No official release or channel is published yet.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for
