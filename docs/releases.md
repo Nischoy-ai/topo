@@ -2,18 +2,21 @@
 
 Topo releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
 optional prerelease suffix) whose commit is already reachable from `main`.
-`.github/workflows/release.yml` uses the exact Go 1.25.13 toolchain and
+`.github/workflows/release.yml` uses the exact Go 1.26.8 toolchain and
 commit-pinned actions. It creates one GitHub Release containing:
 
 - deterministic raw archives for Linux, macOS, and Windows on amd64 and arm64;
 - DEB and OpenPGP-signed RPM packages for Linux amd64/arm64,
   Authenticode-signed MSI installers for Windows amd64/arm64,
-  Developer-ID-signed/notarized macOS archives, a Helm chart, and a
-  deterministic offline bundle;
+  Developer-ID-signed/notarized macOS archives, a Helm chart, a validated
+  installable ServiceNow scoped-application ZIP, and a deterministic offline
+  bundle;
 - `release-metadata.json`, recording the source commit, toolchain, build flags,
   target matrix, and each archive's SHA-256 digest;
 - `package-metadata.json`, binding native package payloads to their source
-  archive binary digests;
+  archive binary digests and identifying the pinned ServiceNow SDK assembler;
+- `servicenow-app-metadata.json`, recording the exact app scope, version,
+  tables, roles, worker resources, entry count, and normalized ZIP digest;
 - `SHA256SUMS` for every raw and package artifact plus release metadata;
 - a release-wide SPDX JSON software bill of materials generated with Syft;
 - a keyless Sigstore signature bundle for `SHA256SUMS`;
@@ -41,11 +44,19 @@ The excluded VCS stamp is not a loss of traceability: the explicit source
 commit is in `release-metadata.json`, and the signed provenance binds every
 archive digest to the tagged repository commit and workflow invocation.
 
+ServiceNow SDK `pack` output carries changing ZIP metadata. The release build
+runs the pinned SDK twice, validates every package-inventory digest plus the
+exact Topo app contract, canonicalizes ZIP metadata/order and the SDK-generated
+BOM serial/timestamp, regenerates the inventory digests, and requires the two
+normalized packages and metadata files to match byte-for-byte. It does not
+rewrite application tables, ACLs, routes, scripts, navigation, or other
+functional metadata.
+
 To reproduce a release locally:
 
 ```sh
 git checkout v0.1.0
-GOTOOLCHAIN=go1.25.13 scripts/build-release.sh \
+GOTOOLCHAIN=go1.26.8 scripts/build-release.sh \
   v0.1.0 "$(git rev-parse HEAD)" dist-local
 ```
 

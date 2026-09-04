@@ -83,7 +83,9 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   demonstrated user demand rather than blocking the initial release channels.
 - **Complete:** external security review preparation and remediation. The
   reviewer scope/threat model and closure protocol are documented; the
-  security baseline uses exact Go 1.25.13 with pinned `govulncheck`, and
+  security baseline uses exact Go 1.26.8 with pinned `govulncheck`; the
+  2026-09-03 uplift also pins `x/crypto` 0.56.0 for the reachable SSH
+  deadlocks `GO-2026-6354`/`GO-2026-6355`, and
   pre-review reachable toolchain/dependency findings plus plaintext external
   secret-provider transport were remediated. Every finding raised so far —
   maintainer-audit `TSR-2026-001` (enrollment tokens not bound to their
@@ -219,7 +221,7 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   lease extension, cancellation, late-call denial, terminal reporting, and
   slot release without an IRE/CMDB write. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
-- **Implemented candidate; staged real acceptance complete (ServiceNow-managed
+- **Implemented and merged; staged real acceptance complete (ServiceNow-managed
   Password2 Linux SSH Slice C1):** Fluent `0.4.3` adds a credential-admin-only
   Password2 table, immutable profile/scope/credential bindings, secret-free
   access events, and a seventh fixed attempt-bound worker resource. The only
@@ -241,6 +243,15 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   idempotent success, secret-free auditing, and lease-expiry retry/slot release.
   External Vault bindings remain a separate deferred Slice C2. See
   [docs/servicenow-worker.md](docs/servicenow-worker.md).
+- **Implemented onboarding candidate (ServiceNow-managed Linux pilot):** package the
+  validated Fluent application with release checksums/attestations, add a
+  registration-plus-heartbeat-only `topo worker check`, install a hardened
+  dormant worker service in DEB/RPM, and provide one first-run guide. Fluent
+  `0.4.4` is installed on the disposable developer instance, where the
+  preflight registered and heartbeated with zero leases and no task claim. This does
+  not add a protocol, target sweep, credential mode, CI mapping, production
+  channel claim, or Store/Application Repository certification. See
+  [docs/pilot-quickstart.md](docs/pilot-quickstart.md).
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for

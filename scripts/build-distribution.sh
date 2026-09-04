@@ -22,7 +22,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 build() {
   destination=$1
-  GOTOOLCHAIN=go1.25.13 go run ./internal/distributiontool \
+  GOTOOLCHAIN=go1.26.8 go run ./internal/distributiontool \
     -artifacts "$artifact_dir" \
     -out "$destination" \
     -version "$version" \

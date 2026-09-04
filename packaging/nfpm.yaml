@@ -34,6 +34,20 @@ contents:
       owner: root
       group: root
       mtime: "1980-01-01T00:00:00Z"
+  - src: packaging/systemd/topo-worker.package.service
+    dst: /usr/lib/systemd/system/topo-worker.service
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
+  - src: packaging/systemd/topo-worker.env.example
+    dst: /usr/share/doc/topo/topo-worker.env.example
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+      mtime: "1980-01-01T00:00:00Z"
   - src: LICENSE
     dst: /usr/share/doc/topo/LICENSE
     file_info:

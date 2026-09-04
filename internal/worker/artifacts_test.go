@@ -211,7 +211,7 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 	if err := json.Unmarshal(packageBody, &packageConfig); err != nil {
 		t.Fatal(err)
 	}
-	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.4.3" {
+	if packageConfig.Name != "@nischoy/topo-servicenow-control-plane" || packageConfig.Version != "0.4.4" {
 		t.Fatalf("unexpected Fluent package identity: %#v", packageConfig)
 	}
 	if packageConfig.DevDependencies["@servicenow/sdk"] != "4.9.0" {
@@ -258,6 +258,8 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 		"BusinessRule({",
 		"ScriptInclude({",
 		"UiAction({",
+		"application: topoMenu",
+		"executionStart: '2026-01-01 00:00:00'",
 		"CrossScopePrivilege({",
 		"allowWebServiceAccess: false",
 		"name: 'x_664635_topo.worker'",
@@ -269,6 +271,9 @@ func TestControlPlaneFluentPackageIsAuthoritativeAndBuildable(t *testing.T) {
 		if !strings.Contains(source, required) {
 			t.Fatalf("Fluent sources do not contain required metadata boundary %q", required)
 		}
+	}
+	if strings.Contains(source, "Now.ref('sys_app_application'") {
+		t.Fatal("Fluent navigation uses a build-variant application lookup instead of the stable menu record")
 	}
 	if strings.Count(source, "ScheduledScript({") != 2 {
 		t.Fatalf("Fluent sources define %d scheduled scripts, want two", strings.Count(source, "ScheduledScript({"))

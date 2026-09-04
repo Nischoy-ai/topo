@@ -80,12 +80,14 @@ The controller's bearer-key authentication is an evaluation bootstrap, not the f
 ## Release supply chain
 
 Semantic release tags must resolve to a commit already reachable from `main`.
-The tag workflow uses exact Go 1.25.13, CGO disabled, path/VCS stamping removed,
+The tag workflow uses exact Go 1.26.8, CGO disabled, path/VCS stamping removed,
 fixed archive metadata, and two independent source paths; any byte difference
 blocks publication. Release actions are pinned to immutable commit digests.
 The security gate requires zero reachable `govulncheck` findings; the direct
-`golang.org/x/crypto` dependency is pinned to `v0.55.0` or newer within the
-Go 1.25 compatibility line to remediate `GO-2026-6303` in the SSH server path.
+`golang.org/x/crypto` dependency is pinned to `v0.56.0` or newer to remediate
+`GO-2026-6303` plus the reachable SSH connection deadlocks
+`GO-2026-6354`/`GO-2026-6355`. The latter fix requires Go 1.26, so the
+release/security baseline moved from 1.25.13 to exact 1.26.8 on 2026-09-03.
 `SHA256SUMS` is signed keylessly by the tag workflow's GitHub OIDC identity, and
 GitHub stores signed SLSA provenance and SPDX SBOM attestations for the archive
 digests. The workflow verifies both signature and provenance before it creates

@@ -9,6 +9,8 @@ contains:
 - Authenticode-signed MSI installers for Windows amd64 and arm64;
 - the raw macOS, Linux, and Windows archives;
 - a versioned Helm chart;
+- the validated, installable Nischoy Topo ServiceNow Fluent application ZIP
+  plus its bounded contract metadata; and
 - one deterministic offline bundle containing the complete artifact set,
   operator documentation, and an internal `OFFLINE-SHA256SUMS` manifest.
 
@@ -24,9 +26,9 @@ nFPM 2.47.0 is pinned by version and by the official release archive digest in
 `scripts/fetch-nfpm.sh`. To assemble Linux packages and the Helm chart locally:
 
 ```sh
-GOTOOLCHAIN=go1.25.13 scripts/build-release.sh \
+GOTOOLCHAIN=go1.26.8 scripts/build-release.sh \
   v0.1.0 "$(git rev-parse HEAD)" dist-raw
-GOTOOLCHAIN=go1.25.13 scripts/build-packages.sh \
+GOTOOLCHAIN=go1.26.8 scripts/build-packages.sh \
   v0.1.0 dist-raw dist-packages
 ```
 
@@ -44,13 +46,16 @@ Both DEB and RPM install:
 
 - `/usr/bin/topo`;
 - `/usr/lib/systemd/system/topo-agent.service`;
-- license, readme, and `topo-agent.env.example` under
+- `/usr/lib/systemd/system/topo-worker.service`;
+- license, readme, `topo-agent.env.example`, and
+  `topo-worker.env.example` under
   `/usr/share/doc/topo/`.
 
-Installation creates the unprivileged `topo-agent` system user when needed and
-reloads systemd metadata. It deliberately does not create
-`/etc/topo-agent/topo-agent.env`, generate a secret, enable the unit, or start
-the service. Configure it explicitly:
+Installation creates the unprivileged `topo-agent` and `topo-worker` system
+users when needed and reloads systemd metadata. It deliberately does not create
+live configuration, generate a secret, enable either unit, or start either
+service. Configure the desired service explicitly; see the
+[ServiceNow pilot quickstart](pilot-quickstart.md) for the worker path.
 
 ```sh
 sudo install -d -o root -g topo-agent -m 0750 /etc/topo-agent
@@ -66,8 +71,9 @@ sudo systemctl enable --now topo-agent.service
 
 Edit the environment example for the real controller URL before enabling the
 unit. Ordinary package removal deletes package-owned files but preserves
-operator-created configuration, secrets, state, and the system identity.
-Remove those separately only when intentionally purging the deployment.
+operator-created agent and worker configuration, secrets, state, and system
+identities. Remove those separately only when intentionally purging the
+deployment.
 
 ## Windows MSI
 

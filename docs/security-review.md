@@ -293,13 +293,19 @@ from an independent review, the same rule that already applies to
 
 ## Reproducing the baseline
 
+The active post-review build baseline moved to exact Go 1.26.8 and
+`golang.org/x/crypto` 0.56.0 on 2026-09-03 after the gate found the newly
+published reachable SSH deadlocks `GO-2026-6354` and `GO-2026-6355`. This does
+not alter the immutable Go 1.25.13 evidence recorded for earlier review
+commits; it is the baseline reviewers should use for new commits.
+
 From a clean checkout of the review commit, run:
 
 ```sh
 make security-review
 ```
 
-The script requires exact Go 1.25.13, verifies module checksums and formatting,
+The script requires exact Go 1.26.8, verifies module checksums and formatting,
 runs `go vet`, the pinned `govulncheck v1.7.0` source scan, the full race suite,
 the Linux build, and the Windows amd64 vet/build. Govulncheck contacts the
 public Go vulnerability database, so record the database modification time in

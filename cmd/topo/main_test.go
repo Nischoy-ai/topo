@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Nischoy-ai/topo/internal/store/sqlite"
+	topoworker "github.com/Nischoy-ai/topo/internal/worker"
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
 )
 
@@ -92,12 +93,58 @@ func TestWorkerRunRequiresExplicitReadOnlyPolicy(t *testing.T) {
 	}
 }
 
-func TestWorkerCommandExposesOnlyRun(t *testing.T) {
-	for _, args := range [][]string{nil, {"install"}, {"run", "unexpected"}} {
+func TestWorkerCommandExposesOnlyCheckAndRun(t *testing.T) {
+	for _, args := range [][]string{nil, {"install"}, {"run", "unexpected"}, {"check", "unexpected"}} {
 		err := runWorker(args)
 		if err == nil {
 			t.Fatalf("runWorker(%q) succeeded", args)
 		}
+	}
+}
+
+func TestWorkerCheckUsesRunStartupPolicy(t *testing.T) {
+	t.Setenv("SERVICENOW_INSTANCE_URL", "")
+	t.Setenv("TOPO_SERVICENOW_WORKER_TOKEN", "")
+	for _, command := range []string{"check", "run"} {
+		_, err := parseWorkerStartup([]string{
+			"-servicenow-instance", "https://example.service-now.com",
+			"-worker-pool", "pool-a",
+			"-site", "site-a",
+		}, command, command == "run")
+		if err == nil || !strings.Contains(err.Error(), "explicitly allow at least one") {
+			t.Fatalf("worker %s error = %v", command, err)
+		}
+	}
+}
+
+func TestWorkerClientErrorDoesNotExposeToken(t *testing.T) {
+	const secret = "worker-token-must-not-appear"
+	t.Setenv("TOPO_TEST_WORKER_TOKEN", secret)
+	_, err := workerClient(workerStartup{
+		instanceURL: "http://example.service-now.com",
+		tokenRef:    "env:TOPO_TEST_WORKER_TOKEN",
+		policy:      topoworker.Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true},
+	})
+	if err == nil || strings.Contains(err.Error(), secret) {
+		t.Fatalf("worker client error = %v", err)
+	}
+}
+
+func TestWorkerClientAcceptsNewlineTerminatedTokenFile(t *testing.T) {
+	tokenPath := filepath.Join(t.TempDir(), "worker-token")
+	if err := os.WriteFile(tokenPath, []byte("bounded-worker-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	client, err := workerClient(workerStartup{
+		instanceURL: "https://example.service-now.com",
+		tokenRef:    "file:" + tokenPath,
+		policy:      topoworker.Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client == nil {
+		t.Fatal("worker client is nil")
 	}
 }
 

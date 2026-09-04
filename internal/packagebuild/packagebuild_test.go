@@ -16,6 +16,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/Nischoy-ai/topo/internal/servicenowpackage"
 )
 
 func TestBuildIsDeterministicAndUsesVerifiedPayload(t *testing.T) {
@@ -170,6 +172,55 @@ func TestRefreshPackageMetadataIncludesSignedMSIAndOfflineBundle(t *testing.T) {
 	}
 }
 
+func TestRefreshPackageMetadataIncludesValidatedServiceNowApp(t *testing.T) {
+	dir := t.TempDir()
+	release := releaseMetadata{Version: "v1.2.3", Commit: strings.Repeat("b", 40)}
+	contents, err := json.Marshal(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "release-metadata.json"), contents, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	appPath := filepath.Join(dir, servicenowpackage.ArtifactName)
+	if err := os.WriteFile(appPath, []byte("validated-app"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := fileSHA256(appPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	appMetadata := servicenowpackage.Metadata{
+		SchemaVersion: 1,
+		Scope:         servicenowpackage.Scope,
+		AppVersion:    servicenowpackage.AppVersion,
+		SDKVersion:    servicenowpackage.SDKVersion,
+		Artifact:      servicenowpackage.ArtifactName,
+		SHA256:        digest,
+	}
+	metadataBytes, err := json.Marshal(appMetadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "servicenow-app-metadata.json"), metadataBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RefreshPackageMetadata(dir); err != nil {
+		t.Fatal(err)
+	}
+	resultBytes, err := os.ReadFile(filepath.Join(dir, "package-metadata.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result packageMetadata
+	if err := json.Unmarshal(resultBytes, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Assembler["servicenow-sdk"] != servicenowpackage.SDKVersion || len(result.Artifacts) != 1 || result.Artifacts[0].Format != "servicenow-app" || result.Artifacts[0].ArtifactSHA256 != digest {
+		t.Fatalf("ServiceNow package metadata missing: %#v", result)
+	}
+}
+
 func fixtureRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -177,6 +228,7 @@ func fixtureRoot(t *testing.T) string {
 		"LICENSE":                             "license\n",
 		"README.md":                           "readme\n",
 		"docs/packages.md":                    "packages\n",
+		"docs/pilot-quickstart.md":            "pilot\n",
 		"docs/releases.md":                    "releases\n",
 		"docs/storage.md":                     "storage\n",
 		"packaging/nfpm.yaml":                 "arch: \"${TOPO_PACKAGE_ARCH}\"\nversion: \"${TOPO_PACKAGE_VERSION}\"\ncontents:\n  - src: \"${TOPO_PACKAGE_BINARY}\"\n    dst: /usr/bin/topo\n",

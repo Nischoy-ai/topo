@@ -27,8 +27,14 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
+      - name: Set up the pinned ServiceNow build toolchain
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: "20.18.0"
+          cache: npm
+          cache-dependency-path: integrations/servicenow/topo-control-plane/package-lock.json
       - name: Validate release input
         id: release
         shell: bash
@@ -40,8 +46,8 @@ jobs:
             echo "invalid semantic release tag: $version" >&2
             exit 1
           fi
-          if [[ "$(go env GOVERSION)" != "go1.25.13" ]]; then
-            echo "release requires exactly go1.25.13" >&2
+          if [[ "$(go env GOVERSION)" != "go1.26.8" ]]; then
+            echo "release requires exactly go1.26.8" >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -56,6 +62,8 @@ jobs:
         env:
           VERSION: ${{ steps.release.outputs.version }}
         run: scripts/build-packages.sh "$VERSION" "$RUNNER_TEMP/topo-raw" "$RUNNER_TEMP/topo-packages"
+      - name: Build the reproducible installable ServiceNow application
+        run: scripts/build-servicenow-app.sh "$RUNNER_TEMP/topo-packages"
       - name: Exercise DEB and RPM install/uninstall semantics
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -79,7 +87,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
       - name: Download verified package inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -134,7 +142,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
       - name: Download verified raw release inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -281,7 +289,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
       - name: Download verified raw, Linux, and Helm artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

@@ -173,6 +173,12 @@ func TestAzureUnreachableAuthorityIsIsolatedAsNonRetryable(t *testing.T) {
 	listener.Close()
 
 	plugin := validLabPlugin(deadAuthority)
+	// The Azure SDK's closed-port retry sequence normally completes in
+	// roughly 8-10 seconds. Keep this fixture's deadline comfortably beyond
+	// that backoff so a loaded race run observes AuthenticationFailedError
+	// instead of racing the outer context deadline. Production defaults and
+	// error classification are unchanged.
+	plugin.Config.OperationTimeout = 30 * time.Second
 	observation, err := plugin.Discover(context.Background(), discovery.Request{Targets: []string{deadAuthority}})
 	if err != nil {
 		t.Fatal(err)

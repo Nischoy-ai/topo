@@ -13,8 +13,13 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: "20.18.0"
+          cache: npm
+          cache-dependency-path: integrations/servicenow/topo-control-plane/package-lock.json
       - run: gofmt -d . | tee /tmp/gofmt.diff && test ! -s /tmp/gofmt.diff
       - name: Reject raw actor-input interpolation in workflow run steps
         run: scripts/check-workflow-interpolation.sh
@@ -25,16 +30,12 @@ jobs:
       - run: go build -trimpath ./cmd/topo
       - name: Cross-compile check (Windows agent service code)
         run: GOOS=windows GOARCH=amd64 go vet ./... && GOOS=windows GOARCH=amd64 go build -trimpath -o /dev/null ./cmd/topo
-      - name: Build ServiceNow Fluent application
-        working-directory: integrations/servicenow/topo-control-plane
-        run: |
-          npm ci --ignore-scripts
-          npm test
-          npm run build
       - name: Reproduce release archives from two source paths
         run: scripts/build-release.sh v0.0.0-ci "$GITHUB_SHA" "$RUNNER_TEMP/topo-raw"
       - name: Reproduce Linux and Helm packages from verified archives
         run: scripts/build-packages.sh v0.0.0-ci "$RUNNER_TEMP/topo-raw" "$RUNNER_TEMP/topo-packages"
+      - name: Reproduce and validate the installable ServiceNow application
+        run: scripts/build-servicenow-app.sh "$RUNNER_TEMP/topo-packages"
       - name: Exercise DEB and RPM install/uninstall semantics
         run: scripts/test-linux-packages.sh "$RUNNER_TEMP/topo-packages" v0.0.0-ci
       - name: Share verified package inputs with platform jobs
@@ -83,7 +84,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
@@ -112,7 +113,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.8"
           cache: false
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:

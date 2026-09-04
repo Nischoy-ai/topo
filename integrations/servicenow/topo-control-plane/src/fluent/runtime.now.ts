@@ -259,6 +259,8 @@ ScheduledScript({
     active: true,
     frequency: 'periodically',
     executionInterval: { minutes: 1 },
+    executionStart: '2026-01-01 00:00:00',
+    timeZone: 'UTC',
     script: Now.include('../../scripts/enqueue_due_schedules.js'),
 })
 
@@ -268,5 +270,7 @@ ScheduledScript({
     active: true,
     frequency: 'periodically',
     executionInterval: { minutes: 5 },
+    executionStart: '2026-01-01 00:00:00',
+    timeZone: 'UTC',
     script: Now.include('../../scripts/maintenance.js'),
 })

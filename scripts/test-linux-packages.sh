@@ -30,15 +30,28 @@ sudo dpkg --install "$deb"
 test "$(/usr/bin/topo version)" = "$version"
 test "$(sha256sum /usr/bin/topo | awk '{print $1}')" = "$raw_digest"
 test -f /usr/lib/systemd/system/topo-agent.service
+test -f /usr/lib/systemd/system/topo-worker.service
+test -f /usr/share/doc/topo/topo-worker.env.example
+systemd-analyze verify /usr/lib/systemd/system/topo-worker.service
+if grep -q '^StateDirectory=' /usr/lib/systemd/system/topo-worker.service; then
+    echo "stateless worker unit unexpectedly requests a state directory" >&2
+    exit 1
+fi
 test ! -e /etc/topo-agent/topo-agent.env
+test ! -e /etc/topo-worker/topo-worker.env
 test ! -e /etc/systemd/system/multi-user.target.wants/topo-agent.service
+test ! -e /etc/systemd/system/multi-user.target.wants/topo-worker.service
 sudo mkdir -p /etc/topo-agent
 printf '%s\n' operator-owned | sudo tee /etc/topo-agent/operator-owned >/dev/null
+sudo mkdir -p /etc/topo-worker
+printf '%s\n' operator-owned | sudo tee /etc/topo-worker/operator-owned >/dev/null
 sudo dpkg --remove topo
 test ! -e /usr/bin/topo
 test -f /etc/topo-agent/operator-owned
+test -f /etc/topo-worker/operator-owned
 sudo dpkg --purge topo
 test -f /etc/topo-agent/operator-owned
+test -f /etc/topo-worker/operator-owned
 
 docker run --rm \
     -v "$artifact_dir:/artifacts:ro" \
@@ -48,11 +61,18 @@ docker run --rm \
         test \"\$(/usr/bin/topo version)\" = '$version'
         test \"\$(sha256sum /usr/bin/topo | awk '{print \$1}')\" = '$raw_digest'
         test -f /usr/lib/systemd/system/topo-agent.service
+        test -f /usr/lib/systemd/system/topo-worker.service
+        test -f /usr/share/doc/topo/topo-worker.env.example
         test ! -e /etc/topo-agent/topo-agent.env
+        test ! -e /etc/topo-worker/topo-worker.env
         test ! -e /etc/systemd/system/multi-user.target.wants/topo-agent.service
+        test ! -e /etc/systemd/system/multi-user.target.wants/topo-worker.service
         mkdir -p /etc/topo-agent
         printf '%s\n' operator-owned > /etc/topo-agent/operator-owned
+        mkdir -p /etc/topo-worker
+        printf '%s\n' operator-owned > /etc/topo-worker/operator-owned
         rpm --erase topo
         test ! -e /usr/bin/topo
         test -f /etc/topo-agent/operator-owned
+        test -f /etc/topo-worker/operator-owned
     "

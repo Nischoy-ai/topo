@@ -5,7 +5,7 @@
 This document records the approved target architecture for a managed Topo
 deployment in which the Nischoy Topo scoped application is the discovery
 control plane and ServiceNow is the only durable operational datastore. It was
-agreed on 2026-08-29. M3 Slice A implements the candidate `local.v1`
+agreed on 2026-08-29. M3 Slice A implements the merged `local.v1`
 vertical slice in `internal/worker` and a ServiceNow SDK 4.9.0 Fluent
 application in `integrations/servicenow/topo-control-plane`, with deterministic
 simulator evidence. The Fluent package builds successfully and was installed
@@ -16,7 +16,7 @@ result replay, repeated application-side IRE reconciliation, and raw-result
 retention. See [`servicenow-worker.md`](servicenow-worker.md); simulator results
 remain explicitly separate from that evidence.
 
-M3 Slice B is an implemented candidate in the same worker and Fluent package.
+M3 Slice B is implemented and merged in the same worker and Fluent package.
 It adds deterministic target-scope/partition metadata, unique pool/worker
 capacity reservations, load-aware concurrent execution, lease renewal,
 cooperative cancellation, worker-churn recovery, and bounded 1K/10K/100K plus
@@ -543,7 +543,7 @@ mapping:
 5. Run two workers against one task and prove one live lease plus idempotent
    recovery.
 
-### Slice B: worker-pool scale and partitioning — implemented candidate
+### Slice B: worker-pool scale and partitioning — implemented and merged
 
 Add deterministic target partitions, load-aware claims, cancellation, lease
 renewal, concurrency tests, retention-volume tests, and simulator gates for
@@ -562,17 +562,27 @@ renewal loss, cancellation/late-call rejection, and a 100K eligible-result
 retention backlog. See [`servicenow-worker.md`](servicenow-worker.md) for exact
 simulator evidence and the outstanding real-instance boundary.
 
-### Slice C1: Password2-backed Linux SSH pilot — implemented candidate; real acceptance pending
+### Slice C1: Password2-backed Linux SSH pilot — implemented, accepted, and merged
 
-The Fluent `0.4.0` and worker candidate implement ServiceNow-managed Password2-backed bindings with the fixed
+Fluent `0.4.3` and the worker implement ServiceNow-managed Password2-backed bindings with the fixed
 `ssh_linux.v1` operation, single-address IPv4 target partitions, locally
 enforced CIDR allowlists, and local `known_hosts` trust. Record real ServiceNow
 encryption/ACL/broker evidence separately from simulator evidence. The worker
 receives no table ACL and resolves the credential only through an attempt-
-bound, no-store broker response after target authorization. Local source/build
-and deterministic simulator gates pass. Real developer-instance upgrade,
-Password2 encryption/ACL/broker behavior, and real or sanitized SSH-target
-execution remain required and must not be inferred from simulation.
+bound, no-store broker response after target authorization. Local/simulator
+tests and the separately recorded real developer-instance Password2, ACL,
+broker, Docker SSH/IRE, repeat reconciliation, and retention gates pass.
+
+### Slice C1.1: pilot installation and first-run onboarding — implemented candidate
+
+Package the validated Fluent app as a checksummed/attested release artifact,
+add a registration-plus-heartbeat-only worker preflight, add a hardened dormant
+Linux worker unit, and document the first Password2 Linux run. See the
+[pilot quickstart](pilot-quickstart.md). No credential, protocol, mapping, or
+target-sweep scope is added. Fluent `0.4.4` is installed on the disposable
+developer instance; its real preflight registered and heartbeated with zero
+leases and no task claim. Consumer ZIP installation and public package-channel
+promotion remain separate gates.
 
 ### Slice C2: external secret providers — deferred by user decision
 
@@ -618,7 +628,7 @@ mapping, and real-protocol evidence appropriate to that integration.
   schedule, or credential-record resources.
 - Secrets and sensitive results do not appear in logs, errors, audit, labels,
   observations, tasks, or IRE payloads.
-- Exact Go 1.25.13 format, focused/full race tests, vet, Linux/macOS build,
+- Exact Go 1.26.8 format, focused/full race tests, vet, Linux/macOS build,
   Windows amd64 vet/build, and the pinned security-review gate pass.
 - Simulator evidence and real ServiceNow evidence are recorded separately.
 
@@ -636,22 +646,21 @@ mapping, and real-protocol evidence appropriate to that integration.
 - No production signing, public package-channel promotion, or M2.5 independent
   retest work as part of this architecture slice.
 
-## Evidence still required
+## Evidence still required before broad production support
 
-Before managed mode is called supported, obtain real ServiceNow evidence for:
+Real developer-instance evidence now covers source install/upgrade, roles/ACLs,
+generic API denial, worker OAuth route restrictions, atomic claims, lease
+expiry/retry, cancellation, Password2/broker denials, manual and scheduled
+execution, IRE preflight/apply/reconciliation, and focused retention. Remaining
+production evidence includes:
 
-- scoped-app installation, upgrade, uninstall, roles, ACLs, and generic Table
-  API denial;
-- atomic multi-worker claim behavior and lease-expiry recovery;
-- the documented scoped-app IRE call and preflight/apply behavior;
-- worker OAuth token restrictions and exact API access policies;
-- Password2 creation, encryption, supported scoped access, broker release,
-  backup/clone behavior, and denial paths;
-- external Vault binding with a real short-lived/rotated credential;
-- raw attachment/table volume and retention cleanup;
-- a scheduled and manual `local.v1` run that reconcile without duplicates; and
-- worker crash, ServiceNow outage, ambiguous IRE response, cancellation, and
-  retry behavior.
+- consumer ZIP, Application Repository, or Store install/upgrade/uninstall;
+- Password2 backup/clone behavior and operational recovery guidance;
+- external Vault binding with a real short-lived or rotated credential;
+- real platform volume/upgrade behavior beyond focused fixtures;
+- ServiceNow outage and ambiguous IRE operator-recovery drills; and
+- protected package-channel beta/N-1 promotion plus independent security
+  review retest.
 
 Simulator tests are required for deterministic CI but are never a substitute
 for these real-instance findings.

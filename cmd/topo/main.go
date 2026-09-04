@@ -900,14 +900,29 @@ func relayRun(args []string) error {
 }
 
 func runWorker(args []string) error {
-	if len(args) == 0 || args[0] != "run" {
-		return errors.New("usage: topo worker run")
+	if len(args) == 0 {
+		return errors.New("usage: topo worker <check|run>")
 	}
-	return workerRun(args[1:])
+	switch args[0] {
+	case "check":
+		return workerCheck(args[1:])
+	case "run":
+		return workerRun(args[1:])
+	default:
+		return fmt.Errorf("unknown worker command %q", args[0])
+	}
 }
 
-func workerRun(args []string) error {
-	fs := flag.NewFlagSet("worker run", flag.ContinueOnError)
+type workerStartup struct {
+	instanceURL string
+	tokenRef    string
+	policy      topoworker.Policy
+	ssh         topoworker.SSHStartupConfig
+	poll        time.Duration
+}
+
+func parseWorkerStartup(args []string, command string, includePoll bool) (workerStartup, error) {
+	fs := flag.NewFlagSet("worker "+command, flag.ContinueOnError)
 	instanceURL := fs.String("servicenow-instance", os.Getenv("SERVICENOW_INSTANCE_URL"), "ServiceNow instance origin (absolute HTTPS URL)")
 	tokenRef := fs.String("token-ref", "", "credential reference for the narrowly scoped ServiceNow worker bearer token")
 	workerPool := fs.String("worker-pool", "", "ServiceNow Topo worker pool ID")
@@ -916,33 +931,36 @@ func workerRun(args []string) error {
 	allowSSHLinux := fs.Bool("allow-ssh-linux", false, "allow the compiled-in ssh_linux.v1 operation within the local target allowlist")
 	sshTargetAllowlist := fs.String("ssh-target-allowlist", "", "absolute file containing deployment-approved IPv4 CIDRs")
 	sshKnownHosts := fs.String("ssh-known-hosts", "", "absolute OpenSSH known_hosts file for ssh_linux.v1 server identity verification")
-	pollInterval := fs.Duration("poll-interval", topoworker.DefaultPollInterval, "worker heartbeat and claim interval")
 	maxTaskDuration := fs.Duration("max-task-duration", topoworker.DefaultMaxTaskDuration, "local ceiling for one reviewed task attempt")
 	maxConcurrency := fs.Int("max-concurrency", topoworker.DefaultMaxConcurrency, "local ceiling for concurrent leased tasks")
+	var pollInterval *time.Duration
+	if includePoll {
+		pollInterval = fs.Duration("poll-interval", topoworker.DefaultPollInterval, "worker heartbeat and claim interval")
+	}
 	if err := fs.Parse(args); err != nil {
-		return err
+		return workerStartup{}, err
 	}
 	if fs.NArg() != 0 {
-		return errors.New("topo worker run does not accept positional arguments")
+		return workerStartup{}, fmt.Errorf("topo worker %s does not accept positional arguments", command)
 	}
 	if *instanceURL == "" {
-		return errors.New("-servicenow-instance is required")
+		return workerStartup{}, errors.New("-servicenow-instance is required")
 	}
 	if *workerPool == "" {
-		return errors.New("-worker-pool is required")
+		return workerStartup{}, errors.New("-worker-pool is required")
 	}
 	if *siteID == "" {
-		return errors.New("-site is required")
+		return workerStartup{}, errors.New("-site is required")
 	}
 	var sshStartup topoworker.SSHStartupConfig
 	if *allowSSHLinux {
 		var err error
 		sshStartup, err = topoworker.LoadSSHStartupConfig(*sshTargetAllowlist, *sshKnownHosts)
 		if err != nil {
-			return err
+			return workerStartup{}, err
 		}
 	} else if *sshTargetAllowlist != "" || *sshKnownHosts != "" {
-		return errors.New("SSH startup files require -allow-ssh-linux")
+		return workerStartup{}, errors.New("SSH startup files require -allow-ssh-linux")
 	}
 	policy := topoworker.Policy{
 		WorkerPool:       *workerPool,
@@ -955,26 +973,70 @@ func workerRun(args []string) error {
 		MaxConcurrency:   *maxConcurrency,
 	}
 	if err := policy.Validate(); err != nil {
+		return workerStartup{}, err
+	}
+	startup := workerStartup{instanceURL: *instanceURL, tokenRef: *tokenRef, policy: policy, ssh: sshStartup}
+	if pollInterval != nil {
+		startup.poll = *pollInterval
+	}
+	return startup, nil
+}
+
+func workerClient(startup workerStartup) (*topoworker.Client, error) {
+	token, err := resolveCredential(startup.tokenRef, "", "TOPO_SERVICENOW_WORKER_TOKEN", false)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ServiceNow worker token: %w", err)
+	}
+	// OAuth bearer tokens cannot contain whitespace. Trimming at this
+	// protocol boundary lets operators use conventional newline-terminated
+	// secret files without changing the byte-exact semantics of credential
+	// references used for passwords and private keys.
+	client, err := topoworker.NewClient(startup.instanceURL, strings.TrimSpace(string(token)), nil)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func workerCheck(args []string) error {
+	startup, err := parseWorkerStartup(args, "check", false)
+	if err != nil {
 		return err
 	}
-	token, err := resolveCredential(*tokenRef, "", "TOPO_SERVICENOW_WORKER_TOKEN", false)
+	client, err := workerClient(startup)
 	if err != nil {
-		return fmt.Errorf("resolve ServiceNow worker token: %w", err)
+		return err
 	}
-	client, err := topoworker.NewClient(*instanceURL, string(token), nil)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	result, err := topoworker.Check(ctx, topoworker.CheckConfig{
+		Policy: startup.policy, Version: version, Control: client,
+	})
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
+func workerRun(args []string) error {
+	startup, err := parseWorkerStartup(args, "run", true)
+	if err != nil {
+		return err
+	}
+	client, err := workerClient(startup)
 	if err != nil {
 		return err
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	logger.Info("Topo stateless ServiceNow worker starting", "worker_pool", policy.WorkerPool, "site", policy.SiteID, "capabilities", policy.Capabilities(), "poll_interval", pollInterval.String())
+	logger.Info("Topo stateless ServiceNow worker starting", "worker_pool", startup.policy.WorkerPool, "site", startup.policy.SiteID, "capabilities", startup.policy.Capabilities(), "poll_interval", startup.poll.String())
 	return topoworker.Run(ctx, topoworker.RunConfig{
-		Policy:       policy,
+		Policy:       startup.policy,
 		Version:      version,
-		PollInterval: *pollInterval,
+		PollInterval: startup.poll,
 		Control:      client,
-		Executor:     topoworker.Executor{Policy: policy, SSHHostKeyCallback: sshStartup.HostKeyCallback},
+		Executor:     topoworker.Executor{Policy: startup.policy, SSHHostKeyCallback: startup.ssh.HostKeyCallback},
 		Logger:       logger,
 	})
 }
