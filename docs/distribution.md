@@ -75,16 +75,17 @@ environment-secret names are present. GitHub's secret-list endpoint exposes
 names only; the preflight never requests values, discards command stderr, and
 does not mutate GitHub. A non-ready report exits nonzero.
 
-As of 2026-09-03, `Nischoy-ai/topo-packages` and
+As of 2026-09-08, `Nischoy-ai/topo-packages` and
 `Nischoy-ai/homebrew-tap` exist as public repositories, the package Pages site
 is built with HTTPS enforcement, and `native-package-signing` plus
-`distribution-beta` exist with self-review prevention and `main`-only custom
-branch policies. The fail-closed report remains non-ready because both
-environments still permit administrator bypass, have only one eligible
-reviewer, and contain none of the required secret names. Add a second trusted
-reviewer, disable bypass through the GitHub environment settings, and place
-the credential values directly in the environments—never in chat, source
-control, shell arguments, or ordinary CI. `Nischoy-ai/winget-pkgs`,
+`distribution-beta` exist with self-review prevention, administrator bypass
+disabled, two eligible reviewers, and `main`-only custom branch policies. The
+OpenPGP private key and fingerprint names are present in both environments.
+The fail-closed report remains non-ready because native signing still lacks
+the required Apple and Windows secret names, while beta distribution lacks
+`DISTRIBUTION_GITHUB_TOKEN`. Place credential values directly in the
+environments—never in chat, source control, shell arguments, or ordinary CI.
+`Nischoy-ai/winget-pkgs`,
 `distribution-stable`, and stable secrets remain intentionally unprovisioned
 until the separate N-1 stable slice.
 

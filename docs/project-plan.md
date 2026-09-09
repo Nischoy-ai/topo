@@ -3125,20 +3125,25 @@ requirements. The private Application Repository remains suitable only for
 instances in one customer's organization and is not a Nischoy distribution
 channel.
 
-**Implementation status (2026-09-03).** The two beta repositories now exist
+**Implementation status (2026-09-08).** The two beta repositories now exist
 publicly, and `topo-packages` Pages is built from `main` at the repository root
 with HTTPS enforcement. The `native-package-signing` and `distribution-beta`
-environments exist with self-review prevention and exact `main` branch
-policies. A new bounded, read-only preflight checks those repositories, Pages,
-environment protections, branch policies, and only environment-secret names;
-focused race tests cover its ready path, missing/unsafe configuration,
-malformed and oversized API responses, duplicate names, and command-error
-redaction. Its real report is correctly non-ready: administrator bypass is
-still enabled, each environment has only one eligible reviewer, and all ten
-native-signing plus all three beta-distribution secret names are absent. No
-release tag or package was published. A second trusted reviewer and the
-owner-provisioned signing identities are required before the fail-closed tag
-workflow can safely proceed.
+environments now prevent self-review, disable administrator bypass, contain
+two eligible reviewers, and retain exact `main` branch policies. A new bounded,
+read-only preflight checks those repositories, Pages, environment protections,
+branch policies, and only environment-secret names; focused race tests cover
+its ready path, missing/unsafe configuration, malformed and oversized API
+responses, duplicate names, and command-error redaction. Its real report
+remains correctly non-ready: the OpenPGP private key and fingerprint names are
+present in both environments, but native signing still lacks its Apple and
+Windows names and beta distribution lacks `DISTRIBUTION_GITHUB_TOKEN`. No
+release tag or package was published. The remaining owner-provisioned signing
+identities and distribution token are required before the fail-closed tag
+workflow can safely proceed. The root README is now a short three-step
+ServiceNow discovery entry point; general source-build guidance and the
+architecture overview moved to `docs/development.md` and
+`docs/architecture.md`, while status, ServiceNow behavior, and security link
+to their existing authoritative documents.
 
 ### Relationship to the M2.5 gate
 
