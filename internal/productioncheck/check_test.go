@@ -120,6 +120,29 @@ func TestRunRejectsDuplicateAndUnexpectedSecretNames(t *testing.T) {
 	}
 }
 
+func TestRunRejectsSwappedReleaseAndPromotionPolicies(t *testing.T) {
+	responses := readyResponses(t)
+	responses["repos/Nischoy-ai/topo/environments/native-package-signing/deployment-branch-policies"] = `{"total_count":1,"branch_policies":[{"name":"main","type":"branch"}]}`
+	responses["repos/Nischoy-ai/topo/environments/distribution-beta/deployment-branch-policies"] = `{"total_count":1,"branch_policies":[{"name":"v*","type":"tag"}]}`
+	report, err := Run(context.Background(), fakeAPI{responses: responses}, Options{Owner: "Nischoy-ai", Repository: "topo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Ready {
+		t.Fatal("unsafe deployment policies reported ready")
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(encoded)
+	for _, expected := range []string{"semantic-candidate v* tags", "exactly the main branch"} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("report omits %q: %s", expected, text)
+		}
+	}
+}
+
 func TestRunRejectsInvalidOptions(t *testing.T) {
 	if _, err := Run(context.Background(), fakeAPI{}, Options{Owner: "../owner", Repository: "topo"}); err == nil {
 		t.Fatal("unsafe owner accepted")
@@ -142,7 +165,11 @@ func readyResponses(t *testing.T) map[string]string {
 	} {
 		base := "repos/Nischoy-ai/topo/environments/" + environment.name
 		responses[base] = environmentJSON(t, environment.name, false, 2)
-		responses[base+"/deployment-branch-policies"] = `{"total_count":1,"branch_policies":[{"name":"main","type":"branch"}]}`
+		policy := `{"total_count":1,"branch_policies":[{"name":"main","type":"branch"}]}`
+		if environment.name == "native-package-signing" {
+			policy = `{"total_count":1,"branch_policies":[{"name":"v*","type":"tag"}]}`
+		}
+		responses[base+"/deployment-branch-policies"] = policy
 		values := make([]map[string]string, 0, len(environment.secrets))
 		for _, name := range environment.secrets {
 			values = append(values, map[string]string{"name": name})

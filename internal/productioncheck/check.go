@@ -25,10 +25,14 @@ var nativeSecretNames = []string{
 	"APPLE_NOTARY_ISSUER_ID",
 	"APPLE_NOTARY_KEY_ID",
 	"APPLE_NOTARY_PRIVATE_KEY",
+	"ARTIFACT_SIGNING_ACCOUNT_NAME",
+	"ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME",
+	"ARTIFACT_SIGNING_ENDPOINT",
+	"AZURE_CLIENT_ID",
+	"AZURE_SUBSCRIPTION_ID",
+	"AZURE_TENANT_ID",
 	"RPM_SIGNING_FINGERPRINT",
 	"RPM_SIGNING_PRIVATE_KEY",
-	"WINDOWS_SIGNING_PFX_BASE64",
-	"WINDOWS_SIGNING_PFX_PASSWORD",
 }
 
 var betaSecretNames = []string{
@@ -127,7 +131,7 @@ func Run(ctx context.Context, api API, options Options) (Report, error) {
 		var branches branchPoliciesResponse
 		err = getJSON(ctx, api, base+"/deployment-branch-policies", &branches)
 		if err == nil {
-			err = validateBranches(branches)
+			err = validateBranches(environment.name, branches)
 		}
 		add("branches:"+environment.name, err)
 
@@ -261,9 +265,18 @@ func validateEnvironment(value environmentResponse, expected string) error {
 	return nil
 }
 
-func validateBranches(value branchPoliciesResponse) error {
-	if value.TotalCount != len(value.BranchPolicies) || value.TotalCount != 1 || value.BranchPolicies[0].Name != "main" || value.BranchPolicies[0].Type != "branch" {
-		return errors.New("deployment policy must allow exactly the main branch")
+func validateBranches(environment string, value branchPoliciesResponse) error {
+	if value.TotalCount != len(value.BranchPolicies) || value.TotalCount != 1 {
+		return errors.New("deployment policy must contain exactly one rule")
+	}
+	wantName, wantType := "main", "branch"
+	detail := "deployment policy must allow exactly the main branch"
+	if environment == "native-package-signing" {
+		wantName, wantType = "v*", "tag"
+		detail = "deployment policy must allow exactly semantic-candidate v* tags"
+	}
+	if value.BranchPolicies[0].Name != wantName || value.BranchPolicies[0].Type != wantType {
+		return errors.New(detail)
 	}
 	return nil
 }

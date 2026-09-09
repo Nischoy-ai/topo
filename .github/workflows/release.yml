@@ -213,10 +213,13 @@ jobs:
           retention-days: 1
 
   windows-msi:
-    runs-on: windows-latest
+    runs-on: windows-2025
     timeout-minutes: 20
     needs: [build-packages, native-signing]
     environment: native-package-signing
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -238,33 +241,46 @@ jobs:
           -Version "$env:VERSION"
           -WixPath "$env:RUNNER_TEMP/wix/wix.exe"
           -OutputDirectory "$env:RUNNER_TEMP/topo-msi"
-      - name: Authenticode-sign and verify both MSI packages
+      - name: Authenticate to Azure with the protected GitHub OIDC identity
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Authenticode-sign both MSI packages with Azure Artifact Signing
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
+        with:
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ secrets.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files-folder: ${{ runner.temp }}\topo-msi
+          files-folder-filter: msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      - name: Verify both Authenticode signatures and public trust
         shell: pwsh
-        env:
-          WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
-          WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
         run: |
           $ErrorActionPreference = "Stop"
-          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_BASE64) -or
-              [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_PFX_PASSWORD)) {
-              throw "Windows release signing secrets are required; refusing to publish unsigned MSI packages"
-          }
-          $pfx = Join-Path $env:RUNNER_TEMP "topo-release-signing.pfx"
-          try {
-              [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_SIGNING_PFX_BASE64))
-              $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
-                  -Filter signtool.exe -File -Recurse |
-                  Sort-Object FullName -Descending | Select-Object -First 1
-              if (-not $signtool) { throw "signtool.exe was not found on the Windows runner" }
-              Get-ChildItem "$env:RUNNER_TEMP/topo-msi" -Filter *.msi | ForEach-Object {
-                  & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
-                      /f $pfx /p $env:WINDOWS_SIGNING_PFX_PASSWORD $_.FullName
-                  if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for $($_.Name)" }
-                  & $signtool.FullName verify /pa /all /v $_.FullName
-                  if ($LASTEXITCODE -ne 0) { throw "Authenticode verification failed for $($_.Name)" }
-              }
-          } finally {
-              if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx -Force }
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+              -Filter signtool.exe -File -Recurse |
+              Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe was not found on the Windows runner" }
+          $packages = @(Get-ChildItem "$env:RUNNER_TEMP/topo-msi" -Filter *.msi)
+          if ($packages.Count -ne 2) { throw "expected exactly two MSI packages after signing" }
+          $packages | ForEach-Object {
+              & $signtool.FullName verify /pa /all /v $_.FullName
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode verification failed for $($_.Name)" }
           }
       - name: Retain signed MSI packages
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

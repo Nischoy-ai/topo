@@ -118,8 +118,10 @@ for the trust semantics of those commands.
    Developer ID signatures plus notarization on both macOS payloads. It
    refreshes metadata for those final signed bytes, creates the SBOM/signatures/
    attestations, verifies them, and only then creates the GitHub Release with
-   all evidence in one upload. All native keys live in the protected
-   `native-package-signing` environment, not ordinary build jobs.
+   all evidence in one upload. Persistent native key material is isolated from
+   ordinary build jobs in the protected `native-package-signing` environment;
+   Windows signing instead uses a short-lived GitHub OIDC token and a
+   non-exportable Azure Artifact Signing profile.
 4. Verify one archive independently with both commands above before promoting
    the release to any package repository.
 

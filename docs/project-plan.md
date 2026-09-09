@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-02
+- **Updated:** 2026-09-08
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -122,8 +122,8 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   capacity slots after lease expiry. All staged Slice C1 acceptance gates pass
   and PR #56 is merged. External Vault
   support is deferred to Slice C2 by the user's 2026-08-30 decision; it remains
-  an eventual requirement. Slice C1.1 is implemented as a candidate on
-  `agent/servicenow-pilot-onboarding`: it packages that proven Password2 Linux
+  an eventual requirement. Slice C1.1 is merged in
+  [PR 57](https://github.com/Nischoy-ai/topo/pull/57): it packages that proven Password2 Linux
   path into a repeatable, dormant-by-default pilot installation and first-run
   workflow without expanding discovery or credential scope. Fluent `0.4.4`
   was installed from source over the same application on the disposable
@@ -136,6 +136,20 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   baseline to Go 1.26.8 and `x/crypto` 0.56.0, the first compatible fixed
   release; this is a required security remediation, not an expansion of
   discovery authority.
+  Slice C1.2 is staged in
+  [PR 58](https://github.com/Nischoy-ai/topo/pull/58). The beta repositories,
+  HTTPS Pages origin, two-reviewer environment protections, and isolated
+  OpenPGP names are present. The native-signing environment now permits only
+  `v*` tags while beta promotion permits only `main`; the release workflow
+  additionally rejects malformed tags and commits not reachable from `main`.
+  Windows signing now uses pinned Azure login and Artifact Signing actions
+  with short-lived GitHub OIDC authorization, a non-exportable public-trust
+  profile, and post-signing SignTool verification rather than storing a PFX.
+  The live read-only preflight passes repository, Pages, reviewer, bypass, and
+  deployment-policy checks and remains correctly non-ready for the missing
+  Apple identity, six Azure/Artifact Signing identifiers, and
+  `DISTRIBUTION_GITHUB_TOKEN`. No official release or beta channel has been
+  published.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -3128,22 +3142,29 @@ channel.
 **Implementation status (2026-09-08).** The two beta repositories now exist
 publicly, and `topo-packages` Pages is built from `main` at the repository root
 with HTTPS enforcement. The `native-package-signing` and `distribution-beta`
-environments now prevent self-review, disable administrator bypass, contain
-two eligible reviewers, and retain exact `main` branch policies. A new bounded,
-read-only preflight checks those repositories, Pages, environment protections,
-branch policies, and only environment-secret names; focused race tests cover
-its ready path, missing/unsafe configuration, malformed and oversized API
-responses, duplicate names, and command-error redaction. Its real report
-remains correctly non-ready: the OpenPGP private key and fingerprint names are
-present in both environments, but native signing still lacks its Apple and
-Windows names and beta distribution lacks `DISTRIBUTION_GITHUB_TOKEN`. No
-release tag or package was published. The remaining owner-provisioned signing
-identities and distribution token are required before the fail-closed tag
-workflow can safely proceed. The root README is now a short three-step
-ServiceNow discovery entry point; general source-build guidance and the
-architecture overview moved to `docs/development.md` and
-`docs/architecture.md`, while status, ServiceNow behavior, and security link
-to their existing authoritative documents.
+environments prevent self-review, disable administrator bypass, and contain
+two eligible reviewers. Native signing permits exactly the `v*` tag pattern;
+beta distribution permits exactly the `main` branch. The release workflow
+validates semantic tags and `main` ancestry before a protected signing job can
+run. Windows signing uses pinned official Azure actions, a short-lived GitHub
+OIDC token, Artifact Signing's managed public-trust profile, Microsoft's RFC
+3161 timestamping service, and independent SignTool trust verification; no
+exportable Windows PFX or Azure client secret is stored in GitHub. The bounded,
+read-only preflight checks the repositories, Pages, environment protections,
+the distinct deployment policies, and only environment-secret names; focused
+race tests cover its ready path, missing/unsafe configuration, swapped release
+and promotion policies, malformed and oversized API responses, duplicate
+names, and command-error redaction. Its real report passes every repository and
+policy check and remains correctly non-ready: the OpenPGP private key and
+fingerprint names are present in both environments, but native signing still
+lacks the six Apple and six Azure/Artifact Signing names, while beta
+distribution lacks `DISTRIBUTION_GITHUB_TOKEN`. No release tag or package was
+published. Those owner-provisioned identities and the distribution token are
+required before the fail-closed tag workflow can safely proceed. The root
+README remains a short three-step ServiceNow discovery entry point; general
+source-build guidance and the architecture overview live in
+`docs/development.md` and `docs/architecture.md`, while status, ServiceNow
+behavior, and security link to their existing authoritative documents.
 
 ### Relationship to the M2.5 gate
 

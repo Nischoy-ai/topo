@@ -40,14 +40,18 @@ Provision these public repositories before the first promotion:
   `microsoft/winget-pkgs`.
 
 Protect the `native-package-signing`, `distribution-beta`, and
-`distribution-stable` GitHub environments. Require reviewer approval for both
-distribution environments and restrict them to the `main` branch; the workflow
-also rejects dispatches from any other ref. Store:
+`distribution-stable` GitHub environments. Require reviewer approval and
+prevent self-review for every environment. Allow exactly the `v*` tag pattern
+to deploy to `native-package-signing`; the release workflow independently
+rejects non-semantic tags and tags whose commit is not reachable from `main`.
+Allow exactly the `main` branch to deploy to each distribution environment;
+the promotion workflow also rejects dispatches from any other ref. Store:
 
 | Environment | Secret | Purpose |
 | --- | --- | --- |
 | `native-package-signing` | `RPM_SIGNING_PRIVATE_KEY` / `RPM_SIGNING_FINGERPRINT` | Sign RPM bytes before they enter the GitHub Release. The export may be unencrypted because GitHub encrypts the environment secret and the key exists only in the ephemeral signing keyring. |
-| `native-package-signing` | `WINDOWS_SIGNING_PFX_BASE64` / `WINDOWS_SIGNING_PFX_PASSWORD` | Authenticode-sign both MSI installers. |
+| `native-package-signing` | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | Identify the Microsoft Entra workload identity used by GitHub OIDC. No client secret is stored. |
+| `native-package-signing` | `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNING_ACCOUNT_NAME`, `ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME` | Select the Azure Artifact Signing account and public-trust certificate profile that Authenticode-sign both MSI installers. These are configuration identifiers, stored as environment secrets so they are released only after environment approval and the preflight can inspect names without retrieving values. |
 | `native-package-signing` | `APPLE_DEVELOPER_ID_P12_BASE64`, `APPLE_DEVELOPER_ID_P12_PASSWORD`, `APPLE_DEVELOPER_ID_IDENTITY` | Import the Developer ID Application identity into an ephemeral macOS keychain. |
 | `native-package-signing` | `APPLE_NOTARY_ISSUER_ID`, `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_PRIVATE_KEY` | Submit both signed macOS binaries to Apple's notary service. |
 | each distribution environment | `REPOSITORY_SIGNING_PRIVATE_KEY` / `REPOSITORY_SIGNING_FINGERPRINT` | Clear-sign APT metadata and sign RPM repository metadata. This must be the same identity used to sign release RPMs for one coherent repository trust root. |
@@ -57,6 +61,25 @@ also rejects dispatches from any other ref. Store:
 Make the `ghcr.io/nischoy-ai/charts/topo` package public after its first
 workflow-created publication. The repository-scoped `GITHUB_TOKEN` receives
 only `packages: write` in the final publication job.
+
+### Windows signing identity
+
+Create an Azure Artifact Signing account and a public-trust certificate
+profile, then create a dedicated Microsoft Entra application or user-assigned
+managed identity. Grant it only `Artifact Signing Certificate Profile Signer`
+on the selected profile. Add one federated identity credential for GitHub's
+issuer `https://token.actions.githubusercontent.com`, audience
+`api://AzureADTokenExchange`, and the `native-package-signing` environment of
+this repository. The environment-based subject prevents an unprotected job
+from exchanging a token; use the exact immutable or legacy subject GitHub
+reports for this repository rather than guessing it.
+
+Place the six identifiers named in the table directly in the protected GitHub
+environment. Do not create an Azure client secret and do not export a PFX to
+GitHub. The Windows release job uses the official Azure login and Artifact
+Signing actions, pinned to immutable commits, requests `id-token: write` only
+for that job, timestamps both MSIs with Microsoft's RFC 3161 service, and then
+uses Windows SignTool to verify the complete public trust chain.
 
 ### Read-only prerequisite preflight
 
@@ -70,7 +93,8 @@ The preflight uses the already-authenticated GitHub CLI and emits one bounded
 JSON report. It checks that the two beta distribution repositories are active
 and public, Pages is HTTPS-only from `main` at the repository root, each
 environment prevents self-review and has at least two reviewers, administrator
-bypass is disabled, exactly `main` may deploy, and the exact required
+bypass is disabled, the native environment permits exactly `v*` tags, each
+distribution environment permits exactly `main`, and the exact required
 environment-secret names are present. GitHub's secret-list endpoint exposes
 names only; the preflight never requests values, discards command stderr, and
 does not mutate GitHub. A non-ready report exits nonzero.
@@ -79,10 +103,11 @@ As of 2026-09-08, `Nischoy-ai/topo-packages` and
 `Nischoy-ai/homebrew-tap` exist as public repositories, the package Pages site
 is built with HTTPS enforcement, and `native-package-signing` plus
 `distribution-beta` exist with self-review prevention, administrator bypass
-disabled, two eligible reviewers, and `main`-only custom branch policies. The
-OpenPGP private key and fingerprint names are present in both environments.
-The fail-closed report remains non-ready because native signing still lacks
-the required Apple and Windows secret names, while beta distribution lacks
+disabled, and two eligible reviewers. The native environment permits only
+`v*` tags while beta distribution permits only `main`. The OpenPGP private key
+and fingerprint names are present in both environments. The fail-closed report
+remains non-ready because native signing still lacks the required Apple and
+Azure Artifact Signing configuration names, while beta distribution lacks
 `DISTRIBUTION_GITHUB_TOKEN`. Place credential values directly in the
 environments—never in chat, source control, shell arguments, or ordinary CI.
 `Nischoy-ai/winget-pkgs`,
@@ -126,11 +151,11 @@ rejecting as reachable `GO-2026-6303` on 2026-08-28.
 ## Release and promotion
 
 Create the reviewed release tag using [the release procedure](releases.md).
-That workflow now fails closed unless RPM, Authenticode, Developer ID, and
-notarization credentials are available. RPM signing and macOS signing run in
-isolated jobs; the final job refreshes release metadata and checksums after
-native signatures are applied, then creates Sigstore/GitHub evidence over the
-final bytes.
+That workflow now fails closed unless RPM, OIDC-authorized Artifact Signing,
+Developer ID, and notarization identities are available. RPM, Windows, and
+macOS signing run in isolated jobs; the final job refreshes release metadata
+and checksums after native signatures are applied, then creates
+Sigstore/GitHub evidence over the final bytes.
 
 After the GitHub Release exists, dispatch `promote package-manager channels`:
 
