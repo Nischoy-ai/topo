@@ -92,11 +92,12 @@ msiexec.exe /i topo_0.1.0_windows_amd64.msi /qn /norestart
 msiexec.exe /x topo_0.1.0_windows_amd64.msi /qn /norestart
 ```
 
-The tag workflow refuses to publish if the protected
-`WINDOWS_SIGNING_PFX_BASE64` or `WINDOWS_SIGNING_PFX_PASSWORD` secret is
-missing. It timestamps, Authenticode-signs, and verifies both installers before
-they can reach the publishing job. Pull-request CI builds and exercises
-unsigned test MSIs with no access to the production certificate.
+The tag workflow refuses to publish unless its protected GitHub environment
+can exchange a short-lived OIDC token for the dedicated Azure Artifact Signing
+identity. It timestamps, Authenticode-signs, and verifies the public trust chain
+of both installers before they can reach the publishing job. Pull-request CI
+builds and exercises unsigned test MSIs with no access to the production
+signing profile. No exportable PFX or Azure client secret is stored in GitHub.
 
 ## Helm chart
 

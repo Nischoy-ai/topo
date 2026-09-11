@@ -92,6 +92,21 @@ stage each the same way (Objective, Deliverables, Acceptance gates,
 Deliberate non-goals) before starting it, and confirm scope with the user
 first, rather than assuming an order.
 
+The ServiceNow-managed stateless control-plane slices A, B, C1, and C1.1 are
+merged through PR #57. The current staged follow-on is C1.2, the first signed
+beta distribution: the public `Nischoy-ai/topo-packages` and
+`Nischoy-ai/homebrew-tap` repositories and HTTPS Pages origin now exist. The
+protected environments allow only `v*` tags for native signing and only `main`
+for beta promotion; both have two eligible reviewers, self-review prevention,
+and administrator bypass disabled.
+`scripts/check-production-distribution.sh` is the fail-closed readiness check.
+Windows signing uses GitHub OIDC with Azure Artifact Signing, not an exportable
+PFX or long-lived Azure client secret. The real beta remains blocked until the
+owner places the required Azure configuration identifiers, Apple/notary
+identity, and least-privilege distribution token directly in the GitHub
+environments. Never request those values in chat or weaken the signing gates
+to proceed.
+
 The completed M2.5 slices, kept for reference:
 
 1. **Done.** Separate the operator control plane from the collector

@@ -14,7 +14,7 @@ local policy. No target-bearing ECC translator is supported; generic `Command`,
 arbitrary `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics are
 denied by default with a correlated result.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, Authenticode, Developer ID, and notarization credentials. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, OIDC-authorized Azure Artifact Signing, Developer ID, and notarization identities. Windows signing uses no exportable PFX or long-lived Azure client secret. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
 
 ## Deployment guidance
 
@@ -108,6 +108,14 @@ beta and N-1 stable promotions pass. Repository private keys never enter
 ordinary CI, and distribution tokens have no Topo source write scope. See
 [release artifacts and verification](docs/releases.md) and
 [package-manager distribution](docs/distribution.md).
+
+Maintainers can run `scripts/check-production-distribution.sh` before tagging.
+It queries only repository/environment policy and environment-secret names,
+never secret values; bounds GitHub responses, discards command stderr, and
+fails closed when reviewers, bypass policy, branches, Pages, repositories, or
+required names are wrong. Passing this configuration preflight does not prove
+that a stored credential is valid or least-privileged—the signed release and
+promotion workflows must still exercise each identity without exposing it.
 
 ## Controller authorization boundary
 
