@@ -105,7 +105,14 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$RUNNER_TEMP/dist/SHA256SUMS"
           gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_amd64.deb" --repo "$GITHUB_REPOSITORY"
-          gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_windows_amd64.msi" --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_darwin_amd64.tar.gz" --repo "$GITHUB_REPOSITORY"
+          profile=$(go run ./internal/releasetool -mode profile -version "$VERSION" -out "$RUNNER_TEMP/dist")
+          if [[ "$profile" == include_windows=true ]]; then
+            gh attestation verify "$RUNNER_TEMP/dist/topo_${filename_version}_windows_amd64.msi" --repo "$GITHUB_REPOSITORY"
+          elif [[ "$profile" != include_windows=false ]]; then
+            echo "invalid authenticated release profile" >&2
+            exit 1
+          fi
           install -d "$RUNNER_TEMP/rpmdb"
           rpm --dbpath "$RUNNER_TEMP/rpmdb" --import "$RUNNER_TEMP/dist/nischoy-topo-archive.asc"
           for package in "$RUNNER_TEMP"/dist/*.rpm; do

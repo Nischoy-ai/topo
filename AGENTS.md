@@ -100,12 +100,15 @@ protected environments allow only `v*` tags for native signing and only `main`
 for beta promotion; both have two eligible reviewers, self-review prevention,
 and administrator bypass disabled.
 `scripts/check-production-distribution.sh` is the fail-closed readiness check.
-Windows signing uses GitHub OIDC with Azure Artifact Signing, not an exportable
-PFX or long-lived Azure client secret. The real beta remains blocked until the
-owner places the required Azure configuration identifiers, Apple/notary
-identity, and least-privilege distribution token directly in the GitHub
-environments. Never request those values in chat or weaken the signing gates
-to proceed.
+On 2026-09-13 the owner narrowed the first beta to Linux APT/RPM and
+macOS/Homebrew. The `linux-macos-beta` profile excludes Windows artifacts and
+rejects stable tags; all selected-platform signing and review gates remain.
+The unused Azure signing account was deleted with owner approval. Preserve
+the full-platform tooling and Windows CI; future Windows signing uses GitHub
+OIDC with Azure Artifact Signing, never an exportable PFX or client secret.
+The real beta remains blocked until the owner places the Apple/notary identity
+and least-privilege distribution token directly in the GitHub environments.
+Never request those values in chat or weaken signing gates to proceed.
 
 The completed M2.5 slices, kept for reference:
 

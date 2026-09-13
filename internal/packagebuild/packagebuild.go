@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Nischoy-ai/topo/internal/release"
 	"github.com/Nischoy-ai/topo/internal/servicenowpackage"
 )
 
@@ -56,6 +57,7 @@ type Options struct {
 }
 
 type releaseMetadata struct {
+	Profile   string            `json:"release_profile,omitempty"`
 	Version   string            `json:"version"`
 	Commit    string            `json:"commit"`
 	Artifacts []releaseArtifact `json:"artifacts"`
@@ -69,6 +71,7 @@ type releaseArtifact struct {
 }
 
 type packageMetadata struct {
+	Profile       string            `json:"release_profile,omitempty"`
 	SchemaVersion int               `json:"schema_version"`
 	Version       string            `json:"version"`
 	Commit        string            `json:"commit"`
@@ -194,6 +197,7 @@ func Build(ctx context.Context, options Options) (err error) {
 	})
 
 	if err := writePackageMetadata(options.OutputDir, packageMetadata{
+		Profile:       metadata.Profile,
 		SchemaVersion: 1,
 		Version:       options.Version,
 		Commit:        metadata.Commit,
@@ -263,18 +267,19 @@ func RefreshPackageMetadata(dir string) error {
 	if err != nil {
 		return fmt.Errorf("read release metadata: %w", err)
 	}
-	var release releaseMetadata
-	if err := json.Unmarshal(contents, &release); err != nil {
+	var source releaseMetadata
+	if err := json.Unmarshal(contents, &source); err != nil {
 		return fmt.Errorf("parse release metadata: %w", err)
 	}
-	if !versionPattern.MatchString(release.Version) {
-		return fmt.Errorf("release metadata has invalid version %q", release.Version)
+	if err := release.CheckProfileFiles(dir, source.Profile, source.Version); err != nil {
+		return err
 	}
-	filenameVersion := strings.TrimPrefix(release.Version, "v")
+	filenameVersion := strings.TrimPrefix(source.Version, "v")
 	metadata := packageMetadata{
+		Profile:       source.Profile,
 		SchemaVersion: 1,
-		Version:       release.Version,
-		Commit:        release.Commit,
+		Version:       source.Version,
+		Commit:        source.Commit,
 		Assembler:     map[string]string{"nfpm": nfpmVersion},
 	}
 	for _, item := range []struct {
@@ -440,8 +445,27 @@ func verifyRawArtifacts(dir, version string) (releaseMetadata, []checksumEntry, 
 	if metadata.Version != version {
 		return releaseMetadata{}, nil, fmt.Errorf("release metadata version %q does not match %q", metadata.Version, version)
 	}
-	if len(metadata.Artifacts) != 6 {
-		return releaseMetadata{}, nil, fmt.Errorf("release metadata must contain six raw artifacts, got %d", len(metadata.Artifacts))
+	selectedTargets, err := release.TargetsForProfile(metadata.Profile, version)
+	if err != nil {
+		return releaseMetadata{}, nil, err
+	}
+	if err := release.CheckProfileFiles(dir, metadata.Profile, version); err != nil {
+		return releaseMetadata{}, nil, err
+	}
+	if len(metadata.Artifacts) != len(selectedTargets) {
+		return releaseMetadata{}, nil, fmt.Errorf("release metadata must contain %d raw artifacts, got %d", len(selectedTargets), len(metadata.Artifacts))
+	}
+	expected := map[string]release.Target{}
+	for _, target := range selectedTargets {
+		name := fmt.Sprintf("topo_%s_%s_%s.%s", strings.TrimPrefix(version, "v"), target.GOOS, target.GOARCH, target.Format)
+		expected[name] = target
+	}
+	for _, artifact := range metadata.Artifacts {
+		target, ok := expected[artifact.Filename]
+		if !ok || target.GOOS != artifact.GOOS || target.GOARCH != artifact.GOARCH {
+			return releaseMetadata{}, nil, errors.New("raw artifact does not match the release profile")
+		}
+		delete(expected, artifact.Filename)
 	}
 
 	checksumFile, err := os.Open(filepath.Join(dir, "SHA256SUMS"))

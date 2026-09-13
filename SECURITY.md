@@ -396,6 +396,19 @@ creation, update, and deletion are each recorded in the audit log (see
 "Persistent storage and the audit log" above). See
 [Server-side recurring discovery scheduling](docs/scheduling.md).
 
+## Release platform scope
+
+The owner-approved first signed beta is Linux/macOS-only. Its explicit
+`linux-macos-beta` release profile must reject stable tags and Windows
+artifacts; no unsigned Windows ZIP or MSI may be slipped into the release or
+offline bundle. RPM signing, Developer ID, explicit successful notarization,
+Sigstore, provenance, repository signatures, and independent environment
+review remain required. Windows CI and the full-platform tooling contract are
+retained, but Azure signing provisioning is deferred. Profile selection is a
+reviewed source change, not inferred from whichever secrets happen to exist.
+Real publication evidence is still pending; secret-name checks do not prove
+the validity or possession of the corresponding signing identities.
+
 ## ServiceNow publishing
 
 Topo-owned discovery followed by the documented IRE API is the supported

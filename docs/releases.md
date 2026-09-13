@@ -5,6 +5,12 @@ optional prerelease suffix) whose commit is already reachable from `main`.
 `.github/workflows/release.yml` uses the exact Go 1.26.8 toolchain and
 commit-pinned actions. It creates one GitHub Release containing:
 
+The current reviewed workflow selects **`linux-macos-beta`**. It accepts only
+prerelease tags and omits Windows ZIPs, MSIs, and Windows signing. The list below
+describes the full-platform tooling contract; Windows entries apply only to
+`all`. Re-enabling Windows or stable releases requires a reviewed workflow
+change, not a secret-based fallback. Linux and macOS signing gates are unchanged.
+
 - deterministic raw archives for Linux, macOS, and Windows on amd64 and arm64;
 - DEB and OpenPGP-signed RPM packages for Linux amd64/arm64,
   Authenticode-signed MSI installers for Windows amd64/arm64,
@@ -12,7 +18,7 @@ commit-pinned actions. It creates one GitHub Release containing:
   installable ServiceNow scoped-application ZIP, and a deterministic offline
   bundle;
 - `release-metadata.json`, recording the source commit, toolchain, build flags,
-  target matrix, and each archive's SHA-256 digest;
+  target matrix, release profile, and each archive's SHA-256 digest;
 - `package-metadata.json`, binding native package payloads to their source
   archive binary digests and identifying the pinned ServiceNow SDK assembler;
 - `servicenow-app-metadata.json`, recording the exact app scope, version,
@@ -63,6 +69,11 @@ GOTOOLCHAIN=go1.26.8 scripts/build-release.sh \
 Compare `dist-local/SHA256SUMS` with the manifest downloaded from the release.
 The build needs network access only when the pinned Go modules are not already
 in the local module cache.
+
+For a Linux/macOS beta, pass `linux-macos-beta` as the fourth argument and use
+the exact prerelease tag. Omitting it builds all six historical targets.
+Unknown profiles, a stable tag paired with `linux-macos-beta`, and unexpected
+Windows artifacts in that profile are rejected rather than silently included.
 
 ## Verify a downloaded release
 

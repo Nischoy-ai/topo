@@ -14,6 +14,7 @@ import (
 func main() {
 	owner := flag.String("owner", "Nischoy-ai", "GitHub organization")
 	repository := flag.String("repository", "topo", "source repository")
+	profile := flag.String("profile", "", "release profile: all or linux-macos-beta")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "production preflight does not accept positional arguments")
@@ -23,6 +24,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 	report, err := productioncheck.Run(ctx, productioncheck.GHAPI{}, productioncheck.Options{
+		Profile:    *profile,
 		Owner:      *owner,
 		Repository: *repository,
 	})

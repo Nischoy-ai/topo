@@ -1,14 +1,15 @@
 #!/bin/sh
 set -eu
 
-if [ "$#" -ne 3 ]; then
-	echo "usage: scripts/build-release.sh <version> <commit> <new-output-directory>" >&2
+if [ "$#" -lt 3 ] || [ "$#" -gt 4 ]; then
+	echo "usage: scripts/build-release.sh <version> <commit> <new-output-directory> [all|linux-macos-beta]" >&2
 	exit 2
 fi
 
 release_version=$1
 release_commit=$2
 release_output=$3
+release_profile=${4:-all}
 
 if [ -e "$release_output" ]; then
 	echo "release output already exists: $release_output" >&2
@@ -28,6 +29,7 @@ git archive --format=tar HEAD | tar -xf - -C "$release_work/source-b"
 (
 	cd "$release_work/source-a"
 	go run ./internal/releasetool \
+		-profile "$release_profile" \
 		-version "$release_version" \
 		-commit "$release_commit" \
 		-out "$release_work/output-a"
@@ -35,6 +37,7 @@ git archive --format=tar HEAD | tar -xf - -C "$release_work/source-b"
 (
 	cd "$release_work/source-b"
 	go run ./internal/releasetool \
+		-profile "$release_profile" \
 		-version "$release_version" \
 		-commit "$release_commit" \
 		-out "$release_work/output-b"

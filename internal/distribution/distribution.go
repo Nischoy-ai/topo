@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Nischoy-ai/topo/internal/release"
 )
 
 const maxArtifactSize = 512 << 20
@@ -38,6 +40,7 @@ type Options struct {
 }
 
 type releaseMetadata struct {
+	Profile       string `json:"release_profile,omitempty"`
 	SchemaVersion int    `json:"schema_version"`
 	Project       string `json:"project"`
 	Repository    string `json:"repository"`
@@ -46,6 +49,7 @@ type releaseMetadata struct {
 }
 
 type promotionMetadata struct {
+	Profile       string            `json:"release_profile,omitempty"`
 	SchemaVersion int               `json:"schema_version"`
 	Version       string            `json:"version"`
 	Commit        string            `json:"commit"`
@@ -93,14 +97,17 @@ func Build(options Options) (err error) {
 	if err != nil {
 		return fmt.Errorf("read release metadata: %w", err)
 	}
-	var release releaseMetadata
-	if err := json.Unmarshal(metadataBytes, &release); err != nil {
+	var source releaseMetadata
+	if err := json.Unmarshal(metadataBytes, &source); err != nil {
 		return fmt.Errorf("parse release metadata: %w", err)
 	}
-	if release.SchemaVersion != 1 || release.Project != "Nischoy Topo" ||
-		release.Repository != "https://github.com/Nischoy-ai/topo" ||
-		release.Version != options.Version || !commitPattern.MatchString(release.Commit) {
+	if source.SchemaVersion != 1 || source.Project != "Nischoy Topo" ||
+		source.Repository != "https://github.com/Nischoy-ai/topo" ||
+		source.Version != options.Version || !commitPattern.MatchString(source.Commit) {
 		return fmt.Errorf("release metadata does not describe %s", options.Version)
+	}
+	if err := release.CheckProfileFiles(options.ArtifactDir, source.Profile, options.Version); err != nil {
+		return err
 	}
 
 	filenameVersion := strings.TrimPrefix(options.Version, "v")
@@ -113,9 +120,10 @@ func Build(options Options) (err error) {
 		"topo_" + filenameVersion + "_darwin_arm64.tar.gz",
 		"topo_" + filenameVersion + "_linux_amd64.tar.gz",
 		"topo_" + filenameVersion + "_linux_arm64.tar.gz",
-		"topo_" + filenameVersion + "_windows_amd64.msi",
-		"topo_" + filenameVersion + "_windows_arm64.msi",
 		"topo-" + filenameVersion + ".tgz",
+	}
+	if source.Profile != release.LinuxMacOSBeta {
+		required = append(required, "topo_"+filenameVersion+"_windows_amd64.msi", "topo_"+filenameVersion+"_windows_arm64.msi")
 	}
 	selected := make(map[string]string, len(required))
 	for _, name := range required {
@@ -135,8 +143,10 @@ func Build(options Options) (err error) {
 	if err := writeHomebrew(options, checksums, filenameVersion); err != nil {
 		return err
 	}
-	if err := writeWinGet(options, checksums, filenameVersion); err != nil {
-		return err
+	if source.Profile != release.LinuxMacOSBeta {
+		if err := writeWinGet(options, checksums, filenameVersion); err != nil {
+			return err
+		}
 	}
 	chart := "topo-" + filenameVersion + ".tgz"
 	if err := copyArtifact(options, chart, filepath.Join("helm", chart)); err != nil {
@@ -144,9 +154,10 @@ func Build(options Options) (err error) {
 	}
 
 	promotion := promotionMetadata{
+		Profile:       source.Profile,
 		SchemaVersion: 1,
 		Version:       options.Version,
-		Commit:        release.Commit,
+		Commit:        source.Commit,
 		Channel:       options.Channel,
 		PublishedAt:   options.PublishedAt.Format(time.RFC3339),
 		Source:        strings.TrimRight(options.ReleaseBaseURL, "/") + "/releases/tag/" + options.Version,

@@ -5,6 +5,14 @@ package-manager channels. Promotion never invokes `go build`, nFPM, WiX, or
 Helm packaging. The GitHub Release remains the immutable source of the exact
 DEB, RPM, MSI, raw archive, and chart bytes referenced by every channel.
 
+**Current beta scope (2026-09-13): Linux APT/RPM and macOS/Homebrew.**
+The reviewed release workflow selects `linux-macos-beta`: four raw archives
+(Linux/macOS, amd64/arm64), no Windows ZIPs or MSIs, and no WinGet manifests.
+Windows code and full-platform tooling remain supported but Windows signing
+provisioning is deferred. The unused Azure signing account was deleted with
+owner approval. The ServiceNow application, offline bundle, and existing Helm
+artifact path remain included; no discovery capability changes.
+
 The manual `promote package-manager channels` workflow accepts a semantic
 release tag, `beta` or `stable`, and (for stable) the previous stable tag. It
 performs these operations in order:
@@ -37,7 +45,7 @@ Provision these public repositories before the first promotion:
   `https://nischoy-ai.github.io/topo-packages`;
 - `Nischoy-ai/homebrew-tap`, with an initial `Formula/` directory;
 - an organization fork named `Nischoy-ai/winget-pkgs` of
-  `microsoft/winget-pkgs`.
+  `microsoft/winget-pkgs` (deferred; not needed for the Linux/macOS beta).
 
 Protect the `native-package-signing`, `distribution-beta`, and
 `distribution-stable` GitHub environments. Require reviewer approval and
@@ -58,11 +66,36 @@ the promotion workflow also rejects dispatches from any other ref. Store:
 | each distribution environment | `DISTRIBUTION_GITHUB_TOKEN` | Fine-grained token limited to contents write on the three distribution repositories and pull-request creation for the WinGet fork. It has no Topo source write permission. |
 | optional during rotation | `REPOSITORY_ADDITIONAL_PUBLIC_KEY` / `REPOSITORY_ADDITIONAL_PUBLIC_KEY_FINGERPRINT` | Publish an old/new overlap keyring without granting the additional key signing authority in that run. |
 
+For `linux-macos-beta`, the six Azure/Artifact Signing identifiers are not
+required. The beta distribution token needs **Contents: read and write** only
+on `topo-packages` and `homebrew-tap`, not the source repository or WinGet fork.
+Use an expiry and provision it directly into `distribution-beta`; do not paste
+it into chat. Existing optional Windows identifiers are tolerated by the
+preflight but never used in this profile. Linux OpenPGP and all six Apple
+entries remain mandatory; absence never triggers an unsigned fallback.
+
+### Apple signing identity
+
+Use Nischoy's Apple Developer Program organization account. Its Account Holder
+creates a **Developer ID Application** certificate (not Apple Development,
+Mac App Distribution, or Developer ID Installer). Apple documents the CSR and
+certificate flow in [Developer ID certificates](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/).
+Keep the private key local and protected; export the matching certificate and
+private key as a password-protected P12 and place its base64 encoding, export
+password, and exact signing identity directly in `native-package-signing`.
+The remaining three entries hold the team's notary API key, key ID, and issuer
+ID. See [Apple's notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
+The workflow signs both architectures and requires explicit `Accepted` notary
+status before rearchiving either. This is an archive/Homebrew distribution,
+not a Mac App Store submission or a new macOS PKG installer.
+
 Make the `ghcr.io/nischoy-ai/charts/topo` package public after its first
 workflow-created publication. The repository-scoped `GITHUB_TOKEN` receives
 only `packages: write` in the final publication job.
 
 ### Windows signing identity
+
+Deferred for the current beta; do not provision this service for Linux/macOS.
 
 Create an Azure Artifact Signing account and a public-trust certificate
 profile, then create a dedicated Microsoft Entra application or user-assigned
@@ -86,7 +119,7 @@ uses Windows SignTool to verify the complete public trust chain.
 Before creating a tag, run:
 
 ```sh
-scripts/check-production-distribution.sh
+scripts/check-production-distribution.sh -profile linux-macos-beta
 ```
 
 The preflight uses the already-authenticated GitHub CLI and emits one bounded
@@ -99,15 +132,18 @@ environment-secret names are present. GitHub's secret-list endpoint exposes
 names only; the preflight never requests values, discards command stderr, and
 does not mutate GitHub. A non-ready report exits nonzero.
 
-As of 2026-09-08, `Nischoy-ai/topo-packages` and
+Omitting `-profile` (or using `-profile all`) retains the full-platform checks.
+Unknown profiles are rejected.
+
+As of 2026-09-13, `Nischoy-ai/topo-packages` and
 `Nischoy-ai/homebrew-tap` exist as public repositories, the package Pages site
 is built with HTTPS enforcement, and `native-package-signing` plus
 `distribution-beta` exist with self-review prevention, administrator bypass
 disabled, and two eligible reviewers. The native environment permits only
 `v*` tags while beta distribution permits only `main`. The OpenPGP private key
 and fingerprint names are present in both environments. The fail-closed report
-remains non-ready because native signing still lacks the required Apple and
-Azure Artifact Signing configuration names, while beta distribution lacks
+remains non-ready because native signing still lacks the six required Apple
+signing/notarization names, while beta distribution lacks
 `DISTRIBUTION_GITHUB_TOKEN`. Place credential values directly in the
 environments—never in chat, source control, shell arguments, or ordinary CI.
 `Nischoy-ai/winget-pkgs`,
@@ -151,9 +187,14 @@ rejecting as reachable `GO-2026-6303` on 2026-08-28.
 ## Release and promotion
 
 Create the reviewed release tag using [the release procedure](releases.md).
-That workflow now fails closed unless RPM, OIDC-authorized Artifact Signing,
-Developer ID, and notarization identities are available. RPM, Windows, and
-macOS signing run in isolated jobs; the final job refreshes release metadata
+The selected profile fails closed unless RPM, Developer ID, and notarization
+identities are available; full-platform releases additionally require Azure
+Artifact Signing. The `linux-macos-beta` profile rejects stable tags outright.
+The profile is recorded in release, package, and promotion metadata and covered
+by the authenticated manifest. A skipped Windows job permits publication only
+when the validated profile explicitly excludes Windows; Linux/macOS failures
+still block it. RPM, Windows, and macOS signing run in isolated jobs;
+the final job refreshes release metadata
 and checksums after native signatures are applied, then creates
 Sigstore/GitHub evidence over the final bytes.
 

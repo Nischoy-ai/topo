@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-08
+- **Updated:** 2026-09-13
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -136,7 +136,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   baseline to Go 1.26.8 and `x/crypto` 0.56.0, the first compatible fixed
   release; this is a required security remediation, not an expansion of
   discovery authority.
-  Slice C1.2 is staged in
+  Slice C1.2 release automation is merged in
   [PR 58](https://github.com/Nischoy-ai/topo/pull/58). The beta repositories,
   HTTPS Pages origin, two-reviewer environment protections, and isolated
   OpenPGP names are present. The native-signing environment now permits only
@@ -147,9 +147,17 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   profile, and post-signing SignTool verification rather than storing a PFX.
   The live read-only preflight passes repository, Pages, reviewer, bypass, and
   deployment-policy checks and remains correctly non-ready for the missing
-  Apple identity, six Azure/Artifact Signing identifiers, and
+  Apple identity and
   `DISTRIBUTION_GITHUB_TOKEN`. No official release or beta channel has been
   published.
+  On 2026-09-13 the owner narrowed this beta to Linux APT/RPM and
+  macOS/Homebrew, and authorized deletion of the unused Azure signing account
+  (Azure confirmed successful deletion). `agent/linux-macos-beta` implements
+  an explicit prerelease-only platform profile, keeps Windows CI and the full
+  tooling path, and omits Windows release artifacts rather than publishing
+  them unsigned. The current profile's live preflight passes all repository,
+  Pages, and environment checks; the six Apple names and distribution token
+  are missing. Key-name presence is not evidence of a usable OpenPGP key.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -3085,6 +3093,35 @@ build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Slice C1.2 — first signed beta distribution (staged)
 
+**Owner-approved scope revision (2026-09-13).** The first beta targets Linux
+APT/RPM and macOS/Homebrew only. Windows native signing and Windows downloads
+are deferred; the unused Azure Artifact Signing account was deleted with owner
+approval. Existing Windows code, tests, and the full-platform release path are
+retained. This revision supersedes the Windows requirements below for this
+beta only; it does not relax a signing check for an artifact that is shipped.
+
+**Objective.** Decouple the Linux/macOS pilot release from Windows provisioning.
+
+**Deliverables.** Add an explicit `linux-macos-beta` release profile, recorded
+in authenticated release and promotion metadata. Build only four raw archives,
+omit MSI/WinGet, retain the ServiceNow app and existing Linux/Helm packaging,
+and make readiness checks require only applicable identities. Keep the default
+full-platform tooling contract compatible with prior artifacts.
+
+**Acceptance gates.** Reject unknown profiles, stable versions using the
+restricted beta profile, missing selected artifacts, and unexpected Windows
+artifacts. Exercise build metadata, package assembly, promotion, and readiness
+tests for both profiles. A failed Linux or macOS signing job must still block
+publication; Windows may be skipped only for the explicit restricted profile.
+Run the exact Go 1.26.8 verification matrix and security checks before a PR.
+Actual signed publication still requires owner-provisioned Apple credentials
+and distribution token, green merged source, and independent environment
+approval; do not claim operational evidence from test fixtures.
+
+**Deliberate non-goals.** No Windows signing account, unsigned Windows release,
+stable promotion, discovery changes, auto-starting services, or bypass of
+signing, notarization, checksums, attestations, or environment protections.
+
 **Objective.** Close the next customer-adoption gap by publishing one genuine,
 security-gated beta from merged `main` and making the exact release bytes
 installable through Nischoy's beta APT/RPM repositories, official Homebrew tap,
@@ -3165,6 +3202,27 @@ README remains a short three-step ServiceNow discovery entry point; general
 source-build guidance and the architecture overview live in
 `docs/development.md` and `docs/architecture.md`, while status, ServiceNow
 behavior, and security link to their existing authoritative documents.
+
+**Linux/macOS candidate evidence (2026-09-13).** The profile flows from the
+raw builder through package assembly, final digest refresh, authenticated
+release metadata, and promotion. Local tests exercise four-target compiler
+fixtures, raw identity validation, package assembly, deterministic beta channel
+generation without WinGet, and rejection of stable/unknown profiles, duplicate
+or missing targets, missing selected packages, and extra Windows artifacts.
+The workflow guard test pins the explicit selected-signer success condition;
+`actionlint` validates both modified workflows. Exact Go 1.26.8 full tests,
+focused worker/controlsim/SSH integration tests, focused race tests, formatting,
+diff checks, and `scripts/security-review-checks.sh` pass. The latter includes
+full vet/race/native build and Windows amd64 vet/build; the pinned scanner
+reports zero reachable vulnerabilities (one advisory in an uncalled required
+module). These are local/fixture results, not public-trust signing evidence.
+The live name-only GitHub preflight confirms existing protections and reports
+only six missing Apple secret names and the distribution token for this profile.
+There was no new ServiceNow action or real-instance discovery in this slice;
+the prior evidence is unchanged. No release tag, signing run, or promotion has
+been created. Apple identity provisioning and the distribution token, followed
+by independent approval of the signed release/promotion, remain operational
+gates; Windows provisioning is no longer a dependency of this beta.
 
 ### Relationship to the M2.5 gate
 
