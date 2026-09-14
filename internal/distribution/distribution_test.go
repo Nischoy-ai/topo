@@ -136,6 +136,10 @@ func TestProductCodeMatchesMSIBuilder(t *testing.T) {
 }
 
 func writeFixture(t *testing.T, dir, version string) map[string][]byte {
+	return writeProfileFixture(t, dir, version, "", "")
+}
+
+func writeProfileFixture(t *testing.T, dir, version, profile, omit string) map[string][]byte {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
@@ -151,9 +155,13 @@ func writeFixture(t *testing.T, dir, version string) map[string][]byte {
 	}
 	files := make(map[string][]byte)
 	for _, name := range names {
+		if name == omit || ((profile == "linux-macos-beta" || profile == "linux-homebrew-beta") && strings.Contains(name, "windows")) {
+			continue
+		}
 		files[name] = []byte("fixture:" + name + "\n")
 	}
 	metadata, err := json.Marshal(releaseMetadata{
+		Profile:       profile,
 		SchemaVersion: 1,
 		Project:       "Nischoy Topo",
 		Repository:    "https://github.com/Nischoy-ai/topo",

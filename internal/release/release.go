@@ -51,6 +51,7 @@ type Target struct {
 
 // Options controls one release build. OutputDir must not already exist.
 type Options struct {
+	Profile   string
 	Root      string
 	OutputDir string
 	Version   string
@@ -66,6 +67,7 @@ type artifact struct {
 }
 
 type metadata struct {
+	Profile       string     `json:"release_profile,omitempty"`
 	SchemaVersion int        `json:"schema_version"`
 	Project       string     `json:"project"`
 	Repository    string     `json:"repository"`
@@ -138,12 +140,19 @@ func RefreshMetadata(dir string) error {
 	if err := json.Unmarshal(contents, &manifest); err != nil {
 		return fmt.Errorf("parse release metadata: %w", err)
 	}
+	selectedTargets, err := TargetsForProfile(manifest.Profile, manifest.Version)
+	if err != nil {
+		return err
+	}
+	if err := CheckProfileFiles(dir, manifest.Profile, manifest.Version); err != nil {
+		return err
+	}
 	if manifest.SchemaVersion != 1 || manifest.Project != projectName || manifest.Repository != repository ||
-		!versionPattern.MatchString(manifest.Version) || !commitPattern.MatchString(manifest.Commit) || len(manifest.Artifacts) != len(targets) {
+		!versionPattern.MatchString(manifest.Version) || !commitPattern.MatchString(manifest.Commit) || len(manifest.Artifacts) != len(selectedTargets) {
 		return errors.New("release metadata is incomplete or invalid")
 	}
-	expected := make(map[string]Target, len(targets))
-	for _, target := range targets {
+	expected := make(map[string]Target, len(selectedTargets))
+	for _, target := range selectedTargets {
 		name := fmt.Sprintf("topo_%s_%s_%s.%s", strings.TrimPrefix(manifest.Version, "v"), target.GOOS, target.GOARCH, target.Format)
 		expected[name] = target
 	}
@@ -191,6 +200,10 @@ func Build(ctx context.Context, options Options) (err error) {
 	if err := validateOptions(&options); err != nil {
 		return err
 	}
+	selectedTargets, err := TargetsForProfile(options.Profile, options.Version)
+	if err != nil {
+		return err
+	}
 	if _, err := os.Lstat(options.OutputDir); err == nil {
 		return fmt.Errorf("release output already exists: %s", options.OutputDir)
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -217,8 +230,8 @@ func Build(ctx context.Context, options Options) (err error) {
 		return err
 	}
 	versionName := strings.TrimPrefix(options.Version, "v")
-	artifacts := make([]artifact, 0, len(targets))
-	for _, target := range targets {
+	artifacts := make([]artifact, 0, len(selectedTargets))
+	for _, target := range selectedTargets {
 		base := fmt.Sprintf("topo_%s_%s_%s", versionName, target.GOOS, target.GOARCH)
 		binaryName := "topo"
 		if target.GOOS == "windows" {
@@ -266,6 +279,7 @@ func Build(ctx context.Context, options Options) (err error) {
 	}
 
 	manifest := metadata{
+		Profile:       options.Profile,
 		SchemaVersion: 1,
 		Project:       projectName,
 		Repository:    repository,

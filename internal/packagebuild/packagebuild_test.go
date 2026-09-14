@@ -249,6 +249,10 @@ func fixtureRoot(t *testing.T) string {
 }
 
 func fixtureRawRelease(t *testing.T, version string, binary []byte) string {
+	return fixtureRawReleaseProfile(t, version, binary, "")
+}
+
+func fixtureRawReleaseProfile(t *testing.T, version string, binary []byte, profile string) string {
 	t.Helper()
 	dir := t.TempDir()
 	filenameVersion := strings.TrimPrefix(version, "v")
@@ -258,6 +262,9 @@ func fixtureRawRelease(t *testing.T, version string, binary []byte) string {
 		{"linux", "amd64", "tar.gz"}, {"linux", "arm64", "tar.gz"},
 		{"windows", "amd64", "zip"}, {"windows", "arm64", "zip"},
 	} {
+		if (profile == "linux-macos-beta" || profile == "linux-homebrew-beta") && target.goos == "windows" {
+			continue
+		}
 		name := "topo_" + filenameVersion + "_" + target.goos + "_" + target.arch + "." + target.extension
 		path := filepath.Join(dir, name)
 		if target.goos == "linux" {
@@ -273,7 +280,7 @@ func fixtureRawRelease(t *testing.T, version string, binary []byte) string {
 		}
 		artifacts = append(artifacts, releaseArtifact{Filename: name, GOOS: target.goos, GOARCH: target.arch, SHA256: digest})
 	}
-	metadata := releaseMetadata{Version: version, Commit: strings.Repeat("a", 40), Artifacts: artifacts}
+	metadata := releaseMetadata{Profile: profile, Version: version, Commit: strings.Repeat("a", 40), Artifacts: artifacts}
 	metadataBytes, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		t.Fatal(err)

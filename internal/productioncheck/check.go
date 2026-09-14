@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/Nischoy-ai/topo/internal/release"
 )
 
 const maxResponseBytes = 1 << 20
@@ -55,6 +57,7 @@ type API interface {
 
 // Options names the source repository and owning organization.
 type Options struct {
+	Profile    string
 	Owner      string
 	Repository string
 }
@@ -68,6 +71,7 @@ type Check struct {
 
 // Report is the bounded, machine-readable preflight result.
 type Report struct {
+	Profile       string  `json:"release_profile,omitempty"`
 	SchemaVersion int     `json:"schema_version"`
 	Ready         bool    `json:"ready"`
 	Checks        []Check `json:"checks"`
@@ -77,6 +81,10 @@ type Report struct {
 // environments, branch policies, and secret names. It never requests a secret
 // value; GitHub's environment-secret listing endpoint returns names only.
 func Run(ctx context.Context, api API, options Options) (Report, error) {
+	policy, err := release.PolicyForProfile(options.Profile, "v0.0.0-preflight")
+	if err != nil {
+		return Report{}, err
+	}
 	if api == nil {
 		return Report{}, errors.New("GitHub API is required")
 	}
@@ -84,7 +92,17 @@ func Run(ctx context.Context, api API, options Options) (Report, error) {
 		return Report{}, errors.New("owner and repository must be bounded GitHub slugs")
 	}
 
-	report := Report{SchemaVersion: 1, Ready: true}
+	report := Report{SchemaVersion: 1, Profile: options.Profile, Ready: true}
+	nativeRequired := make([]string, 0, len(nativeSecretNames))
+	nativeOptional := map[string]struct{}{}
+	for _, name := range nativeSecretNames {
+		if (!policy.IncludeWindows && (strings.HasPrefix(name, "AZURE_") || strings.HasPrefix(name, "ARTIFACT_SIGNING_"))) ||
+			(!policy.RequireAppleSigning && strings.HasPrefix(name, "APPLE_")) {
+			nativeOptional[name] = struct{}{}
+		} else {
+			nativeRequired = append(nativeRequired, name)
+		}
+	}
 	add := func(name string, err error) {
 		check := Check{Name: name, Status: "pass"}
 		if err != nil {
@@ -105,7 +123,7 @@ func Run(ctx context.Context, api API, options Options) (Report, error) {
 	}
 
 	var pages pagesResponse
-	err := getJSON(ctx, api, "repos/"+options.Owner+"/topo-packages/pages", &pages)
+	err = getJSON(ctx, api, "repos/"+options.Owner+"/topo-packages/pages", &pages)
 	if err == nil {
 		err = validatePages(pages, options.Owner)
 	}
@@ -116,7 +134,7 @@ func Run(ctx context.Context, api API, options Options) (Report, error) {
 		required []string
 		optional map[string]struct{}
 	}{
-		{name: "native-package-signing", required: nativeSecretNames},
+		{name: "native-package-signing", required: nativeRequired, optional: nativeOptional},
 		{name: "distribution-beta", required: betaSecretNames, optional: optionalBetaSecretNames},
 	} {
 		base := "repos/" + options.Owner + "/" + options.Repository + "/environments/" + environment.name

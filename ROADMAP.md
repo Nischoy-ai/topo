@@ -258,11 +258,16 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   signing and beta distribution environments prevent self-review, disable
   administrator bypass, and have two eligible reviewers. Native signing is
   restricted to reviewed `v*` tags; beta promotion is restricted to `main`.
-  Windows signing uses short-lived GitHub OIDC authorization to Azure Artifact
-  Signing rather than an exportable PFX. A read-only, secret-name-only
-  preflight is implemented and correctly blocks release while the remaining
-  Azure configuration, Apple/notary identity, and least-privilege distribution
-  token are absent. No official release or channel is published yet.
+  The owner narrowed the first beta to Linux APT/RPM and macOS/Homebrew on
+  2026-09-13. An explicit prerelease-only profile excludes Windows downloads
+  and WinGet. On 2026-09-14 the owner additionally approved the distinct
+  `linux-homebrew-beta` profile, which defers Apple Developer ID/notarization
+  for the CLI formula and requires Intel/Apple Silicon Homebrew tests instead.
+  Linux signing, Sigstore/provenance, SBOMs, and protected reviews remain.
+  Full-platform tooling, the earlier signed beta profile, and Windows CI retain
+  their requirements. The new beta still needs the least-privilege distribution
+  token and successful protected release/promotion. No official release or
+  channel is published yet; no Apple-notarization claim is made.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for
