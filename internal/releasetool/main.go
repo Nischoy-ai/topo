@@ -10,25 +10,28 @@ import (
 )
 
 func main() {
-	mode := flag.String("mode", "build", "build, refresh-metadata, or profile")
+	mode := flag.String("mode", "build", "build, refresh-metadata, profile, or policy")
 	root := flag.String("root", ".", "repository source root")
 	output := flag.String("out", "", "new output directory")
 	version := flag.String("version", "", "semantic release version, including leading v")
 	commit := flag.String("commit", "", "source commit digest, or dev")
-	profile := flag.String("profile", "", "release profile: all or linux-macos-beta")
+	profile := flag.String("profile", "", "release profile: all, linux-macos-beta, or linux-homebrew-beta")
 	flag.Parse()
-	if *mode == "profile" {
-		includeWindows := *profile != release.LinuxMacOSBeta
+	if *mode == "profile" || *mode == "policy" {
+		var policy release.Policy
 		var err error
 		if *output != "" {
-			includeWindows, err = release.ReadProfile(*output, *version)
+			policy, err = release.ReadPolicy(*output, *version)
 		} else {
-			_, err = release.TargetsForProfile(*profile, *version)
+			policy, err = release.PolicyForProfile(*profile, *version)
 		}
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("include_windows=%t\n", includeWindows)
+		fmt.Printf("include_windows=%t\n", policy.IncludeWindows)
+		if *mode == "policy" {
+			fmt.Printf("require_apple_signing=%t\n", policy.RequireAppleSigning)
+		}
 		return
 	}
 	if *mode == "refresh-metadata" {

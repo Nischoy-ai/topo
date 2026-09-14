@@ -19,6 +19,8 @@ func TestReleaseProfiles(t *testing.T) {
 		{LinuxMacOSBeta, "v1.2.3-beta.1", 4},
 		{LinuxMacOSBeta, "v1.2.3", 0}, {"typo", "v1.2.3-beta.1", 0},
 		{LinuxMacOSBeta, "not-a-version", 0},
+		{LinuxHomebrewBeta, "v1.2.3-beta.1", 4},
+		{LinuxHomebrewBeta, "v1.2.3", 0}, {LinuxHomebrewBeta, "bad", 0},
 	} {
 		got, err := TargetsForProfile(test.profile, test.version)
 		if (err != nil) != (test.count == 0) || len(got) != test.count {
@@ -28,6 +30,12 @@ func TestReleaseProfiles(t *testing.T) {
 }
 
 func TestLinuxMacOSBuildAndRefresh(t *testing.T) {
+	for _, profile := range []string{LinuxMacOSBeta, LinuxHomebrewBeta} {
+		t.Run(profile, func(t *testing.T) { testBetaBuildAndRefresh(t, profile) })
+	}
+}
+
+func testBetaBuildAndRefresh(t *testing.T, profile string) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake compiler uses sh; real compiler is covered by CI")
 	}
@@ -51,7 +59,7 @@ printf '%s' "$GOOS/$GOARCH-fixture" > "$1"
 	}
 	version := "v1.2.3-beta.1"
 	out := filepath.Join(t.TempDir(), "out")
-	if err := Build(context.Background(), Options{Root: root, OutputDir: out, Version: version, Commit: "dev", GoBinary: compiler, Profile: LinuxMacOSBeta}); err != nil {
+	if err := Build(context.Background(), Options{Root: root, OutputDir: out, Version: version, Commit: "dev", GoBinary: compiler, Profile: profile}); err != nil {
 		t.Fatal(err)
 	}
 	if err := RefreshMetadata(out); err != nil {
@@ -65,7 +73,7 @@ printf '%s' "$GOOS/$GOARCH-fixture" > "$1"
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Profile != LinuxMacOSBeta || len(manifest.Artifacts) != 4 {
+	if manifest.Profile != profile || len(manifest.Artifacts) != 4 {
 		t.Fatalf("unexpected manifest: %+v", manifest)
 	}
 	for _, item := range manifest.Artifacts {
@@ -75,6 +83,9 @@ printf '%s' "$GOOS/$GOARCH-fixture" > "$1"
 	}
 	if windows, err := ReadProfile(out, version); err != nil || windows {
 		t.Fatalf("Windows=%v err=%v", windows, err)
+	}
+	if policy, err := ReadPolicy(out, version); err != nil || policy.RequireAppleSigning != (profile == LinuxMacOSBeta) {
+		t.Fatalf("signing policy=%+v err=%v", policy, err)
 	}
 	if _, err := ReadProfile(out, "v1.2.3-beta.2"); err == nil {
 		t.Fatal("accepted mismatched version")
@@ -97,5 +108,25 @@ printf '%s' "$GOOS/$GOARCH-fixture" > "$1"
 	}
 	if err := RefreshMetadata(out); err == nil {
 		t.Fatal("refresh accepted missing selected archive")
+	}
+}
+
+func TestProfileSigningPolicy(t *testing.T) {
+	for _, test := range []struct {
+		profile string
+		want    Policy
+	}{
+		{"", Policy{true, true}}, {"all", Policy{true, true}},
+		{LinuxMacOSBeta, Policy{false, true}}, {LinuxHomebrewBeta, Policy{false, false}},
+	} {
+		got, err := PolicyForProfile(test.profile, "v1.2.3-beta.1")
+		if err != nil || got != test.want {
+			t.Fatalf("%q: %+v %v", test.profile, got, err)
+		}
+	}
+	for _, profile := range []string{LinuxMacOSBeta, LinuxHomebrewBeta, "typo"} {
+		if _, err := PolicyForProfile(profile, "v1.2.3"); err == nil {
+			t.Fatalf("accepted restricted stable policy %s", profile)
+		}
 	}
 }

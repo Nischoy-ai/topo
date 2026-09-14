@@ -11,7 +11,7 @@ permissions:
 # Owner-approved first-beta scope. Changing this requires a reviewed commit;
 # no workflow input or secret availability may select an unsigned fallback.
 env:
-  RELEASE_PROFILE: linux-macos-beta
+  RELEASE_PROFILE: linux-homebrew-beta
 
 concurrency:
   group: release-${{ github.ref }}
@@ -25,6 +25,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       filename_version: ${{ steps.release.outputs.filename_version }}
       include_windows: ${{ steps.release.outputs.include_windows }}
+      require_apple_signing: ${{ steps.release.outputs.require_apple_signing }}
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -59,7 +60,7 @@ jobs:
           {
             echo "version=$version"
             echo "filename_version=${version#v}"
-            go run ./internal/releasetool -mode profile -profile "$RELEASE_PROFILE" -version "$version"
+            go run ./internal/releasetool -mode policy -profile "$RELEASE_PROFILE" -version "$version"
           } >> "$GITHUB_OUTPUT"
       - name: Reject reachable known vulnerabilities at tag time
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
@@ -141,6 +142,7 @@ jobs:
           retention-days: 1
 
   macos-signing:
+    if: needs.build-packages.outputs.require_apple_signing == 'true'
     runs-on: macos-latest
     timeout-minutes: 30
     needs: build-packages
@@ -221,6 +223,34 @@ jobs:
           path: ${{ runner.temp }}/topo-macos/
           if-no-files-found: error
           retention-days: 1
+
+  macos-homebrew:
+    if: needs.build-packages.outputs.require_apple_signing == 'false'
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    needs: build-packages
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.8"
+          cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-${{ needs.build-packages.outputs.filename_version }}-packages
+          path: ${{ runner.temp }}/topo-packages
+      - name: Validate the Homebrew-only profile and installed payload
+        env:
+          VERSION: ${{ needs.build-packages.outputs.version }}
+        run: |
+          set -euo pipefail
+          (cd "$RUNNER_TEMP/topo-packages" && shasum -a 256 -c SHA256SUMS)
+          test "$(go run ./internal/releasetool -mode policy -version "$VERSION" -out "$RUNNER_TEMP/topo-packages")" = $'include_windows=false\nrequire_apple_signing=false'
+          bash scripts/test-homebrew-beta.sh "$RUNNER_TEMP/topo-packages" "$VERSION"
 
   windows-msi:
     if: needs.build-packages.outputs.include_windows == 'true'
@@ -304,10 +334,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [build-packages, native-signing, macos-signing, windows-msi]
+    needs: [build-packages, native-signing, macos-signing, macos-homebrew, windows-msi]
     if: >-
       ${{ !cancelled() && needs.build-packages.result == 'success' &&
-          needs.native-signing.result == 'success' && needs.macos-signing.result == 'success' &&
+          needs.native-signing.result == 'success' &&
+          ((needs.build-packages.outputs.require_apple_signing == 'true' && needs.macos-signing.result == 'success' && needs.macos-homebrew.result == 'skipped') ||
+           (needs.build-packages.outputs.require_apple_signing == 'false' && needs.macos-signing.result == 'skipped' && needs.macos-homebrew.result == 'success')) &&
           ((needs.build-packages.outputs.include_windows == 'true' && needs.windows-msi.result == 'success') ||
            (needs.build-packages.outputs.include_windows == 'false' && needs.windows-msi.result == 'skipped')) }}
     permissions:
@@ -335,6 +367,7 @@ jobs:
           name: topo-${{ needs.build-packages.outputs.filename_version }}-msi
           path: dist
       - name: Download signed and notarized macOS archives
+        if: needs.build-packages.outputs.require_apple_signing == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: topo-${{ needs.build-packages.outputs.filename_version }}-macos
@@ -431,7 +464,9 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then
             prerelease+=(--prerelease)
           fi
-          if [[ "$RELEASE_PROFILE" == linux-macos-beta ]]; then
+          if [[ "$RELEASE_PROFILE" == linux-homebrew-beta ]]; then
+            notes+=(--notes "Linux APT/RPM and macOS Homebrew CLI beta. macOS binaries are not Developer-ID-signed or Apple-notarized; the Homebrew path is tested without disabling Gatekeeper. Release checksums are Sigstore-signed and artifacts have GitHub provenance; these are not Apple identity or malware-review guarantees. Windows downloads are deferred. Includes the ServiceNow pilot application; not a ServiceNow Store-certified release.")
+          elif [[ "$RELEASE_PROFILE" == linux-macos-beta ]]; then
             notes+=(--notes "Linux APT/RPM and macOS/Homebrew beta. Windows downloads and signing are deferred. Includes the ServiceNow pilot application; not a ServiceNow Store-certified release.")
           fi
           gh release create "$VERSION" dist/* \

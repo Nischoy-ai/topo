@@ -30,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: distribution-${{ inputs.channel }}
+    outputs:
+      require_apple_signing: ${{ steps.policy.outputs.require_apple_signing }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -118,6 +120,11 @@ jobs:
           for package in "$RUNNER_TEMP"/dist/*.rpm; do
             rpm --dbpath "$RUNNER_TEMP/rpmdb" --checksig --verbose "$package" | grep 'Signature.*: OK'
           done
+      - name: Read policy only after authenticating release metadata
+        id: policy
+        env:
+          VERSION: ${{ inputs.version }}
+        run: go run ./internal/releasetool -mode policy -version "$VERSION" -out "$RUNNER_TEMP/dist" >> "$GITHUB_OUTPUT"
       - name: Verify the immutable previous stable release
         if: inputs.channel == 'stable'
         env:
@@ -265,7 +272,11 @@ jobs:
           retention-days: 7
 
   homebrew:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     needs: prepare-and-test
     steps:
@@ -277,6 +288,7 @@ jobs:
         env:
           CHANNEL: ${{ inputs.channel }}
           VERSION: ${{ inputs.version }}
+          REQUIRE_APPLE_SIGNING: ${{ needs.prepare-and-test.outputs.require_apple_signing }}
         run: |
           set -euo pipefail
           formula=topo
@@ -288,8 +300,18 @@ jobs:
           brew install "nischoy-ai/tap/$formula"
           brew test "nischoy-ai/tap/$formula"
           test "$(topo version)" = "$VERSION"
-          codesign --verify --strict --verbose=2 "$(command -v topo)"
-          spctl --assess --type execute --verbose=2 "$(command -v topo)"
+          if [[ "$REQUIRE_APPLE_SIGNING" == true ]]; then
+            codesign --verify --strict --verbose=2 "$(command -v topo)"
+            spctl --assess --type execute --verbose=2 "$(command -v topo)"
+          elif [[ "$REQUIRE_APPLE_SIGNING" == false ]]; then
+            if [[ "$(uname -m)" == arm64 ]]; then
+              codesign --verify --strict --verbose=2 "$(command -v topo)"
+            fi
+            echo "Homebrew-only beta: Apple Developer ID and notarization are explicitly deferred"
+          else
+            echo "missing or invalid authenticated Apple signing policy" >&2
+            exit 1
+          fi
           brew uninstall "$formula"
 
   winget:

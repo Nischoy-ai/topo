@@ -109,6 +109,10 @@ func Build(options Options) (err error) {
 	if err := release.CheckProfileFiles(options.ArtifactDir, source.Profile, options.Version); err != nil {
 		return err
 	}
+	policy, err := release.PolicyForProfile(source.Profile, options.Version)
+	if err != nil {
+		return err
+	}
 
 	filenameVersion := strings.TrimPrefix(options.Version, "v")
 	required := []string{
@@ -122,7 +126,7 @@ func Build(options Options) (err error) {
 		"topo_" + filenameVersion + "_linux_arm64.tar.gz",
 		"topo-" + filenameVersion + ".tgz",
 	}
-	if source.Profile != release.LinuxMacOSBeta {
+	if policy.IncludeWindows {
 		required = append(required, "topo_"+filenameVersion+"_windows_amd64.msi", "topo_"+filenameVersion+"_windows_arm64.msi")
 	}
 	selected := make(map[string]string, len(required))
@@ -143,7 +147,7 @@ func Build(options Options) (err error) {
 	if err := writeHomebrew(options, checksums, filenameVersion); err != nil {
 		return err
 	}
-	if source.Profile != release.LinuxMacOSBeta {
+	if policy.IncludeWindows {
 		if err := writeWinGet(options, checksums, filenameVersion); err != nil {
 			return err
 		}
@@ -329,6 +333,10 @@ func writeHomebrew(options Options, checksums map[string]checksumEntry, version 
 	assetURL := func(name string) string {
 		return strings.TrimRight(options.ReleaseBaseURL, "/") + "/releases/download/" + options.Version + "/" + name
 	}
+	return writeHomebrewWithURLs(options, checksums, version, assetURL)
+}
+
+func writeHomebrewWithURLs(options Options, checksums map[string]checksumEntry, version string, assetURL func(string) string) error {
 	name := func(platform, arch string) string {
 		return fmt.Sprintf("topo_%s_%s_%s.tar.gz", version, platform, arch)
 	}
@@ -376,6 +384,8 @@ func writeHomebrew(options Options, checksums map[string]checksumEntry, version 
 
   test do
     assert_equal %q, shell_output("#{bin}/topo version").strip
+    observations = shell_output("#{bin}/topo discover local")
+    assert_match '"assets":', observations
   end
 end
 `, className, version, conflict,

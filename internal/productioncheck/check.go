@@ -81,7 +81,8 @@ type Report struct {
 // environments, branch policies, and secret names. It never requests a secret
 // value; GitHub's environment-secret listing endpoint returns names only.
 func Run(ctx context.Context, api API, options Options) (Report, error) {
-	if _, err := release.TargetsForProfile(options.Profile, "v0.0.0-preflight"); err != nil {
+	policy, err := release.PolicyForProfile(options.Profile, "v0.0.0-preflight")
+	if err != nil {
 		return Report{}, err
 	}
 	if api == nil {
@@ -95,7 +96,8 @@ func Run(ctx context.Context, api API, options Options) (Report, error) {
 	nativeRequired := make([]string, 0, len(nativeSecretNames))
 	nativeOptional := map[string]struct{}{}
 	for _, name := range nativeSecretNames {
-		if options.Profile == release.LinuxMacOSBeta && (strings.HasPrefix(name, "AZURE_") || strings.HasPrefix(name, "ARTIFACT_SIGNING_")) {
+		if (!policy.IncludeWindows && (strings.HasPrefix(name, "AZURE_") || strings.HasPrefix(name, "ARTIFACT_SIGNING_"))) ||
+			(!policy.RequireAppleSigning && strings.HasPrefix(name, "APPLE_")) {
 			nativeOptional[name] = struct{}{}
 		} else {
 			nativeRequired = append(nativeRequired, name)
@@ -121,7 +123,7 @@ func Run(ctx context.Context, api API, options Options) (Report, error) {
 	}
 
 	var pages pagesResponse
-	err := getJSON(ctx, api, "repos/"+options.Owner+"/topo-packages/pages", &pages)
+	err = getJSON(ctx, api, "repos/"+options.Owner+"/topo-packages/pages", &pages)
 	if err == nil {
 		err = validatePages(pages, options.Owner)
 	}

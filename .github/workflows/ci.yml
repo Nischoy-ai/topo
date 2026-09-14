@@ -46,6 +46,27 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  homebrew-beta:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    needs: test
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.8"
+          cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-packages
+          path: ${{ runner.temp }}/topo-packages
+      - name: Exercise non-notarized Homebrew CLI install and uninstall
+        run: bash scripts/test-homebrew-beta.sh "$RUNNER_TEMP/topo-packages" v0.0.0-ci
+
   windows-package:
     runs-on: windows-latest
     timeout-minutes: 20

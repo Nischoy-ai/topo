@@ -8,11 +8,17 @@ import (
 )
 
 func TestLinuxMacOSPromotion(t *testing.T) {
+	for _, profile := range []string{"linux-macos-beta", "linux-homebrew-beta"} {
+		t.Run(profile, func(t *testing.T) { testBetaPromotion(t, profile) })
+	}
+}
+
+func testBetaPromotion(t *testing.T, profile string) {
 	const version = "v1.2.3-beta.1"
 	var previous map[string][]byte
 	for run := 0; run < 2; run++ {
 		dir := filepath.Join(t.TempDir(), "artifacts")
-		writeProfileFixture(t, dir, version, "linux-macos-beta", "")
+		writeProfileFixture(t, dir, version, profile, "")
 		out := filepath.Join(t.TempDir(), "out")
 		if err := Build(validOptions(dir, out, version, "beta")); err != nil {
 			t.Fatal(err)
@@ -27,7 +33,7 @@ func TestLinuxMacOSPromotion(t *testing.T) {
 				t.Fatalf("Windows reference in %s", name)
 			}
 		}
-		if !strings.Contains(string(files["promotion-metadata.json"]), `"release_profile": "linux-macos-beta"`) {
+		if !strings.Contains(string(files["promotion-metadata.json"]), `"release_profile": "`+profile+`"`) {
 			t.Fatal("profile not recorded")
 		}
 		if len(files["homebrew/Formula/topo-beta.rb"]) == 0 || len(files["apt/dists/beta/Release"]) == 0 {
@@ -37,9 +43,15 @@ func TestLinuxMacOSPromotion(t *testing.T) {
 }
 
 func TestPromotionProfileFailsClosed(t *testing.T) {
+	for _, profile := range []string{"linux-macos-beta", "linux-homebrew-beta"} {
+		t.Run(profile, func(t *testing.T) { testPromotionProfileFailsClosed(t, profile) })
+	}
+}
+
+func testPromotionProfileFailsClosed(t *testing.T, selectedProfile string) {
 	for _, kind := range []string{"unknown", "stable", "missing-mac", "missing-linux", "extra-windows"} {
 		t.Run(kind, func(t *testing.T) {
-			version, profile, channel, omit := "v1.2.3-beta.1", "linux-macos-beta", "beta", ""
+			version, profile, channel, omit := "v1.2.3-beta.1", selectedProfile, "beta", ""
 			switch kind {
 			case "unknown":
 				profile = "typo"

@@ -11,11 +11,17 @@ import (
 )
 
 func TestLinuxMacOSPackageAssembly(t *testing.T) {
+	for _, profile := range []string{"linux-macos-beta", "linux-homebrew-beta"} {
+		t.Run(profile, func(t *testing.T) { testBetaPackageAssembly(t, profile) })
+	}
+}
+
+func testBetaPackageAssembly(t *testing.T, profile string) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake nFPM uses sh")
 	}
 	version := "v1.2.3-beta.1"
-	raw := fixtureRawReleaseProfile(t, version, []byte("binary"), "linux-macos-beta")
+	raw := fixtureRawReleaseProfile(t, version, []byte("binary"), profile)
 	out := filepath.Join(t.TempDir(), "out")
 	if err := Build(context.Background(), Options{Root: fixtureRoot(t), RawDir: raw, OutputDir: out, Version: version, NFPMBinary: fakeNFPM(t)}); err != nil {
 		t.Fatal(err)
@@ -31,7 +37,7 @@ func TestLinuxMacOSPackageAssembly(t *testing.T) {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Profile != "linux-macos-beta" || len(manifest.Artifacts) != 5 {
+	if manifest.Profile != profile || len(manifest.Artifacts) != 5 {
 		t.Fatalf("unexpected packages: %+v", manifest)
 	}
 	entries, err := os.ReadDir(out)
@@ -52,10 +58,16 @@ func TestLinuxMacOSPackageAssembly(t *testing.T) {
 }
 
 func TestRawProfileRejectsInvalidSets(t *testing.T) {
+	for _, profile := range []string{"linux-macos-beta", "linux-homebrew-beta"} {
+		t.Run(profile, func(t *testing.T) { testRawProfileRejectsInvalidSets(t, profile) })
+	}
+}
+
+func testRawProfileRejectsInvalidSets(t *testing.T, profile string) {
 	for _, mutation := range []string{"stable", "unknown", "duplicate", "missing", "wrong-platform"} {
 		t.Run(mutation, func(t *testing.T) {
 			version := "v1.2.3-beta.1"
-			dir := fixtureRawReleaseProfile(t, version, []byte("binary"), "linux-macos-beta")
+			dir := fixtureRawReleaseProfile(t, version, []byte("binary"), profile)
 			path := filepath.Join(dir, "release-metadata.json")
 			data, err := os.ReadFile(path)
 			if err != nil {

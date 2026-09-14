@@ -5,13 +5,30 @@ package-manager channels. Promotion never invokes `go build`, nFPM, WiX, or
 Helm packaging. The GitHub Release remains the immutable source of the exact
 DEB, RPM, MSI, raw archive, and chart bytes referenced by every channel.
 
-**Current beta scope (2026-09-13): Linux APT/RPM and macOS/Homebrew.**
-The reviewed release workflow selects `linux-macos-beta`: four raw archives
+**Current beta scope (2026-09-14): Linux APT/RPM and macOS/Homebrew CLI.**
+The reviewed release workflow selects `linux-homebrew-beta`: four raw archives
 (Linux/macOS, amd64/arm64), no Windows ZIPs or MSIs, and no WinGet manifests.
 Windows code and full-platform tooling remain supported but Windows signing
 provisioning is deferred. The unused Azure signing account was deleted with
 owner approval. The ServiceNow application, offline bundle, and existing Helm
 artifact path remain included; no discovery capability changes.
+
+Apple Developer Program membership is not a prerequisite for this CLI formula.
+The owner explicitly deferred Developer ID/notarization for the beta. It keeps
+checksummed formula downloads, Sigstore-signed release checksums, GitHub
+provenance/SBOM attestations, and protected reviews, but has **no Apple publisher
+identity or notarization ticket**. Go's ARM64 ad-hoc signature is not a developer
+identity. Homebrew install, local discovery, and uninstall must pass on Intel
+and Apple Silicon without disabling Gatekeeper or stripping quarantine.
+Browser-downloaded raw binaries may be blocked by Gatekeeper; use the tested
+Homebrew path, not a security bypass. Managed Macs may impose stricter policy.
+See [Homebrew's formula/cask trust distinction](https://docs.brew.sh/Homebrew-Security-and-Supply-Chain#casks-have-a-different-trust-model).
+
+| Release profile | Platforms | Apple Developer ID/notarization |
+| --- | --- | --- |
+| `linux-homebrew-beta` (current) | Linux/macOS; prerelease only | Deferred; Homebrew execution tests required |
+| `linux-macos-beta` | Linux/macOS; prerelease only | Required |
+| `all` or omitted | Linux/macOS/Windows | Required; Windows Authenticode also required |
 
 The manual `promote package-manager channels` workflow accepts a semantic
 release tag, `beta` or `stable`, and (for stable) the previous stable tag. It
@@ -25,9 +42,9 @@ performs these operations in order:
    distribution environment.
 4. Exercise clean Ubuntu and Fedora installs. Stable additionally installs the
    supplied N-1 release first and upgrades it through the generated channel.
-5. Audit/install/test the exact Homebrew formula on macOS, including Developer
-   ID and notarization assessment; validate the WinGet manifest with pinned
-   Microsoft's WingetCreate and exercise its exact MSI URL and digest.
+5. Audit/install/test the exact Homebrew formula on both Mac architectures.
+   Developer ID/notarization assessment remains required for Apple-signed
+   profiles. Stable additionally validates WinGet and its exact MSI URL/digest.
 6. Push/pull-compare the existing chart through GHCR, then publish static APT/
    RPM metadata, the Homebrew formula, and (stable only) a WinGet pull request.
 
@@ -66,15 +83,20 @@ the promotion workflow also rejects dispatches from any other ref. Store:
 | each distribution environment | `DISTRIBUTION_GITHUB_TOKEN` | Fine-grained token limited to contents write on the three distribution repositories and pull-request creation for the WinGet fork. It has no Topo source write permission. |
 | optional during rotation | `REPOSITORY_ADDITIONAL_PUBLIC_KEY` / `REPOSITORY_ADDITIONAL_PUBLIC_KEY_FINGERPRINT` | Publish an old/new overlap keyring without granting the additional key signing authority in that run. |
 
-For `linux-macos-beta`, the six Azure/Artifact Signing identifiers are not
-required. The beta distribution token needs **Contents: read and write** only
+For `linux-homebrew-beta`, neither the six Apple nor six Azure/Artifact Signing
+identifiers are required. `linux-macos-beta` still requires all six Apple names.
+The beta distribution token needs **Contents: read and write** only
 on `topo-packages` and `homebrew-tap`, not the source repository or WinGet fork.
 Use an expiry and provision it directly into `distribution-beta`; do not paste
 it into chat. Existing optional Windows identifiers are tolerated by the
-preflight but never used in this profile. Linux OpenPGP and all six Apple
-entries remain mandatory; absence never triggers an unsigned fallback.
+preflight but never used in this profile. Optional Apple names are also ignored
+only for `linux-homebrew-beta`. Linux OpenPGP entries remain mandatory; absence
+never triggers an unsigned fallback.
 
 ### Apple signing identity
+
+Deferred for the current Homebrew-only beta; required for the Apple-signed
+profiles. Do not enroll or provision these credentials just to use this beta.
 
 Use Nischoy's Apple Developer Program organization account. Its Account Holder
 creates a **Developer ID Application** certificate (not Apple Development,
@@ -119,7 +141,7 @@ uses Windows SignTool to verify the complete public trust chain.
 Before creating a tag, run:
 
 ```sh
-scripts/check-production-distribution.sh -profile linux-macos-beta
+scripts/check-production-distribution.sh -profile linux-homebrew-beta
 ```
 
 The preflight uses the already-authenticated GitHub CLI and emits one bounded
@@ -135,16 +157,16 @@ does not mutate GitHub. A non-ready report exits nonzero.
 Omitting `-profile` (or using `-profile all`) retains the full-platform checks.
 Unknown profiles are rejected.
 
-As of 2026-09-13, `Nischoy-ai/topo-packages` and
+As of 2026-09-14, `Nischoy-ai/topo-packages` and
 `Nischoy-ai/homebrew-tap` exist as public repositories, the package Pages site
 is built with HTTPS enforcement, and `native-package-signing` plus
 `distribution-beta` exist with self-review prevention, administrator bypass
 disabled, and two eligible reviewers. The native environment permits only
 `v*` tags while beta distribution permits only `main`. The OpenPGP private key
 and fingerprint names are present in both environments. The fail-closed report
-remains non-ready because native signing still lacks the six required Apple
-signing/notarization names, while beta distribution lacks
-`DISTRIBUTION_GITHUB_TOKEN`. Place credential values directly in the
+for the current profile needs only `DISTRIBUTION_GITHUB_TOKEN`; the absent Apple
+names are no longer prerequisites under the owner-approved revision. Key-name
+presence does not prove a usable OpenPGP key. Place credential values directly in the
 environments—never in chat, source control, shell arguments, or ordinary CI.
 `Nischoy-ai/winget-pkgs`,
 `distribution-stable`, and stable secrets remain intentionally unprovisioned
@@ -187,13 +209,15 @@ rejecting as reachable `GO-2026-6303` on 2026-08-28.
 ## Release and promotion
 
 Create the reviewed release tag using [the release procedure](releases.md).
-The selected profile fails closed unless RPM, Developer ID, and notarization
-identities are available; full-platform releases additionally require Azure
-Artifact Signing. The `linux-macos-beta` profile rejects stable tags outright.
+The selected Homebrew-only profile requires RPM signing and successful Mac
+installation tests. `linux-macos-beta` additionally requires Developer ID and
+notarization; full-platform releases also require Azure Artifact Signing.
+Both beta profiles reject stable tags outright.
 The profile is recorded in release, package, and promotion metadata and covered
 by the authenticated manifest. A skipped Windows job permits publication only
-when the validated profile explicitly excludes Windows; Linux/macOS failures
-still block it. RPM, Windows, and macOS signing run in isolated jobs;
+when the validated profile explicitly excludes Windows. Apple signing may be
+skipped only for the Homebrew-only profile, with both required Mac tests green;
+signing failures never become an unsigned fallback. Native signing uses isolated jobs;
 the final job refreshes release metadata
 and checksums after native signatures are applied, then creates
 Sigstore/GitHub evidence over the final bytes.

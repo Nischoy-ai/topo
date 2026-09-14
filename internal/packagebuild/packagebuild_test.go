@@ -262,7 +262,7 @@ func fixtureRawReleaseProfile(t *testing.T, version string, binary []byte, profi
 		{"linux", "amd64", "tar.gz"}, {"linux", "arm64", "tar.gz"},
 		{"windows", "amd64", "zip"}, {"windows", "arm64", "zip"},
 	} {
-		if profile == "linux-macos-beta" && target.goos == "windows" {
+		if (profile == "linux-macos-beta" || profile == "linux-homebrew-beta") && target.goos == "windows" {
 			continue
 		}
 		name := "topo_" + filenameVersion + "_" + target.goos + "_" + target.arch + "." + target.extension

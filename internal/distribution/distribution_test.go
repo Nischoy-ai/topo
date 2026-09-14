@@ -155,7 +155,7 @@ func writeProfileFixture(t *testing.T, dir, version, profile, omit string) map[s
 	}
 	files := make(map[string][]byte)
 	for _, name := range names {
-		if name == omit || (profile == "linux-macos-beta" && strings.Contains(name, "windows")) {
+		if name == omit || ((profile == "linux-macos-beta" || profile == "linux-homebrew-beta") && strings.Contains(name, "windows")) {
 			continue
 		}
 		files[name] = []byte("fixture:" + name + "\n")

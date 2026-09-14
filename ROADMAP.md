@@ -260,11 +260,14 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   restricted to reviewed `v*` tags; beta promotion is restricted to `main`.
   The owner narrowed the first beta to Linux APT/RPM and macOS/Homebrew on
   2026-09-13. An explicit prerelease-only profile excludes Windows downloads
-  and WinGet without weakening selected-platform signing. Full-platform
-  tooling and Windows CI remain; Windows signing provisioning is deferred.
-  The secret-name-only preflight still blocks publication until Apple/notary
-  identity and the least-privilege distribution token are present. No official
-  release or channel is published yet.
+  and WinGet. On 2026-09-14 the owner additionally approved the distinct
+  `linux-homebrew-beta` profile, which defers Apple Developer ID/notarization
+  for the CLI formula and requires Intel/Apple Silicon Homebrew tests instead.
+  Linux signing, Sigstore/provenance, SBOMs, and protected reviews remain.
+  Full-platform tooling, the earlier signed beta profile, and Windows CI retain
+  their requirements. The new beta still needs the least-privilege distribution
+  token and successful protected release/promotion. No official release or
+  channel is published yet; no Apple-notarization claim is made.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for

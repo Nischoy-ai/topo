@@ -14,7 +14,7 @@ local policy. No target-bearing ECC translator is supported; generic `Command`,
 arbitrary `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics are
 denied by default with a correlated result.
 
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads; and production release automation fails closed without RPM, OIDC-authorized Azure Artifact Signing, Developer ID, and notarization identities. Windows signing uses no exportable PFX or long-lived Azure client secret. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
+The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads. Full-platform release automation fails closed without RPM, OIDC-authorized Azure Artifact Signing, Developer ID, and notarization identities. The explicit Homebrew-only beta exception is documented under "Release platform scope" below; it is not a production signing claim. Windows signing uses no exportable PFX or long-lived Azure client secret. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
 
 ## Deployment guidance
 
@@ -100,7 +100,7 @@ individual archive against the authenticated checksum manifest. GitHub
 attestation verification independently binds its digest to this repository,
 commit, tag event, and workflow. Release evidence is additive: it does not
 replace APT/RPM repository OpenPGP keys, Windows Authenticode, macOS code
-signing/notarization, or their key-rotation processes. Production release jobs
+signing/notarization, or their key-rotation processes. Full-platform release jobs
 isolate and require all three native identities; protected promotion jobs
 verify them, add signed repository metadata, and expose an old/new public-key
 overlap mechanism. Those controls remain unverified in production until real
@@ -398,14 +398,23 @@ creation, update, and deletion are each recorded in the audit log (see
 
 ## Release platform scope
 
-The owner-approved first signed beta is Linux/macOS-only. Its explicit
-`linux-macos-beta` release profile must reject stable tags and Windows
-artifacts; no unsigned Windows ZIP or MSI may be slipped into the release or
-offline bundle. RPM signing, Developer ID, explicit successful notarization,
-Sigstore, provenance, repository signatures, and independent environment
-review remain required. Windows CI and the full-platform tooling contract are
-retained, but Azure signing provisioning is deferred. Profile selection is a
-reviewed source change, not inferred from whichever secrets happen to exist.
+On 2026-09-14 the owner approved `linux-homebrew-beta` for the first Linux/macOS
+CLI beta, explicitly deferring Apple Developer ID and notarization. This
+distinct profile rejects stable tags and Windows artifacts, keeps RPM signing,
+Sigstore/provenance/SBOMs, repository signatures, and protected reviews, and
+requires Homebrew install/local-discovery/uninstall tests on Intel and ARM64.
+No Gatekeeper settings are changed and no quarantine attributes are removed.
+The macOS payload has no Apple publisher identity or notarization ticket;
+ARM64's required ad-hoc signature is only structural integrity, not publisher
+authentication. Browser downloads and managed-Mac policy may behave differently
+from the tested CLI formula. Do not advise users to bypass macOS protections.
+
+The earlier `linux-macos-beta` still requires Apple signing/notarization, and
+`all` retains all native signing requirements and Windows CI. Apple signing
+can be skipped only when the authenticated profile explicitly selects the
+Homebrew-only beta and both architecture tests pass. Failed or absent required
+jobs block publication; no secret-dependent fallback exists. Profile selection
+is a reviewed source change, not inferred from whichever secrets happen to exist.
 Real publication evidence is still pending; secret-name checks do not prove
 the validity or possession of the corresponding signing identities.
 

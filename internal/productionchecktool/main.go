@@ -14,7 +14,7 @@ import (
 func main() {
 	owner := flag.String("owner", "Nischoy-ai", "GitHub organization")
 	repository := flag.String("repository", "topo", "source repository")
-	profile := flag.String("profile", "", "release profile: all or linux-macos-beta")
+	profile := flag.String("profile", "", "release profile: all, linux-macos-beta, or linux-homebrew-beta")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "production preflight does not accept positional arguments")

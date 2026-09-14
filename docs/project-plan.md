@@ -6,7 +6,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-13
+- **Updated:** 2026-09-14
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -158,6 +158,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   them unsigned. The current profile's live preflight passes all repository,
   Pages, and environment checks; the six Apple names and distribution token
   are missing. Key-name presence is not evidence of a usable OpenPGP key.
+  On 2026-09-14 the owner approved deferring Apple Developer ID/notarization
+  for the Homebrew CLI beta. PR #59 is being revised on the same branch to
+  select distinct `linux-homebrew-beta` metadata, preserving existing signed
+  profiles, Linux signing, Sigstore/provenance/SBOMs, and protected reviews.
+  Mandatory Intel/Apple Silicon Homebrew tests replace Apple signing for this
+  profile only, with no Gatekeeper or quarantine bypass. The beta still needs
+  the distribution token and successful protected release/promotion; it must
+  not claim Apple identity or notarization. See the superseding C1.2 scope below.
   Standalone direct IRE publication remains supported. See
   `docs/servicenow-control-plane.md` and `docs/servicenow-worker.md`. The most
   recent merged
@@ -3093,6 +3101,32 @@ build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Slice C1.2 — first signed beta distribution (staged)
 
+**Owner-approved Homebrew revision (2026-09-14).** This supersedes the
+Apple-signing requirements in the earlier beta scope below, not the full
+platform or stable-release contracts.
+
+**Objective.** Make the Linux/Homebrew beta installable without enrolling in
+the Apple Developer Program, while retaining explicit artifact trust evidence.
+
+**Deliverables.** Add a distinct prerelease-only `linux-homebrew-beta` profile
+to authenticated metadata and readiness checks. Keep four Linux/macOS archives,
+RPM/repository signing, Sigstore, provenance, SBOMs, and protected reviews.
+Skip Developer ID/notarization only for this profile; preserve the existing
+`linux-macos-beta` and full-platform signing requirements. Replace the Apple
+identity gate for this profile with real Homebrew installation/execution tests.
+
+**Acceptance gates.** Reject stable/unknown profiles and unexpected Windows
+artifacts; never infer policy from available secrets. A failed selected signing
+or Homebrew validation job must block publication. Test macOS install, version,
+safe local discovery, and uninstall without disabling Gatekeeper or clearing
+quarantine. Document the lack of Apple identity/notarization, and retain all
+exact Go 1.26.8 verification and security gates. No public release claim until
+the protected release and promotion succeed.
+
+**Deliberate non-goals.** No Apple enrollment, GUI app/cask/PKG distribution,
+Gatekeeper bypass, Windows release, stable promotion, discovery change, or
+relaxation of Linux signing, checksum/provenance, and environment protections.
+
 **Owner-approved scope revision (2026-09-13).** The first beta targets Linux
 APT/RPM and macOS/Homebrew only. Windows native signing and Windows downloads
 are deferred; the unused Azure Artifact Signing account was deleted with owner
@@ -3223,6 +3257,26 @@ the prior evidence is unchanged. No release tag, signing run, or promotion has
 been created. Apple identity provisioning and the distribution token, followed
 by independent approval of the signed release/promotion, remain operational
 gates; Windows provisioning is no longer a dependency of this beta.
+
+**Homebrew-only revision evidence (2026-09-14, PR #59).** The distinct profile
+selects four targets and defers Apple signing only through explicit validated
+policy, carried in authenticated release/package/promotion metadata. Tests
+cover all three profiles, old signed-policy compatibility, stable/unknown
+denial, missing/duplicate/tampered artifacts, local formula rendering, remaining
+secret requirements, and the exact workflow success/skip conditions. The
+production formula now tests bounded local discovery as well as version.
+Disposable Intel/ARM64 macOS jobs exercise that renderer with checksummed local
+archive URLs before publication; promotion separately exercises the exact
+public HTTPS formula. Neither uses a Gatekeeper or quarantine bypass.
+
+Exact Go 1.26.8 full tests, uncached focused worker/controlsim/SSH/release tests,
+formatting, diff checks, workflow lint, and the complete security-review gate
+(vet, race, native build, Windows amd64 vet/build, pinned vulnerability scan)
+pass locally. The scan reports zero reachable findings and one uncalled-module
+advisory. The live name-only GitHub preflight passes native secret names and
+all repository/environment protections; only `DISTRIBUTION_GITHUB_TOKEN` is
+missing. Mac CI execution and real publication remain separate evidence gates;
+no tag, release, promotion, Apple enrollment, or ServiceNow write occurred.
 
 ### Relationship to the M2.5 gate
 

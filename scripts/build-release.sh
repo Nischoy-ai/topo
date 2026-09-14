@@ -2,7 +2,7 @@
 set -eu
 
 if [ "$#" -lt 3 ] || [ "$#" -gt 4 ]; then
-	echo "usage: scripts/build-release.sh <version> <commit> <new-output-directory> [all|linux-macos-beta]" >&2
+	echo "usage: scripts/build-release.sh <version> <commit> <new-output-directory> [all|linux-macos-beta|linux-homebrew-beta]" >&2
 	exit 2
 fi
 

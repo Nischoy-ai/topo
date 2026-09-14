@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	mode := flag.String("mode", "build", "build or homebrew-fixture (local CI only)")
 	artifacts := flag.String("artifacts", "", "verified release artifact directory")
 	out := flag.String("out", "", "new distribution output directory")
 	version := flag.String("version", "", "semantic release tag")
@@ -18,6 +19,17 @@ func main() {
 	repositoryURL := flag.String("repository-base-url", "https://nischoy-ai.github.io/topo-packages", "native repository URL")
 	publishedAt := flag.String("published-at", "", "whole-second RFC3339 promotion timestamp")
 	flag.Parse()
+	if *mode == "homebrew-fixture" {
+		if err := distribution.WriteHomebrewFixture(*artifacts, *out, *version); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *mode != "build" {
+		fmt.Fprintln(os.Stderr, "unsupported distribution mode")
+		os.Exit(2)
+	}
 
 	timestamp, err := time.Parse(time.RFC3339, *publishedAt)
 	if err != nil {

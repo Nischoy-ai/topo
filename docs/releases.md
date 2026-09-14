@@ -3,13 +3,20 @@
 Topo releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
 optional prerelease suffix) whose commit is already reachable from `main`.
 `.github/workflows/release.yml` uses the exact Go 1.26.8 toolchain and
-commit-pinned actions. It creates one GitHub Release containing:
+commit-pinned actions.
 
-The current reviewed workflow selects **`linux-macos-beta`**. It accepts only
-prerelease tags and omits Windows ZIPs, MSIs, and Windows signing. The list below
-describes the full-platform tooling contract; Windows entries apply only to
-`all`. Re-enabling Windows or stable releases requires a reviewed workflow
-change, not a secret-based fallback. Linux and macOS signing gates are unchanged.
+The current reviewed workflow selects **`linux-homebrew-beta`**. It accepts
+only prerelease tags, omits Windows artifacts, and explicitly defers Apple
+Developer ID/notarization for the Homebrew CLI path. Intel and Apple Silicon
+Homebrew installation, execution, and uninstall tests replace the Apple signer
+gate for this profile only; no Gatekeeper setting or quarantine is bypassed.
+Linux signing, Sigstore, attestations, and protected reviews remain mandatory.
+The earlier `linux-macos-beta` profile still requires Apple signing, and `all`
+still requires both Apple and Windows signing. Selection requires reviewed
+source, never a fallback based on which secrets exist.
+
+One release contains the following (Windows entries apply only to `all`;
+Developer ID/notarization applies only to the two Apple-signed profiles):
 
 - deterministic raw archives for Linux, macOS, and Windows on amd64 and arm64;
 - DEB and OpenPGP-signed RPM packages for Linux amd64/arm64,
@@ -70,10 +77,11 @@ Compare `dist-local/SHA256SUMS` with the manifest downloaded from the release.
 The build needs network access only when the pinned Go modules are not already
 in the local module cache.
 
-For a Linux/macOS beta, pass `linux-macos-beta` as the fourth argument and use
-the exact prerelease tag. Omitting it builds all six historical targets.
-Unknown profiles, a stable tag paired with `linux-macos-beta`, and unexpected
-Windows artifacts in that profile are rejected rather than silently included.
+For the Homebrew beta, pass `linux-homebrew-beta` as the fourth argument and use
+the exact prerelease tag. Use `linux-macos-beta` only for the Apple-signed
+variant. Omitting the profile builds all six historical targets. Both restricted
+profiles reject stable tags and unexpected Windows artifacts; unknown profiles
+are rejected.
 
 ## Verify a downloaded release
 
@@ -125,8 +133,10 @@ for the trust semantics of those commands.
 3. Confirm the tagged commit's `main` CI run is green. The tag workflow verifies
    the commit is reachable from `origin/main`, reproduces the release archive
    and package sets, exercises native package lifecycles, requires and verifies
-   OpenPGP signatures on RPMs, Authenticode signatures on both MSIs, and
-   Developer ID signatures plus notarization on both macOS payloads. It
+   OpenPGP signatures on RPMs, plus Authenticode and Developer ID/notarization
+   when required by the selected profile. The Homebrew-only profile requires
+   successful installation/local discovery/uninstall on both Mac architectures
+   instead of Apple signing. A failed required signer or test blocks release. It
    refreshes metadata for those final signed bytes, creates the SBOM/signatures/
    attestations, verifies them, and only then creates the GitHub Release with
    all evidence in one upload. Persistent native key material is isolated from
@@ -144,7 +154,12 @@ or tag-protection rules should restrict who may create release tags.
 
 The Sigstore checksum signature and GitHub attestations authenticate the full
 final artifact set across platforms. Native signing additionally covers RPM,
-MSI, and macOS trust. That evidence does not replace signed APT/RPM repository
+MSI, and (for Apple-signed profiles) macOS trust. The Homebrew beta has no Apple
+publisher identity or notarization ticket; Go's ARM64 ad-hoc signature is not
+publisher authentication. Browser-downloaded raw macOS binaries can be blocked
+by Gatekeeper; this beta promises the tested Homebrew CLI path, not a GUI/cask
+or direct-download launch experience. Do not disable Gatekeeper or strip
+quarantine to install it. Release evidence does not replace signed APT/RPM repository
 metadata or repository-key rotation; protected package promotion adds those
 controls. No production-readiness claim is made before a real beta, a real N-1
 stable promotion, and the external security review.
