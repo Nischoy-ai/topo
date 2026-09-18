@@ -230,7 +230,7 @@ jobs:
             -e VERSION -e CHANNEL -e PREVIOUS_VERSION \
             -v "$RUNNER_TEMP/distribution:/repo:ro" \
             -v "$RUNNER_TEMP/previous:/previous:ro" \
-            fedora@sha256:99e203734f0c44913163c0de9ea700c92b60b93fbb76c143728d757c5558c5ca \
+            fedora@sha256:99e203b80b1c3d8f7e161ec10a68fd02b081ef83a3963553e513c82846b97814 \
             bash -euc '
               rpm --import /repo/keys/nischoy-topo-archive.asc
               if [ -f /previous/nischoy-topo-archive.asc ]; then
@@ -240,15 +240,12 @@ jobs:
               mkdir -p /etc/topo-agent
               printf "%s\n" operator-owned >/etc/topo-agent/operator-owned
               mkdir -p /var/lib/topo-agent/operator-owned
-              cat >/etc/yum.repos.d/topo.repo <<EOF
-              [topo]
-              name=Topo
-              baseurl=file:///repo/rpm/$CHANNEL/\$basearch
-              enabled=1
-              gpgcheck=1
-              repo_gpgcheck=1
-              gpgkey=file:///repo/keys/nischoy-topo-archive.asc
-              EOF
+              printf "%s\n" \
+                "[topo]" "name=Topo" \
+                "baseurl=file:///repo/rpm/$CHANNEL/\$basearch" \
+                "enabled=1" "gpgcheck=1" "repo_gpgcheck=1" \
+                "gpgkey=file:///repo/keys/nischoy-topo-archive.asc" \
+                >/etc/yum.repos.d/topo.repo
               dnf install -y topo
               test "$(topo version)" = "$VERSION"
               test -f /etc/topo-agent/operator-owned
@@ -260,8 +257,10 @@ jobs:
                 test "$(topo version)" = "$VERSION"
               fi
               dnf remove -y topo
+              test ! -e /usr/bin/topo
               test -f /etc/topo-agent/operator-owned
               test -d /var/lib/topo-agent/operator-owned
+              echo "RPM repository lifecycle passed"
             '
       - name: Retain signed promotion transaction
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

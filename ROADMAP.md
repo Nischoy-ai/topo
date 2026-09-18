@@ -265,9 +265,11 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   for the CLI formula and requires Intel/Apple Silicon Homebrew tests instead.
   Linux signing, Sigstore/provenance, SBOMs, and protected reviews remain.
   Full-platform tooling, the earlier signed beta profile, and Windows CI retain
-  their requirements. The new beta still needs the least-privilege distribution
-  token and successful protected release/promotion. No official release or
-  channel is published yet; no Apple-notarization claim is made.
+  their requirements. The token is provisioned and `v0.1.0-beta.1` is published
+  with verified release signatures/provenance. Channel promotion stopped at a
+  mismatched Fedora test-image digest; a focused repair aligns it with the
+  release-tested image and guards against drift. APT/RPM/Homebrew publication
+  remains pending the protected promotion; no Apple-notarization claim is made.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for

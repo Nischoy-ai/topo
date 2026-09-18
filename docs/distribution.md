@@ -172,9 +172,36 @@ environments—never in chat, source control, shell arguments, or ordinary CI.
 `distribution-stable`, and stable secrets remain intentionally unprovisioned
 until the separate N-1 stable slice.
 
-No official public tag or package channel should be represented as available
-until the preflight passes and a real beta promotion succeeds. A production
-claim additionally requires the later N-1-gated stable promotion.
+That dated provisioning snapshot is superseded by the release evidence below.
+Package channels must not be represented as available until a real beta
+promotion succeeds. A production claim additionally requires the later
+N-1-gated stable promotion and remaining security-review gates.
+
+## First beta operational evidence
+
+The owner provisioned the distribution token, and the `linux-homebrew-beta`
+preflight passed. [Release attempt 2](https://github.com/Nischoy-ai/topo/actions/runs/34929267383/attempts/2)
+published [v0.1.0-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.1.0-beta.1)
+from commit `57671b5407daabddd7ae08d14dd25395e0b9431f`. Reproducible builds,
+Linux package lifecycle, protected RPM signing, and Intel/ARM64 Homebrew
+install/execution/removal passed. Independent downloads matched every listed
+checksum; the manifest's Sigstore identity matched the exact tag workflow,
+and Linux amd64/macOS arm64 provenance matched the repository and commit.
+This is real release evidence, not simulator evidence or Apple notarization.
+
+The first [beta promotion](https://github.com/Nischoy-ai/topo/actions/runs/35243074007)
+passed release verification, repository signing, and the APT lifecycle gate,
+then stopped before the RPM test could start: its Fedora digest differed from
+the release package test's valid pin and returned `manifest unknown`.
+Homebrew channel tests and channel publication did not run. Local validation
+also reproduced an indented heredoc terminator that could swallow the RPM
+installation commands and falsely exit successfully. The repair aligns the
+image pins, uses `printf` for repository configuration, asserts binary removal,
+and guards against both regressions; it changes no release asset, signature
+requirement, or approval policy. After its PR merges, dispatch a new
+promotion from the updated `main` with `version=v0.1.0-beta.1`, `channel=beta`;
+rerunning the failed run would reuse the old workflow revision. Independent
+`distribution-beta` approval and all remaining gates are still required.
 
 ## Development-only Homebrew pilot
 
