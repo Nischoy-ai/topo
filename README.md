@@ -26,8 +26,9 @@ quickstart](docs/pilot-quickstart.md#2-create-the-least-privilege-servicenow-ide
 Install the Topo package from the same release as the ServiceNow app on a Linux
 server that can reach both ServiceNow and the approved targets:
 
-The first beta targets Linux APT/RPM and macOS/Homebrew; publication is still
-pending. The Homebrew beta will not be Apple-notarized. See
+[Beta release files are available](https://github.com/Nischoy-ai/topo/releases/tag/v0.1.0-beta.1);
+APT/RPM repository and Homebrew tap publication is still pending.
+The Homebrew beta is not Apple-notarized. See
 [channel availability, verification, and setup](docs/distribution.md).
 
 ```sh

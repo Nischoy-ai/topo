@@ -3,9 +3,61 @@ package release
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// The release package job exercises this image before promotion can run. Keep
+// promotion on that same immutable image rather than an independently copied pin.
+func TestPromotionUsesReleaseFedoraImage(t *testing.T) {
+	root := filepath.Join("..", "..")
+	pin := regexp.MustCompile(`fedora@sha256:[a-f0-9]{64}\b`)
+	var releaseImage string
+	for _, path := range []string{"scripts/test-linux-packages.sh", ".github/workflows/promote.yml"} {
+		data, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		images := pin.FindAllString(string(data), -1)
+		if len(images) != 1 {
+			t.Fatalf("%s must contain exactly one digest-pinned Fedora image, found %d", path, len(images))
+		}
+		if releaseImage == "" {
+			releaseImage = images[0]
+		} else if images[0] != releaseImage {
+			t.Fatalf("promotion Fedora image %s differs from release-tested image %s", images[0], releaseImage)
+		}
+	}
+}
+
+func TestPromotionRPMLifecycleCannotBeSwallowedByHeredoc(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "promote.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rpm, ok := strings.Cut(string(data), "- name: Exercise clean-machine RPM install and stable upgrade\n")
+	if !ok {
+		t.Fatal("missing RPM lifecycle gate")
+	}
+	rpm, _, _ = strings.Cut(rpm, "- name: Retain signed promotion transaction")
+	// YAML indentation survives inside bash -euc's quoted argument. An indented
+	// heredoc terminator consumes the following tests while bash still exits zero.
+	if strings.Contains(rpm, "<<") {
+		t.Fatal("RPM gate must not embed a heredoc inside the indented shell argument")
+	}
+	for _, required := range []string{
+		`printf "%s\n"`, `"gpgcheck=1"`, `"repo_gpgcheck=1"`,
+		`"baseurl=file:///repo/rpm/$CHANNEL/\$basearch"`,
+		`dnf install -y topo`, `test "$(topo version)" = "$VERSION"`,
+		`dnf remove -y topo`, `test ! -e /usr/bin/topo`,
+		`echo "RPM repository lifecycle passed"`,
+	} {
+		if !strings.Contains(rpm, required) {
+			t.Fatalf("RPM lifecycle gate missing %q", required)
+		}
+	}
+}
 
 // Protect the reviewed publication condition itself, not merely a separate Go
 // model of it. actionlint also checks the actual GitHub expression syntax.

@@ -415,8 +415,13 @@ can be skipped only when the authenticated profile explicitly selects the
 Homebrew-only beta and both architecture tests pass. Failed or absent required
 jobs block publication; no secret-dependent fallback exists. Profile selection
 is a reviewed source change, not inferred from whichever secrets happen to exist.
-Real publication evidence is still pending; secret-name checks do not prove
-the validity or possession of the corresponding signing identities.
+The `v0.1.0-beta.1` release has passed protected RPM signing and both Homebrew
+architecture tests; independent downloaded checksum, Sigstore identity, and
+GitHub provenance checks passed. Package-channel promotion remains incomplete:
+its first run stopped at an unavailable Fedora test-image digest before
+publication. This is release-artifact evidence, not a completed channel or
+production-readiness claim. Secret-name checks alone still do not prove key
+usability. See [distribution evidence](docs/distribution.md#first-beta-operational-evidence).
 
 ## ServiceNow publishing
 

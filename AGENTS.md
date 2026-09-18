@@ -110,10 +110,17 @@ Homebrew install/execution tests without Gatekeeper bypass. Existing
 The unused Azure signing account was deleted with owner approval. Preserve
 the full-platform tooling and Windows CI; future Windows signing uses GitHub
 OIDC with Azure Artifact Signing, never an exportable PFX or client secret.
-The real beta remains blocked until the owner places the least-privilege
-distribution token directly in its GitHub environment and the protected
-release/promotion passes. Never request secrets in chat, infer policy from
-available secrets, or claim Apple identity/notarization for this beta.
+The distribution token is provisioned and `v0.1.0-beta.1` is published from
+`57671b5`; release attempt 2 passed, including RPM signing and both Homebrew
+architectures. Independent checksum/signature/provenance verification passed.
+Promotion run `35243074007` stopped before publication because its Fedora
+digest differed from the release-tested image and could not be resolved.
+The current repair aligns those pins and guards against drift. Merge its green
+PR before dispatching a new beta promotion from `main`; do not rerun the old
+workflow revision or replace published artifacts. APT/RPM/Homebrew channel
+publication and real production readiness remain unproven. Never request
+secrets in chat, infer policy from available secrets, or claim Apple
+identity/notarization for this beta.
 
 The completed M2.5 slices, kept for reference:
 

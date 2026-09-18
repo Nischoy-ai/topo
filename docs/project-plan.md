@@ -3101,6 +3101,27 @@ build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Slice C1.2 — first signed beta distribution (staged)
 
+**Promotion repair (2026-09-17).**
+
+**Objective.** Unblock the first beta's RPM repository installation gate without
+changing the already-published `v0.1.0-beta.1` artifacts or weakening verification.
+
+**Deliverables.** Align promotion's Fedora image digest with the existing
+release package-lifecycle script, replace its indented shell heredoc so it
+cannot swallow the installation assertions, add regression guards, and record
+the real release and blocked promotion evidence.
+
+**Acceptance gates.** Resolve the pinned image from its registry, exercise the
+signed beta RPM repository installation/removal in a disposable container,
+run focused workflow/package tests and the exact Go 1.26.8 security matrix,
+then require green PR CI and merge before a new promotion dispatch from `main`.
+Keep package and repository signature checks and protected approval enabled.
+
+**Deliberate non-goals.** No retagging, rebuilding or overwriting published
+release assets, stable promotion, new discovery feature, ServiceNow mutation,
+signing-policy change, or approval bypass. Package channels remain pending
+until the repaired protected promotion and its installation gates succeed.
+
 **Owner-approved Homebrew revision (2026-09-14).** This supersedes the
 Apple-signing requirements in the earlier beta scope below, not the full
 platform or stable-release contracts.
@@ -3277,6 +3298,51 @@ advisory. The live name-only GitHub preflight passes native secret names and
 all repository/environment protections; only `DISTRIBUTION_GITHUB_TOKEN` is
 missing. Mac CI execution and real publication remain separate evidence gates;
 no tag, release, promotion, Apple enrollment, or ServiceNow write occurred.
+
+**Real release and promotion handoff (2026-09-17).** PR #59 merged at
+`57671b5407daabddd7ae08d14dd25395e0b9431f` with green main CI. The owner
+provisioned the distribution token; the name-only readiness check passed.
+The immutable `v0.1.0-beta.1` tag's first attempt stopped when its one-day
+intermediate artifact expired while waiting for approval. A complete rerun of
+the same tag/commit succeeded: [attempt 2](https://github.com/Nischoy-ai/topo/actions/runs/34929267383/attempts/2)
+published 25 release assets after reproducibility, Linux package lifecycle,
+protected RPM signing, both Homebrew architectures, and signature/attestation
+gates passed. Independent downloads passed every manifest checksum, exact
+tag-workflow Sigstore verification, and Linux amd64/macOS arm64 provenance
+verification. GitHub records the successful approval under `prodyotks`.
+
+[Promotion run 35243074007](https://github.com/Nischoy-ai/topo/actions/runs/35243074007)
+was separately approved by `prodyotks`. Release verification, protected
+repository signing, and clean APT installation/removal passed. The Fedora
+image pull failed with `manifest unknown` before RPM installation began;
+Homebrew channel tests and channel publication were skipped. No channel,
+stable/N-1 evidence, or new ServiceNow result is claimed.
+
+The repair uses the same Fedora digest as `scripts/test-linux-packages.sh`.
+A new regression test fails against the old mismatched pin and passes against
+the repair. A second defect reproduced in Fedora: the indented heredoc end
+marker consumed the subsequent lifecycle commands while bash exited zero.
+The gate now renders its repository configuration with `printf`, checks that
+removal deleted the binary, and prints an explicit lifecycle completion marker;
+a regression guard rejects the unsafe embedded heredoc. The registry resolves
+the corrected multi-platform digest. A local
+disposable Fedora amd64 container verified the published beta RPM's signature,
+installed it through DNF with both package and repository signature checking,
+checked version and dormant worker configuration, removed it, and preserved
+operator files. Its repository metadata used an ephemeral test key, not the
+protected production key; the published RPM remained unchanged. A second fresh
+container executed the exact repaired RPM shell block extracted from the
+workflow and reached its lifecycle completion marker with install, version,
+removal, and operator-file assertions passing. The utility
+script stayed outside the project, and the disposable container/key were
+removed automatically. Exact Go 1.26.8 full tests, uncached focused
+release/distribution/package/worker/SSH tests, workflow lint, and the full
+security gate (format/diff, vet, race, vulnerability scan, native/Windows
+builds) pass. No reachable vulnerability was reported; one uncalled-module
+advisory remains. PR CI must also pass before merge. Then dispatch a **new**
+beta promotion from updated `main` for the existing release; rerunning the old
+run would retain its bad workflow revision. Protected approval is still
+required; do not move the tag, replace assets, or bypass remaining gates.
 
 ### Relationship to the M2.5 gate
 
