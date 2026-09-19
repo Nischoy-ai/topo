@@ -203,6 +203,26 @@ promotion from the updated `main` with `version=v0.1.0-beta.1`, `channel=beta`;
 rerunning the failed run would reuse the old workflow revision. Independent
 `distribution-beta` approval and all remaining gates are still required.
 
+After PR #60 merged, [promotion 35388277718](https://github.com/Nischoy-ai/topo/actions/runs/35388277718)
+passed protected repository signing, release verification, and both real APT
+and RPM install/remove gates. Both Mac runners then failed the strict online
+formula audit: an extra blank line, incorrect stanza order, a redundant
+explicit version, and an unqualified conflict against unpublished `topo`.
+No channel was published. The follow-up renderer uses URL-derived versions,
+correct spacing/order, and reciprocal `nischoy-ai/tap/topo` /
+`nischoy-ai/tap/topo-beta` conflict declarations. It does not invent a stable
+formula or suppress any audit rule.
+
+Both Mac CI jobs now also render the production HTTPS formula from the existing
+`v0.1.0-beta.1` release, whose checksum-manifest digest is pinned in source,
+then run the strict online audit, install, version/local-discovery test, and
+removal. This catches public formula failures before protected promotion;
+the existing local-archive fixture still tests newly built binaries. Neither
+test publishes a tap or accesses production signing keys. Changing the pinned
+release fixture requires review of its version and authenticated manifest
+digest together. The actual promotion continues to verify release signatures
+and provenance and audit the exact formula it will publish.
+
 ## Development-only Homebrew pilot
 
 With explicit operator authorization, a separate public development tap was
