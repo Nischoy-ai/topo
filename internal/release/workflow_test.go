@@ -122,7 +122,7 @@ func TestHomebrewPolicyAndNoSecurityBypass(t *testing.T) {
 			t.Fatalf("missing %q", required)
 		}
 	}
-	for _, path := range []string{".github/workflows/promote.yml", ".github/workflows/release.yml", "scripts/test-homebrew-beta.sh"} {
+	for _, path := range []string{".github/workflows/promote.yml", ".github/workflows/release.yml", "scripts/test-homebrew-beta.sh", "scripts/test-homebrew-promotion.sh"} {
 		data, err := os.ReadFile(filepath.Join(root, path))
 		if err != nil {
 			t.Fatal(err)
@@ -132,5 +132,44 @@ func TestHomebrewPolicyAndNoSecurityBypass(t *testing.T) {
 				t.Fatalf("security bypass %q in %s", bypass, path)
 			}
 		}
+	}
+}
+
+func TestPublicHomebrewFormulaAuditInCI(t *testing.T) {
+	root := filepath.Join("..", "..")
+	data, err := os.ReadFile(filepath.Join(root, ".github/workflows/ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, job, ok := strings.Cut(string(data), "  homebrew-beta:\n")
+	if !ok {
+		t.Fatal("missing Homebrew matrix")
+	}
+	job, _, _ = strings.Cut(job, "  windows-package:\n")
+	for _, required := range []string{"runner: [macos-15, macos-15-intel]", "bash scripts/test-homebrew-promotion.sh"} {
+		if !strings.Contains(job, required) {
+			t.Fatalf("public formula audit must run on both architectures: missing %q", required)
+		}
+	}
+	data, err = os.ReadFile(filepath.Join(root, "scripts/test-homebrew-promotion.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := string(data)
+	for _, required := range []string{
+		"version=v0.1.0-beta.1",
+		"manifest_sha256=2da670111c37f7ad3249f790d9e1ba97cc700e9a7e38729fbc986e0251ab55ca",
+		`"${RUNNER_ENVIRONMENT:-}" != github-hosted`,
+		`brew audit --strict --online "$formula"`, `brew install --formula "$formula"`,
+		`brew test "$formula"`, `test "$(topo version)" = "$version"`, `brew uninstall --formula "$formula"`,
+	} {
+		if !strings.Contains(script, required) {
+			t.Fatalf("missing public formula gate %q", required)
+		}
+	}
+	verify := strings.Index(script, `shasum -a 256 --check SHA256SUMS`)
+	render := strings.Index(script, "go run ./internal/distributiontool")
+	if verify < 0 || render <= verify {
+		t.Fatal("fixture inputs must be verified before formula rendering")
 	}
 }

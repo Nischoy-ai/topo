@@ -418,8 +418,11 @@ is a reviewed source change, not inferred from whichever secrets happen to exist
 The `v0.1.0-beta.1` release has passed protected RPM signing and both Homebrew
 architecture tests; independent downloaded checksum, Sigstore identity, and
 GitHub provenance checks passed. Package-channel promotion remains incomplete:
-its first run stopped at an unavailable Fedora test-image digest before
-publication. This is release-artifact evidence, not a completed channel or
+the corrected Fedora gate and protected repository signing passed, but both
+Macs rejected the generated formula's strict online audit before publication.
+The repair keeps strict audit enabled and qualifies the stable/beta conflict
+names to the official tap; it does not suppress a check or weaken artifact
+verification. This is release-artifact evidence, not a completed channel or
 production-readiness claim. Secret-name checks alone still do not prove key
 usability. See [distribution evidence](docs/distribution.md#first-beta-operational-evidence).
 

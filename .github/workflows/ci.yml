@@ -66,6 +66,10 @@ jobs:
           path: ${{ runner.temp }}/topo-packages
       - name: Exercise non-notarized Homebrew CLI install and uninstall
         run: bash scripts/test-homebrew-beta.sh "$RUNNER_TEMP/topo-packages" v0.0.0-ci
+      - name: Strictly audit and exercise the public-release promotion formula
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/test-homebrew-promotion.sh
 
   windows-package:
     runs-on: windows-latest

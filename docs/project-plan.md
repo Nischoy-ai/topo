@@ -3101,6 +3101,25 @@ build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Slice C1.2 — first signed beta distribution (staged)
 
+**Homebrew promotion repair (2026-09-19).**
+
+**Objective.** Make the generated beta formula pass the existing strict online
+Homebrew audit before requesting another protected promotion approval.
+
+**Deliverables.** Correct stanza order/spacing, use URL-derived versions, and
+qualify both channel conflict names with their official tap. Add formula
+regression tests and exercise the public-release formula audit in macOS CI.
+
+**Acceptance gates.** Preserve mutually exclusive channel declarations, all
+four platform checksums, version/local-discovery execution tests, strict online
+audit, and both Mac architecture gates. Audit the candidate formula against the
+unchanged published beta; run exact Go 1.26.8 focused/full/security checks and
+require green PR CI before merge and a new promotion dispatch.
+
+**Deliberate non-goals.** No fake stable formula, suppressed audit rule,
+Gatekeeper bypass, changed release artifact, production key access, stable
+promotion, new discovery feature, or ServiceNow mutation.
+
 **Promotion repair (2026-09-17).**
 
 **Objective.** Unblock the first beta's RPM repository installation gate without
@@ -3343,6 +3362,33 @@ advisory remains. PR CI must also pass before merge. Then dispatch a **new**
 beta promotion from updated `main` for the existing release; rerunning the old
 run would retain its bad workflow revision. Protected approval is still
 required; do not move the tag, replace assets, or bypass remaining gates.
+
+**Homebrew repair handoff (2026-09-19).** PR #60 merged at `68b65c2` with all
+seven PR CI jobs passing. Prodyot approved new promotion
+[`35388277718`](https://github.com/Nischoy-ai/topo/actions/runs/35388277718).
+Protected repository signing, release verification, and both APT and RPM
+installation/removal passed. Both Mac runners failed `brew audit --strict
+--online` before installation: extra whitespace, `conflicts_with` before the
+platform stanzas, redundant explicit version, and an unqualified missing
+stable formula reference. Publication was skipped.
+
+The renderer now retains reciprocal conflicts fully qualified to the official
+tap, places them after the platform blocks, and lets Homebrew derive the
+version from the immutable archive URLs. Local strict online audit passed for
+the actual public beta formula in a temporary tap; that tap was removed, with
+no local Topo installation or change to the existing development tap. Tests
+cover beta and stable stanza order, all four checksums/URLs, conflict identity,
+and execution assertions. Both Mac CI jobs gain a public-release fixture with
+a source-pinned checksum manifest: verify the immutable inputs, render through
+the production builder, audit strictly online, install/test/version, then
+remove. The existing prepublication local-archive tests remain. There is no
+audit exception, fake stable formula, signing change, new ServiceNow evidence,
+or published asset mutation. Exact Go 1.26.8 full tests, uncached focused
+distribution/release/package/worker/SSH tests, actionlint, ShellCheck, and the
+full security-review gate passed locally (format/diff, vet, race, native and
+Windows amd64 builds, vulnerability scan). Both Mac CI gates must pass before
+merge; then dispatch a new protected promotion from main
+for `v0.1.0-beta.1` / `beta`. Do not rerun an old workflow revision.
 
 ### Relationship to the M2.5 gate
 

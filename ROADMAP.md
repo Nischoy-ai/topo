@@ -266,9 +266,10 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   Linux signing, Sigstore/provenance, SBOMs, and protected reviews remain.
   Full-platform tooling, the earlier signed beta profile, and Windows CI retain
   their requirements. The token is provisioned and `v0.1.0-beta.1` is published
-  with verified release signatures/provenance. Channel promotion stopped at a
-  mismatched Fedora test-image digest; a focused repair aligns it with the
-  release-tested image and guards against drift. APT/RPM/Homebrew publication
+  with verified release signatures/provenance. PR #60 repaired the Fedora gate;
+  the next promotion passed real APT/RPM installation but stopped at Homebrew
+  formula audit errors. The follow-up corrects the renderer and adds a strict
+  public-release formula audit/install test on both Mac CI runners. APT/RPM/Homebrew publication
   remains pending the protected promotion; no Apple-notarization claim is made.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the

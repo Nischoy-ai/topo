@@ -113,11 +113,14 @@ OIDC with Azure Artifact Signing, never an exportable PFX or client secret.
 The distribution token is provisioned and `v0.1.0-beta.1` is published from
 `57671b5`; release attempt 2 passed, including RPM signing and both Homebrew
 architectures. Independent checksum/signature/provenance verification passed.
-Promotion run `35243074007` stopped before publication because its Fedora
-digest differed from the release-tested image and could not be resolved.
-The current repair aligns those pins and guards against drift. Merge its green
-PR before dispatching a new beta promotion from `main`; do not rerun the old
-workflow revision or replace published artifacts. APT/RPM/Homebrew channel
+PR #60 repaired the Fedora image pin and RPM test heredoc. The next promotion,
+`35388277718`, passed protected repository signing and real APT/RPM installation
+gates, but both Macs rejected the generated formula's strict online audit.
+The current repair corrects formula spacing/order, URL-derived versioning, and
+fully qualified channel conflicts, and adds a pinned public-release formula
+audit/install test to both Mac CI jobs. Merge its green PR before dispatching
+a new beta promotion from `main`; do not rerun the old workflow revision or
+replace published artifacts. APT/RPM/Homebrew channel
 publication and real production readiness remain unproven. Never request
 secrets in chat, infer policy from available secrets, or claim Apple
 identity/notarization for this beta.

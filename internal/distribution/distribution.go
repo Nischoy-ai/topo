@@ -342,18 +342,18 @@ func writeHomebrewWithURLs(options Options, checksums map[string]checksumEntry, 
 	}
 	formulaName := "topo"
 	className := "Topo"
-	conflict := "  conflicts_with \"topo-beta\", because: \"both install the topo executable\"\n"
+	// Resolve the counterpart in our official tap, never an unrelated core or
+	// third-party formula. The first beta precedes publication of stable Topo.
+	conflict := "nischoy-ai/tap/topo-beta"
 	if options.Channel == "beta" {
 		formulaName = "topo-beta"
 		className = "TopoBeta"
-		conflict = "  conflicts_with \"topo\", because: \"both install the topo executable\"\n"
+		conflict = "nischoy-ai/tap/topo"
 	}
 	formula := fmt.Sprintf(`class %s < Formula
   desc "Destination-neutral infrastructure discovery data plane"
   homepage "https://github.com/Nischoy-ai/topo"
-  version %q
   license "Apache-2.0"
-%s
 
   on_macos do
     on_intel do
@@ -377,6 +377,8 @@ func writeHomebrewWithURLs(options Options, checksums map[string]checksumEntry, 
     end
   end
 
+  conflicts_with %q, because: "both install the topo executable"
+
   def install
     bin.install "topo"
     doc.install "LICENSE", "README.md"
@@ -388,11 +390,12 @@ func writeHomebrewWithURLs(options Options, checksums map[string]checksumEntry, 
     assert_match '"assets":', observations
   end
 end
-`, className, version, conflict,
+`, className,
 		assetURL(name("darwin", "amd64")), checksums[name("darwin", "amd64")].Digest,
 		assetURL(name("darwin", "arm64")), checksums[name("darwin", "arm64")].Digest,
 		assetURL(name("linux", "amd64")), checksums[name("linux", "amd64")].Digest,
 		assetURL(name("linux", "arm64")), checksums[name("linux", "arm64")].Digest,
+		conflict,
 		options.Version,
 	)
 	return writeFile(filepath.Join(options.OutputDir, "homebrew", "Formula", formulaName+".rb"), []byte(formula))

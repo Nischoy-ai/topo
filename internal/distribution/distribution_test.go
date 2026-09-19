@@ -120,11 +120,53 @@ func TestBuildKeepsBetaHomebrewSeparateFromStable(t *testing.T) {
 		t.Fatal(err)
 	}
 	formula := string(contents)
-	if !strings.Contains(formula, "class TopoBeta < Formula") || !strings.Contains(formula, `conflicts_with "topo"`) {
+	if !strings.Contains(formula, "class TopoBeta < Formula") || !strings.Contains(formula, `conflicts_with "nischoy-ai/tap/topo"`) {
 		t.Fatalf("beta formula is not isolated from stable: %s", formula)
 	}
 	if _, err := os.Stat(filepath.Join(out, "homebrew", "Formula", "topo.rb")); !os.IsNotExist(err) {
 		t.Fatalf("beta promotion wrote the stable formula: %v", err)
+	}
+}
+
+func TestHomebrewFormulaAuditContract(t *testing.T) {
+	t.Parallel()
+	for _, channel := range []string{"beta", "stable"} {
+		t.Run(channel, func(t *testing.T) {
+			version, filename, conflict := "v1.2.3", "topo.rb", "nischoy-ai/tap/topo-beta"
+			if channel == "beta" {
+				version, filename, conflict = "v1.2.3-beta.1", "topo-beta.rb", "nischoy-ai/tap/topo"
+			}
+			artifacts, out := filepath.Join(t.TempDir(), "release"), filepath.Join(t.TempDir(), "out")
+			writeFixture(t, artifacts, version)
+			if err := Build(validOptions(artifacts, out, version, channel)); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(filepath.Join(out, "homebrew", "Formula", filename))
+			if err != nil {
+				t.Fatal(err)
+			}
+			formula := string(data)
+			if strings.Contains(formula, "\n  version ") || strings.Contains(formula, "\n\n\n") {
+				t.Fatal("formula contains redundant version or extra blank lines")
+			}
+			order := []string{"  license ", "  on_macos do", "  on_linux do", "  conflicts_with \"" + conflict + "\"", "  def install", "  test do"}
+			last := -1
+			for _, stanza := range order {
+				index := strings.Index(formula, stanza)
+				if index <= last {
+					t.Fatalf("missing or incorrectly ordered stanza %q", stanza)
+				}
+				last = index
+			}
+			if strings.Count(formula, "      sha256 ") != 4 || strings.Count(formula, "/releases/download/"+version+"/") != 4 {
+				t.Fatal("formula must bind all four archives to the immutable release")
+			}
+			for _, required := range []string{`bin.install "topo"`, `assert_equal "` + version + `"`, `topo discover local`} {
+				if !strings.Contains(formula, required) {
+					t.Fatalf("missing installation/execution contract %q", required)
+				}
+			}
+		})
 	}
 }
 
