@@ -223,6 +223,28 @@ release fixture requires review of its version and authenticated manifest
 digest together. The actual promotion continues to verify release signatures
 and provenance and audit the exact formula it will publish.
 
+After PR #61 merged at `c329e12`, [promotion 35467069999](https://github.com/Nischoy-ai/topo/actions/runs/35467069999)
+passed protected repository signing, APT/RPM lifecycle tests, and strict audit
+plus installation/execution/removal on both Mac architectures. Following the
+independent publication approval, the OCI chart publication and authenticated
+pull/byte comparison passed. Anonymous chart access remains unverified.
+The subsequent first Git push failed with `could not read Username for
+'https://github.com'`: `GH_TOKEN` authenticated GitHub CLI but Git had no
+credential helper. The package repository remained at initial commit `6aff42e`
+and the tap at `cf60cb3`; neither channel was published.
+
+The repair runs `gh auth setup-git --hostname github.com` before repository
+operations, letting Git obtain the existing step-scoped token through GitHub
+CLI. The stable WinGet step uses the same explicit setup; beta still skips it.
+No secret is placed in a remote URL or persisted in Git configuration, and no
+token permission is broadened. Regression tests protect setup ordering and
+exercise real Git/GitHub CLI credential handoff offline with a dummy token,
+isolated configuration, and unrelated-host denial. They do not verify the
+production token's write permissions. Merge the green repair PR, then dispatch
+a new protected promotion from `main` for the unchanged beta release. Do not
+rerun the old revision or replace release assets. APT/RPM/Homebrew publication
+and public channel installation remain pending.
+
 ## Development-only Homebrew pilot
 
 With explicit operator authorization, a separate public development tap was

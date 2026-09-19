@@ -116,11 +116,14 @@ architectures. Independent checksum/signature/provenance verification passed.
 PR #60 repaired the Fedora image pin and RPM test heredoc. The next promotion,
 `35388277718`, passed protected repository signing and real APT/RPM installation
 gates, but both Macs rejected the generated formula's strict online audit.
-The current repair corrects formula spacing/order, URL-derived versioning, and
-fully qualified channel conflicts, and adds a pinned public-release formula
-audit/install test to both Mac CI jobs. Merge its green PR before dispatching
-a new beta promotion from `main`; do not rerun the old workflow revision or
-replace published artifacts. APT/RPM/Homebrew channel
+PR #61 repaired the formula and both Mac CI gates passed. Promotion
+`35467069999` then passed all installation gates and authenticated OCI chart
+publication/pull-verification, but failed its first Git push because Git lacked
+a credential helper. Neither distribution repository changed. The current
+repair configures Git to use the existing environment token through GitHub CLI,
+with an isolated dummy-token regression test. Merge its green PR before
+dispatching a new beta promotion from `main`; do not rerun the old workflow
+revision or replace published artifacts. APT/RPM/Homebrew channel
 publication and real production readiness remain unproven. Never request
 secrets in chat, infer policy from available secrets, or claim Apple
 identity/notarization for this beta.

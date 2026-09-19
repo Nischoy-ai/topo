@@ -1,12 +1,106 @@
 package release
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestPromotionConfiguresGitAuthenticationBeforeRepositoryOperations(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "promote.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{
+		"Publish static APT and RPM repositories and the Homebrew tap",
+		"Submit the stable WinGet manifest",
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, step, ok := strings.Cut(string(data), "      - name: "+name+"\n")
+			if !ok {
+				t.Fatal("missing publication step")
+			}
+			step, _, _ = strings.Cut(step, "\n      - name:")
+			for _, required := range []string{
+				"GH_TOKEN: ${{ secrets.DISTRIBUTION_GITHUB_TOKEN }}",
+				"set -euo pipefail\n          test -n \"$GH_TOKEN\"\n          gh auth setup-git --hostname github.com\n",
+			} {
+				if !strings.Contains(step, required) {
+					t.Fatalf("missing protected Git authentication setup %q", required)
+				}
+			}
+			setup := strings.Index(step, "gh auth setup-git --hostname github.com")
+			for _, operation := range []string{"gh repo clone ", "git push "} {
+				if pos := strings.Index(step, operation); pos < 0 || pos <= setup {
+					t.Fatalf("%s must follow credential helper setup", operation)
+				}
+			}
+		})
+	}
+}
+
+// Exercise real gh -> git credential plumbing without a real secret, network
+// access, push, or modification of the developer's Git/GitHub configuration.
+func TestPromotionGitCredentialHelperOffline(t *testing.T) {
+	for _, name := range []string{"gh", "git"} {
+		if _, err := exec.LookPath(name); err != nil {
+			if os.Getenv("GITHUB_ACTIONS") == "true" {
+				t.Fatalf("required CI fixture tool %s is unavailable", name)
+			}
+			t.Skipf("offline helper fixture requires %s", name)
+		}
+	}
+	dir := t.TempDir()
+	config := filepath.Join(dir, "gitconfig")
+	const token = "topo-offline-dummy-token-not-a-secret"
+	env := []string{
+		"PATH=" + os.Getenv("PATH"),
+		"SYSTEMROOT=" + os.Getenv("SYSTEMROOT"),
+		"GH_CONFIG_DIR=" + filepath.Join(dir, "gh"),
+		"GIT_CONFIG_GLOBAL=" + config, "GIT_CONFIG_NOSYSTEM=1",
+		"GIT_TERMINAL_PROMPT=0", "GH_PROMPT_DISABLED=1", "GH_TOKEN=" + token,
+		"HTTPS_PROXY=http://127.0.0.1:1", "HTTP_PROXY=http://127.0.0.1:1",
+	}
+	run := func(input, program string, args ...string) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, program, args...)
+		cmd.Dir, cmd.Env = dir, env
+		cmd.Stdin = strings.NewReader(input)
+		return cmd.Output() // Never print credential output, including on failure.
+	}
+	request := "protocol=https\nhost=github.com\n\n"
+	if _, err := run(request, "git", "credential", "fill"); err == nil {
+		t.Fatal("unconfigured Git unexpectedly found credentials")
+	}
+	if _, err := run("", "gh", "auth", "setup-git", "--hostname", "github.com"); err != nil {
+		t.Fatalf("isolated helper setup failed: %v", err)
+	}
+	result, err := run(request, "git", "credential", "fill")
+	if err != nil || !strings.Contains(string(result), "password="+token+"\n") {
+		t.Fatal("Git did not receive the environment token from the helper")
+	}
+	if _, err := run("protocol=https\nhost=example.invalid\n\n", "git", "credential", "fill"); err == nil {
+		t.Fatal("helper supplied credentials for an unrelated host")
+	}
+	if err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err == nil && strings.Contains(string(data), token) {
+			t.Error("helper persisted the environment token to disk")
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // The release package job exercises this image before promotion can run. Keep
 // promotion on that same immutable image rather than an independently copied pin.
