@@ -6,7 +6,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-14
+- **Updated:** 2026-09-19
+- **Latest C1.2 status:** PR #61 merged with green CI. Promotion
+  `35467069999` passed APT/RPM and both Homebrew gates plus authenticated OCI
+  chart publication/pull-verification, then failed the first repository push:
+  Git had no credential helper. Neither distribution repository changed.
+  The approved repair below configures Git to use the existing protected token;
+  public channel installation remains unproven.
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -3101,6 +3107,26 @@ build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Slice C1.2 — first signed beta distribution (staged)
 
+**Git publication authentication repair (2026-09-19).**
+
+**Objective.** Let Git pushes use the existing protected distribution token,
+without exposing it or broadening its permissions.
+
+**Deliverables.** Configure GitHub CLI's Git credential helper for `github.com`
+before distribution repository operations; add workflow ordering and isolated
+offline credential-handoff regression tests; document partial publication.
+
+**Acceptance gates.** Verify helper setup precedes clones/pushes, uses only the
+step's environment token, and hands a dummy token to Git without a network
+request or token-bearing remote/configuration. Run exact Go 1.26.8 full,
+focused, security, and cross-platform checks and require green PR CI. Actual
+push authority remains an external gate for a new protected promotion after
+merge; local tests do not prove the production PAT's permissions.
+
+**Deliberate non-goals.** No new token, broader repository permission, approval
+bypass, release-asset replacement, stable promotion, discovery change, or
+ServiceNow mutation. Do not rerun the failed workflow's old revision.
+
 **Homebrew promotion repair (2026-09-19).**
 
 **Objective.** Make the generated beta formula pass the existing strict online
@@ -3389,6 +3415,35 @@ full security-review gate passed locally (format/diff, vet, race, native and
 Windows amd64 builds, vulnerability scan). Both Mac CI gates must pass before
 merge; then dispatch a new protected promotion from main
 for `v0.1.0-beta.1` / `beta`. Do not rerun an old workflow revision.
+
+**Git publication repair handoff (2026-09-19).** PR #61 merged at `c329e12`
+after all seven CI jobs passed. Promotion
+[`35467069999`](https://github.com/Nischoy-ai/topo/actions/runs/35467069999)
+passed protected repository signing, APT/RPM install/remove, and strict online
+Homebrew audit/install/test/remove on both architectures. Prodyot approved
+publication. OCI chart publication and authenticated pull/byte comparison
+passed; anonymous access remains unverified. The first package-repository push
+failed because Git had no credential helper despite the step's `GH_TOKEN`.
+Read-only checks confirmed the package repository remained at `6aff42e` and
+the Homebrew tap at `cf60cb3` (their initial commits).
+
+The repair configures `gh auth setup-git --hostname github.com` before clones
+and pushes in both repository-writing steps, retaining the existing protected
+environment token and fail-fast shell. Beta still skips WinGet. The workflow
+ordering regression fails on the old source and passes with the fix. An
+isolated real Git/GitHub CLI test reproduces credential failure before setup,
+then retrieves only a dummy environment token after setup, rejects unrelated
+hosts, and checks no token was persisted. No production token is accessed or
+remote write attempted by those tests. Exact Go 1.26.8 full tests, uncached
+release/distribution/package/worker/SSH integration tests, actionlint, and the
+full security-review gate pass locally: formatting/diff, vet, race tests,
+native/Windows amd64 builds, and no reachable vulnerability findings (one
+uncalled-module advisory remains). README already accurately marks package
+channels pending and stays short. No new ServiceNow evidence or release asset
+change is claimed. Require green PR CI and merge, then dispatch a new protected
+promotion from `main` for `v0.1.0-beta.1` / `beta`; never rerun the old workflow
+revision. Real PAT write authority and published-channel installation remain
+external acceptance gates.
 
 ### Relationship to the M2.5 gate
 

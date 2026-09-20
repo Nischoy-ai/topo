@@ -401,6 +401,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$GH_TOKEN"
+          gh auth setup-git --hostname github.com
           gh repo clone Nischoy-ai/topo-packages "$RUNNER_TEMP/topo-packages"
           mkdir -p "$RUNNER_TEMP/topo-packages/apt/dists" "$RUNNER_TEMP/topo-packages/apt/pool" \
             "$RUNNER_TEMP/topo-packages/rpm" "$RUNNER_TEMP/topo-packages/keys"
@@ -440,6 +441,8 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          test -n "$GH_TOKEN"
+          gh auth setup-git --hostname github.com
           filename_version=${VERSION#v}
           branch="nischoy-topo-${filename_version}"
           gh repo clone Nischoy-ai/winget-pkgs "$RUNNER_TEMP/winget-pkgs"
