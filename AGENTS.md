@@ -116,9 +116,12 @@ architectures. Independent checksum/signature/provenance verification passed.
 PRs #60/#61/#62 repaired the Fedora gate, Homebrew audit, and Git credential
 helper. Promotion `35485290078` from merged `dd3c349` passed after Prodyot's
 independent approvals and published APT/RPM plus the official Homebrew beta tap.
-Pages serves package commit `3d0a4fe`; the tap is at `3ffdb92`. The current
-follow-up verifies fresh installs from those real public channels on both Linux
-and Mac architectures and updates concise customer instructions. Local Docker
+Pages serves package commit `3d0a4fe`; the tap is at `3ffdb92`. Live acceptance
+run `35487126595` passed all six fresh public-channel install jobs on both Linux
+and Mac architectures. The current candidate records that evidence and concise
+customer instructions. Keep the source-pinned public-channel fixtures distinct
+from generated prepublication tests; review all pins when advancing the beta.
+Local Docker
 hit disk I/O errors with only 116 MB free; do not reset it or alter the existing
 development Topo installation. Use disposable CI runners for acceptance.
 Stable/N-1 evidence and real production readiness remain unproven. Never request

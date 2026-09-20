@@ -269,8 +269,9 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   with verified release signatures/provenance. After PRs #60–#62 repaired
   promotion gates and Git authentication, independently approved promotion
   `35485290078` published signed APT/RPM repositories and the official Homebrew
-  beta tap. Pages serves the package metadata. Fresh post-publication public
-  install checks and concise onboarding are the current follow-up. Stable/N-1
+  beta tap. Pages serves the package metadata. Six post-publication public
+  install checks passed (APT/RPM amd64/arm64 and Homebrew Intel/Apple Silicon);
+  concise beta onboarding is documented in the current candidate. Stable/N-1
   validation remains open; no Apple-notarization or production-readiness claim
   is made.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's

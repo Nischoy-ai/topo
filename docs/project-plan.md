@@ -9,9 +9,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Updated:** 2026-09-20 UTC
 - **Latest C1.2 status:** PR #62 merged at `dd3c349`. Independently approved
   promotion `35485290078` passed and published `v0.1.0-beta.1` to APT/RPM and
-  the official Homebrew tap. Pages serves the signed metadata. Post-publication
-  fresh-install acceptance and concise customer instructions are the current
-  follow-up below; stable/N-1 and production readiness remain unproven.
+  the official Homebrew tap. Pages serves the signed metadata. All six
+  post-publication fresh-install jobs passed in `35487126595` (APT/RPM amd64/
+  arm64, Homebrew Intel/Apple Silicon). The current candidate records that
+  evidence and concise customer instructions; stable/N-1 and production
+  readiness remain unproven.
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -3481,8 +3483,13 @@ The current candidate adds six post-publication CI jobs using real HTTPS
 channels, not file-mounted generated repositories or a substituted formula.
 Acceptance covers APT/RPM on amd64/arm64 and Homebrew on Intel/Apple Silicon,
 with fixed trust pins, local discovery, uninstall, and Linux dormant-worker/
-operator-file preservation assertions. Execution is pending the candidate's
-CI; source checks alone are not live installation evidence. Local Docker
+operator-file preservation assertions. All six jobs passed against `7dc794f` in
+[live acceptance 35487126595](https://github.com/Nischoy-ai/topo/actions/runs/35487126595).
+Initial fixture failures were corrected without changing released bytes: the
+archive fetch must follow GitHub's public redirect, and minimized Ubuntu needs
+a narrow `path-include` to retain the packaged worker example. Read-only DEB
+inspection confirmed the example exists in the release; both APT architectures
+then passed with the same options now documented for customers. Local Docker
 attempts failed before installation with disk I/O errors at 116 MB free.
 Only two known agent-created public-artifact/fixture caches (about 248 MB) were
 removed; no Docker data, user files, or installed development Topo was changed.

@@ -199,8 +199,10 @@ removes the package while preserving an operator file. Macs verify the reviewed
 live formula hash before audit/install/discovery/removal. These source pins
 must be reviewed together when a new beta replaces this fixture. The workflow
 is read-only externally, uses no signing secrets, and is not a promotion.
-Execution results are recorded in the current project handoff; merely adding
-these checks is not evidence they passed. Local Docker could not run them due
+All six jobs passed against `7dc794f` in
+[live acceptance 35487126595](https://github.com/Nischoy-ai/topo/actions/runs/35487126595).
+These are post-publication installation results, not a ServiceNow runtime or
+production-readiness claim. Local Docker could not run them due
 to laptop disk exhaustion; that failed attempt is not installation evidence.
 
 The chronological attempts below explain the fixes leading to publication.
