@@ -6,13 +6,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-19
-- **Latest C1.2 status:** PR #61 merged with green CI. Promotion
-  `35467069999` passed APT/RPM and both Homebrew gates plus authenticated OCI
-  chart publication/pull-verification, then failed the first repository push:
-  Git had no credential helper. Neither distribution repository changed.
-  The approved repair below configures Git to use the existing protected token;
-  public channel installation remains unproven.
+- **Updated:** 2026-09-20 UTC
+- **Latest C1.2 status:** PR #62 merged at `dd3c349`. Independently approved
+  promotion `35485290078` passed and published `v0.1.0-beta.1` to APT/RPM and
+  the official Homebrew tap. Pages serves the signed metadata. All six
+  post-publication fresh-install jobs passed in `35487126595` (APT/RPM amd64/
+  arm64, Homebrew Intel/Apple Silicon). The current candidate records that
+  evidence and concise customer instructions; stable/N-1 and production
+  readiness remain unproven.
 - **Public repository:** <https://github.com/Nischoy-ai/topo>
 - **Milestone status:** M2.5 (release readiness and security hardening) is
   complete — see "Completion status" under "Completed milestone: M2.5" below.
@@ -3107,6 +3108,29 @@ build, and Windows amd64 vet/build gate passed under exact Go 1.26.8.
 
 ### Slice C1.2 — first signed beta distribution (staged)
 
+**Live-channel acceptance and onboarding (2026-09-20 UTC).**
+
+**Objective.** Verify the published beta through its real public endpoints and
+replace pending-channel instructions with a short, working installation path.
+
+**Deliverables.** Fresh public APT/RPM installation, local discovery, dormant
+service and removal checks in disposable CI containers; live official-tap
+installation checks on fresh Intel/ARM64 Mac runners; concise README links to
+fingerprint-verified beta setup; publication evidence and remaining limits.
+
+**Acceptance gates.** Pin the reviewed public key and Homebrew fixture identity,
+retain package/repository signature verification and HTTPS, and never modify
+the developer's installed Topo. Distinguish live public-channel evidence from
+prepublication fixtures and from ServiceNow evidence. Run focused/full Go
+1.26.8 checks, the release security matrix, and all PR CI jobs before handoff.
+
+**Deliberate non-goals.** No stable/N-1 promotion, Windows release, Apple
+notarization, production-readiness claim, new discovery/credential capability,
+ServiceNow mutation, or replacement of released artifacts. Disposable local
+test utilities stay outside the repository; reusable CI acceptance checks are
+source-controlled. Local Docker failed before installation with disk I/O errors
+while the laptop had only 116 MB free; use CI rather than resetting Docker.
+
 **Git publication authentication repair (2026-09-19).**
 
 **Objective.** Let Git pushes use the existing protected distribution token,
@@ -3444,6 +3468,38 @@ change is claimed. Require green PR CI and merge, then dispatch a new protected
 promotion from `main` for `v0.1.0-beta.1` / `beta`; never rerun the old workflow
 revision. Real PAT write authority and published-channel installation remain
 external acceptance gates.
+
+**Public beta and live-channel handoff (2026-09-20 UTC).** PR #62 merged at
+`dd3c34932b91c8d16f4cfeb879cd195fa03edeb0`. Prodyot approved both protected
+stages of [promotion 35485290078](https://github.com/Nischoy-ai/topo/actions/runs/35485290078),
+which passed release verification, repository signing, Linux lifecycle gates,
+both Mac gates, OCI byte comparison, and publication. Package commit
+`3d0a4fe15c9f7bd5dd40450f16ae0efafa4ba341` and tap commit
+`3ffdb92732fc6ebdcd6c2bd3f4a96fd3f417d5d7` are public; Pages built the former
+and serves signed APT/RPM metadata. APT metadata expires 2026-10-20 UTC; refresh
+through protected promotion before expiry, not by disabling expiry checking.
+
+The current candidate adds six post-publication CI jobs using real HTTPS
+channels, not file-mounted generated repositories or a substituted formula.
+Acceptance covers APT/RPM on amd64/arm64 and Homebrew on Intel/Apple Silicon,
+with fixed trust pins, local discovery, uninstall, and Linux dormant-worker/
+operator-file preservation assertions. All six jobs passed against `7dc794f` in
+[live acceptance 35487126595](https://github.com/Nischoy-ai/topo/actions/runs/35487126595).
+Initial fixture failures were corrected without changing released bytes: the
+archive fetch must follow GitHub's public redirect, and minimized Ubuntu needs
+a narrow `path-include` to retain the packaged worker example. Read-only DEB
+inspection confirmed the example exists in the release; both APT architectures
+then passed with the same options now documented for customers. Local Docker
+attempts failed before installation with disk I/O errors at 116 MB free.
+Only two known agent-created public-artifact/fixture caches (about 248 MB) were
+removed; no Docker data, user files, or installed development Topo was changed.
+The local test utility remains outside the project. README stays short and
+links to actual beta APT/RPM setup plus Mac foreground worker instructions.
+Go 1.26.8 full/focused tests, actionlint, ShellCheck, format/diff and the full
+security-review matrix pass locally, with zero reachable vulnerability
+findings and one uncalled-module advisory. No new ServiceNow or simulator
+discovery evidence is claimed. Stable/N-1, anonymous OCI access, Store delivery,
+independent security retest and the other documented production gaps remain.
 
 ### Relationship to the M2.5 gate
 

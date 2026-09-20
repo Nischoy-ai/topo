@@ -113,18 +113,18 @@ OIDC with Azure Artifact Signing, never an exportable PFX or client secret.
 The distribution token is provisioned and `v0.1.0-beta.1` is published from
 `57671b5`; release attempt 2 passed, including RPM signing and both Homebrew
 architectures. Independent checksum/signature/provenance verification passed.
-PR #60 repaired the Fedora image pin and RPM test heredoc. The next promotion,
-`35388277718`, passed protected repository signing and real APT/RPM installation
-gates, but both Macs rejected the generated formula's strict online audit.
-PR #61 repaired the formula and both Mac CI gates passed. Promotion
-`35467069999` then passed all installation gates and authenticated OCI chart
-publication/pull-verification, but failed its first Git push because Git lacked
-a credential helper. Neither distribution repository changed. The current
-repair configures Git to use the existing environment token through GitHub CLI,
-with an isolated dummy-token regression test. Merge its green PR before
-dispatching a new beta promotion from `main`; do not rerun the old workflow
-revision or replace published artifacts. APT/RPM/Homebrew channel
-publication and real production readiness remain unproven. Never request
+PRs #60/#61/#62 repaired the Fedora gate, Homebrew audit, and Git credential
+helper. Promotion `35485290078` from merged `dd3c349` passed after Prodyot's
+independent approvals and published APT/RPM plus the official Homebrew beta tap.
+Pages serves package commit `3d0a4fe`; the tap is at `3ffdb92`. Live acceptance
+run `35487126595` passed all six fresh public-channel install jobs on both Linux
+and Mac architectures. The current candidate records that evidence and concise
+customer instructions. Keep the source-pinned public-channel fixtures distinct
+from generated prepublication tests; review all pins when advancing the beta.
+Local Docker
+hit disk I/O errors with only 116 MB free; do not reset it or alter the existing
+development Topo installation. Use disposable CI runners for acceptance.
+Stable/N-1 evidence and real production readiness remain unproven. Never request
 secrets in chat, infer policy from available secrets, or claim Apple
 identity/notarization for this beta.
 

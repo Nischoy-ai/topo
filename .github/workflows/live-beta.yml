@@ -1,0 +1,51 @@
+name: live beta channel acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/live-beta.yml
+      - scripts/test-live-beta-*.sh
+      - internal/release/workflow_test.go
+      - README.md
+      - docs/distribution.md
+      - docs/pilot-quickstart.md
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        channel: [apt, rpm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install from the signed public Linux channel and remove
+        env:
+          CHANNEL: ${{ matrix.channel }}
+        run: |
+          set -euo pipefail
+          image=ubuntu:24.04
+          if [[ "$CHANNEL" == rpm ]]; then
+            image=fedora@sha256:99e203b80b1c3d8f7e161ec10a68fd02b081ef83a3963553e513c82846b97814
+          fi
+          docker run --rm -e GITHUB_ACTIONS -e RUNNER_ENVIRONMENT \
+            -v "$PWD/scripts/test-live-beta-linux.sh:/test/check.sh:ro" "$image" \
+            bash /test/check.sh "$CHANNEL"
+
+  homebrew:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install from the public official tap and remove
+        run: bash scripts/test-live-beta-homebrew.sh

@@ -48,7 +48,8 @@ performs these operations in order:
 6. Push/pull-compare the existing chart through GHCR, then publish static APT/
    RPM metadata, the Homebrew formula, and (stable only) a WinGet pull request.
 
-Any failure occurs before external publication. Stable and beta use separate
+Validation failures block publication; a failure during publication can leave
+some channels published and others pending. Stable and beta use separate
 protected environments and one shared serialization lock because they mutate
 some of the same repositories. Repeating a partially completed promotion is
 safe: immutable OCI bytes are compared, unchanged Git commits are skipped, and
@@ -179,6 +180,33 @@ N-1-gated stable promotion and remaining security-review gates.
 
 ## First beta operational evidence
 
+**Published (2026-09-20 UTC).** After PR #62 merged at `dd3c349`,
+[promotion 35485290078](https://github.com/Nischoy-ai/topo/actions/runs/35485290078)
+passed all required jobs after Prodyot's independent approvals. Package
+repository commit `3d0a4fe15c9f7bd5dd40450f16ae0efafa4ba341` and official tap
+commit `3ffdb92732fc6ebdcd6c2bd3f4a96fd3f417d5d7` publish `v0.1.0-beta.1`.
+Pages built that package commit and anonymously serves the signed beta APT/RPM
+metadata over HTTPS. Git write authority is now proven for both repositories.
+Authenticated OCI chart pull/byte comparison passed; anonymous OCI access is
+not claimed. Published release assets remain unchanged.
+
+Post-publication acceptance uses `live beta channel acceptance`: four fresh
+Linux container jobs (APT/RPM on amd64/arm64) plus Intel/ARM64 Mac runners
+consume the actual public repositories/tap. Linux pins the OpenPGP fingerprint,
+checks signatures, compares the installed binary to a source-pinned release
+archive, exercises local discovery, checks dormant worker installation, and
+removes the package while preserving an operator file. Macs verify the reviewed
+live formula hash before audit/install/discovery/removal. These source pins
+must be reviewed together when a new beta replaces this fixture. The workflow
+is read-only externally, uses no signing secrets, and is not a promotion.
+All six jobs passed against `7dc794f` in
+[live acceptance 35487126595](https://github.com/Nischoy-ai/topo/actions/runs/35487126595).
+These are post-publication installation results, not a ServiceNow runtime or
+production-readiness claim. Local Docker could not run them due
+to laptop disk exhaustion; that failed attempt is not installation evidence.
+
+The chronological attempts below explain the fixes leading to publication.
+
 The owner provisioned the distribution token, and the `linux-homebrew-beta`
 preflight passed. [Release attempt 2](https://github.com/Nischoy-ai/topo/actions/runs/34929267383/attempts/2)
 published [v0.1.0-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.1.0-beta.1)
@@ -306,45 +334,79 @@ refresh an active channel even when no new Topo version is ready.
 
 ## User installation
 
-APT uses a repository-scoped keyring and Deb822 source definition, never
-global `apt-key` trust:
+The available channel is **beta**, currently `v0.1.0-beta.1`. There is no
+stable APT/RPM channel, stable Homebrew formula, or WinGet release yet.
+Use a pilot host, with `curl`, CA certificates and GnuPG installed for Linux.
+The reviewed package-signing fingerprint is
+`6049C01BB18CE8EC395DA16F9C64F25B652F0673`; stop on any mismatch.
+
+### Debian and Ubuntu
+
+APT uses a repository-scoped keyring, never global `apt-key` trust. Run this
+block in a shell; the subshell stops on any verification/setup failure:
 
 ```sh
-curl -fsSLo /tmp/nischoy-topo-archive.gpg \
-  https://nischoy-ai.github.io/topo-packages/keys/nischoy-topo-archive.gpg
-sudo install -D -m 0644 /tmp/nischoy-topo-archive.gpg \
-  /etc/apt/keyrings/nischoy-topo.gpg
-curl -fsSLo /tmp/nischoy-topo.sources \
-  https://nischoy-ai.github.io/topo-packages/apt/nischoy-topo-stable.sources
-sudo install -m 0644 /tmp/nischoy-topo.sources \
-  /etc/apt/sources.list.d/nischoy-topo.sources
-sudo apt update
-sudo apt install topo
+(
+  set -eu
+  work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+  curl -fsSLo "$work/key.asc" https://nischoy-ai.github.io/topo-packages/keys/nischoy-topo-archive.asc
+  fingerprint=$(gpg --batch --show-keys --with-colons "$work/key.asc" | awk -F: '$1=="fpr" {print $10; exit}')
+  test "$fingerprint" = 6049C01BB18CE8EC395DA16F9C64F25B652F0673
+  gpg --batch --dearmor --output "$work/key.gpg" "$work/key.asc"
+  sudo install -D -m 0644 "$work/key.gpg" /etc/apt/keyrings/nischoy-topo.gpg
+  curl -fsSLo "$work/topo.sources" https://nischoy-ai.github.io/topo-packages/apt/nischoy-topo-beta.sources
+  sudo install -m 0644 "$work/topo.sources" /etc/apt/sources.list.d/nischoy-topo.sources
+  sudo apt update
+  sudo apt -o 'Dpkg::Options::=--path-include=/usr/share/doc/topo' \
+    -o 'Dpkg::Options::=--path-include=/usr/share/doc/topo/*' install topo
+  topo version
+)
 ```
 
-Fedora/RHEL-compatible systems verify both RPM packages and repository
-metadata. The `.repo` file references the ASCII-armored copy of the same trust
-root that APT receives as a binary scoped keyring:
+The `path-include` options retain the worker configuration example even on
+[minimized Ubuntu images that omit documentation](https://lists.ubuntu.com/archives/foundations-bugs/2022-February/468556.html).
+They do not change APT's signature verification.
+
+### Fedora and RHEL family
+
+Both package and repository signatures remain enabled. Fedora is the tested
+RPM environment; these commands are not a claim of validation on every RHEL
+derivative.
 
 ```sh
-sudo curl -fsSLo /etc/yum.repos.d/nischoy-topo.repo \
-  https://nischoy-ai.github.io/topo-packages/rpm/nischoy-topo-stable.repo
-sudo dnf install topo
+(
+  set -eu
+  work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+  curl -fsSLo "$work/key.asc" https://nischoy-ai.github.io/topo-packages/keys/nischoy-topo-archive.asc
+  fingerprint=$(gpg --batch --show-keys --with-colons "$work/key.asc" | awk -F: '$1=="fpr" {print $10; exit}')
+  test "$fingerprint" = 6049C01BB18CE8EC395DA16F9C64F25B652F0673
+  sudo rpm --import "$work/key.asc"
+  curl -fsSLo "$work/topo.repo" https://nischoy-ai.github.io/topo-packages/rpm/nischoy-topo-beta.repo
+  sudo install -m 0644 "$work/topo.repo" /etc/yum.repos.d/nischoy-topo.repo
+  sudo dnf install topo
+  topo version
+)
 ```
 
-Other channels:
+### macOS Homebrew
 
 ```sh
-brew install nischoy-ai/tap/topo
-brew install nischoy-ai/tap/topo-beta # prerelease channel; conflicts with topo
-winget install --id Nischoy.Topo -e
-helm install topo oci://ghcr.io/nischoy-ai/charts/topo \
-  --version 0.2.0 --set apiKeySecret.name=topo-api-key
+brew install nischoy-ai/tap/topo-beta
+topo version
 ```
 
-The Helm chart still requires an externally created API-key Secret. Host
-packages still install a dormant service definition and never generate a
-credential, configuration, or enabled service.
+This is a CLI formula, not an Apple-notarized app. Do not disable Gatekeeper or
+strip quarantine. It conflicts with another formula installing `topo`; existing
+development-tap users must explicitly choose when to uninstall their old
+formula before installing this one. Installation does not start a worker.
+
+Linux packages install a dormant service, not credentials or configuration.
+Continue with [worker configuration](pilot-quickstart.md#4-install-and-configure-the-worker).
+Raw release files remain available for verified offline installation. The
+experimental controller Helm chart is not required for ServiceNow workers and
+is not the recommended pilot installation path.
 
 ## Key rotation and incident response
 
@@ -372,7 +434,7 @@ GitHub Release asset.
   supported initial channel.
 - Chocolatey, Scoop, AUR, Snap, and other ecosystems follow demonstrated
   demand.
-- The first real beta and N-1 stable promotions remain required evidence.
+- The first real beta is published; N-1 stable promotion remains required evidence.
   Pull-request CI proves deterministic generation and syntax only; it has no
   production signing keys and performs no external publication. External-
   security-review preparation does not waive or simulate this gate; provision
