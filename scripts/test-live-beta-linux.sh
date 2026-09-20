@@ -26,7 +26,9 @@ if [[ "$channel" == apt ]]; then
   curl -fsS --max-time 60 "$origin/apt/nischoy-topo-beta.sources" -o /etc/apt/sources.list.d/nischoy-topo.sources
   grep -Fx 'Signed-By: /etc/apt/keyrings/nischoy-topo.gpg' /etc/apt/sources.list.d/nischoy-topo.sources
   apt-get update
-  apt-get install -y topo
+  # Minimal Ubuntu images filter /usr/share/doc; retain Topo's startup example.
+  apt-get -o 'Dpkg::Options::=--path-include=/usr/share/doc/topo' \
+    -o 'Dpkg::Options::=--path-include=/usr/share/doc/topo/*' install -y topo
 else
   rpm --import /tmp/topo-key.asc
   curl -fsS --max-time 60 "$origin/rpm/nischoy-topo-beta.repo" -o /etc/yum.repos.d/nischoy-topo.repo

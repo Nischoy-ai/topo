@@ -281,7 +281,7 @@ func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
 			"github-hosted", "! -f /.dockerenv", "https://nischoy-ai.github.io/topo-packages",
 			"6049C01BB18CE8EC395DA16F9C64F25B652F0673", `test "$actual" = "$fingerprint"`,
 			"gpgcheck=1", "repo_gpgcheck=1", "Signed-By: /etc/apt/keyrings/nischoy-topo.gpg",
-			"apt-get install -y topo", "dnf install -y topo", "topo discover local",
+			"Dpkg::Options::=--path-include=/usr/share/doc/topo/*", "install -y topo", "dnf install -y topo", "topo discover local",
 			"sha256sum --check", `cmp /usr/bin/topo "$raw"`, "test ! -e /usr/bin/topo",
 			`curl -fsSL --max-time 120 "https://github.com/Nischoy-ai/topo/releases/download/`,
 			"test -f /etc/topo-worker/operator-owned", "test ! -e /etc/topo-worker/topo-worker.env",

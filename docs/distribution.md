@@ -356,10 +356,15 @@ block in a shell; the subshell stops on any verification/setup failure:
   curl -fsSLo "$work/topo.sources" https://nischoy-ai.github.io/topo-packages/apt/nischoy-topo-beta.sources
   sudo install -m 0644 "$work/topo.sources" /etc/apt/sources.list.d/nischoy-topo.sources
   sudo apt update
-  sudo apt install topo
+  sudo apt -o 'Dpkg::Options::=--path-include=/usr/share/doc/topo' \
+    -o 'Dpkg::Options::=--path-include=/usr/share/doc/topo/*' install topo
   topo version
 )
 ```
+
+The `path-include` options retain the worker configuration example even on
+[minimized Ubuntu images that omit documentation](https://lists.ubuntu.com/archives/foundations-bugs/2022-February/468556.html).
+They do not change APT's signature verification.
 
 ### Fedora and RHEL family
 
