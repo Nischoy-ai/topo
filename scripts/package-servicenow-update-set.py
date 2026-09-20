@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import stat
 import xml.etree.ElementTree as ET
 
 SCOPE = 'x_664635_topo'
@@ -141,8 +142,11 @@ def inspect(body):
 
 
 def read_bounded(path):
-    with path.open('rb') as stream:
-        require(os.fstat(stream.fileno()).st_size <= MAX_BYTES)
+    # Refuse devices/FIFOs without blocking while opening untrusted local inputs.
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        require(stat.S_ISREG(info.st_mode) and info.st_size <= MAX_BYTES)
         return stream.read(MAX_BYTES + 1)
 
 

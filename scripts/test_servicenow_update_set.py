@@ -120,6 +120,14 @@ class UpdateSetTests(unittest.TestCase):
             with self.assertRaises(m.Rejected):
                 m.inspect(body)
 
+    def test_nonregular_input_is_rejected(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            pipe = Path(tmp) / 'input.xml'
+            os.mkfifo(pipe)
+            with self.assertRaises(m.Rejected):
+                m.read_bounded(pipe)
+
     def test_error_does_not_echo_payload(self):
         import subprocess
         import sys

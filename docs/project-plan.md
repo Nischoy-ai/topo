@@ -3551,7 +3551,7 @@ of the installed development Topo. Do not use Docker on the constrained laptop.
 Python candidate inspector preserves platform bytes, bounds XML, rejects
 unknown/foreign records, user/OAuth/operational data and a drifting core app
 inventory, and requires an exact review digest before non-overwriting packaging.
-Six synthetic tests and the existing Fluent tests pass; these do not establish
+Seven synthetic tests and the existing Fluent tests pass; these do not establish
 platform export/import compatibility. The current checker is deliberately
 provisional until a genuine export establishes the actual envelope and payload
 shapes. Existing ignored local `dist/app/author_elective_update` filenames
