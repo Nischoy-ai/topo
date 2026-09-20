@@ -9,22 +9,16 @@ ServiceNow application to reconcile through IRE.
 
 ### 1. Install the Nischoy Topo app
 
-Use a non-production ServiceNow instance for the pilot. The currently
-validated installation path uses the ServiceNow SDK and an OAuth alias:
-
-```sh
-scripts/install-servicenow-app.sh <sdk-oauth-alias>
-```
-
-In ServiceNow, create a worker pool, target scope, Password2 SSH credential,
-credential binding, and discovery profile. Follow the exact record order and
-least-privilege role setup in the [ServiceNow Linux pilot
-quickstart](docs/pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities).
+The customer XML update-set path is being prepared for non-production pilots.
+Follow the [XML installation guide](docs/servicenow-update-set.md) for download,
+import, preview, commit and customer-owned access setup. **No validated XML
+release is available yet**; the existing beta's SDK ZIP is not an XML update set.
+Developer/source installation remains in the [developer app guide](integrations/servicenow/topo-control-plane/README.md#install).
 
 ### 2. Install and start the Topo worker
 
 Install **v0.1.0-beta.1** on a host that can reach ServiceNow and your approved
-targets. Use the ServiceNow app from the same release.
+targets. Use the compatible ServiceNow app version listed in its release manifest.
 
 ```sh
 # macOS

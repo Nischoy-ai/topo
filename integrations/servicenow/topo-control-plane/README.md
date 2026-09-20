@@ -34,6 +34,15 @@ reproducible release artifact.
 
 ## Install
 
+Developer/export-instance workflow only. Use a reviewed release checkout on a
+non-production instance; the SDK requires Node.js 20.18.0+, npm 8.19.3+ and an
+installation administrator. See [SDK requirements](https://www.servicenow.com/docs/r/application-development/servicenow-sdk/install-servicenow-sdk.html).
+Clone `https://github.com/Nischoy-ai/topo.git`, check out the reviewed tag/commit,
+and enter `integrations/servicenow/topo-control-plane` before authenticating.
+The source's application version (`0.4.4`) differs from the worker beta version
+(`v0.1.0-beta.1`). Record both in distribution evidence.
+
+
 Authenticate the SDK with a dedicated developer/admin identity and an owner-
 only credential store. Do not paste a password, authorization code, access
 token, refresh token, or client secret into an issue, pull request, terminal
@@ -47,10 +56,16 @@ npm run deploy -- --auth topo-dev
 From the repository root, `scripts/install-servicenow-app.sh topo-dev` performs
 the clean install/update sequence with that preconfigured OAuth alias. The
 helper has no password, token, authorization-code, or client-secret option.
+For developer upgrades, use the same SDK identity and reviewed source commit;
+do not use `--reinstall` without explicitly accepting removal of instance-created
+metadata absent from source. Keep SDK development separate from XML-installed
+customer pilots.
 
-The SDK install is the only supported application-creation/update path. Do not
-recreate these records through Studio forms, background scripts, update-set
-XML, the Table API, or direct metadata writes. After installation, create a
+The SDK remains the authoritative developer application-creation/update path.
+For customer pilots, the staged [XML distribution process](../../../docs/servicenow-update-set.md)
+publishes the installed source-built app through the platform. Do not handcraft
+update-set XML or recreate application definitions through forms, background
+scripts, the Table API, or direct metadata writes. After installation, create a
 separate least-privilege worker identity and API policy for the seven routes; do
 not reuse the direct IRE publisher identity.
 

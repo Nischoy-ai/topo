@@ -440,3 +440,13 @@ GitHub Release asset.
   security-review preparation does not waive or simulate this gate; provision
   the repositories and production signing credentials only with explicit user
   authorization.
+
+## ServiceNow application XML pilot distribution
+
+The existing beta SDK ZIP is unchanged. Customer XML delivery is staged in
+[the update-set guide](servicenow-update-set.md); no validated XML download is
+available yet. Its app version is independent of the worker release version,
+with explicit compatibility required in new release notes. The offline checker
+produces private candidates, not signed public releases. Platform provenance,
+configuration-only review, real clean/repeat/upgrade evidence and authenticated
+release publication remain required before customer availability.

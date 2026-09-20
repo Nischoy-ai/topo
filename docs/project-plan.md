@@ -7,6 +7,10 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-09-20 UTC
+- **Active follow-on:** C1.3 XML update-set pilot distribution is staged below.
+  Main/PR #63 is verified merged at `c9c2295`; beta.1 assets remain immutable.
+  Separate clean-instance access and approval for export-instance changes
+  are pending. No XML installation evidence exists yet.
 - **Latest C1.2 status:** PR #62 merged at `dd3c349`. Independently approved
   promotion `35485290078` passed and published `v0.1.0-beta.1` to APT/RPM and
   the official Homebrew tap. Pages serves the signed metadata. All six
@@ -3500,6 +3504,68 @@ security-review matrix pass locally, with zero reachable vulnerability
 findings and one uncalled-module advisory. No new ServiceNow or simulator
 discovery evidence is claimed. Stable/N-1, anonymous OCI access, Store delivery,
 independent security retest and the other documented production gaps remain.
+
+### Slice C1.3 — XML update-set distribution for early pilots (staged)
+
+**Objective.** Replace customer SDK/source installation with a versioned,
+platform-generated application update-set XML, while retaining Fluent as the
+application source. The owner's 2026-09-20 request authorizes this pilot path
+and supersedes C1.2's exclusion of unrelated-customer distribution only for
+this slice. M3 remains current; technical import is not licensing entitlement.
+
+**Deliverables.** Document the pinned-source SDK build/install on an approved
+export instance, platform Publish to Update Set and Export to XML steps,
+configuration-only inspection, immutable XML/checksum/manifest packaging, and
+customer Import/Preview/Commit instructions. Review dependencies, scope, ACLs,
+cross-scope permissions and separately provisioned customer OAuth. Keep SDK
+instructions in developer documentation. Record clean-install, repeat and
+upgrade evidence separately from simulator evidence and document recovery and
+removal limits. Do not replace beta.1 release assets.
+
+**Acceptance gates.** Genuine platform export with traceable source commit,
+application version, scope, export/update-set identity and content inventory;
+no credentials, OAuth records, user grants, operational records or test data.
+Bounded offline validation must reject malformed/foreign/unknown content and
+integrity mismatches without echoing payloads. Review executable metadata
+against Fluent source: a table allowlist alone cannot prove secret absence or
+safe scripts. Preserve export bytes; repeated platform exports need not have
+identical timestamps or update-set IDs. On a separate authorized clean instance,
+record platform version, preview resolutions, commit result, twelve tables,
+five roles, seven authenticated worker routes, Password2/ACL boundaries and
+customer-owned OAuth denial tests. Prove repeat behavior and a subsequent
+version upgrade preserving customer configuration and operational history.
+No validated XML installation or published XML claim before this evidence.
+Run proportional focused tests and applicable exact Go 1.26.8 release/security
+checks, commit/push a PR and inspect every CI result. Ask before any real-instance
+change or permission approval; separate-instance availability/access is pending.
+
+**Deliberate non-goals.** No Store enrollment, paid service, entitlement or
+certification claim; no Application Repository delivery or silent conversion
+of an existing repository-installed app. No hand-created app, renamed Fluent
+ZIP, arbitrary record export, new runtime operation, external Vault, Windows
+signing, Apple notarization, native MID/ECC/Discovery integration or alteration
+of the installed development Topo. Do not use Docker on the constrained laptop.
+
+**Local implementation handoff (2026-09-20).** Branch
+`agent/servicenow-xml-pilot` starts from merged PR #63 (`c9c2295`). The offline
+Python candidate inspector preserves platform bytes, bounds XML, rejects
+unknown/foreign records, user/OAuth/operational data and a drifting core app
+inventory, and requires an exact review digest before non-overwriting packaging.
+Six synthetic tests and the existing Fluent tests pass; these do not establish
+platform export/import compatibility. The current checker is deliberately
+provisional until a genuine export establishes the actual envelope and payload
+shapes. Existing ignored local `dist/app/author_elective_update` filenames
+include API access policies; do not copy this mutable output into a release.
+README retains three customer steps and links to the pending XML guide;
+SDK/source steps live in developer documentation. Dependency/access review,
+real acceptance matrix and recovery/removal limits are documented. Exact Go
+1.26.8 security checks pass (vet, vulnerability scan, race, native/Windows
+builds); real export and separate-instance access/approval are pending.
+No ServiceNow changes, XML publication or existing beta artifact changes have
+occurred. Next: obtain export approval and clean-instance access, inspect a real
+platform export, tighten the checker to that evidence, then execute the real
+matrix before claiming this slice complete. Public XML release wiring remains
+pending that evidence; do not label local candidates customer-ready.
 
 ### Relationship to the M2.5 gate
 
