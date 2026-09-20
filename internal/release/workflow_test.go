@@ -275,6 +275,7 @@ func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
 			"contents: read", "runner: [ubuntu-24.04, ubuntu-24.04-arm]",
 			"channel: [apt, rpm]", "runner: [macos-15, macos-15-intel]",
 			"scripts/test-live-beta-linux.sh", "scripts/test-live-beta-homebrew.sh",
+			`bash /test/check.sh "$CHANNEL"`,
 		},
 		"scripts/test-live-beta-linux.sh": {
 			"github-hosted", "! -f /.dockerenv", "https://nischoy-ai.github.io/topo-packages",
@@ -282,6 +283,7 @@ func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
 			"gpgcheck=1", "repo_gpgcheck=1", "Signed-By: /etc/apt/keyrings/nischoy-topo.gpg",
 			"apt-get install -y topo", "dnf install -y topo", "topo discover local",
 			"sha256sum --check", `cmp /usr/bin/topo "$raw"`, "test ! -e /usr/bin/topo",
+			`curl -fsSL --max-time 120 "https://github.com/Nischoy-ai/topo/releases/download/`,
 			"test -f /etc/topo-worker/operator-owned", "test ! -e /etc/topo-worker/topo-worker.env",
 		},
 		"scripts/test-live-beta-homebrew.sh": {

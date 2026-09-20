@@ -34,8 +34,9 @@ jobs:
           if [[ "$CHANNEL" == rpm ]]; then
             image=fedora@sha256:99e203b80b1c3d8f7e161ec10a68fd02b081ef83a3963553e513c82846b97814
           fi
-          docker run --rm -i -e GITHUB_ACTIONS -e RUNNER_ENVIRONMENT "$image" \
-            bash -s -- "$CHANNEL" < scripts/test-live-beta-linux.sh
+          docker run --rm -e GITHUB_ACTIONS -e RUNNER_ENVIRONMENT \
+            -v "$PWD/scripts/test-live-beta-linux.sh:/test/check.sh:ro" "$image" \
+            bash /test/check.sh "$CHANNEL"
 
   homebrew:
     strategy:
