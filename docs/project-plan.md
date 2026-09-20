@@ -3567,6 +3567,30 @@ platform export, tighten the checker to that evidence, then execute the real
 matrix before claiming this slice complete. Public XML release wiring remains
 pending that evidence; do not label local candidates customer-ready.
 
+
+**Real export handoff (2026-09-20 UTC).** The owner approved SDK authorization,
+installation and platform export on replacement instance `dev394887`; old
+`dev441060` is unavailable. SDK 4.9.0 installed app 0.4.4 from `27107af`, then
+Publish to Update Set succeeded with demo data explicitly excluded. Local set
+`464462ff93d74f10682e74dcebba1050` is complete; exported remote set
+`58c4a6ff93d74f10682e74dcebba1085` is loaded. The 442-update, 1,292,986-byte
+export has SHA-256
+`f5aff043aed913002cacb38c04d74944cc0a5d5ddd9bfd6a5a113a1a4f433cdd`.
+The checker now handles the observed nested choices/documentation, scoped
+licensing metadata and exact document-bound translation cleanup. Ten synthetic
+tests pass, including negative variants of those shapes. Exact Go 1.26.8
+security checks pass (vet, race, vulnerability scan, native/Windows builds).
+Script/default and
+REST authentication comparisons against the generated build passed; see
+`docs/servicenow-update-set.md` for inventory and limits. Unchanged bytes are
+sealed privately in `/private/tmp/topo-0.4.4-xml-candidate` with verified
+checksums. This supersedes the earlier pending-export status, not the pending
+customer-install matrix. No public XML or existing beta asset was changed.
+Next: obtain a separate authorized clean instance, import/preview/commit this
+exact candidate, complete functional/ACL/OAuth/repeat/upgrade evidence and only
+then wire a reviewed public distribution release. Do not reset the source
+instance to substitute for the separate-instance acceptance gate.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up

@@ -24,7 +24,8 @@ ALLOWED = set('''sys_app sys_db_object sys_dictionary sys_documentation sys_choi
 sys_index sys_index_column sys_security_acl sys_security_acl_role sys_user_role
 sys_user_role_contains sys_app_application sys_app_module sys_script
 sys_script_include sysauto_script sys_ui_action sys_ui_action_role
-sys_ws_definition sys_ws_version sys_ws_operation sys_scope_privilege sys_module'''.split())
+sys_ws_definition sys_ws_version sys_ws_operation sys_scope_privilege sys_module
+ua_table_licensing_config'''.split())
 
 
 class Rejected(ValueError):
@@ -59,6 +60,46 @@ def field(record, name):
     return (nodes[0].text or '').strip()
 
 
+TABLES = {SCOPE + '_' + name for name in (
+    'credential_access', 'credential_binding', 'ire_delivery', 'profile',
+    'result', 'run', 'schedule', 'ssh_credential', 'target_scope', 'task',
+    'worker', 'worker_pool')}
+
+
+def payload_records(root, table):
+    """Accept only the bounded wrapper shapes observed in the platform export."""
+    children = list(root)
+    if table in {'sys_app', 'sys_script'} and len(children) == 2:
+        # Platform translation cleanup is tightly bound to this metadata ID.
+        cleanup = children.pop()
+        document_id = field(children[0], 'sys_id')
+        require(re.fullmatch('[0-9a-f]{32}', document_id))
+        require(cleanup.tag == 'sys_translated_text' and len(cleanup) == 0
+                and not (cleanup.text or '').strip()
+                and cleanup.attrib == {'action': 'delete_multiple',
+                    'query': 'documentkey=' + document_id})
+    require(len(children) == 1 and children[0].tag == table)
+    record = children[0]
+    if table == 'sys_documentation' and record.get('action') is None:
+        require(record.get('table') in TABLES and len(record) == 1)
+        inner = record[0]
+        require(inner.tag == table and field(inner, 'name') == record.get('table')
+                and field(inner, 'element') == record.get('element')
+                and field(inner, 'language') == record.get('language'))
+        return [inner]
+    if table == 'sys_choice' and record.get('version') == '3':
+        require(record.get('table') in TABLES
+                and record.get('action') == 'INSERT_OR_UPDATE'
+                and 2 <= len(record) <= 256)
+        require(record[0].tag == 'sys_choice_set'
+                and all(r.tag == 'sys_choice' for r in list(record)[1:]))
+        for inner in record:
+            require(field(inner, 'name') == record.get('table')
+                    and field(inner, 'element') == record.get('field'))
+        return list(record)
+    return [record]
+
+
 def inspect(body):
     root = parse(body)
     require(root.tag == 'unload')
@@ -68,7 +109,8 @@ def inspect(body):
     require(len(sets) == 1 and 1 <= len(updates) <= MAX_RECORDS)
     update_set = field(sets[0], 'sys_id')
     require(re.fullmatch('[0-9a-f]{32}', update_set))
-    require(field(sets[0], 'state') == 'complete')
+    # Completed local sets export as loaded remote sets on Australia.
+    require(field(sets[0], 'state') == 'loaded')
     records = []
     seen = set()
     app = None
@@ -81,11 +123,11 @@ def inspect(body):
         payload = field(update, 'payload').encode('utf-8')
         record_update = parse(payload)
         require(record_update.tag == 'record_update')
-        table = record_update.get('table')
-        require(table in ALLOWED and name.startswith(table + '_'))
         require(len(record_update) > 0)
-        for record in record_update:
-            require(record.tag == table and record.get('action') == 'INSERT_OR_UPDATE')
+        table = record_update.get('table') or record_update[0].tag
+        require(table in ALLOWED and name.startswith(table + '_'))
+        for record in payload_records(record_update, table):
+            require(record.get('action') == 'INSERT_OR_UPDATE')
             # No hidden nested record payload or field carrying a credential.
             require(all(len(n) == 0 for n in record))
             require(len({n.tag for n in record}) == len(record))
@@ -102,8 +144,18 @@ def inspect(body):
             else:
                 # Some mapping records omit sys_scope; their references must be
                 # examined in the mandatory exact-byte review before packaging.
-                require(table in {'sys_security_acl_role', 'sys_user_role_contains',
-                                  'sys_ui_action_role', 'sys_index_column'})
+                require(record.tag == 'sys_choice' or table in {
+                    'sys_security_acl_role', 'sys_user_role_contains',
+                    'sys_ui_action_role', 'sys_index_column'})
+            if table in {'sys_dictionary', 'sys_documentation', 'sys_choice',
+                         'ua_table_licensing_config'}:
+                require(field(record, 'name') in TABLES)
+            if table == 'ua_table_licensing_config':
+                require(field(record, 'license_model') == 'none'
+                        and field(record, 'license_condition') == ''
+                        and field(record, 'license_roles') == ''
+                        and field(record, 'owner_condition') == ''
+                        and field(record, 'is_fulfillment') == 'false')
             if table == 'sys_db_object':
                 tables.append(field(record, 'name'))
             if table == 'sys_user_role':
@@ -114,6 +166,7 @@ def inspect(body):
                 routes.append(field(record, 'http_method') + ' ' + field(record, 'relative_path'))
             if table == 'sys_scope_privilege':
                 require(field(record, 'source_scope') == SCOPE_ID
+                        and field(record, 'target_scope') == 'sn_cmdb'
                         and field(record, 'target_name') == 'sn_cmdb.IdentificationEngine'
                         and field(record, 'operation') == 'execute'
                         and field(record, 'target_type') == 'sys_script_include'

@@ -18,7 +18,7 @@ def fixture(table='sys_app', extra=''):
     root = ET.Element('unload')
     remote = ET.SubElement(root, 'sys_remote_update_set')
     ET.SubElement(remote, 'sys_id').text = 'a' * 32
-    ET.SubElement(remote, 'state').text = 'complete'
+    ET.SubElement(remote, 'state').text = 'loaded'
     update = ET.SubElement(root, 'sys_update_xml')
     ET.SubElement(update, 'remote_update_set').text = 'a' * 32
     ET.SubElement(update, 'name').text = table + '_' + m.SCOPE_ID
@@ -58,7 +58,7 @@ def complete_fixture():
                          'sys_ws_version': 1}.items():
         for _ in range(count):
             add(table, {})
-    add('sys_scope_privilege', {'source_scope': m.SCOPE_ID,
+    add('sys_scope_privilege', {'source_scope': m.SCOPE_ID, 'target_scope': 'sn_cmdb',
         'target_name': 'sn_cmdb.IdentificationEngine', 'operation': 'execute',
         'target_type': 'sys_script_include', 'status': 'allowed'})
     return ET.tostring(root)
@@ -96,7 +96,7 @@ class UpdateSetTests(unittest.TestCase):
                fixture(extra='<password>do-not-log</password>'),
                fixture(extra='<version>9.9.9</version>'),
                fixture(extra='<nested><sys_user/></nested>'),
-               fixture().replace(b'complete', b'in progress'),
+               fixture().replace(b'loaded', b'in progress'),
                fixture().replace(m.SCOPE.encode(), b'foreign'),
                fixture().replace(b'INSERT_OR_UPDATE', b'DELETE')]
         for body in bad:
@@ -119,6 +119,62 @@ class UpdateSetTests(unittest.TestCase):
                      complete_fixture().replace(b'0.4.4', b'0.4.5')]:
             with self.assertRaises(m.Rejected):
                 m.inspect(body)
+
+    def test_platform_nested_metadata(self):
+        table = m.SCOPE + '_profile'
+        documentation = ET.fromstring(f'''<record_update><sys_documentation
+            table="{table}" element="u_name" language="en">
+            <sys_documentation action="INSERT_OR_UPDATE"><name>{table}</name>
+            <element>u_name</element><language>en</language></sys_documentation>
+            </sys_documentation></record_update>''')
+        self.assertEqual(len(m.payload_records(documentation, 'sys_documentation')), 1)
+        documentation[0][0].find('name').text = 'sys_user'
+        with self.assertRaises(m.Rejected):
+            m.payload_records(documentation, 'sys_documentation')
+        choices = ET.fromstring(f'''<record_update><sys_choice version="3"
+            action="INSERT_OR_UPDATE" table="{table}" field="u_operation">
+            <sys_choice_set action="INSERT_OR_UPDATE"><name>{table}</name>
+            <element>u_operation</element></sys_choice_set>
+            <sys_choice action="INSERT_OR_UPDATE"><name>{table}</name>
+            <element>u_operation</element><value>local.v1</value></sys_choice>
+            </sys_choice></record_update>''')
+        self.assertEqual(len(m.payload_records(choices, 'sys_choice')), 2)
+        choices[0][1].tag = 'sys_user'
+        with self.assertRaises(m.Rejected):
+            m.payload_records(choices, 'sys_choice')
+
+    def test_platform_translation_cleanup_is_identity_bound(self):
+        root = ET.fromstring(complete_fixture())
+        update = root.find('sys_update_xml')
+        payload = ET.fromstring(update.findtext('payload'))
+        cleanup = ET.SubElement(payload, 'sys_translated_text',
+            action='delete_multiple', query='documentkey=' + m.SCOPE_ID)
+        update.find('payload').text = ET.tostring(payload, encoding='unicode')
+        m.inspect(ET.tostring(root))
+        for query in ['documentkey=' + 'f' * 32, 'documentkey=' + m.SCOPE_ID + '^ORsys_idISNOTEMPTY', '']:
+            cleanup.set('query', query)
+            update.find('payload').text = ET.tostring(payload, encoding='unicode')
+            with self.assertRaises(m.Rejected):
+                m.inspect(ET.tostring(root))
+
+    def test_platform_licensing_is_table_bound(self):
+        root = ET.fromstring(complete_fixture())
+        update = ET.SubElement(root, 'sys_update_xml')
+        ET.SubElement(update, 'remote_update_set').text = 'a' * 32
+        ET.SubElement(update, 'name').text = 'ua_table_licensing_config_test'
+        payload_field = ET.SubElement(update, 'payload')
+        payload = ET.fromstring(f'''<record_update table="ua_table_licensing_config">
+            <ua_table_licensing_config action="INSERT_OR_UPDATE">
+            <sys_scope>{m.SCOPE_ID}</sys_scope><name>{m.SCOPE}_profile</name>
+            <license_model>none</license_model><license_condition/><license_roles/>
+            <owner_condition/><is_fulfillment>false</is_fulfillment>
+            </ua_table_licensing_config></record_update>''')
+        payload_field.text = ET.tostring(payload, encoding='unicode')
+        m.inspect(ET.tostring(root))
+        payload[0].find('name').text = 'sys_user'
+        payload_field.text = ET.tostring(payload, encoding='unicode')
+        with self.assertRaises(m.Rejected):
+            m.inspect(ET.tostring(root))
 
     def test_nonregular_input_is_rejected(self):
         import os

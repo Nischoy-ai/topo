@@ -1,6 +1,6 @@
 # Install the Topo pilot application from XML
 
-**Status: staged, not yet validated or available for download.** The published
+**Status: platform export obtained; customer installation not yet validated.** The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
 Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
 clean-instance installation, repeat and upgrade test must pass before the
@@ -99,7 +99,8 @@ records; those are not customer distribution inputs.
    python3 scripts/package-servicenow-update-set.py /private/path/export.xml
    ```
 
-   The checker is provisional pending a genuine export. It deliberately rejects
+   The checker supports the observed Australia export envelope, including nested
+   choices/documentation and identity-bound translation cleanup. It rejects
    unfamiliar containers or record types rather than guessing. A format change
    requires a sanitized fixture, review and tests. It never converts SDK XML
    into an update set, redacts an export in place or calls ServiceNow.
@@ -148,7 +149,48 @@ records; those are not customer distribution inputs.
 | Scheduled scripts | Source defines two active internal maintenance/enqueue jobs. With zero customer operational records there must be no discoverable work; customer schedules remain inactive until validated. |
 | Other dependencies | Inspect SDK-generated modules and any attachment/source-map dependency against the export. Unknown record types or missing dependencies block release; do not relax the allowlist just to import. |
 
-## Real evidence matrix — all pending
+## Export evidence — 2026-09-20 UTC
+
+With owner approval, SDK 4.9.0 installed source commit
+`27107afcb5177b6eb1ad72db3f5dbaa7a7304128` as application 0.4.4 on
+`dev394887` (Australia Patch 3, build
+`glide-australia-02-11-2026__patch3-05-25-2026`). The owner confirmed this
+instance replaces the unavailable `dev441060`. OAuth used the official SDK
+protected credential store and the built-in browser.
+
+The platform **Publish to Update Set** action succeeded with **Include demo
+data unchecked**. Completed local set `464462ff93d74f10682e74dcebba1050`
+exported remote set `58c4a6ff93d74f10682e74dcebba1085`, whose exported state is
+`loaded` (the local set is `complete`). The unchanged 1,292,986-byte XML has
+SHA-256 `f5aff043aed913002cacb38c04d74944cc0a5d5ddd9bfd6a5a113a1a4f433cdd`.
+
+Its 442 updates comprise the application, 12 tables, 143 dictionary entries,
+143 documentation entries, 10 choice sets, 37 ACLs and 37 ACL-role mappings,
+5 roles and 4 inheritance mappings, 12 modules and 1 menu, 4 business rules,
+3 script includes, 2 scheduled scripts, 2 UI actions and 2 role mappings,
+7 REST resources with their API/version, 1 cross-scope privilege, 2 SDK JSON
+modules and 12 platform table-licensing configurations. The latter are scoped
+to the twelve Topo tables and carry no license-role or condition grants; their
+`none` value does not establish customer entitlement.
+
+Offline comparison found no differences in 48 script fields, 7 REST script
+bodies, 7 authentication and 7 ACL-authorization flags, 131 calculations and
+defaults, and 143 dictionary types/attributes against generated source. Platform
+normalization includes dictionary IDs, empty booleans and truncated display
+labels; this is not evidence of stable IDs across an XML import. SDK modules
+contain package metadata and an empty-dependency SBOM. No OAuth/policy, user,
+user-role assignment, operational-row or attachment update types occur, and
+neither source-instance hostname occurs in the XML. Translation cleanup is
+limited to the exact app/business-rule document identity.
+
+The local candidate contains unchanged XML, inventory manifest and checksums;
+checksum verification passed. It is private and marked offline-candidate-only.
+Existing beta assets were not changed. Ten synthetic format/security tests now
+cover observed nesting and rejection of foreign tables and widened deletion
+queries. These checks and the real export do not establish installation, ACL
+enforcement, customer entitlement, or upgrade compatibility.
+
+## Customer-instance evidence matrix — all pending
 
 Use a separate authorized non-production instance with no Topo scope and no
 prior App Repository install. Do not reset the existing developer instance to
@@ -175,4 +217,5 @@ simulate a clean customer installation.
 
 Local parser fixtures prove only offline rejection and byte preservation.
 Earlier SDK upgrades on `dev441060` and simulator scale tests do not satisfy
-this matrix. Source/export approval and separate-instance access are pending.
+this matrix. Source installation and export are approved and completed; a
+separate authorized clean instance is still required.
