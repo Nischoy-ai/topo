@@ -266,13 +266,13 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   Linux signing, Sigstore/provenance, SBOMs, and protected reviews remain.
   Full-platform tooling, the earlier signed beta profile, and Windows CI retain
   their requirements. The token is provisioned and `v0.1.0-beta.1` is published
-  with verified release signatures/provenance. PR #60 repaired the Fedora gate;
-  PR #61 repaired the Homebrew formula audit. The next promotion passed Linux
-  and both Mac installation gates and authenticated OCI chart publication, but
-  failed its first Git push because Git lacked a credential helper. The repair
-  configures the helper for the existing protected token without broader
-  permissions. Neither distribution repository changed. APT/RPM/Homebrew publication
-  remains pending the protected promotion; no Apple-notarization claim is made.
+  with verified release signatures/provenance. After PRs #60–#62 repaired
+  promotion gates and Git authentication, independently approved promotion
+  `35485290078` published signed APT/RPM repositories and the official Homebrew
+  beta tap. Pages serves the package metadata. Fresh post-publication public
+  install checks and concise onboarding are the current follow-up. Stable/N-1
+  validation remains open; no Apple-notarization or production-readiness claim
+  is made.
 - **Implemented experiment (scoped-app ServiceNow-controlled Relay):** PR #47's
   `topo relay run` custom tables and Scripted REST resources remain in the
   repository as experimental control-plane evidence. They are not required for

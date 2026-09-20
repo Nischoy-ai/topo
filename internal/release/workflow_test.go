@@ -267,3 +267,48 @@ func TestPublicHomebrewFormulaAuditInCI(t *testing.T) {
 		t.Fatal("fixture inputs must be verified before formula rendering")
 	}
 }
+
+func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
+	root := filepath.Join("..", "..")
+	checks := map[string][]string{
+		".github/workflows/live-beta.yml": {
+			"contents: read", "runner: [ubuntu-24.04, ubuntu-24.04-arm]",
+			"channel: [apt, rpm]", "runner: [macos-15, macos-15-intel]",
+			"scripts/test-live-beta-linux.sh", "scripts/test-live-beta-homebrew.sh",
+		},
+		"scripts/test-live-beta-linux.sh": {
+			"github-hosted", "! -f /.dockerenv", "https://nischoy-ai.github.io/topo-packages",
+			"6049C01BB18CE8EC395DA16F9C64F25B652F0673", `test "$actual" = "$fingerprint"`,
+			"gpgcheck=1", "repo_gpgcheck=1", "Signed-By: /etc/apt/keyrings/nischoy-topo.gpg",
+			"apt-get install -y topo", "dnf install -y topo", "topo discover local",
+			"sha256sum --check", `cmp /usr/bin/topo "$raw"`, "test ! -e /usr/bin/topo",
+			"test -f /etc/topo-worker/operator-owned", "test ! -e /etc/topo-worker/topo-worker.env",
+		},
+		"scripts/test-live-beta-homebrew.sh": {
+			"github-hosted", "refusing to overwrite", `brew tap "$tap" https://github.com/Nischoy-ai/homebrew-tap`,
+			"6eb10b518cd84fbc2a98f656e6609ce7672675f47d920324e078224d5dc686fe",
+			"shasum -a 256 --check", `brew audit --strict --online "$formula"`,
+			`brew install --formula "$formula"`, `brew test "$formula"`, `brew uninstall --formula "$formula"`,
+		},
+	}
+	for path, required := range checks {
+		data, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		content := string(data)
+		for _, want := range required {
+			if !strings.Contains(content, want) {
+				t.Errorf("%s lacks %q", path, want)
+			}
+		}
+		for _, denied := range []string{"secrets.", "--nogpgcheck", "trusted=yes", "--allow-unauthenticated", "curl -k", "--no-quarantine", "xattr -d", "xattr -c", "--master-disable", "--global-disable", "HOMEBREW_NO_VERIFY_ATTESTATIONS"} {
+			if strings.Contains(content, denied) {
+				t.Errorf("%s contains forbidden live-channel shortcut %q", path, denied)
+			}
+		}
+		if strings.HasSuffix(path, "homebrew.sh") && strings.Index(content, "shasum -a 256 --check") > strings.Index(content, "brew audit") {
+			t.Error("live formula must be verified before Homebrew evaluates it")
+		}
+	}
+}

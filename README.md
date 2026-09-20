@@ -23,26 +23,24 @@ quickstart](docs/pilot-quickstart.md#2-create-the-least-privilege-servicenow-ide
 
 ### 2. Install and start the Topo worker
 
-Install the Topo package from the same release as the ServiceNow app on a Linux
-server that can reach both ServiceNow and the approved targets:
-
-[Beta release files are available](https://github.com/Nischoy-ai/topo/releases/tag/v0.1.0-beta.1);
-APT/RPM repository and Homebrew tap publication is still pending.
-The Homebrew beta is not Apple-notarized. See
-[channel availability, verification, and setup](docs/distribution.md).
+Install **v0.1.0-beta.1** on a host that can reach ServiceNow and your approved
+targets. Use the ServiceNow app from the same release.
 
 ```sh
-# Debian or Ubuntu
-sudo dpkg -i topo_<version>_amd64.deb
-
-# Fedora or RHEL family
-sudo rpm -Uvh topo-<version>-1.x86_64.rpm
+# macOS
+brew install nischoy-ai/tap/topo-beta
+topo version
 ```
 
-Add the worker OAuth token file, local target allowlist, and verified SSH
-`known_hosts`; run `topo worker check`; then enable `topo-worker.service`. Copy
-the ready-to-run commands from [install and configure the
-worker](docs/pilot-quickstart.md#4-install-and-configure-the-worker).
+For Linux, follow the signed [APT](docs/distribution.md#debian-and-ubuntu) or
+[RPM](docs/distribution.md#fedora-and-rhel-family) repository setup, then install
+`topo`. Stable and Windows channels are not available; the Mac beta is not
+Apple-notarized.
+
+Configure the OAuth token file, target allowlist, and verified SSH `known_hosts`;
+run `topo worker check`, then start the worker. The [worker setup
+guide](docs/pilot-quickstart.md#4-install-and-configure-the-worker) covers the
+Linux service and foreground Mac worker. Installation alone does not start scans.
 
 ### 3. Start a scan from ServiceNow
 

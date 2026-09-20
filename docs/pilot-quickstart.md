@@ -108,8 +108,11 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-Download Topo from the same semantic GitHub release as the app source and
-verify `SHA256SUMS`, its Sigstore bundle, and GitHub attestation as described in
+Use the same semantic release as the app source: the published beta is
+`v0.1.0-beta.1`. Configure the signed [APT or RPM beta
+repository](distribution.md#user-installation), then install `topo` with your
+package manager. For offline installation, download matching release files and
+verify `SHA256SUMS`, its Sigstore bundle and GitHub attestation as described in
 [release verification](releases.md). DEB and RPM packages install a hardened
 but dormant `topo-worker.service`; installation never creates config or secret
 files and never enables or starts it.
@@ -122,12 +125,10 @@ sudo dpkg -i topo_<version>_amd64.deb
 sudo rpm -Uvh topo-<version>-1.x86_64.rpm
 ```
 
-On macOS, use the verified raw `darwin` archive until a current worker-capable
-release has completed promotion to the official Homebrew tap. The existing
-development tap is mutable pilot evidence and must not be represented as the
-production channel. APT/RPM repositories likewise remain unavailable until
-their protected signing repositories and first real beta promotion are
-provisioned.
+On macOS, install with `brew install nischoy-ai/tap/topo-beta`. This beta is not
+Apple-notarized; do not bypass Gatekeeper. The older development tap is separate
+and must be removed explicitly if its `topo` executable conflicts. No automatic
+migration or background Mac service is provided.
 
 On packaged Linux, create the read-only startup policy. `ssh-keyscan` output is
 not proof of host identity by itself: compare each fingerprint with an
@@ -152,6 +153,31 @@ broader than the deployment requires. ServiceNow target `/32`s must fall within
 it. The `known_hosts` file must contain the port-22 identity for every target.
 
 ## 5. Preflight, start, and run discovery
+
+### Foreground macOS worker
+
+Keep the OAuth token, target allowlist and verified `known_hosts` in an
+owner-only directory; keep the token file mode `0600`. Use absolute paths and
+never put token contents in command arguments. With the same ServiceNow pool,
+site and identities configured above, run:
+
+```sh
+topo worker check \
+  -servicenow-instance https://your-instance.service-now.com \
+  -token-ref file:/absolute/private/path/worker-token \
+  -worker-pool pilot-linux -site pilot-site \
+  -allow-ssh-linux \
+  -ssh-target-allowlist /absolute/private/path/targets.allow \
+  -ssh-known-hosts /absolute/private/path/known_hosts \
+  -max-concurrency 2
+```
+
+After `status: "ready"`, repeat that command with `worker run` instead of
+`worker check`. Leave it running while you start the ServiceNow scan; Ctrl-C
+stops it. Local discovery in package tests is separate from this authenticated
+ServiceNow worker flow. The Linux service commands below do not apply to macOS.
+
+### Packaged Linux worker
 
 Run the same preflight that systemd uses. A successful response is bounded
 JSON with `status: "ready"`, the ephemeral worker/boot IDs, pool/site, and
@@ -209,8 +235,8 @@ preflight, and install evidence—it does not reclassify simulator results as
 ServiceNow throughput evidence.
 
 Still required before a broad production claim: a consumer ZIP/App Repository
-or Store delivery path, protected public Homebrew/APT/RPM promotion and N-1
-upgrade evidence, external Vault bindings, Password2 clone/backup operational
+or Store delivery path, N-1 stable upgrade evidence, external Vault bindings,
+Password2 clone/backup operational
 guidance, broader CI/protocol mappings, platform volume/upgrade testing, and
 independent security-review retest. The shipped scoped app has no npm runtime
 dependency tree, but the pinned ServiceNow SDK 4.9.0 build-only tree currently

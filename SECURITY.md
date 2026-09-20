@@ -417,17 +417,17 @@ jobs block publication; no secret-dependent fallback exists. Profile selection
 is a reviewed source change, not inferred from whichever secrets happen to exist.
 The `v0.1.0-beta.1` release has passed protected RPM signing and both Homebrew
 architecture tests; independent downloaded checksum, Sigstore identity, and
-GitHub provenance checks passed. Package-channel promotion remains incomplete:
-the corrected Fedora and Homebrew gates passed along with protected repository
-signing. Authenticated OCI chart publication/pull-verification also passed, but
-the first Git repository push failed because Git had no credential helper.
-The repair installs GitHub CLI's helper for `github.com` in the ephemeral job;
-it reads the existing step-scoped environment token without embedding it in
-remote URLs or Git configuration. No broader token permissions or approval
-bypass are introduced. Offline dummy-token tests are not proof of production
-PAT write authority or anonymous OCI access. This is not a completed channel or
-production-readiness claim. Secret-name checks alone still do not prove key
-usability. See [distribution evidence](docs/distribution.md#first-beta-operational-evidence).
+GitHub provenance checks passed. Independently approved promotion
+`35485290078` passed repository signing, Linux and both Mac gates, authenticated
+OCI pull/byte comparison, and Git publication to both distribution repositories.
+GitHub CLI's helper reads the protected step-scoped token without embedding it
+in remote URLs or Git configuration. Pages now serves signed beta metadata;
+post-publication tests separately check public installs, pin the reviewed key
+and formula, and require signatures without security bypasses. Those tests
+use only public data, never production signing secrets. Anonymous OCI access,
+stable/N-1 promotion and production readiness are not claimed. Secret-name
+checks alone do not prove key usability. See
+[distribution evidence](docs/distribution.md#first-beta-operational-evidence).
 
 ## ServiceNow publishing
 
