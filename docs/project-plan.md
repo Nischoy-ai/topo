@@ -3591,6 +3591,57 @@ exact candidate, complete functional/ACL/OAuth/repeat/upgrade evidence and only
 then wire a reviewed public distribution release. Do not reset the source
 instance to substitute for the separate-instance acceptance gate.
 
+
+**Reset-test plan amendment (2026-09-21).** The owner explicitly approved a
+full reset of `dev394887` after backup verification, superseding the earlier
+requirement to retain this source instance and obtain a second simultaneous
+instance. Use the platform reset to establish a fresh baseline; an app
+uninstall alone is not a clean-instance test. The original XML, manifest and
+checksums were verified and copied to
+`dist/servicenow-reset-backup-2026-09-21/`, alongside a tracked-source archive
+and Git-history bundle at `0f5422e`. This ignored private directory is an app
+and source backup, not a full instance or credential backup. The unchanged XML
+hash remains `f5aff043aed913002cacb38c04d74944cc0a5d5ddd9bfd6a5a113a1a4f433cdd`.
+The owner signed in and personally submitted Reset and wipe after automatic
+browser approval review required final-action confirmation. The portal now
+shows `Reset and Wiping Instance...` for `dev394887`; completion is not yet
+verified. Keep the instance name. When reset finishes, sign in with the newly
+issued credentials, record the empty-scope/platform baseline, and
+import/preview/commit the saved candidate. Repeat, functional/security and
+real-version upgrade gates remain required before public XML distribution.
+
+
+**First reset-instance XML preview (2026-09-22 UTC).** After the owner
+completed the reset and signed in, the scope query `scope=x_664635_topo` and
+Retrieved Update Sets list both returned no records. The exact backed-up XML
+was uploaded successfully as remote set `58c4a6ff93d74f10682e74dcebba1085`
+with 442 updates. Preview finished with **1 error, 0 warnings**, 442 proposed
+inserts and zero collisions; no commit was attempted. Preview problem
+`fee01ce893af0310682e74dcebba1001` reports a missing `sys_scope` reference for
+`target_scope` in `sys_scope_privilege_563717bbcbab4e8fb30f0bc936f96d05`.
+Read-only lists found neither scope `sn_cmdb` nor a script include named
+`IdentificationEngine`/API name `sn_cmdb.IdentificationEngine`. The Fluent
+source and exported XML currently declare precisely that nonexistent scope
+and Script Include target; official IdentificationEngine documentation instead
+describes `sn_cmdb` as the scoped API namespace. Investigate the native API
+access contract before changing permissions. Do not accept/skip the error or
+edit the saved XML to force this candidate through. Correct source and generate
+new platform evidence; original 0.4.4 candidate is now known to fail a clean
+preview and must not be distributed. The reset test does not yet prove a clean
+installation, repeat, upgrade or functional/security acceptance.
+
+**Source correction candidate (2026-09-22).** App 0.4.5 removes the invalid
+`CrossScopePrivilege` and its manifest declaration. The SDK records the old
+stable key as deleted; the original XML remains untouched. The inspector now
+requires 0.4.5 and rejects all cross-scope privilege payloads, including the
+failed 0.4.4 candidate. Regression tests reject recurrence. Ten parser tests,
+Fluent tests/build/pack and exact Go 1.26.8 security checks pass. SDK OAuth
+was invalidated by reset and needs a new browser sign-in before deployment
+and platform re-export. A clean tracked-source build is prepared at
+`/private/tmp/topo-045-source-u968c5l1`; do not deploy the mutable repository
+dist tree. Native IRE execution and a corrected clean XML preview remain
+unproven; the source correction alone does not close either gate.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up

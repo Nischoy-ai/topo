@@ -23,7 +23,9 @@ npm run pack
 The SDK compiles the twelve scoped tables, indexes, roles, ACLs, navigation,
 Script Includes, seven-route Scripted REST API, immutable profile/target-scope/
 credential-binding business rules, **Run now** and **Cancel run** UI actions, two scheduled
-scripts, and the narrowly scoped IRE cross-scope privilege into `dist/app`.
+scripts into `dist/app`. Candidate 0.4.5 removes the invalid cross-scope
+Script Include grant for the native `sn_cmdb` API namespace; scoped IRE access
+requires separate real-instance acceptance.
 Generated output is intentionally ignored; source and `package-lock.json` are
 reviewed and committed.
 

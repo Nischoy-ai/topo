@@ -1,6 +1,6 @@
 # Install the Topo pilot application from XML
 
-**Status: platform export obtained; customer installation not yet validated.** The published
+**Status: first clean-instance preview failed; not ready for customer installation.** The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
 Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
 clean-instance installation, repeat and upgrade test must pass before the
@@ -142,7 +142,7 @@ records; those are not customer distribution inputs.
 | Platform | First target is the export instance's Australia build; confirm target build and required APIs rather than claim all SDK-supported releases. |
 | Scope | Preserve `x_664635_topo` / `d4e2151fdcbc7d97f8c155d1ba873e46`; reject collisions with an unrelated app. Prefix availability and customer entitlement remain external gates. |
 | CMDB | Require computers, adapters, `Owns::Owned by`, and scoped `sn_cmdb.IdentificationEngine` preflight/apply. No direct CMDB writes or Discovery license/runtime assumption. |
-| Cross-scope | Source defines only execute access to `sn_cmdb.IdentificationEngine`; inspect resolved target scope and any requested runtime privileges on the clean instance. Do not blanket-approve requests. |
+| Native IRE access | Candidate 0.4.5 removes the invalid `sn_cmdb` scope/Script Include privilege. Verify native scoped IRE preflight/apply on the target; do not invent an application reference or blanket-approve runtime requests. |
 | ACLs | Preserve viewer/operator/credential-admin/admin inheritance, a separate worker role, no worker table grants, credential-admin protection and exact REST authentication/ACL links. Verify with real identities. |
 | Password2 | Verify `u_password` is encrypted, mandatory, non-audited/non-replicated, with restricted web-service access. Customer enters the value after installation; no encrypted value is exported. |
 | OAuth | Customer creates its own worker identity, client, token and exact seven POST-resource policies. Test denial of generic Table, credential-table, CMDB and direct IRE access. |
@@ -190,7 +190,21 @@ cover observed nesting and rejection of foreign tables and widened deletion
 queries. These checks and the real export do not establish installation, ACL
 enforcement, customer entitlement, or upgrade compatibility.
 
-## Customer-instance evidence matrix — all pending
+## First clean-instance preview — failed
+
+The owner approved using a full reset of `dev394887` in place of a second
+simultaneous PDI. After reset, no Topo scope or retrieved update sets existed.
+The saved XML imported with 442 updates, but preview reported one error and
+zero warnings: the cross-scope privilege references missing `target_scope`
+`sn_cmdb`. A read-only check found no corresponding scope or Script Include.
+The [official API documentation](https://www.servicenow.com/docs/r/api-reference/server-api-reference/IdentificationEngineScopedAPI.html)
+describes `sn_cmdb` as an API namespace; do not assume it identifies a scoped
+application record. No commit or error override was performed. The source
+permission declaration needs investigation and correction followed by a new
+platform export and clean preview. The original candidate is retained as
+failed-test evidence and must not be distributed.
+
+## Customer-instance acceptance matrix — completion pending
 
 Use a separate authorized non-production instance with no Topo scope and no
 prior App Repository install. Do not reset the existing developer instance to

@@ -24,7 +24,7 @@ ALLOWED = set('''sys_app sys_db_object sys_dictionary sys_documentation sys_choi
 sys_index sys_index_column sys_security_acl sys_security_acl_role sys_user_role
 sys_user_role_contains sys_app_application sys_app_module sys_script
 sys_script_include sysauto_script sys_ui_action sys_ui_action_role
-sys_ws_definition sys_ws_version sys_ws_operation sys_scope_privilege sys_module
+sys_ws_definition sys_ws_version sys_ws_operation sys_module
 ua_table_licensing_config'''.split())
 
 
@@ -164,16 +164,9 @@ def inspect(body):
                 require(field(record, 'active') == 'true'
                         and field(record, 'requires_authentication') == 'true')
                 routes.append(field(record, 'http_method') + ' ' + field(record, 'relative_path'))
-            if table == 'sys_scope_privilege':
-                require(field(record, 'source_scope') == SCOPE_ID
-                        and field(record, 'target_scope') == 'sn_cmdb'
-                        and field(record, 'target_name') == 'sn_cmdb.IdentificationEngine'
-                        and field(record, 'operation') == 'execute'
-                        and field(record, 'target_type') == 'sys_script_include'
-                        and field(record, 'status') == 'allowed')
         records.append({'name': name, 'table': table,
                         'payload_sha256': hashlib.sha256(payload).hexdigest()})
-    require(app == '0.4.4')  # Advance only with a reviewed source/upgrade contract.
+    require(app == '0.4.5')  # Advance only with a reviewed source/upgrade contract.
     require(sorted(tables) == sorted(SCOPE + '_' + name for name in (
         'credential_access', 'credential_binding', 'ire_delivery', 'profile',
         'result', 'run', 'schedule', 'ssh_credential', 'target_scope', 'task',
@@ -184,7 +177,7 @@ def inspect(body):
         '/claim', '/workers/heartbeat', '/workers/register', '/{id}/complete',
         '/{id}/credential', '/{id}/renew', '/{id}/results')))
     for table, count in {'sys_security_acl': 37, 'sys_security_acl_role': 37,
-                         'sys_script_include': 3, 'sys_scope_privilege': 1,
+                         'sys_script_include': 3, 'sys_scope_privilege': 0,
                          'sys_ws_definition': 1, 'sys_ws_version': 1}.items():
         require(sum(r['table'] == table for r in records) == count)
     return {'schema_version': 1, 'scope': SCOPE, 'scope_id': SCOPE_ID,

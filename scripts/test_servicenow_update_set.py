@@ -14,7 +14,7 @@ spec.loader.exec_module(m)
 def fixture(table='sys_app', extra=''):
     payload = f'''<record_update table="{table}"><{table} action="INSERT_OR_UPDATE">
 <sys_id>{m.SCOPE_ID}</sys_id><name>Nischoy Topo</name><scope>{m.SCOPE}</scope>
-<version>0.4.4</version>{extra}</{table}></record_update>'''
+<version>0.4.5</version>{extra}</{table}></record_update>'''
     root = ET.Element('unload')
     remote = ET.SubElement(root, 'sys_remote_update_set')
     ET.SubElement(remote, 'sys_id').text = 'a' * 32
@@ -58,9 +58,6 @@ def complete_fixture():
                          'sys_ws_version': 1}.items():
         for _ in range(count):
             add(table, {})
-    add('sys_scope_privilege', {'source_scope': m.SCOPE_ID, 'target_scope': 'sn_cmdb',
-        'target_name': 'sn_cmdb.IdentificationEngine', 'operation': 'execute',
-        'target_type': 'sys_script_include', 'status': 'allowed'})
     return ET.tostring(root)
 
 
@@ -84,7 +81,7 @@ class UpdateSetTests(unittest.TestCase):
     def test_rejects_operational_and_authorization_records(self):
         for table in ['x_664635_topo_ssh_credential', 'x_664635_topo_task',
                       'sys_user', 'sys_user_has_role', 'oauth_entity',
-                      'sys_api_access_policy', 'sys_properties', 'sys_script_fix']:
+                      'sys_api_access_policy', 'sys_properties', 'sys_script_fix', 'sys_scope_privilege']:
             with self.subTest(table=table), self.assertRaises(m.Rejected):
                 m.inspect(fixture(table))
 
@@ -116,7 +113,7 @@ class UpdateSetTests(unittest.TestCase):
     def test_incomplete_or_contract_drift(self):
         for body in [fixture(), complete_fixture().replace(b'POST', b'GET'),
                      complete_fixture().replace(b'/claim', b'/arbitrary'),
-                     complete_fixture().replace(b'0.4.4', b'0.4.5')]:
+                     complete_fixture().replace(b'0.4.5', b'0.4.4')]:
             with self.assertRaises(m.Rejected):
                 m.inspect(body)
 
