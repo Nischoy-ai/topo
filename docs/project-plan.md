@@ -3664,6 +3664,33 @@ No CMDB write API was called. Corrected clean import/commit, full worker/IRE
 apply, repeat and upgrade remain unproven. Another clean baseline requires
 separate reset approval; do not silently reuse this installed source instance.
 
+**Second clean-baseline reset (2026-09-22, owner-approved).** All five files
+in the 0.4.5 candidate's private backup inventory verified before the wipe.
+The owner explicitly confirmed another reset; the developer portal accepted
+the reset-and-wipe request, retaining `dev394887`, and displayed
+`Reset and Wiping Instance...`. Wait for completion and fresh instance login,
+then verify empty scope and import the saved XML; do not install through SDK
+before that test. CI at `d326841` passed all six public-channel installs and
+Helm but failed the 100K scale snapshot (100K items/50K relations/100 tasks,
+105 result records). Failed jobs were rerun in `35807969168`; the local
+two-repeat race-enabled scale check is pending. Do not report CI as green.
+
+**Clean XML installation (2026-09-22 instance time).** After the second reset,
+both Topo scope and retrieved sets were empty. The unchanged 0.4.5 candidate
+previewed successfully (441 inserts, zero collisions) and committed
+successfully in one minute, displayed commit time `22:26:37`. Post-commit
+metadata checks match 12 tables, five roles, 37 ACLs, seven REST operations,
+three Script Includes and no cross-scope privileges; all 12 operational
+tables are empty when queried from Topo scope. All 13 PR checks at `d326841`
+now pass after rerun; the local race-enabled scale test passed twice. Retain
+the initial transient scale failure as evidence rather than claiming it never
+occurred. Identical XML re-import retained the same remote set ID but reset its
+state to Loaded and cleared its displayed commit date. Repeat preview passed
+in 18 seconds with 441 updates, zero inserts/deletes/collisions. It remains
+Previewed, without a second commit. This behavior is not a no-op; customer-data
+preservation through repeated commit is still untested. Functional/security and real upgrade
+acceptance still remain open.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up

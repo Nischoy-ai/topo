@@ -1,6 +1,6 @@
 # Install the Topo pilot application from XML
 
-**Status: first clean-instance preview failed; not ready for customer installation.** The published
+**Status: corrected 0.4.5 clean XML installation passed; broader pilot acceptance remains open.** The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
 Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
 clean-instance installation, repeat and upgrade test must pass before the
@@ -234,6 +234,25 @@ The diagnostic did not call a CMDB write API; the failed attempt created one
 IRE context record. Clean XML preview/commit, repeat and upgrade remain open.
 
 ## Customer-instance acceptance matrix — completion pending
+
+The corrected XML passed a clean installation on the owner-reset `dev394887`
+on 2026-09-22 (instance-displayed time), Australia Patch 3 build
+`glide-australia-02-11-2026__patch3-05-25-2026`. Before import, both the Topo
+scope lookup and retrieved-update-set list were empty. Preview succeeded in
+24 seconds with 441 inserts, zero updates/deletes/collisions and no preview
+problem list. The separate subscription-mapping advisory was retained.
+Commit succeeded in one minute, with displayed commit time `22:26:37`.
+Post-commit checks found version 0.4.5, 12 tables, five roles, 37 ACLs, seven
+REST operations, three Script Includes and zero cross-scope privileges.
+Read-only checks in the Topo scope found all 12 operational tables empty.
+A preliminary check during commit was incomplete and Global reads were
+denied; only the post-commit metadata and in-scope checks count as evidence.
+
+Re-importing the identical XML reused the remote set ID and reset its state
+to Loaded, clearing its displayed commit date. Repeat preview succeeded in
+18 seconds with 441 updates and zero inserts/deletes/collisions. No second
+commit was performed. This establishes repeat upload/preview behavior, not
+preservation of customer data through recommit or a version upgrade.
 
 Use an authorized non-production instance with no Topo scope and no prior
 App Repository install. A separately approved full reset may supply that
