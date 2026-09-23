@@ -254,6 +254,33 @@ to Loaded, clearing its displayed commit date. Repeat preview succeeded in
 commit was performed. This establishes repeat upload/preview behavior, not
 preservation of customer data through recommit or a version upgrade.
 
+On 2026-09-23, unauthenticated POSTs with empty JSON to all seven installed
+version-1 worker routes returned HTTP 401. Per-task routes used a nonexistent
+all-zero task ID. This checks the unauthenticated boundary only; role-specific
+ACL/Password2 and customer-owned OAuth denial tests remain pending.
+
+After explicit owner approval on 2026-09-23, five passwordless, login-locked
+test identities exercised `canRead`, `canCreate`, `canWrite` and `canDelete`
+under administrator impersonation on initialized records (no record inserts
+or credential values). None had the admin role. The resulting ACL decisions:
+
+| Identity | SSH credentials | Credential bindings | Access events | Tasks |
+| --- | --- | --- | --- | --- |
+| Credential administrator | Read/create/write/delete | Read/create/write/delete | Read only | Read only |
+| Operator | Denied | Read only | Denied | Read only |
+| Viewer | Denied | Read only | Denied | Read only |
+| Worker | Denied | Denied | Denied | Denied |
+| No Topo role | Denied | Denied | Denied | Denied |
+
+All five users were subsequently deactivated through the user forms and the
+list verified `Active=false` for each. Their login locks were retained; no
+passwords, email addresses or OAuth clients were supplied. Platform user
+creation also generated default notification-device/group/inherited-role
+records. The fixture users are retained inactive for audit, not deleted.
+This proves the initialized-record ACL decision matrix; it does not yet
+prove protected-value storage/retrieval, actual CRUD enforcement, OAuth policy,
+credential broker behavior or end-to-end worker discovery after XML install.
+
 Use an authorized non-production instance with no Topo scope and no prior
 App Repository install. A separately approved full reset may supply that
 baseline when only one PDI is available; preserve the source/export first and

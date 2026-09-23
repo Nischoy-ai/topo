@@ -6,11 +6,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-20 UTC
+- **Updated:** 2026-09-23
 - **Active follow-on:** C1.3 XML update-set pilot distribution is staged below.
   Main/PR #63 is verified merged at `c9c2295`; beta.1 assets remain immutable.
-  Separate clean-instance access and approval for export-instance changes
-  are pending. No XML installation evidence exists yet.
+  Corrected 0.4.5 platform XML passed clean preview/commit on the owner-reset
+  dev394887; identical re-import preview passed with 441 updates. PR #64
+  remains draft pending role/OAuth, worker-flow, repeated-commit preservation
+  and version-upgrade acceptance. All 13 checks pass at `3ae4282`.
 - **Latest C1.2 status:** PR #62 merged at `dd3c349`. Independently approved
   promotion `35485290078` passed and published `v0.1.0-beta.1` to APT/RPM and
   the official Homebrew tap. Pages serves the signed metadata. All six
@@ -3690,6 +3692,37 @@ in 18 seconds with 441 updates, zero inserts/deletes/collisions. It remains
 Previewed, without a second commit. This behavior is not a no-op; customer-data
 preservation through repeated commit is still untested. Functional/security and real upgrade
 acceptance still remain open.
+
+**Security acceptance follow-up (2026-09-23).** All seven installed version-1
+worker routes reject unauthenticated POST requests with empty JSON bodies
+with HTTP 401, including register, heartbeat, claim, renew, credential,
+results and complete. Per-task probes use an all-zero nonexistent task ID.
+No credential material or discovery payload was submitted. This is an
+unauthenticated boundary check only, not OAuth-policy or role/Password2 proof.
+Browser session expired before authenticated checks; fresh instance sign-in
+is required. PR remains draft; final approval should wait for the staged gates.
+
+After sign-in on 2026-09-23, read-only installed metadata checks confirmed all
+37 scoped ACLs active, all seven POST resources requiring authentication and
+ACL authorization, and each resource's `enforce_acl` pointing to
+`2470af2050844974b0f28c9fceb85bd4` (worker execution ACL). Its role mapping is
+`x_664635_topo.worker`. No `topo_xml_accept_` users exist. A bounded fixture
+script is prepared privately in
+`dist/servicenow-xml-acceptance/create-test-users.js`; creation of five
+passwordless, login-locked users and their four Topo role assignments awaits
+the browser security-access confirmation. Do not claim impersonation/Password2
+checks have run yet; these are metadata checks only.
+
+**Approved role checks (2026-09-23).** The owner approved all five fixture
+identities. Impersonation verified non-admin identity and initialized-record
+read/create/write/delete ACL decisions for credentials, bindings, access
+events and tasks. The expected matrix passed (see the XML guide). No protected
+values or operational rows were created or read. Administrator identity was
+restored in a finally block. All five test users are now verified inactive,
+with login locks retained; default platform group/notification/inherited-role
+records were generated during user creation. Actual Password2/CRUD, scoped
+OAuth, broker/worker discovery and upgrade acceptance remain open. Do not
+equate these ACL decisions with the full security acceptance gate.
 
 ### Relationship to the M2.5 gate
 
