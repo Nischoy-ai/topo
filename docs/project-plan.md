@@ -3642,6 +3642,14 @@ and platform re-export. A clean tracked-source build is prepared at
 dist tree. Native IRE execution and a corrected clean XML preview remain
 unproven; the source correction alone does not close either gate.
 
+**Packaging follow-up (2026-09-22).** CI run `35746967463` exposed release
+packaging constants still pinned to 0.4.4 after the app version bump. The
+build script and Go package validator now agree on 0.4.5. The actual SDK ZIP
+passes the package validator (313 entries), and exact Go 1.26.8 security
+checks pass again. Published beta artifacts and public-channel pins remain
+unchanged. The reset instance's approved SDK OAuth access has been renewed;
+corrected installation and platform export are in progress.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up

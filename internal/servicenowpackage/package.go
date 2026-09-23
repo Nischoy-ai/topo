@@ -22,9 +22,9 @@ import (
 
 const (
 	Scope        = "x_664635_topo"
-	AppVersion   = "0.4.4"
+	AppVersion   = "0.4.5"
 	SDKVersion   = "4.9.0"
-	ArtifactName = "nischoy_topo_servicenow_control_plane_0_4_4.zip"
+	ArtifactName = "nischoy_topo_servicenow_control_plane_0_4_5.zip"
 
 	maxArchiveBytes = 64 << 20
 	maxEntryBytes   = 8 << 20
