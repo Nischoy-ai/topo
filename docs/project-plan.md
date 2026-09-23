@@ -3650,6 +3650,20 @@ checks pass again. Published beta artifacts and public-channel pins remain
 unchanged. The reset instance's approved SDK OAuth access has been renewed;
 corrected installation and platform export are in progress.
 
+**Corrected export evidence (2026-09-22).** Installation and platform export
+now succeeded: completed set `cf74c1b09327c310682e74dcebba10f0`, remote set
+`6ea405b09327c310682e74dcebba10d1`, 441 updates, 1,290,748 bytes, SHA-256
+`dad292dc3c7395c6d8d27e7da068a1318fd854776aca8f2f9577280c5e6f7981`.
+Private sealed files are in `dist/servicenow-0.4.5-xml-candidate`.
+Offline inspection and generated-source script/REST/default comparisons pass.
+Native scoped `identifyCIEnhanced` preflight succeeds using the existing
+`ServiceNow` source choice, without the fabricated cross-scope privilege.
+The actual `Nischoy Topo` source requires its documented global choice to be
+recreated after reset; the customer guides now state that prerequisite.
+No CMDB write API was called. Corrected clean import/commit, full worker/IRE
+apply, repeat and upgrade remain unproven. Another clean baseline requires
+separate reset approval; do not silently reuse this installed source instance.
+
 ### Relationship to the M2.5 gate
 
 M3 implementation proceeds independently of M2.5's two open follow-up

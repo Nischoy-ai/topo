@@ -36,6 +36,12 @@ Once a validated XML release is available:
    The XML supplies application definitions, not users, grants, tokens,
    credentials, targets or discovery data.
 
+Before discovery, the instance administrator must register the exact choice
+value `Nischoy Topo` on `cmdb_ci.discovery_source`, as described in
+[IRE prerequisites](servicenow.md). This customer-owned global configuration
+is not included in the scoped XML. A missing choice causes IRE to reject the
+payload with `INVALID_INPUT_DATA`, even when native IRE access works.
+
 ServiceNow documents [application publication to an update set](https://www.servicenow.com/docs/r/application-development/t_PublishApplicationsToAnUpdateSet.html)
 and [Retrieved Update Sets import, preview and commit](https://developer.servicenow.com/blog.do?p=/post/backup-your-pdi/).
 Those mechanisms do not establish licensing entitlement, Store certification
@@ -204,11 +210,35 @@ permission declaration needs investigation and correction followed by a new
 platform export and clean preview. The original candidate is retained as
 failed-test evidence and must not be distributed.
 
+## Corrected platform export — 0.4.5
+
+On 2026-09-22, SDK 4.9.0 installed the clean tracked-source 0.4.5 build from
+`ba5fc765c02d359bd584335222d6225877c271f8` on `dev394887`. Platform publication
+with demo data unchecked produced completed set
+`cf74c1b09327c310682e74dcebba10f0`, exported as
+`6ea405b09327c310682e74dcebba10d1`: 441 updates, 1,290,748 bytes, SHA-256
+`dad292dc3c7395c6d8d27e7da068a1318fd854776aca8f2f9577280c5e6f7981`.
+The offline inspector passes with no cross-scope privilege. Comparisons match
+48 script fields, seven REST operation bodies and authentication flags, and
+143 dictionary defaults/calculations against the generated source. The exact
+XML, manifest and checksum are preserved privately under
+`dist/servicenow-0.4.5-xml-candidate`; this is not a public release.
+
+A background diagnostic in `x_664635_topo` invoked the documented native
+`identifyCIEnhanced` method. Using the existing `ServiceNow` source choice
+returned proposed `INSERT`, zero errors/warnings and empty committed-item
+arrays. Using `Nischoy Topo` correctly failed because reset removed that
+required source choice. This proves native preflight access without the
+fabricated privilege; it does not prove Topo apply or end-to-end worker flow.
+The diagnostic did not call a CMDB write API; the failed attempt created one
+IRE context record. Clean XML preview/commit, repeat and upgrade remain open.
+
 ## Customer-instance acceptance matrix — completion pending
 
-Use a separate authorized non-production instance with no Topo scope and no
-prior App Repository install. Do not reset the existing developer instance to
-simulate a clean customer installation.
+Use an authorized non-production instance with no Topo scope and no prior
+App Repository install. A separately approved full reset may supply that
+baseline when only one PDI is available; preserve the source/export first and
+obtain explicit approval at the irreversible reset step.
 
 - **Clean install:** record platform build, source/export identities, XML hash,
   empty-scope baseline, preview problems/resolutions and commit completion.

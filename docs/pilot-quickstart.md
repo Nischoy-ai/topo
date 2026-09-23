@@ -24,6 +24,10 @@ For development on an approved instance, use the [SDK/source instructions](../in
 Those instructions remain the previously validated developer workflow, not a
 customer prerequisite. After the app is installed, continue below.
 
+Have the instance administrator register the exact `Nischoy Topo` choice on
+`cmdb_ci.discovery_source` before discovery; see [IRE prerequisites](servicenow.md).
+This global customer setting is not shipped in the scoped application XML.
+
 ## 2. Create the least-privilege ServiceNow identities
 
 Use separate human and machine identities:
