@@ -1,7 +1,7 @@
 {
   "name": "Nischoy Topo",
   "scope": "x_664635_topo",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "ServiceNow-owned control plane for stateless Nischoy Topo workers",
   "source": {
     "format": "servicenow_fluent",
@@ -329,15 +329,7 @@
       "x_664635_topo_credential_access"
     ]
   },
-  "cross_scope_privileges": [
-    {
-      "target_scope": "sn_cmdb",
-      "target_name": "sn_cmdb.IdentificationEngine",
-      "target_type": "sys_script_include",
-      "operation": "execute",
-      "status": "allowed"
-    }
-  ],
+  "cross_scope_privileges": [],
   "scheduled_scripts": [
     {"name": "Topo enqueue due schedules", "interval_minutes": 1, "script": "scripts/enqueue_due_schedules.js"},
     {"name": "Topo expire leases and retain results", "interval_minutes": 5, "script": "scripts/maintenance.js"}

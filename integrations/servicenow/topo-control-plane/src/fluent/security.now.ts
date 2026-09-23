@@ -1,5 +1,5 @@
 import '@servicenow/sdk/global'
-import { Acl, CrossScopePrivilege, Role } from '@servicenow/sdk/core'
+import { Acl, Role } from '@servicenow/sdk/core'
 
 export const topoViewer = Role({
     name: 'x_664635_topo.viewer',
@@ -347,11 +347,6 @@ Acl({
     active: true,
 })
 
-CrossScopePrivilege({
-    $id: Now.ID['privilege-identification-engine'],
-    targetScope: 'sn_cmdb',
-    targetName: 'sn_cmdb.IdentificationEngine',
-    targetType: 'sys_script_include',
-    operation: 'execute',
-    status: 'allowed',
-})
+// sn_cmdb is the native IRE API namespace, not a sys_scope / Script Include.
+// Do not export a fabricated cross-scope reference for IdentificationEngine.
+// Native scoped IRE access is verified separately during instance acceptance.

@@ -18,7 +18,7 @@ fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 app_dir=$root/integrations/servicenow/topo-control-plane
-artifact_name=nischoy_topo_servicenow_control_plane_0_4_4.zip
+artifact_name=nischoy_topo_servicenow_control_plane_0_4_5.zip
 metadata_name=servicenow-app-metadata.json
 if [ -e "$artifact_dir/$artifact_name" ] || [ -e "$artifact_dir/$metadata_name" ]; then
     echo "ServiceNow release artifact already exists in $artifact_dir" >&2
