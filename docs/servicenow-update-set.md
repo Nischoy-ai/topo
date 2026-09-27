@@ -235,6 +235,35 @@ IRE context record. Clean XML preview/commit, repeat and upgrade remain open.
 
 ## Customer-instance acceptance matrix — completion pending
 
+### Azure Linux pilot finding — 2026-09-27
+
+The XML-installed 0.4.5 application accepted the customer-owned OAuth worker's
+registration, heartbeat, task claim, attempt-bound Password2 retrieval and
+15,465-byte result upload. Manual run `8246415693670f10682e74dcebba10c6`
+then failed before IRE with `asset attribute is invalid or too deeply nested`.
+The broker access event reports `Allowed` / `attempt_bound`; this proves the
+successful broker path, not the remaining denial matrix. The failed raw result
+has a seven-day expiry, but actual retention deletion remains untested here.
+
+The prior private Linux fixture contains 658 package names and 158 services.
+A sanitized regression reproduces the same rejection because 0.4.5 limits all
+attribute arrays to 256 entries. Candidate 0.4.6 allows only top-level host
+`packages`/`services` to carry up to 4,096 strings; generic and nested arrays
+retain the existing limits, as do the result byte cap and strict IRE mappings.
+Tests cover both boundaries, malformed entries and absence of inventory lists
+from IRE fields. No 0.4.6 platform XML has been exported or installed yet.
+
+Preserve the original 0.4.5 XML and this failed-run history. Before applying the
+fix, finish the identical-XML recommit preservation check; then use the reviewed
+0.4.6 source with stable metadata IDs for a separately authorized platform
+export and versioned XML upgrade. Do not edit the installed Script Include
+ad hoc or count a source installation as XML-upgrade evidence. The offline
+candidate inspector now expects 0.4.6; the original 0.4.5 bytes and their
+previous verification remain historical evidence. Public XML publication and
+successful manual/scheduled/IRE/retention acceptance remain pending.
+
+### Recorded clean-install and repeat-preview evidence
+
 The corrected XML passed a clean installation on the owner-reset `dev394887`
 on 2026-09-22 (instance-displayed time), Australia Patch 3 build
 `glide-australia-02-11-2026__patch3-05-25-2026`. Before import, both the Topo

@@ -6,7 +6,101 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-23
+- **Updated:** 2026-09-27
+- **XML real SSH acceptance exposed a mapper defect (2026-09-27):** The owner
+  saved `xml-pilot-linux-password` (`9a44095293670f10682e74dcebba1031`). Created
+  and verified `xml-pilot-linux-binding` and `xml-pilot-linux` profile revision
+  1 with the approved scope and existing pool. Added the missing exact global
+  `cmdb_ci.discovery_source` choice `Nischoy Topo`, a documented customer
+  prerequisite excluded from the scoped XML. Manual run
+  `8246415693670f10682e74dcebba10c6` claimed one task; the broker recorded
+  `Allowed` / `attempt_bound` for attempt `8b46495693670f10682e74dcebba10ce`.
+  Result `bf46895693670f10682e74dcebba1063` stored a 15,465-byte attachment,
+  then failed before IRE with `asset attribute is invalid or too deeply nested`.
+  Seven-day failed-result expiry is recorded, not actual retention deletion.
+  The temporary worker was stopped; no schedule was enabled.
+  A sanitized regression reproduces the failure with the prior private Linux
+  fixture's 658 package/158 service counts. Candidate 0.4.6 narrows the fix to
+  top-level host package/service string lists capped at 4,096 entries, retaining
+  other array/depth/string limits, the result byte cap and unchanged IRE mapping.
+  Local source, tests and package versions are updated; deployment, platform
+  export and XML-upgrade evidence remain pending. Do not modify the installed
+  Script Include ad hoc or source-install over the XML acceptance fixture and
+  then call that an XML upgrade. Next: preserve configuration/failed history
+  through identical 0.4.5 recommit, obtain a separately authorized 0.4.6 platform
+  export/upgrade path, then repeat discovery and the remaining acceptance gates.
+  Validation: the sanitized regression failed against 0.4.5 and passes with
+  the fix; Fluent tests/build/pack, ten XML inspector tests, actual 0.4.6 SDK
+  package validation and exact Go 1.26.8 security checks pass (vet, race tests,
+  zero reachable vulnerability findings, native and Windows builds/vet).
+- **XML pilot Azure setup (2026-09-27):** Owner authorized using the existing
+  sibling `topo-cloudlab` Azure lab and provisioning needed test credentials.
+  Its private state identifies an existing non-admin Linux scan account;
+  no new Linux account or password rotation was needed. The host and Linux
+  target were deallocated and were started for this acceptance; Windows VMs
+  were left deallocated. SSH to the host verified its existing pinned key.
+  Target keys on the host match the lab's Azure-verified `known_hosts.verified`.
+  Created and verified pool `xml-pilot-linux` (`e2734dde93270f10682e74dcebba10e4`),
+  site `azure-lab`, bound to the existing dedicated worker user, with lease
+  120 seconds, task ceiling 300 seconds and maximum one lease. Created active
+  scope `xml-pilot-linux-target` revision 1 containing only the approved Linux
+  `/32`; ServiceNow compiled exactly one partition. Keep target addresses and
+  passwords in the private lab files, not public evidence.
+  Published beta.1 on the Azure host passed `topo worker check` with only
+  `ssh_linux.v1`: worker ID `b444c55293670f10682e74dcebba109b`, boot
+  `226196c2b2fc912ab0dbfd574ec2017e`, record
+  `3044c55293670f10682e74dcebba109f`. The ServiceNow worker list independently
+  verified site/pool, heartbeat at 10:36:37 instance time and zero leases.
+  The bounded harness kept the OAuth token only in process memory, passed it
+  over verified SSH input, and removed temporary non-secret startup files.
+  Evidence/harness remain in the existing private OAuth temporary directory.
+  No task was claimed, credential retrieved, discovery performed or IRE called.
+  Worker service remains inactive. The SSH credential form was prepared with
+  ID `xml-pilot-linux-password`, name `XML Pilot Linux SSH`, and the existing
+  scan username; owner password entry and subsequent discovery are recorded
+  above. Continue broker/manual/scheduled/IRE/retention acceptance. Pool/scope
+  setup and registration do not complete the remaining C1.3 gates.
+- **XML worker authentication setup in progress (2026-09-23):** Owner approved
+  the dedicated worker identity and seven-route OAuth configuration. Created
+  `topo_xml_worker` (`fc1db4cd93a78310682e74dcebba1079`), active, Machine,
+  Internal Integration User, without a password or email. Its only directly
+  assigned role is `x_664635_topo.worker`; ServiceNow additionally inherited
+  `snc_required_script_writer_permission`. Created OAuth client
+  `Topo XML Worker OAuth` (`20d9ee819327c310682e74dcebba105a`), bound to that
+  user, with 1,800-second opaque tokens, securely scoped authorization and
+  Enforce token restriction enabled. Scope `topo.xml.worker.execute`
+  (`9599eec19327c310682e74dcebba1021`). Created OAuth inbound profile
+  `316aea459327c310682e74dcebba10ac` and verified registration policy
+  `fdf9ea059327c310682e74dcebba10fc`: POST, v1, exact workers/register resource,
+  all wildcard/global flags false, bound to that profile. The client was
+  initially saved inactive, then activated for profile reference resolution;
+  no token was obtained. On September 25, completed and verified all seven
+  `Topo XML Worker <route>` API access policies, each POST/v1 with an exact
+  resource, no global/method/version/resource wildcards and the dedicated
+  inbound profile. Replaced the autogenerated wildcard REST API auth scope
+  mapping (`20d9a6059327c310682e74dcebba10fc`) with exact registration, then
+  added heartbeat, claim, renew, credential, results and complete mappings.
+  The `sys_api_access_scope` list shows exactly seven active mappings for
+  `topo.xml.worker.execute`, all wildcard flags and Disable client restriction
+  false. Created and verified boolean system property
+  `glide.oauth.inbound.client.credential.grant_type.enabled=true`.
+  Client remains active with a 1,800-second token lifespan. The owner saved the
+  existing generated client secret to a mode-0600 file at
+  `/private/tmp/topo-xml-oauth.4jqK3L/client-secret` inside a private temporary
+  directory. Never print/read that secret into tool output; consume only inside
+  the bounded token/test process. Live OAuth boundary test passed September 25:
+  client-credentials exchange returned HTTP 200 and exact scope
+  `topo.xml.worker.execute`. All seven POST routes returned HTTP 400 with their
+  exact Topo validation errors for empty bodies (zero task ID for task routes),
+  proving authenticated requests reached application validation without
+  registering workers, claiming tasks, fetching credentials, or invoking IRE.
+  The same token's unrelated Table API request for one sys_user sys_id returned
+  HTTP 401; GET on the registration route returned 405 (method rejection,
+  not independent evidence of OAuth policy enforcement). The bounded HTTPS
+  harness rejected redirects and printed only statuses/boolean assertions;
+  the token existed only in process memory. Registration, heartbeat, valid
+  lease/broker behavior and actual discovery still need worker-pool/target setup.
+  No SSH target has been supplied and no discovery has run in this step.
 - **Active follow-on:** C1.3 XML update-set pilot distribution is staged below.
   Main/PR #63 is verified merged at `c9c2295`; beta.1 assets remain immutable.
   Corrected 0.4.5 platform XML passed clean preview/commit on the owner-reset

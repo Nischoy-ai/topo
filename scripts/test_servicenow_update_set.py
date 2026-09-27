@@ -14,7 +14,7 @@ spec.loader.exec_module(m)
 def fixture(table='sys_app', extra=''):
     payload = f'''<record_update table="{table}"><{table} action="INSERT_OR_UPDATE">
 <sys_id>{m.SCOPE_ID}</sys_id><name>Nischoy Topo</name><scope>{m.SCOPE}</scope>
-<version>0.4.5</version>{extra}</{table}></record_update>'''
+<version>0.4.6</version>{extra}</{table}></record_update>'''
     root = ET.Element('unload')
     remote = ET.SubElement(root, 'sys_remote_update_set')
     ET.SubElement(remote, 'sys_id').text = 'a' * 32
@@ -113,7 +113,7 @@ class UpdateSetTests(unittest.TestCase):
     def test_incomplete_or_contract_drift(self):
         for body in [fixture(), complete_fixture().replace(b'POST', b'GET'),
                      complete_fixture().replace(b'/claim', b'/arbitrary'),
-                     complete_fixture().replace(b'0.4.5', b'0.4.4')]:
+                     complete_fixture().replace(b'0.4.6', b'0.4.4')]:
             with self.assertRaises(m.Rejected):
                 m.inspect(body)
 

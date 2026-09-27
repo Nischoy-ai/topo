@@ -23,9 +23,15 @@ npm run pack
 The SDK compiles the twelve scoped tables, indexes, roles, ACLs, navigation,
 Script Includes, seven-route Scripted REST API, immutable profile/target-scope/
 credential-binding business rules, **Run now** and **Cancel run** UI actions, two scheduled
-scripts into `dist/app`. Candidate 0.4.5 removes the invalid cross-scope
+scripts into `dist/app`. Version 0.4.5 removes the invalid cross-scope
 Script Include grant for the native `sn_cmdb` API namespace; scoped IRE access
 requires separate real-instance acceptance.
+Candidate 0.4.6 fixes rejection of ordinary Linux package inventories: host
+`packages` and `services` accept at most 4,096 strings each, with 4,096-character
+and control-character checks per entry. Other arrays retain their 256-entry
+bound, and the complete worker result remains capped at 1 MiB. These lists
+remain evidence only; IRE still receives only computers, adapters and ownership
+relationships. A versioned XML upgrade and real discovery retest are pending.
 Generated output is intentionally ignored; source and `package-lock.json` are
 reviewed and committed.
 

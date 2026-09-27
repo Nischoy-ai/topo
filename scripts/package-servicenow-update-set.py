@@ -166,7 +166,7 @@ def inspect(body):
                 routes.append(field(record, 'http_method') + ' ' + field(record, 'relative_path'))
         records.append({'name': name, 'table': table,
                         'payload_sha256': hashlib.sha256(payload).hexdigest()})
-    require(app == '0.4.5')  # Advance only with a reviewed source/upgrade contract.
+    require(app == '0.4.6')  # Advance only with a reviewed source/upgrade contract.
     require(sorted(tables) == sorted(SCOPE + '_' + name for name in (
         'credential_access', 'credential_binding', 'ire_delivery', 'profile',
         'result', 'run', 'schedule', 'ssh_credential', 'target_scope', 'task',

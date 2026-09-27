@@ -205,6 +205,12 @@ the customer's retention policy permits it.
 
 ## Evidence boundary and known gaps
 
+The XML-installed 0.4.5 app currently rejects Linux observations whose package
+or service list exceeds 256 entries, before IRE. The Azure Linux acceptance run
+exposed this with a normal package inventory. Candidate 0.4.6 adds separately
+bounded host inventory lists; its real XML upgrade and discovery retest are
+pending. See the [recorded finding](servicenow-update-set.md#azure-linux-pilot-finding--2026-09-27).
+
 The architecture, worker/API denial matrix, manual and scheduled sanitized
 Docker discovery, repeated IRE reconciliation, lease recovery, and raw-result
 retention are already validated separately against `dev441060`; deterministic
