@@ -6,7 +6,144 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-27
+- **Updated:** 2026-10-02
+- **0.4.6 XML candidate sealed (2026-10-02):** Official publication from
+  dev394887 now produces 441 application updates. The first post-cleanup
+  publication still included 29 DELETE updates; its 30 source deletion markers
+  were privately backed up, matched exactly to the approved test-only cleanup,
+  removed, and verified absent. Customer Update records were not edited.
+  Fresh local set `7ad24cf393ebc750682e74dcebba10e1` was exported through the
+  platform; downloaded remote set `ad03443793ebc750682e74dcebba10b5` is
+  1,319,296 bytes, SHA-256
+  `c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`.
+  Original XML bytes, manifest and checksums are sealed under ignored
+  `dist/servicenow-0.4.6-xml-candidate/`, source
+  `0d93e756216bfa62192d526f58720dc7bea8c74c`. Offline inspection and all ten
+  inspector tests passed. A fresh SDK build passed; source comparison found
+  no differences or missing definitions across 48 scripts, 45 conditions,
+  seven operation scripts and API authentication/authorization settings,
+  131 field defaults/calculations/types/lengths/references/attributes and
+  mandatory/read-only settings, plus checked role/access/active settings.
+  Private review details remain in `dist/servicenow-0.4.6-export-review/`.
+  The acceptance bundle `dist/nischoy-topo-0.4.6-installation-candidate.zip`
+  adds a start-here file and five installation/configuration/recovery guides;
+  all eight file checksums and ZIP integrity passed. Bundle SHA-256:
+  `96b86bffaf43ef846d6eb1591df78f988ceca1dc07aeb97bffe9f97c0535c9fe`.
+  This supersedes the export blocker below, not the outstanding acceptance
+  gates: clean/repeat/upgrade XML installation on dev317694, real Linux
+  rescan and repeat IRE reconciliation, role/credential/security and recovery
+  checks. No worker was started; beta.1 and the installed local Topo remain
+  unchanged. The package is an offline acceptance candidate, not a public or
+  customer-approved release.
+- **Approved export-source cleanup completed (2026-10-01):** Owner approved
+  deletion of the 30 exact test metadata records and their dependent layout
+  entries, and authorized routine deletion on these development test instances.
+  SDK OAuth refreshed successfully. Bounded Table API reads confirmed the
+  30 IDs and exact Topo scope and saved a private live backup (SHA-256
+  `efa007d99019e345eb07d54d57e8d4c50f5ecb4eee6f24d5eddf1e1fc4a7c2e8`).
+  Immediately before deletion each record was compared to that backup; all
+  matched. Deleted only those 30 parents and verified their absence. All 69
+  associated list elements and 91 form elements were also verified absent.
+  Remaining metadata: 440 files plus app 0.4.6, including 12 tables, 143
+  dictionary entries, 143 documentation entries, 5 roles, 37 ACLs and mappings,
+  7 REST routes, 3 Script Includes, and no runtime privilege/layout additions.
+  Evidence is under ignored `dist/servicenow-0.4.6-export-review/`.
+  Ten offline inspector tests passed. The browser session has expired; owner
+  was asked to sign in to dev394887 for the already-approved platform publish
+  and fresh XML export. Do not source-install again or edit the previous XML.
+  No clean 0.4.6 export or sealed candidate exists yet. Previously approved
+  source cleanup may require runtime grants to be re-established before scans;
+  no worker was started and no operational/credential table was deleted.
+- **Package cleanup review (2026-10-01):** Owner requested completion of
+  the customer installation package. Official ServiceNow guidance says not
+  to directly modify Customer Update records or their Update Set reference;
+  publication captures all current application configuration. Therefore the
+  earlier suggestion to separate the 30 records within the packaging set is
+  superseded: do not move/delete payload rows or edit the downloaded XML.
+  Verified the unchanged original export checksum and wrote a private exact-ID
+  cleanup inventory to `dist/servicenow-0.4.6-export-review/cleanup-review.json`.
+  All 30 excluded parent IDs are absent from the pinned generated source;
+  their platform backup also includes 69 list elements and 91 form elements.
+  For source records matched by table/sys_id, comparison found 48 script,
+  45 condition, 7 authentication and 7 ACL-authorization field matches, with
+  no differences among those compared fields. This is partial source review,
+  not candidate approval. Completing a clean publication now requires source
+  cleanup of those test access/layout records (with cascade review), or a
+  genuinely clean authorized authoring instance. Ask for explicit approval
+  before source cleanup because it changes existing test layouts/access
+  grants; do not equate package preparation with that destructive action.
+  No instance records have been changed in this review. XML installation,
+  repeat, upgrade and broader pilot acceptance remain separate gates.
+- **0.4.6 source upgrade and platform publication succeeded (2026-09-30):**
+  After direct owner OAuth renewal, SDK 4.9.0 installed the pinned clean
+  `0d93e75` source on `dev394887` with demo data disabled. SDK returned success,
+  rollback context `a19e09d393e30750682e74dcebba1021`, and the existing app form
+  shows 0.4.6. No instance reset occurred. This is source-install evidence,
+  not XML-upgrade acceptance. Platform Publish to Update Set succeeded with
+  Include demo data explicitly unchecked: completed local set
+  `703f015793e30750682e74dcebba1032`, 471 updates. Browser export capture was
+  delayed; repeated export actions generated remote records
+  `046f819793e30750682e74dcebba10fe`, `7f7f81d793e30750682e74dcebba10f1`, and
+  downloaded `f5bfc15793e30750682e74dcebba10d8`. The unchanged 1,491,544-byte
+  download has SHA-256
+  `8dd832a728832a952f9ac757ec5f0c16b92cd9579de0e620d3265856c24cecba`.
+  It is preserved mode 0600 under ignored `dist/servicenow-0.4.6-export-review/`.
+  The existing inspector correctly rejected it: 15 `sys_scope_privilege`,
+  8 `sys_ui_list`, 6 `sys_ui_section`, and 1 `sys_restricted_caller_access`
+  records are outside the customer package contract. Do not relax the
+  allowlist or distribute this XML. Separate these 30 runtime/test metadata
+  records from the platform packaging set, preserving live test configuration,
+  and re-export through ServiceNow before offline/source comparison and XML
+  acceptance on `dev317694`. No XML has been imported there yet.
+- **Export-instance repurposing approved; SDK login expired (2026-09-30):**
+  Owner explicitly approved source-upgrading `dev394887` to 0.4.6 for export,
+  replacing its untouched XML acceptance-baseline role, with separate XML
+  validation on `dev317694`. The authorized SDK install from the pinned clean
+  source stopped during authentication: expired access token, refresh rejected
+  with `server_error (access_denied)`. No app installation occurred. Renew
+  `topo-dev394887-reset` using the official SDK OAuth flow with direct owner
+  code entry in Mac Terminal, then resume the already-approved source install.
+- **Alternate export instance check (2026-09-30):** Owner asked to try
+  `dev394887` and whether a reset is needed. Boolean-only property inspection
+  confirmed this instance recognizes prefix `664635`; its existing Topo scope
+  is present. No reset is indicated by the ownership check. Automatic approval
+  review rejected the proposed SDK 0.4.6 source installation because it would
+  mutate the XML acceptance baseline and requires explicit approval for that
+  repurposing. The command did not run. If approved, record this as a source
+  upgrade/export only and conduct clean/repeat/XML-upgrade acceptance on a
+  separate instance; do not relabel a source upgrade as XML validation.
+- **Separate 0.4.6 export instance authorized (2026-09-27):** Owner supplied
+  and signed in to `dev317694` for the requested source installation/export.
+  Read-only checks found no `x_664635_topo` scope and Australia Patch 3 build
+  `glide-australia-02-11-2026__patch3-05-25-2026`. Preserve `dev394887` as the
+  XML-installed acceptance baseline. All 13 PR checks passed at `0d93e75`.
+  A clean archive of `0d93e756216bfa62192d526f58720dc7bea8c74c` in
+  `/private/tmp/topo-046-source.IyhDNx` passed locked dependency installation,
+  Fluent tests/build/pack and actual SDK package validation; its normalized
+  ZIP is byte-identical to the previously validated 0.4.6 package. Official
+  SDK OAuth alias `topo-xml-export-046` was successfully saved by the owner
+  on 2026-09-30 and verified through alias metadata only. Installation from
+  that clean workspace with demo data disabled failed before scope creation:
+  SDK reported `Unable to install application as application was null`.
+  Platform logs at 2026-09-30 10:50:15 instance display time additionally
+  reported `Not allowing install of third party application`. A subsequent
+  exact-scope list showed no `x_664635_topo` application. No 0.4.6 XML export
+  exists. Owner-authorized boolean-only inspection subsequently confirmed that the
+  `sn_appauthor.all_company_keys` property exists and its displayed value does
+  not recognize Topo prefix `664635`. This is consistent with the platform
+  rejection; successful installation remains unverified.
+  Automatic approval review rejected reading the ownership property list
+  because it might expose private company keys; no ownership settings were
+  changed. The owner subsequently authorized adding only prefix `664635`,
+  preserving existing entries. The property form was inspected without
+  exposing values: its Value control is read-only and it offers no Save/Update
+  action to the signed-in administrator. No mutation was attempted and no SDK
+  retry was issued against the unchanged ownership configuration. Resolving
+  this needs ServiceNow-supported ownership provisioning or an authoring
+  instance that already recognizes the stable prefix; do not bypass the
+  protected form or rename the scope to make installation pass. Preserve the
+  stable scope/metadata IDs and the XML-only dev394887 acceptance baseline.
+  Never put authorization codes or tokens into chat/tool output.
 - **XML real SSH acceptance exposed a mapper defect (2026-09-27):** The owner
   saved `xml-pilot-linux-password` (`9a44095293670f10682e74dcebba1031`). Created
   and verified `xml-pilot-linux-binding` and `xml-pilot-linux` profile revision

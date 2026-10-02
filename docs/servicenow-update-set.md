@@ -1,6 +1,8 @@
 # Install the Topo pilot application from XML
 
-**Status: corrected 0.4.5 clean XML installation passed; broader pilot acceptance remains open.** The published
+**Status: 0.4.6 XML candidate packaged and checked offline; installation acceptance remains open.**
+The earlier 0.4.5 clean XML installation passed. That evidence does not
+validate the new 0.4.6 artifact. The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
 Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
 clean-instance installation, repeat and upgrade test must pass before the
@@ -119,6 +121,15 @@ records; those are not customer distribution inputs.
    instance if the source is contaminated. No OAuth entity/policy, user,
    user-role assignment, Password2 value, operational row, attachment, test
    fixture, source-instance endpoint or runtime access grant may travel.
+   Do not repair a contaminated export by editing `sys_update_xml` payloads,
+   deleting selected Customer Updates, or moving their Update Set references.
+   [ServiceNow's update-set guidance](https://www.servicenow.com/docs/r/application-development/system-update-sets/using-system-update-sets.html)
+   prohibits changing that reference; its system-update-set documentation also
+   advises against direct Customer Update edits. Clean the authoring source
+   under an approved, backed-up procedure, then publish a new platform set.
+   Source cleanup can affect live layouts and access grants, so review the
+   exact records and cascading children before approving it.
+
 5. Record the reviewed SHA-256, then seal those exact bytes into a new private
    candidate directory (replace the placeholders with the recorded values):
 
