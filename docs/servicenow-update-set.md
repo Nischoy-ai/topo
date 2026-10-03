@@ -200,6 +200,23 @@ The read-only and publication status evidence is retained privately under
 response bodies or instance credentials belong in workflow logs or artifacts.
 The XML-installed acceptance instance and sealed 0.4.6 candidate were unchanged.
 
+### Admin browser follow-up
+
+After the owner signed in as admin, the normal publication UI succeeded on
+2026-10-03. The standalone application form was used because its link did not
+open the dialog inside the navigation frame. Version remained 0.4.6; Include
+demo data was unchecked before submission. The resulting update set
+`579831c893f78b50682e74dcebba101d` was Complete, created by admin, with 441
+Customer Updates. The platform reported success in ten seconds. The native
+Export to XML action produced a browser download event.
+
+This proves publication through the signed-in admin browser. The current tool
+interface did not provide a filesystem path for that download, so the new XML
+bytes have not been inspected or sealed. It is not a new validated candidate
+and does not replace the existing sealed 0.4.6 package. No browser credentials
+were extracted, and the earlier OAuth-only 401 result remains a separate fact.
+Unattended login, download capture and CI execution still require proof.
+
 ### Implementation boundary and next gate
 
 Until the platform/authentication contract is established, retain an explicit

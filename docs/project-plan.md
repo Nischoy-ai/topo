@@ -7,6 +7,13 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-03
+- **Admin browser publication follow-up (2026-10-03):** Owner signed in as
+  admin on dev394887. Native Publish to Update Set succeeded in ten seconds
+  with demo data unchecked; set `579831c893f78b50682e74dcebba101d` is Complete,
+  created by admin, with 441 updates. Export to XML produced a browser download
+  event, but no local artifact path was exposed by the tool, so the bytes have
+  not been inspected/sealed. Browser publication works; unattended CI login
+  and artifact capture remain unproven. Preserve the prior sealed 0.4.6 XML.
 - **XML automation feasibility result (2026-10-03):** Pinned SDK inspection,
   official SDK/CI-CD documentation and live dev394887 probes do not establish
   unattended customer XML export. The OAuth identity read the actual native
