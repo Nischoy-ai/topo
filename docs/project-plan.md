@@ -7,6 +7,38 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-03
+- **XML-installed real Linux workflow staged (2026-10-03 UTC):** Owner
+  requested manual Linux discovery from ServiceNow, CMDB verification, a
+  duplicate-free repeat and scheduled execution using the existing Azure lab.
+  This is the next C1.3 acceptance slice, not a broader protocol milestone.
+  Started only the existing lab host and Linux target; Windows VMs remain
+  deallocated. Verified host SSH identity, target SSH reachability, and an
+  exact match between the host's target keys and the Azure-verified local
+  `known_hosts` fixture. Published worker `v0.1.0-beta.1` is unchanged.
+  On XML-installed dev317694, created the dedicated machine integration user
+  with only the directly assigned worker role, a restricted OAuth client,
+  seven exact POST/v1 scopes, seven matching policies and dedicated inbound
+  profile mappings. All wildcard flags were verified false before activation.
+  Token exchange succeeded; all seven empty-body calls reached application
+  validation (400), while an unrelated Table API returned 401. Secrets remain
+  in owner-only ignored files, never public evidence or command arguments.
+  Created the `xml-pilot-linux` pool (site `azure-lab`, lease 120 seconds,
+  task ceiling 300 seconds, one lease), a single-target `/32` scope (one
+  compiled partition), and the global `Nischoy Topo` discovery-source choice.
+  Worker preflight returned `ready` with only `ssh_linux.v1`; no task was
+  claimed. CMDB baseline contains zero Topo-source computers or adapters.
+  Private evidence is under `dist/servicenow-0.4.6-discovery/`.
+  The credential form is prepared for owner entry of the existing lab scan
+  username/password. No discovery profile, binding or active schedule has
+  been created yet; no CMDB writes have occurred. Worker service is inactive.
+  **Acceptance gates:** first manual run succeeds through broker, result and
+  IRE delivery; compare resulting computer/adapter/relationship identities;
+  repeat independently collected discovery with no additional CIs or
+  relationships; observe an actual scheduler-created run and matching CMDB
+  identities, then disable the test schedule and stop the temporary worker.
+  **Non-goals:** Windows/cloud inventory, broader mappings, scale or
+  production-readiness claims. Preserve the inactive upgrade fixtures and
+  sealed XML. Generic access to operational/credential tables stays disabled.
 - **dev317694 XML upgrade acceptance passed (2026-10-03 UTC):** This
   supersedes the removal/upgrade blockers below. Owner completed standard app
   deletion in a regular browser; read-only checks confirmed zero Topo scopes,
