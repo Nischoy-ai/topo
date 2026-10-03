@@ -19,8 +19,10 @@ The customer distribution path is the [XML update-set guide](servicenow-update-s
 download, verify, import through Retrieved Update Sets, preview, resolve
 issues and commit. The earlier 0.4.5 clean XML installation passed on Australia Patch 3.
 The 0.4.6 XML clean installation, identical reimport/commit, and
-0.4.5-to-0.4.6 upgrade passed on dev317694. Broader pilot acceptance and
-public publication remain pending. The
+0.4.5-to-0.4.6 upgrade passed on dev317694. Real Azure Linux manual discovery,
+duplicate-free repeat reconciliation and automatic scheduled execution also
+passed there. Broader security/recovery acceptance and public publication
+remain pending. The
 published beta SDK ZIP must not be renamed or imported as an update set.
 
 For development on an approved instance, use the [SDK/source instructions](../integrations/servicenow/topo-control-plane/README.md#install).
@@ -207,11 +209,13 @@ the customer's retention policy permits it.
 
 ## Evidence boundary and known gaps
 
-The XML-installed 0.4.5 app currently rejects Linux observations whose package
-or service list exceeds 256 entries, before IRE. The Azure Linux acceptance run
-exposed this with a normal package inventory. Candidate 0.4.6 adds separately
-bounded host inventory lists; its real XML upgrade and discovery retest are
-pending. See the [recorded finding](servicenow-update-set.md#azure-linux-pilot-finding--2026-09-27).
+The XML-installed 0.4.5 app rejected Linux observations whose package or service
+list exceeded 256 entries. Candidate 0.4.6 adds separately bounded host inventory
+lists. Its real XML upgrade and Azure Linux retest passed: two manual scans and
+one automatic scheduled scan each delivered three assets and two relationships
+with zero collection errors. The repeat and scheduled deliveries preserved all
+CI and relationship IDs without duplicates. See the
+[real workflow evidence](servicenow-update-set.md#real-azure-linux-workflow--dev317694).
 
 The architecture, worker/API denial matrix, manual and scheduled sanitized
 Docker discovery, repeated IRE reconciliation, lease recovery, and raw-result
@@ -220,7 +224,8 @@ scale results remain simulator-only. This onboarding slice adds packaging,
 preflight, and install evidence—it does not reclassify simulator results as
 ServiceNow throughput evidence.
 
-Still required before a broad production claim: real clean-install/repeat/upgrade XML delivery evidence, N-1 stable upgrade evidence, external Vault bindings,
+Still required before a broad production claim: the remaining XML pilot security,
+credential/run-history preservation and recovery gates, N-1 stable upgrade evidence, external Vault bindings,
 Password2 clone/backup operational
 guidance, broader CI/protocol mappings, platform volume/upgrade testing, and
 independent security-review retest. The shipped scoped app has no npm runtime

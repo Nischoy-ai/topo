@@ -1,10 +1,10 @@
 # Install the Topo pilot application from XML
 
-**Status: 0.4.6 clean installation, identical reimport/commit, and 0.4.5-to-0.4.6 upgrade passed on dev317694. Broader pilot acceptance remains open.** The published
+**Status: 0.4.6 clean installation, identical reimport/commit, 0.4.5-to-0.4.6 upgrade, and real Linux manual/repeat/scheduled discovery passed on dev317694. Broader security/recovery acceptance remains open.** The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
 Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
-clean-instance installation, repeat and upgrade test must pass before the
-first XML candidate is offered to pilots.
+XML candidate has passed those installation tests; it still requires the
+remaining pilot gates and publication approval before customer distribution.
 
 ## Customer installation
 
@@ -383,5 +383,45 @@ preview collision was reviewed against the original scoped XML and DELETE
 record before accepting the incoming update through the platform UI. This is
 baseline-reset handling, not an error-free older-version clean-install claim
 or a customer rollback procedure. The subsequent actual upgrade had no
-preview conflicts. Broader discovery, credential/security and recovery tests
-and public distribution approval remain outstanding.
+preview conflicts. The subsequent Linux workflow evidence follows below;
+broader credential/security and recovery tests and public distribution
+approval remain outstanding.
+
+## Real Azure Linux workflow — dev317694
+
+On 2026-10-03 UTC, the XML-installed 0.4.6 app and unchanged published
+`v0.1.0-beta.1` Linux worker completed two independent manual scans and one
+automatically scheduled scan of one approved Azure Linux target. SSH host keys
+matched the independently Azure-verified fixture; the scan identity remained
+non-admin. Each run completed one task in one attempt, reporting three assets,
+two relationships and zero collection errors. All three broker events were
+`Allowed` / `attempt_bound`, and all IRE deliveries had clean preflight/apply.
+
+| Execution | IRE operations | CMDB result |
+| --- | --- | --- |
+| First manual | Five `INSERT` | One computer, two adapters, two ownership relationships |
+| Independent manual repeat | Three `UPDATE`, two `NO_CHANGE` | Same three CI IDs and two relationship IDs |
+| Automatic schedule | Three `UPDATE`, two `NO_CHANGE` | Same three CI IDs and two relationship IDs |
+
+Read-only CMDB snapshots started with zero Topo-source computers/adapters and
+verified unchanged captured mapped fields and identities after both later
+runs. This proves no duplicate CIs or relationships for this fixture; `UPDATE`
+must not be described as an all-`NO_CHANGE` result. The five-minute schedule
+fired at 05:05:01 UTC, completed at 05:05:11 and advanced its next-run time to
+05:10:00. No manual scheduler invocation was used. The schedule was then
+disabled and the temporary worker stopped successfully; the packaged service
+remains inactive.
+
+Customer-owned setup used a dedicated worker user, restricted OAuth client,
+seven exact POST/v1 scopes and seven matching access policies with all wildcard
+flags false. All seven empty-body route checks reached Topo validation (400),
+while an unrelated Table API returned 401. This is a focused OAuth/functional
+check, not the full role/Password2 security matrix. Generic web-service access
+to operational and credential tables remains disabled.
+
+Private evidence is under `dist/servicenow-0.4.6-discovery/`: run/IRE summaries,
+worker logs, OAuth assertions, CMDB snapshots and identity/value comparisons.
+No lab addresses, credentials or raw observations are included in this public
+report. This closes the real Linux mapper retest and manual/repeat/scheduled
+workflow gates. Broader security, credential/run-history upgrade preservation,
+recovery, volume and public-distribution gates remain separate.

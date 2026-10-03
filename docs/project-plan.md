@@ -7,6 +7,32 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-03
+- **XML-installed Azure Linux workflow passed (2026-10-03 UTC):** This
+  completes the manual/repeat/scheduled acceptance slice staged below.
+  Owner saved the non-admin lab SSH credential on dev317694. Created the
+  revision-1 binding and `xml-pilot-linux` profile, then ran the unchanged
+  published beta worker against the single approved target with verified SSH
+  host keys. Two independent **Run now** executions and one actual scheduled
+  execution each completed one task in one attempt, with three assets, two
+  relationships, zero collection errors and a clean IRE preflight/apply.
+  First delivery inserted one computer, two network adapters and two
+  `Owns::Owned by` relationships. Both subsequent deliveries returned three
+  `UPDATE` and two `NO_CHANGE` operations. Read-only CMDB snapshots prove
+  identical CI and relationship IDs and unchanged captured mapped fields
+  after both the manual repeat and scheduled run; no duplicates were added.
+  The schedule fired automatically at 05:05:01 UTC and completed at 05:05:11,
+  advancing its next-run time by the configured five minutes. All three
+  credential accesses were `Allowed` / `attempt_bound`. The schedule is now
+  inactive; the temporary worker exited successfully, its temporary policy
+  directory was removed and the packaged service remains inactive. Both Linux VMs
+  are confirmed deallocated, restoring the lab's initial state.
+  Evidence: `dist/servicenow-0.4.6-discovery/` contains the OAuth checks,
+  worker log, run/IRE summaries and CMDB before/after comparisons. Public
+  evidence and remaining limits are in `docs/servicenow-update-set.md`.
+  This proves the single-host XML-installed Linux workflow, including the
+  0.4.6 mapper regression retest. It does not close the broader ACL/Password2,
+  credential/run-history upgrade preservation, recovery, scale or independent
+  security-review gates, and does not publish the customer package.
 - **XML-installed real Linux workflow staged (2026-10-03 UTC):** Owner
   requested manual Linux discovery from ServiceNow, CMDB verification, a
   duplicate-free repeat and scheduled execution using the existing Azure lab.
