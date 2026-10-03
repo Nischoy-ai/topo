@@ -7,13 +7,23 @@ ServiceNow application to reconcile through IRE.
 
 ## Start ServiceNow discovery in three steps
 
-### 1. Install the Nischoy Topo app
+### 1. Install the Nischoy Topo app from the XML package
 
-The customer XML update-set path is being prepared for non-production pilots.
-Follow the [XML installation guide](docs/servicenow-update-set.md) for download,
-import, preview, commit and customer-owned access setup. **No validated XML
-release is available yet**; the existing beta's SDK ZIP is not an XML update set.
-Developer/source installation remains in the [developer app guide](integrations/servicenow/topo-control-plane/README.md#install).
+Install the app through the ServiceNow interface:
+
+1. Obtain the Nischoy Topo XML update package and its matching manifest and
+   checksums from your pilot contact. Confirm package integrity and supported
+   versions using the [XML installation guide](docs/servicenow-update-set.md).
+2. Sign in as an administrator and open **System Update Sets → Retrieved
+   Update Sets → Import Update Set from XML**. Select the XML file and upload it.
+3. Open the imported update set and select **Preview Update Set**. Review and
+   resolve any preview problems, then select **Commit Update Set**.
+4. Confirm the installed app version and follow the guide to configure access,
+   credentials and discovery targets.
+
+App installation does not require a terminal, source checkout or ServiceNow SDK.
+The **0.4.6 XML candidate** has passed clean-install, repeat-import and upgrade
+testing; public distribution is still pending.
 
 ### 2. Install and start the Topo worker
 

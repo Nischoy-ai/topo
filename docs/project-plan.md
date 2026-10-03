@@ -7,6 +7,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-03
+- **README customer installation clarified:** Step 1 now describes obtaining
+  the XML package and importing, previewing and committing it through the
+  ServiceNow interface. SDK/source installation is no longer linked from that
+  customer step. The validated 0.4.6 candidate and pending public distribution
+  are distinguished; worker installation remains the separate second step.
 - **XML-installed Azure Linux workflow passed (2026-10-03 UTC):** This
   completes the manual/repeat/scheduled acceptance slice staged below.
   Owner saved the non-admin lab SSH credential on dev317694. Created the
