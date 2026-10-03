@@ -15,35 +15,23 @@ or observation history.
 
 ## 1. Install the scoped application
 
-ServiceNow's SDK supports source-code application installation on
-non-production Washington DC and later instances. It requires Node.js
-20.18.0 or later, npm 8.19.3 or later, and a ServiceNow `admin` identity for
-the installation. See the official [SDK installation requirements](https://www.servicenow.com/docs/r/application-development/servicenow-sdk/install-servicenow-sdk.html)
-and [CLI reference](https://www.servicenow.com/docs/r/xanadu/application-development/servicenow-sdk/servicenow-sdk-cli-commands.html).
+The customer distribution path is the [XML update-set guide](servicenow-update-set.md):
+download, verify, import through Retrieved Update Sets, preview, resolve
+issues and commit. The earlier 0.4.5 clean XML installation passed on Australia Patch 3.
+The 0.4.6 XML clean installation, identical reimport/commit, and
+0.4.5-to-0.4.6 upgrade passed on dev317694. Real Azure Linux manual discovery,
+duplicate-free repeat reconciliation and automatic scheduled execution also
+passed there. Broader security/recovery acceptance and public publication
+remain pending. The
+published beta SDK ZIP must not be renamed or imported as an update set.
 
-Clone the release tag, authenticate once through the SDK's OAuth browser flow,
-then run the checked-in installer. Do not paste a password, authorization code,
-access token, refresh token, or client secret into a terminal argument, issue,
-chat, or support request.
+For development on an approved instance, use the [SDK/source instructions](../integrations/servicenow/topo-control-plane/README.md#install).
+Those instructions remain the previously validated developer workflow, not a
+customer prerequisite. After the app is installed, continue below.
 
-```sh
-git clone https://github.com/Nischoy-ai/topo.git
-cd topo
-git checkout <release-tag>
-cd integrations/servicenow/topo-control-plane
-npx now-sdk auth --add your-instance.service-now.com --type oauth --alias topo-pilot
-cd ../../..
-scripts/install-servicenow-app.sh topo-pilot
-```
-
-The release also contains
-`nischoy_topo_servicenow_control_plane_0_4_4.zip`. The pinned SDK creates this
-installable upload package; Topo normalizes changing ZIP metadata, verifies its
-inventory hashes and exact app contract, and covers it with the release
-checksums and attestations. Source install is the currently real-instance-
-validated pilot path. Treat ZIP upload and a future Store/Application
-Repository delivery as unverified distribution paths until their own install,
-upgrade, and uninstall evidence is recorded.
+Have the instance administrator register the exact `Nischoy Topo` choice on
+`cmdb_ci.discovery_source` before discovery; see [IRE prerequisites](servicenow.md).
+This global customer setting is not shipped in the scoped application XML.
 
 ## 2. Create the least-privilege ServiceNow identities
 
@@ -108,7 +96,7 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-Use the same semantic release as the app source: the published beta is
+Use the worker version listed in the app release compatibility notes; the published beta is
 `v0.1.0-beta.1`. Configure the signed [APT or RPM beta
 repository](distribution.md#user-installation), then install `topo` with your
 package manager. For offline installation, download matching release files and
@@ -210,14 +198,8 @@ CIs/relationships before activating the schedule.
 
 Stop the worker before changing its local policy or upgrading the app. Upgrade
 Topo through the same package family, rerun `worker check`, then restart it.
-Upgrade the scoped app with the same checked-out release tag and SDK alias;
-do not use `--reinstall` unless you intentionally accept removal of instance-
-created app metadata that is absent from source.
-
-```sh
-scripts/install-servicenow-app.sh topo-pilot
-sudo systemctl restart topo-worker.service
-```
+Upgrade XML-installed apps only through the [reviewed XML upgrade path](servicenow-update-set.md#upgrades-and-recovery).
+Keep developer SDK instances separate; do not silently switch delivery methods.
 
 Package removal leaves `/etc/topo-worker` untouched. To end a pilot, first
 disable schedules and profiles, stop/disable the worker, revoke its OAuth
@@ -227,6 +209,14 @@ the customer's retention policy permits it.
 
 ## Evidence boundary and known gaps
 
+The XML-installed 0.4.5 app rejected Linux observations whose package or service
+list exceeded 256 entries. Candidate 0.4.6 adds separately bounded host inventory
+lists. Its real XML upgrade and Azure Linux retest passed: two manual scans and
+one automatic scheduled scan each delivered three assets and two relationships
+with zero collection errors. The repeat and scheduled deliveries preserved all
+CI and relationship IDs without duplicates. See the
+[real workflow evidence](servicenow-update-set.md#real-azure-linux-workflow--dev317694).
+
 The architecture, worker/API denial matrix, manual and scheduled sanitized
 Docker discovery, repeated IRE reconciliation, lease recovery, and raw-result
 retention are already validated separately against `dev441060`; deterministic
@@ -234,8 +224,8 @@ scale results remain simulator-only. This onboarding slice adds packaging,
 preflight, and install evidence—it does not reclassify simulator results as
 ServiceNow throughput evidence.
 
-Still required before a broad production claim: a consumer ZIP/App Repository
-or Store delivery path, N-1 stable upgrade evidence, external Vault bindings,
+Still required before a broad production claim: the remaining XML pilot security,
+credential/run-history preservation and recovery gates, N-1 stable upgrade evidence, external Vault bindings,
 Password2 clone/backup operational
 guidance, broader CI/protocol mappings, platform volume/upgrade testing, and
 independent security-review retest. The shipped scoped app has no npm runtime

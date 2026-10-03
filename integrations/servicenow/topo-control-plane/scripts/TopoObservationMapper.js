@@ -4,6 +4,7 @@ TopoObservationMapper.prototype = {
     MAX_RELATIONS: 2000,
     MAX_IDENTITY: 1024,
     MAX_NAME: 1024,
+    MAX_HOST_INVENTORY_ITEMS: 4096,
 
     initialize: function () {},
 
@@ -54,7 +55,7 @@ TopoObservationMapper.prototype = {
                 throw new Error('observation contains an invalid or unsupported asset');
             }
             this._validateStringMap(asset.identifiers, 64, 128, this.MAX_IDENTITY, true);
-            this._validateAttributes(asset.attributes);
+            this._validateAttributes(asset.attributes, asset.type);
             this._validateEvidence(asset.evidence);
             if (Object.prototype.hasOwnProperty.call(itemType, asset.native_id) && itemType[asset.native_id] !== asset.type) {
                 throw new Error('one source_native_key changes ServiceNow class within the observation');
@@ -124,7 +125,7 @@ TopoObservationMapper.prototype = {
         };
     },
 
-    _validateAttributes: function (attributes) {
+    _validateAttributes: function (attributes, assetType) {
         if (typeof attributes === 'undefined' || attributes === null) {
             return;
         }
@@ -133,10 +134,34 @@ TopoObservationMapper.prototype = {
         }
         var keys = this._keys(attributes);
         for (var i = 0; i < keys.length; i++) {
+            // Compiled Linux discovery returns package/service names as host
+            // evidence. Keep their separate bound without widening arbitrary
+            // arrays or mapping this evidence into software/service CIs.
+            if (assetType === 'host' && (keys[i] === 'packages' || keys[i] === 'services')) {
+                if (!this._hostInventory(attributes[keys[i]])) {
+                    throw new Error('host inventory must be a bounded list of names');
+                }
+                continue;
+            }
             if (!this._name(keys[i]) || !this._boundedValue(attributes[keys[i]], 0)) {
                 throw new Error('asset attribute is invalid or too deeply nested');
             }
         }
+    },
+
+    _hostInventory: function (value) {
+        if (value === null) {
+            return true;
+        }
+        if (!Array.isArray(value) || value.length > this.MAX_HOST_INVENTORY_ITEMS) {
+            return false;
+        }
+        for (var i = 0; i < value.length; i++) {
+            if (typeof value[i] !== 'string' || value[i].length > 4096 || this._control(value[i])) {
+                return false;
+            }
+        }
+        return true;
     },
 
     _boundedValue: function (value, depth) {

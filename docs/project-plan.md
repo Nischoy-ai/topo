@@ -6,7 +6,377 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-09-20 UTC
+- **Updated:** 2026-10-03
+- **README customer installation clarified:** Step 1 now describes obtaining
+  the XML package and importing, previewing and committing it through the
+  ServiceNow interface. SDK/source installation is no longer linked from that
+  customer step. The validated 0.4.6 candidate and pending public distribution
+  are distinguished; worker installation remains the separate second step.
+- **XML-installed Azure Linux workflow passed (2026-10-03 UTC):** This
+  completes the manual/repeat/scheduled acceptance slice staged below.
+  Owner saved the non-admin lab SSH credential on dev317694. Created the
+  revision-1 binding and `xml-pilot-linux` profile, then ran the unchanged
+  published beta worker against the single approved target with verified SSH
+  host keys. Two independent **Run now** executions and one actual scheduled
+  execution each completed one task in one attempt, with three assets, two
+  relationships, zero collection errors and a clean IRE preflight/apply.
+  First delivery inserted one computer, two network adapters and two
+  `Owns::Owned by` relationships. Both subsequent deliveries returned three
+  `UPDATE` and two `NO_CHANGE` operations. Read-only CMDB snapshots prove
+  identical CI and relationship IDs and unchanged captured mapped fields
+  after both the manual repeat and scheduled run; no duplicates were added.
+  The schedule fired automatically at 05:05:01 UTC and completed at 05:05:11,
+  advancing its next-run time by the configured five minutes. All three
+  credential accesses were `Allowed` / `attempt_bound`. The schedule is now
+  inactive; the temporary worker exited successfully, its temporary policy
+  directory was removed and the packaged service remains inactive. Both Linux VMs
+  are confirmed deallocated, restoring the lab's initial state.
+  Evidence: `dist/servicenow-0.4.6-discovery/` contains the OAuth checks,
+  worker log, run/IRE summaries and CMDB before/after comparisons. Public
+  evidence and remaining limits are in `docs/servicenow-update-set.md`.
+  This proves the single-host XML-installed Linux workflow, including the
+  0.4.6 mapper regression retest. It does not close the broader ACL/Password2,
+  credential/run-history upgrade preservation, recovery, scale or independent
+  security-review gates, and does not publish the customer package.
+- **XML-installed real Linux workflow staged (2026-10-03 UTC):** Owner
+  requested manual Linux discovery from ServiceNow, CMDB verification, a
+  duplicate-free repeat and scheduled execution using the existing Azure lab.
+  This is the next C1.3 acceptance slice, not a broader protocol milestone.
+  Started only the existing lab host and Linux target; Windows VMs remain
+  deallocated. Verified host SSH identity, target SSH reachability, and an
+  exact match between the host's target keys and the Azure-verified local
+  `known_hosts` fixture. Published worker `v0.1.0-beta.1` is unchanged.
+  On XML-installed dev317694, created the dedicated machine integration user
+  with only the directly assigned worker role, a restricted OAuth client,
+  seven exact POST/v1 scopes, seven matching policies and dedicated inbound
+  profile mappings. All wildcard flags were verified false before activation.
+  Token exchange succeeded; all seven empty-body calls reached application
+  validation (400), while an unrelated Table API returned 401. Secrets remain
+  in owner-only ignored files, never public evidence or command arguments.
+  Created the `xml-pilot-linux` pool (site `azure-lab`, lease 120 seconds,
+  task ceiling 300 seconds, one lease), a single-target `/32` scope (one
+  compiled partition), and the global `Nischoy Topo` discovery-source choice.
+  Worker preflight returned `ready` with only `ssh_linux.v1`; no task was
+  claimed. CMDB baseline contains zero Topo-source computers or adapters.
+  Private evidence is under `dist/servicenow-0.4.6-discovery/`.
+  The credential form is prepared for owner entry of the existing lab scan
+  username/password. No discovery profile, binding or active schedule has
+  been created yet; no CMDB writes have occurred. Worker service is inactive.
+  **Acceptance gates:** first manual run succeeds through broker, result and
+  IRE delivery; compare resulting computer/adapter/relationship identities;
+  repeat independently collected discovery with no additional CIs or
+  relationships; observe an actual scheduler-created run and matching CMDB
+  identities, then disable the test schedule and stop the temporary worker.
+  **Non-goals:** Windows/cloud inventory, broader mappings, scale or
+  production-readiness claims. Preserve the inactive upgrade fixtures and
+  sealed XML. Generic access to operational/credential tables stays disabled.
+- **dev317694 XML upgrade acceptance passed (2026-10-03 UTC):** This
+  supersedes the removal/upgrade blockers below. Owner completed standard app
+  deletion in a regular browser; read-only checks confirmed zero Topo scopes,
+  metadata files, tables, roles and routes. Preserved 0.4.5 XML was then
+  imported. Its preview encountered 427 newer local deletion records from the
+  earlier disposable test. Every conflict was checked against the scoped
+  local DELETE and incoming source XML: exact values matched after reference
+  display/source decorations, `_NULL`/`_null` naming, and twelve platform
+  licensing-record identity remaps were accounted for. Only those reviewed
+  conflicts were accepted through the platform UI; 0.4.5 commit succeeded.
+  Created an inactive pool, local discovery profile (revision 7), and future
+  inactive schedule; saved their record IDs and 23 visible field values.
+  Imported the exact sealed 0.4.6 XML. **Actual upgrade preview: 441 updates,
+  zero inserts/deletes, zero problems; commit succeeded.** Verified installed
+  0.4.6, 12 tables, 5 roles, 37 ACLs, 7 routes and 3 Script Includes. The live
+  mapper script exactly matches the reviewed 0.4.6 XML. All three fixture IDs
+  and all 23 captured values were unchanged after upgrade; all remain inactive.
+  Tested build: `glide-australia-02-11-2026__patch3-05-25-2026`.
+  Private evidence: `dist/servicenow-0.4.6-acceptance/acceptance-summary.json`,
+  preview/commit JSON, collision review, and before/after fixture snapshots.
+  Clean install, identical repeat import/commit, and the 0.4.5-to-0.4.6 upgrade
+  now pass on dev317694. Preservation evidence covers these three non-secret
+  records only, not Password2 credentials or run history. Real Linux/IRE,
+  security/recovery acceptance and public release remain pending. No worker
+  or discovery schedule was started; leave the inactive fixtures for review.
+- **Direct-removal method approved but unavailable (2026-10-03 UTC):** Owner
+  explicitly approved invoking the native application deletion processor for
+  the exact disposable Topo application and its 440 files. Auto-review allowed
+  the scoped request after this approval. The existing SDK OAuth credential
+  refreshed, but `xmlhttp.do` returned HTTP 401; the signed-in in-app browser
+  blocked navigation to that processor URL (`ERR_BLOCKED_BY_CLIENT`). No
+  further bypass attempted. Fresh read-only verification still finds 0.4.6
+  and all 440 files. Upgrade testing needs the owner to complete the standard
+  app Delete / type-delete flow in a browser that supports the native prompt.
+  No whole-instance reset is requested. Earlier clean/repeat acceptance passed;
+  the 0.4.5 upgrade baseline is still not established.
+- **Removal blocker confirmed after owner retry (2026-10-03 UTC):** Owner
+  reported completing deletion, but fresh API reads still show app 0.4.6,
+  all 440 metadata files, 12 tables, 5 roles and 7 routes. Read-only inspection
+  of the platform `delete_app_dialog` confirms that Delete requires a native
+  `prompt()` response of `delete` before starting `AppsAjaxProcessor`.
+  A proposed direct call to that processor was rejected by automatic approval
+  review because this bypass method lacked specific approval. It was not
+  executed. Do not work around that rejection. Owner approval for that exact
+  method or successful completion of the platform prompt is needed before
+  establishing the 0.4.5 baseline. Clean/repeat evidence remains valid;
+  upgrade evidence remains pending.
+- **dev317694 clean/repeat XML acceptance passed (2026-10-03 UTC):** Owner
+  authorized installation and upgrade testing and signed in to the in-app
+  browser. Before upload the Topo scope and Retrieved Update Sets lists were
+  empty. Imported unchanged 0.4.6 XML (digest `c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`)
+  through the official XML import UI. Remote set
+  `ad03443793ebc750682e74dcebba10b5` previewed with 441 inserts, zero updates,
+  zero deletes and zero preview problems; commit succeeded. Verified version
+  0.4.6, 12 tables, 5 roles, 37 ACLs, 7 REST routes and 3 Script Includes.
+  Reimported the identical file, previewed 441 updates with zero inserts,
+  deletes or problems, and committed successfully a second time. All 440
+  application-file `(sys_id, class)` pairs remained identical. Private JSON
+  evidence is in `dist/servicenow-0.4.6-acceptance/` (clean-preview,
+  clean-commit, clean-metadata-ids, repeat-preview, repeat-commit).
+  **Upgrade remains pending:** to establish a genuine 0.4.5 baseline, selected
+  the Topo scope and used the app's Delete action for this disposable test
+  installation. The confirmation reports exactly the app plus 440 files,
+  but its Delete button closes without executing removal; browser dialog API
+  returns no prompt. Two attempts produced no removal. No underlying metadata
+  was manually deleted, no old XML was installed over 0.4.6, and no worker or
+  discovery schedule started. Next: owner completes the native app-removal
+  confirmation on dev317694; verify empty scope/tables, install preserved
+  0.4.5 XML, create inactive preservation fixtures, then import/preview/commit
+  0.4.6 and compare fixtures. Preserve both XML hashes and current evidence.
+- **0.4.6 XML candidate sealed (2026-10-02):** Official publication from
+  dev394887 now produces 441 application updates. The first post-cleanup
+  publication still included 29 DELETE updates; its 30 source deletion markers
+  were privately backed up, matched exactly to the approved test-only cleanup,
+  removed, and verified absent. Customer Update records were not edited.
+  Fresh local set `7ad24cf393ebc750682e74dcebba10e1` was exported through the
+  platform; downloaded remote set `ad03443793ebc750682e74dcebba10b5` is
+  1,319,296 bytes, SHA-256
+  `c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`.
+  Original XML bytes, manifest and checksums are sealed under ignored
+  `dist/servicenow-0.4.6-xml-candidate/`, source
+  `0d93e756216bfa62192d526f58720dc7bea8c74c`. Offline inspection and all ten
+  inspector tests passed. A fresh SDK build passed; source comparison found
+  no differences or missing definitions across 48 scripts, 45 conditions,
+  seven operation scripts and API authentication/authorization settings,
+  131 field defaults/calculations/types/lengths/references/attributes and
+  mandatory/read-only settings, plus checked role/access/active settings.
+  Private review details remain in `dist/servicenow-0.4.6-export-review/`.
+  The acceptance bundle `dist/nischoy-topo-0.4.6-installation-candidate.zip`
+  adds a start-here file and five installation/configuration/recovery guides;
+  all eight file checksums and ZIP integrity passed. Bundle SHA-256:
+  `96b86bffaf43ef846d6eb1591df78f988ceca1dc07aeb97bffe9f97c0535c9fe`.
+  This supersedes the export blocker below, not the outstanding acceptance
+  gates: clean/repeat/upgrade XML installation on dev317694, real Linux
+  rescan and repeat IRE reconciliation, role/credential/security and recovery
+  checks. No worker was started; beta.1 and the installed local Topo remain
+  unchanged. The package is an offline acceptance candidate, not a public or
+  customer-approved release.
+- **Approved export-source cleanup completed (2026-10-01):** Owner approved
+  deletion of the 30 exact test metadata records and their dependent layout
+  entries, and authorized routine deletion on these development test instances.
+  SDK OAuth refreshed successfully. Bounded Table API reads confirmed the
+  30 IDs and exact Topo scope and saved a private live backup (SHA-256
+  `efa007d99019e345eb07d54d57e8d4c50f5ecb4eee6f24d5eddf1e1fc4a7c2e8`).
+  Immediately before deletion each record was compared to that backup; all
+  matched. Deleted only those 30 parents and verified their absence. All 69
+  associated list elements and 91 form elements were also verified absent.
+  Remaining metadata: 440 files plus app 0.4.6, including 12 tables, 143
+  dictionary entries, 143 documentation entries, 5 roles, 37 ACLs and mappings,
+  7 REST routes, 3 Script Includes, and no runtime privilege/layout additions.
+  Evidence is under ignored `dist/servicenow-0.4.6-export-review/`.
+  Ten offline inspector tests passed. The browser session has expired; owner
+  was asked to sign in to dev394887 for the already-approved platform publish
+  and fresh XML export. Do not source-install again or edit the previous XML.
+  No clean 0.4.6 export or sealed candidate exists yet. Previously approved
+  source cleanup may require runtime grants to be re-established before scans;
+  no worker was started and no operational/credential table was deleted.
+- **Package cleanup review (2026-10-01):** Owner requested completion of
+  the customer installation package. Official ServiceNow guidance says not
+  to directly modify Customer Update records or their Update Set reference;
+  publication captures all current application configuration. Therefore the
+  earlier suggestion to separate the 30 records within the packaging set is
+  superseded: do not move/delete payload rows or edit the downloaded XML.
+  Verified the unchanged original export checksum and wrote a private exact-ID
+  cleanup inventory to `dist/servicenow-0.4.6-export-review/cleanup-review.json`.
+  All 30 excluded parent IDs are absent from the pinned generated source;
+  their platform backup also includes 69 list elements and 91 form elements.
+  For source records matched by table/sys_id, comparison found 48 script,
+  45 condition, 7 authentication and 7 ACL-authorization field matches, with
+  no differences among those compared fields. This is partial source review,
+  not candidate approval. Completing a clean publication now requires source
+  cleanup of those test access/layout records (with cascade review), or a
+  genuinely clean authorized authoring instance. Ask for explicit approval
+  before source cleanup because it changes existing test layouts/access
+  grants; do not equate package preparation with that destructive action.
+  No instance records have been changed in this review. XML installation,
+  repeat, upgrade and broader pilot acceptance remain separate gates.
+- **0.4.6 source upgrade and platform publication succeeded (2026-09-30):**
+  After direct owner OAuth renewal, SDK 4.9.0 installed the pinned clean
+  `0d93e75` source on `dev394887` with demo data disabled. SDK returned success,
+  rollback context `a19e09d393e30750682e74dcebba1021`, and the existing app form
+  shows 0.4.6. No instance reset occurred. This is source-install evidence,
+  not XML-upgrade acceptance. Platform Publish to Update Set succeeded with
+  Include demo data explicitly unchecked: completed local set
+  `703f015793e30750682e74dcebba1032`, 471 updates. Browser export capture was
+  delayed; repeated export actions generated remote records
+  `046f819793e30750682e74dcebba10fe`, `7f7f81d793e30750682e74dcebba10f1`, and
+  downloaded `f5bfc15793e30750682e74dcebba10d8`. The unchanged 1,491,544-byte
+  download has SHA-256
+  `8dd832a728832a952f9ac757ec5f0c16b92cd9579de0e620d3265856c24cecba`.
+  It is preserved mode 0600 under ignored `dist/servicenow-0.4.6-export-review/`.
+  The existing inspector correctly rejected it: 15 `sys_scope_privilege`,
+  8 `sys_ui_list`, 6 `sys_ui_section`, and 1 `sys_restricted_caller_access`
+  records are outside the customer package contract. Do not relax the
+  allowlist or distribute this XML. Separate these 30 runtime/test metadata
+  records from the platform packaging set, preserving live test configuration,
+  and re-export through ServiceNow before offline/source comparison and XML
+  acceptance on `dev317694`. No XML has been imported there yet.
+- **Export-instance repurposing approved; SDK login expired (2026-09-30):**
+  Owner explicitly approved source-upgrading `dev394887` to 0.4.6 for export,
+  replacing its untouched XML acceptance-baseline role, with separate XML
+  validation on `dev317694`. The authorized SDK install from the pinned clean
+  source stopped during authentication: expired access token, refresh rejected
+  with `server_error (access_denied)`. No app installation occurred. Renew
+  `topo-dev394887-reset` using the official SDK OAuth flow with direct owner
+  code entry in Mac Terminal, then resume the already-approved source install.
+- **Alternate export instance check (2026-09-30):** Owner asked to try
+  `dev394887` and whether a reset is needed. Boolean-only property inspection
+  confirmed this instance recognizes prefix `664635`; its existing Topo scope
+  is present. No reset is indicated by the ownership check. Automatic approval
+  review rejected the proposed SDK 0.4.6 source installation because it would
+  mutate the XML acceptance baseline and requires explicit approval for that
+  repurposing. The command did not run. If approved, record this as a source
+  upgrade/export only and conduct clean/repeat/XML-upgrade acceptance on a
+  separate instance; do not relabel a source upgrade as XML validation.
+- **Separate 0.4.6 export instance authorized (2026-09-27):** Owner supplied
+  and signed in to `dev317694` for the requested source installation/export.
+  Read-only checks found no `x_664635_topo` scope and Australia Patch 3 build
+  `glide-australia-02-11-2026__patch3-05-25-2026`. Preserve `dev394887` as the
+  XML-installed acceptance baseline. All 13 PR checks passed at `0d93e75`.
+  A clean archive of `0d93e756216bfa62192d526f58720dc7bea8c74c` in
+  `/private/tmp/topo-046-source.IyhDNx` passed locked dependency installation,
+  Fluent tests/build/pack and actual SDK package validation; its normalized
+  ZIP is byte-identical to the previously validated 0.4.6 package. Official
+  SDK OAuth alias `topo-xml-export-046` was successfully saved by the owner
+  on 2026-09-30 and verified through alias metadata only. Installation from
+  that clean workspace with demo data disabled failed before scope creation:
+  SDK reported `Unable to install application as application was null`.
+  Platform logs at 2026-09-30 10:50:15 instance display time additionally
+  reported `Not allowing install of third party application`. A subsequent
+  exact-scope list showed no `x_664635_topo` application. No 0.4.6 XML export
+  exists. Owner-authorized boolean-only inspection subsequently confirmed that the
+  `sn_appauthor.all_company_keys` property exists and its displayed value does
+  not recognize Topo prefix `664635`. This is consistent with the platform
+  rejection; successful installation remains unverified.
+  Automatic approval review rejected reading the ownership property list
+  because it might expose private company keys; no ownership settings were
+  changed. The owner subsequently authorized adding only prefix `664635`,
+  preserving existing entries. The property form was inspected without
+  exposing values: its Value control is read-only and it offers no Save/Update
+  action to the signed-in administrator. No mutation was attempted and no SDK
+  retry was issued against the unchanged ownership configuration. Resolving
+  this needs ServiceNow-supported ownership provisioning or an authoring
+  instance that already recognizes the stable prefix; do not bypass the
+  protected form or rename the scope to make installation pass. Preserve the
+  stable scope/metadata IDs and the XML-only dev394887 acceptance baseline.
+  Never put authorization codes or tokens into chat/tool output.
+- **XML real SSH acceptance exposed a mapper defect (2026-09-27):** The owner
+  saved `xml-pilot-linux-password` (`9a44095293670f10682e74dcebba1031`). Created
+  and verified `xml-pilot-linux-binding` and `xml-pilot-linux` profile revision
+  1 with the approved scope and existing pool. Added the missing exact global
+  `cmdb_ci.discovery_source` choice `Nischoy Topo`, a documented customer
+  prerequisite excluded from the scoped XML. Manual run
+  `8246415693670f10682e74dcebba10c6` claimed one task; the broker recorded
+  `Allowed` / `attempt_bound` for attempt `8b46495693670f10682e74dcebba10ce`.
+  Result `bf46895693670f10682e74dcebba1063` stored a 15,465-byte attachment,
+  then failed before IRE with `asset attribute is invalid or too deeply nested`.
+  Seven-day failed-result expiry is recorded, not actual retention deletion.
+  The temporary worker was stopped; no schedule was enabled.
+  A sanitized regression reproduces the failure with the prior private Linux
+  fixture's 658 package/158 service counts. Candidate 0.4.6 narrows the fix to
+  top-level host package/service string lists capped at 4,096 entries, retaining
+  other array/depth/string limits, the result byte cap and unchanged IRE mapping.
+  Local source, tests and package versions are updated; deployment, platform
+  export and XML-upgrade evidence remain pending. Do not modify the installed
+  Script Include ad hoc or source-install over the XML acceptance fixture and
+  then call that an XML upgrade. Next: preserve configuration/failed history
+  through identical 0.4.5 recommit, obtain a separately authorized 0.4.6 platform
+  export/upgrade path, then repeat discovery and the remaining acceptance gates.
+  Validation: the sanitized regression failed against 0.4.5 and passes with
+  the fix; Fluent tests/build/pack, ten XML inspector tests, actual 0.4.6 SDK
+  package validation and exact Go 1.26.8 security checks pass (vet, race tests,
+  zero reachable vulnerability findings, native and Windows builds/vet).
+- **XML pilot Azure setup (2026-09-27):** Owner authorized using the existing
+  sibling `topo-cloudlab` Azure lab and provisioning needed test credentials.
+  Its private state identifies an existing non-admin Linux scan account;
+  no new Linux account or password rotation was needed. The host and Linux
+  target were deallocated and were started for this acceptance; Windows VMs
+  were left deallocated. SSH to the host verified its existing pinned key.
+  Target keys on the host match the lab's Azure-verified `known_hosts.verified`.
+  Created and verified pool `xml-pilot-linux` (`e2734dde93270f10682e74dcebba10e4`),
+  site `azure-lab`, bound to the existing dedicated worker user, with lease
+  120 seconds, task ceiling 300 seconds and maximum one lease. Created active
+  scope `xml-pilot-linux-target` revision 1 containing only the approved Linux
+  `/32`; ServiceNow compiled exactly one partition. Keep target addresses and
+  passwords in the private lab files, not public evidence.
+  Published beta.1 on the Azure host passed `topo worker check` with only
+  `ssh_linux.v1`: worker ID `b444c55293670f10682e74dcebba109b`, boot
+  `226196c2b2fc912ab0dbfd574ec2017e`, record
+  `3044c55293670f10682e74dcebba109f`. The ServiceNow worker list independently
+  verified site/pool, heartbeat at 10:36:37 instance time and zero leases.
+  The bounded harness kept the OAuth token only in process memory, passed it
+  over verified SSH input, and removed temporary non-secret startup files.
+  Evidence/harness remain in the existing private OAuth temporary directory.
+  No task was claimed, credential retrieved, discovery performed or IRE called.
+  Worker service remains inactive. The SSH credential form was prepared with
+  ID `xml-pilot-linux-password`, name `XML Pilot Linux SSH`, and the existing
+  scan username; owner password entry and subsequent discovery are recorded
+  above. Continue broker/manual/scheduled/IRE/retention acceptance. Pool/scope
+  setup and registration do not complete the remaining C1.3 gates.
+- **XML worker authentication setup in progress (2026-09-23):** Owner approved
+  the dedicated worker identity and seven-route OAuth configuration. Created
+  `topo_xml_worker` (`fc1db4cd93a78310682e74dcebba1079`), active, Machine,
+  Internal Integration User, without a password or email. Its only directly
+  assigned role is `x_664635_topo.worker`; ServiceNow additionally inherited
+  `snc_required_script_writer_permission`. Created OAuth client
+  `Topo XML Worker OAuth` (`20d9ee819327c310682e74dcebba105a`), bound to that
+  user, with 1,800-second opaque tokens, securely scoped authorization and
+  Enforce token restriction enabled. Scope `topo.xml.worker.execute`
+  (`9599eec19327c310682e74dcebba1021`). Created OAuth inbound profile
+  `316aea459327c310682e74dcebba10ac` and verified registration policy
+  `fdf9ea059327c310682e74dcebba10fc`: POST, v1, exact workers/register resource,
+  all wildcard/global flags false, bound to that profile. The client was
+  initially saved inactive, then activated for profile reference resolution;
+  no token was obtained. On September 25, completed and verified all seven
+  `Topo XML Worker <route>` API access policies, each POST/v1 with an exact
+  resource, no global/method/version/resource wildcards and the dedicated
+  inbound profile. Replaced the autogenerated wildcard REST API auth scope
+  mapping (`20d9a6059327c310682e74dcebba10fc`) with exact registration, then
+  added heartbeat, claim, renew, credential, results and complete mappings.
+  The `sys_api_access_scope` list shows exactly seven active mappings for
+  `topo.xml.worker.execute`, all wildcard flags and Disable client restriction
+  false. Created and verified boolean system property
+  `glide.oauth.inbound.client.credential.grant_type.enabled=true`.
+  Client remains active with a 1,800-second token lifespan. The owner saved the
+  existing generated client secret to a mode-0600 file at
+  `/private/tmp/topo-xml-oauth.4jqK3L/client-secret` inside a private temporary
+  directory. Never print/read that secret into tool output; consume only inside
+  the bounded token/test process. Live OAuth boundary test passed September 25:
+  client-credentials exchange returned HTTP 200 and exact scope
+  `topo.xml.worker.execute`. All seven POST routes returned HTTP 400 with their
+  exact Topo validation errors for empty bodies (zero task ID for task routes),
+  proving authenticated requests reached application validation without
+  registering workers, claiming tasks, fetching credentials, or invoking IRE.
+  The same token's unrelated Table API request for one sys_user sys_id returned
+  HTTP 401; GET on the registration route returned 405 (method rejection,
+  not independent evidence of OAuth policy enforcement). The bounded HTTPS
+  harness rejected redirects and printed only statuses/boolean assertions;
+  the token existed only in process memory. Registration, heartbeat, valid
+  lease/broker behavior and actual discovery still need worker-pool/target setup.
+  No SSH target has been supplied and no discovery has run in this step.
+- **Active follow-on:** C1.3 XML update-set pilot distribution is staged below.
+  Main/PR #63 is verified merged at `c9c2295`; beta.1 assets remain immutable.
+  Corrected 0.4.5 platform XML passed clean preview/commit on the owner-reset
+  dev394887; identical re-import preview passed with 441 updates. PR #64
+  remains draft pending role/OAuth, worker-flow, repeated-commit preservation
+  and version-upgrade acceptance. All 13 checks pass at `3ae4282`.
 - **Latest C1.2 status:** PR #62 merged at `dd3c349`. Independently approved
   promotion `35485290078` passed and published `v0.1.0-beta.1` to APT/RPM and
   the official Homebrew tap. Pages serves the signed metadata. All six
@@ -3500,6 +3870,223 @@ security-review matrix pass locally, with zero reachable vulnerability
 findings and one uncalled-module advisory. No new ServiceNow or simulator
 discovery evidence is claimed. Stable/N-1, anonymous OCI access, Store delivery,
 independent security retest and the other documented production gaps remain.
+
+### Slice C1.3 — XML update-set distribution for early pilots (staged)
+
+**Objective.** Replace customer SDK/source installation with a versioned,
+platform-generated application update-set XML, while retaining Fluent as the
+application source. The owner's 2026-09-20 request authorizes this pilot path
+and supersedes C1.2's exclusion of unrelated-customer distribution only for
+this slice. M3 remains current; technical import is not licensing entitlement.
+
+**Deliverables.** Document the pinned-source SDK build/install on an approved
+export instance, platform Publish to Update Set and Export to XML steps,
+configuration-only inspection, immutable XML/checksum/manifest packaging, and
+customer Import/Preview/Commit instructions. Review dependencies, scope, ACLs,
+cross-scope permissions and separately provisioned customer OAuth. Keep SDK
+instructions in developer documentation. Record clean-install, repeat and
+upgrade evidence separately from simulator evidence and document recovery and
+removal limits. Do not replace beta.1 release assets.
+
+**Acceptance gates.** Genuine platform export with traceable source commit,
+application version, scope, export/update-set identity and content inventory;
+no credentials, OAuth records, user grants, operational records or test data.
+Bounded offline validation must reject malformed/foreign/unknown content and
+integrity mismatches without echoing payloads. Review executable metadata
+against Fluent source: a table allowlist alone cannot prove secret absence or
+safe scripts. Preserve export bytes; repeated platform exports need not have
+identical timestamps or update-set IDs. On a separate authorized clean instance,
+record platform version, preview resolutions, commit result, twelve tables,
+five roles, seven authenticated worker routes, Password2/ACL boundaries and
+customer-owned OAuth denial tests. Prove repeat behavior and a subsequent
+version upgrade preserving customer configuration and operational history.
+No validated XML installation or published XML claim before this evidence.
+Run proportional focused tests and applicable exact Go 1.26.8 release/security
+checks, commit/push a PR and inspect every CI result. Ask before any real-instance
+change or permission approval; separate-instance availability/access is pending.
+
+**Deliberate non-goals.** No Store enrollment, paid service, entitlement or
+certification claim; no Application Repository delivery or silent conversion
+of an existing repository-installed app. No hand-created app, renamed Fluent
+ZIP, arbitrary record export, new runtime operation, external Vault, Windows
+signing, Apple notarization, native MID/ECC/Discovery integration or alteration
+of the installed development Topo. Do not use Docker on the constrained laptop.
+
+**Local implementation handoff (2026-09-20).** Branch
+`agent/servicenow-xml-pilot` starts from merged PR #63 (`c9c2295`). The offline
+Python candidate inspector preserves platform bytes, bounds XML, rejects
+unknown/foreign records, user/OAuth/operational data and a drifting core app
+inventory, and requires an exact review digest before non-overwriting packaging.
+Seven synthetic tests and the existing Fluent tests pass; these do not establish
+platform export/import compatibility. The current checker is deliberately
+provisional until a genuine export establishes the actual envelope and payload
+shapes. Existing ignored local `dist/app/author_elective_update` filenames
+include API access policies; do not copy this mutable output into a release.
+README retains three customer steps and links to the pending XML guide;
+SDK/source steps live in developer documentation. Dependency/access review,
+real acceptance matrix and recovery/removal limits are documented. Exact Go
+1.26.8 security checks pass (vet, vulnerability scan, race, native/Windows
+builds); real export and separate-instance access/approval are pending.
+No ServiceNow changes, XML publication or existing beta artifact changes have
+occurred. Next: obtain export approval and clean-instance access, inspect a real
+platform export, tighten the checker to that evidence, then execute the real
+matrix before claiming this slice complete. Public XML release wiring remains
+pending that evidence; do not label local candidates customer-ready.
+
+
+**Real export handoff (2026-09-20 UTC).** The owner approved SDK authorization,
+installation and platform export on replacement instance `dev394887`; old
+`dev441060` is unavailable. SDK 4.9.0 installed app 0.4.4 from `27107af`, then
+Publish to Update Set succeeded with demo data explicitly excluded. Local set
+`464462ff93d74f10682e74dcebba1050` is complete; exported remote set
+`58c4a6ff93d74f10682e74dcebba1085` is loaded. The 442-update, 1,292,986-byte
+export has SHA-256
+`f5aff043aed913002cacb38c04d74944cc0a5d5ddd9bfd6a5a113a1a4f433cdd`.
+The checker now handles the observed nested choices/documentation, scoped
+licensing metadata and exact document-bound translation cleanup. Ten synthetic
+tests pass, including negative variants of those shapes. Exact Go 1.26.8
+security checks pass (vet, race, vulnerability scan, native/Windows builds).
+Script/default and
+REST authentication comparisons against the generated build passed; see
+`docs/servicenow-update-set.md` for inventory and limits. Unchanged bytes are
+sealed privately in `/private/tmp/topo-0.4.4-xml-candidate` with verified
+checksums. This supersedes the earlier pending-export status, not the pending
+customer-install matrix. No public XML or existing beta asset was changed.
+Next: obtain a separate authorized clean instance, import/preview/commit this
+exact candidate, complete functional/ACL/OAuth/repeat/upgrade evidence and only
+then wire a reviewed public distribution release. Do not reset the source
+instance to substitute for the separate-instance acceptance gate.
+
+
+**Reset-test plan amendment (2026-09-21).** The owner explicitly approved a
+full reset of `dev394887` after backup verification, superseding the earlier
+requirement to retain this source instance and obtain a second simultaneous
+instance. Use the platform reset to establish a fresh baseline; an app
+uninstall alone is not a clean-instance test. The original XML, manifest and
+checksums were verified and copied to
+`dist/servicenow-reset-backup-2026-09-21/`, alongside a tracked-source archive
+and Git-history bundle at `0f5422e`. This ignored private directory is an app
+and source backup, not a full instance or credential backup. The unchanged XML
+hash remains `f5aff043aed913002cacb38c04d74944cc0a5d5ddd9bfd6a5a113a1a4f433cdd`.
+The owner signed in and personally submitted Reset and wipe after automatic
+browser approval review required final-action confirmation. The portal now
+shows `Reset and Wiping Instance...` for `dev394887`; completion is not yet
+verified. Keep the instance name. When reset finishes, sign in with the newly
+issued credentials, record the empty-scope/platform baseline, and
+import/preview/commit the saved candidate. Repeat, functional/security and
+real-version upgrade gates remain required before public XML distribution.
+
+
+**First reset-instance XML preview (2026-09-22 UTC).** After the owner
+completed the reset and signed in, the scope query `scope=x_664635_topo` and
+Retrieved Update Sets list both returned no records. The exact backed-up XML
+was uploaded successfully as remote set `58c4a6ff93d74f10682e74dcebba1085`
+with 442 updates. Preview finished with **1 error, 0 warnings**, 442 proposed
+inserts and zero collisions; no commit was attempted. Preview problem
+`fee01ce893af0310682e74dcebba1001` reports a missing `sys_scope` reference for
+`target_scope` in `sys_scope_privilege_563717bbcbab4e8fb30f0bc936f96d05`.
+Read-only lists found neither scope `sn_cmdb` nor a script include named
+`IdentificationEngine`/API name `sn_cmdb.IdentificationEngine`. The Fluent
+source and exported XML currently declare precisely that nonexistent scope
+and Script Include target; official IdentificationEngine documentation instead
+describes `sn_cmdb` as the scoped API namespace. Investigate the native API
+access contract before changing permissions. Do not accept/skip the error or
+edit the saved XML to force this candidate through. Correct source and generate
+new platform evidence; original 0.4.4 candidate is now known to fail a clean
+preview and must not be distributed. The reset test does not yet prove a clean
+installation, repeat, upgrade or functional/security acceptance.
+
+**Source correction candidate (2026-09-22).** App 0.4.5 removes the invalid
+`CrossScopePrivilege` and its manifest declaration. The SDK records the old
+stable key as deleted; the original XML remains untouched. The inspector now
+requires 0.4.5 and rejects all cross-scope privilege payloads, including the
+failed 0.4.4 candidate. Regression tests reject recurrence. Ten parser tests,
+Fluent tests/build/pack and exact Go 1.26.8 security checks pass. SDK OAuth
+was invalidated by reset and needs a new browser sign-in before deployment
+and platform re-export. A clean tracked-source build is prepared at
+`/private/tmp/topo-045-source-u968c5l1`; do not deploy the mutable repository
+dist tree. Native IRE execution and a corrected clean XML preview remain
+unproven; the source correction alone does not close either gate.
+
+**Packaging follow-up (2026-09-22).** CI run `35746967463` exposed release
+packaging constants still pinned to 0.4.4 after the app version bump. The
+build script and Go package validator now agree on 0.4.5. The actual SDK ZIP
+passes the package validator (313 entries), and exact Go 1.26.8 security
+checks pass again. Published beta artifacts and public-channel pins remain
+unchanged. The reset instance's approved SDK OAuth access has been renewed;
+corrected installation and platform export are in progress.
+
+**Corrected export evidence (2026-09-22).** Installation and platform export
+now succeeded: completed set `cf74c1b09327c310682e74dcebba10f0`, remote set
+`6ea405b09327c310682e74dcebba10d1`, 441 updates, 1,290,748 bytes, SHA-256
+`dad292dc3c7395c6d8d27e7da068a1318fd854776aca8f2f9577280c5e6f7981`.
+Private sealed files are in `dist/servicenow-0.4.5-xml-candidate`.
+Offline inspection and generated-source script/REST/default comparisons pass.
+Native scoped `identifyCIEnhanced` preflight succeeds using the existing
+`ServiceNow` source choice, without the fabricated cross-scope privilege.
+The actual `Nischoy Topo` source requires its documented global choice to be
+recreated after reset; the customer guides now state that prerequisite.
+No CMDB write API was called. Corrected clean import/commit, full worker/IRE
+apply, repeat and upgrade remain unproven. Another clean baseline requires
+separate reset approval; do not silently reuse this installed source instance.
+
+**Second clean-baseline reset (2026-09-22, owner-approved).** All five files
+in the 0.4.5 candidate's private backup inventory verified before the wipe.
+The owner explicitly confirmed another reset; the developer portal accepted
+the reset-and-wipe request, retaining `dev394887`, and displayed
+`Reset and Wiping Instance...`. Wait for completion and fresh instance login,
+then verify empty scope and import the saved XML; do not install through SDK
+before that test. CI at `d326841` passed all six public-channel installs and
+Helm but failed the 100K scale snapshot (100K items/50K relations/100 tasks,
+105 result records). Failed jobs were rerun in `35807969168`; the local
+two-repeat race-enabled scale check is pending. Do not report CI as green.
+
+**Clean XML installation (2026-09-22 instance time).** After the second reset,
+both Topo scope and retrieved sets were empty. The unchanged 0.4.5 candidate
+previewed successfully (441 inserts, zero collisions) and committed
+successfully in one minute, displayed commit time `22:26:37`. Post-commit
+metadata checks match 12 tables, five roles, 37 ACLs, seven REST operations,
+three Script Includes and no cross-scope privileges; all 12 operational
+tables are empty when queried from Topo scope. All 13 PR checks at `d326841`
+now pass after rerun; the local race-enabled scale test passed twice. Retain
+the initial transient scale failure as evidence rather than claiming it never
+occurred. Identical XML re-import retained the same remote set ID but reset its
+state to Loaded and cleared its displayed commit date. Repeat preview passed
+in 18 seconds with 441 updates, zero inserts/deletes/collisions. It remains
+Previewed, without a second commit. This behavior is not a no-op; customer-data
+preservation through repeated commit is still untested. Functional/security and real upgrade
+acceptance still remain open.
+
+**Security acceptance follow-up (2026-09-23).** All seven installed version-1
+worker routes reject unauthenticated POST requests with empty JSON bodies
+with HTTP 401, including register, heartbeat, claim, renew, credential,
+results and complete. Per-task probes use an all-zero nonexistent task ID.
+No credential material or discovery payload was submitted. This is an
+unauthenticated boundary check only, not OAuth-policy or role/Password2 proof.
+Browser session expired before authenticated checks; fresh instance sign-in
+is required. PR remains draft; final approval should wait for the staged gates.
+
+After sign-in on 2026-09-23, read-only installed metadata checks confirmed all
+37 scoped ACLs active, all seven POST resources requiring authentication and
+ACL authorization, and each resource's `enforce_acl` pointing to
+`2470af2050844974b0f28c9fceb85bd4` (worker execution ACL). Its role mapping is
+`x_664635_topo.worker`. No `topo_xml_accept_` users exist. A bounded fixture
+script is prepared privately in
+`dist/servicenow-xml-acceptance/create-test-users.js`; creation of five
+passwordless, login-locked users and their four Topo role assignments awaits
+the browser security-access confirmation. Do not claim impersonation/Password2
+checks have run yet; these are metadata checks only.
+
+**Approved role checks (2026-09-23).** The owner approved all five fixture
+identities. Impersonation verified non-admin identity and initialized-record
+read/create/write/delete ACL decisions for credentials, bindings, access
+events and tasks. The expected matrix passed (see the XML guide). No protected
+values or operational rows were created or read. Administrator identity was
+restored in a finally block. All five test users are now verified inactive,
+with login locks retained; default platform group/notification/inherited-role
+records were generated during user creation. Actual Password2/CRUD, scoped
+OAuth, broker/worker discovery and upgrade acceptance remain open. Do not
+equate these ACL decisions with the full security acceptance gate.
 
 ### Relationship to the M2.5 gate
 

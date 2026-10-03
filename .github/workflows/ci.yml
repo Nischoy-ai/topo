@@ -23,6 +23,8 @@ jobs:
       - run: gofmt -d . | tee /tmp/gofmt.diff && test ! -s /tmp/gofmt.diff
       - name: Reject raw actor-input interpolation in workflow run steps
         run: scripts/check-workflow-interpolation.sh
+      - name: Test offline update-set candidate inspection (synthetic fixtures)
+        run: python3 -m unittest discover -s scripts -p 'test_servicenow_update_set.py'
       - run: go vet ./...
       - name: Reject reachable known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...

@@ -297,6 +297,7 @@ declare global {
                     'privilege-identification-engine': {
                         table: 'sys_scope_privilege'
                         id: '563717bbcbab4e8fb30f0bc936f96d05'
+                        deleted: true
                     }
                     'rest-api-topo-worker-v1': {
                         table: 'sys_ws_definition'

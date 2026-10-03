@@ -252,6 +252,14 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   not add a protocol, target sweep, credential mode, CI mapping, production
   channel claim, or Store/Application Repository certification. See
   [docs/pilot-quickstart.md](docs/pilot-quickstart.md).
+- **Staged (XML pilot application distribution, C1.3):** retain Fluent development,
+  publish the installed app to a platform-generated update set, and distribute
+  reviewed immutable XML with integrity metadata. Customer import/preview/commit
+  and a consistent XML upgrade path replace the SDK prerequisite only after
+  separate-instance clean/repeat/upgrade evidence. Offline candidate tooling and
+  a [customer/maintainer guide](docs/servicenow-update-set.md) are in progress;
+  no XML artifact is published or validated, and no Store/licensing entitlement
+  or production-readiness claim is made.
 - **In progress (first signed beta distribution):** the public
   `Nischoy-ai/topo-packages` and `Nischoy-ai/homebrew-tap` repositories now
   exist, package Pages is HTTPS-only from `main`, and the protected native

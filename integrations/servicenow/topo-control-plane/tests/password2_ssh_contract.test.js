@@ -71,6 +71,35 @@ assert.equal(mapped.collection_errors, 1)
 assert.throws(() => mapper.validateAndMap(JSON.stringify({ ...noData, errors: [] }), task), /empty observation/)
 assert.throws(() => mapper.validateAndMap(JSON.stringify({ ...noData, plugin: 'local-host' }), task), /does not match/)
 
+// A real Ubuntu lab host returned 658 packages. These bounded string lists
+// travel as host evidence but must never become arbitrary IRE fields or CIs.
+const hostInventory = {
+    ...noData,
+    errors: [],
+    assets: [{ type: 'host', native_id: 'host-1', name: 'lab-linux', attributes: {
+        packages: Array.from({ length: 658 }, (_, i) => `package-${i}`),
+        services: Array.from({ length: 158 }, (_, i) => `service-${i}`),
+    } }],
+}
+const hostMapped = mapper.validateAndMap(JSON.stringify(hostInventory), task)
+assert.equal(hostMapped.assets, 1)
+assert.equal(hostMapped.payload.items[0].className, 'cmdb_ci_computer')
+assert.deepEqual(Object.keys(hostMapped.payload.items[0].values).sort(),
+    ['discovery_source', 'last_discovered', 'name'])
+function withAttributes(attributes, type = 'host') {
+    return JSON.stringify({ ...hostInventory, assets: [{ ...hostInventory.assets[0], type, attributes }] })
+}
+for (const key of ['packages', 'services']) {
+    assert.equal(mapper.validateAndMap(withAttributes({ [key]: Array(4096).fill('entry') }), task).assets, 1)
+    for (const invalid of [Array(4097).fill('entry'), ['bad\nentry'], ['x'.repeat(4097)], [12], [{}], [['nested']], 'not-a-list']) {
+        assert.throws(() => mapper.validateAndMap(withAttributes({ [key]: invalid }), task), /host inventory/)
+    }
+    assert.equal(mapper.validateAndMap(withAttributes({ [key]: null }), task).assets, 1)
+    assert.throws(() => mapper.validateAndMap(withAttributes({ [key]: Array(257).fill('entry') }, 'network_interface'), task), /asset attribute/)
+}
+assert.throws(() => mapper.validateAndMap(withAttributes({ unreviewed: Array(257).fill('entry') }), task), /asset attribute/)
+assert.throws(() => mapper.validateAndMap(withAttributes({ nested: { packages: Array(257).fill('entry') } }), task), /asset attribute/)
+
 const route = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'credential_task.js'), 'utf8')
 assert.match(route, /Cache-Control', 'no-store'/)
 assert.match(route, /Pragma', 'no-cache'/)

@@ -654,7 +654,7 @@ expiry/retry, cancellation, Password2/broker denials, manual and scheduled
 execution, IRE preflight/apply/reconciliation, and focused retention. Remaining
 production evidence includes:
 
-- consumer ZIP, Application Repository, or Store install/upgrade/uninstall;
+- real clean-install/repeat/upgrade evidence for the staged [XML pilot path](servicenow-update-set.md);
 - Password2 backup/clone behavior and operational recovery guidance;
 - external Vault binding with a real short-lived or rotated credential;
 - real platform volume/upgrade behavior beyond focused fixtures;
