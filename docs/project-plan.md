@@ -7,6 +7,28 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-02
+- **Direct-removal method approved but unavailable (2026-10-03 UTC):** Owner
+  explicitly approved invoking the native application deletion processor for
+  the exact disposable Topo application and its 440 files. Auto-review allowed
+  the scoped request after this approval. The existing SDK OAuth credential
+  refreshed, but `xmlhttp.do` returned HTTP 401; the signed-in in-app browser
+  blocked navigation to that processor URL (`ERR_BLOCKED_BY_CLIENT`). No
+  further bypass attempted. Fresh read-only verification still finds 0.4.6
+  and all 440 files. Upgrade testing needs the owner to complete the standard
+  app Delete / type-delete flow in a browser that supports the native prompt.
+  No whole-instance reset is requested. Earlier clean/repeat acceptance passed;
+  the 0.4.5 upgrade baseline is still not established.
+- **Removal blocker confirmed after owner retry (2026-10-03 UTC):** Owner
+  reported completing deletion, but fresh API reads still show app 0.4.6,
+  all 440 metadata files, 12 tables, 5 roles and 7 routes. Read-only inspection
+  of the platform `delete_app_dialog` confirms that Delete requires a native
+  `prompt()` response of `delete` before starting `AppsAjaxProcessor`.
+  A proposed direct call to that processor was rejected by automatic approval
+  review because this bypass method lacked specific approval. It was not
+  executed. Do not work around that rejection. Owner approval for that exact
+  method or successful completion of the platform prompt is needed before
+  establishing the 0.4.5 baseline. Clean/repeat evidence remains valid;
+  upgrade evidence remains pending.
 - **dev317694 clean/repeat XML acceptance passed (2026-10-03 UTC):** Owner
   authorized installation and upgrade testing and signed in to the in-app
   browser. Before upload the Topo scope and Retrieved Update Sets lists were
