@@ -7,6 +7,28 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-03
+- **XML automation feasibility result (2026-10-03):** Pinned SDK inspection,
+  official SDK/CI-CD documentation and live dev394887 probes do not establish
+  unattended customer XML export. The OAuth identity read the actual native
+  publication form, but its single `createUpdateSet` POST returned 401; a
+  follow-up query confirmed no probe set was created. Newer SDK `cicd publish`
+  targets Application Repository, not this XML distribution contract. No source,
+  permissions, acceptance fixtures or public assets changed. The pipeline stages,
+  exact-byte promotion rules and next authentication/API or dedicated browser
+  runner proof are documented in `docs/servicenow-update-set.md`. Private status
+  evidence is in `dist/servicenow-xml-automation/`. Keep the platform export
+  handoff explicit; no every-merge XML automation has been enabled or claimed.
+- **XML automation feasibility slice staged (2026-10-03):** Owner approved
+  proceeding with unattended export investigation. Objective: determine whether
+  the platform-generated XML can be produced by the build pipeline without an
+  interactive browser. Deliverables: inspect the pinned SDK and official CI/CD
+  contracts, probe the existing dev394887 packaging instance with its protected
+  OAuth identity, and document the supported path or precise blocker. Acceptance:
+  a genuine bounded platform export with source/version provenance and offline
+  inspection, or an explicit negative result without claiming automation works.
+  A native publication probe may create a disposable update set for the existing
+  0.4.6 app; do not modify dev317694's acceptance fixtures, weaken authentication,
+  fabricate XML, enable a custom privileged endpoint, or publish public assets.
 - **README customer installation clarified:** Step 1 now describes obtaining
   the XML package and importing, previewing and committing it through the
   ServiceNow interface. SDK/source installation is no longer linked from that

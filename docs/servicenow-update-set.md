@@ -150,6 +150,79 @@ records; those are not customer distribution inputs.
    that publication remains pending; this local tool creates candidates only.
    Never replace or append a substitute for beta.1's existing SDK artifact.
 
+## Build-pipeline automation — feasibility checked 2026-10-03
+
+**Status: unattended publication/export is not established.** The SDK build,
+metadata checks and exact-byte candidate packager already run locally; they do
+not replace the platform publication step. A customer XML must not be fabricated
+from SDK files or mislabeled as a successful platform export.
+
+The proposed pipeline has four stages:
+
+| Trigger | Work | Artifact boundary |
+| --- | --- | --- |
+| Pull request | Compile and test the app; check stable metadata identities | SDK/build evidence only |
+| Relevant app change merged to main | Deploy the exact source revision to an isolated packaging instance; publish and export through a validated platform mechanism; inspect the export | Private candidate XML, source/version manifest and checksums |
+| Release candidate | Test those exact bytes on a separate acceptance instance: clean install, repeat, upgrade preservation and discovery/security/recovery gates | Acceptance evidence bound to XML digest |
+| Approved app release | Promote the already-tested bytes with authenticated checksums/provenance and compatibility notes | Immutable GitHub Release assets |
+
+Documentation-only changes need no new XML. Worker-only releases may reference
+an existing compatible app package. Source revision and artifact identity must
+be explicit even when the app version has not changed; customer versions must
+not be silently replaced. Serialize packaging-instance operations so two builds
+cannot export each other's installed metadata. Do not rebuild after acceptance.
+
+### What was checked
+
+- Pinned SDK 4.9.0 packaging produces the SDK ZIP; its inspected command surface
+  does not establish unattended application-to-update-set publication.
+- The [newer SDK CLI's `cicd publish`](https://servicenow.github.io/sdk/4.13.0/cli#cicd-publish)
+  targets the Application Repository, not customer update-set XML. Upgrading the
+  SDK alone is not evidence that this export requirement is solved.
+- The official [publication procedure](https://www.servicenow.com/docs/r/application-development/t_PublishApplicationsToAnUpdateSet.html)
+  describes the platform UI. The reviewed [CI/CD API](https://www.servicenow.com/docs/r/api-reference/rest-apis/cicd-api.html)
+  did not establish an equivalent standalone XML publication/export contract.
+  This is a bounded research finding, not a claim that no supported option exists.
+- On the existing Australia packaging instance, read-only inspection confirmed
+  app 0.4.6 and the native UI implementation. Publication uses
+  `com.snc.apps.AppsAjaxProcessor`; export uses the platform's `UpdateSetExport`
+  action followed by its download processor. These internal implementation
+  details are not treated as a supported REST contract.
+- The protected SDK OAuth identity read the actual publication form successfully
+  (HTTP 200, publication form present, no login form). A single bounded POST to
+  the native `createUpdateSet` action returned HTTP 401. A subsequent metadata
+  query confirmed no probe update set existed. No publication or export occurred.
+  An unrelated `/api/sn_cicd/version` probe returned an unknown-resource response;
+  that does not establish plugin availability or the absence of other routes.
+
+The read-only and publication status evidence is retained privately under
+`dist/servicenow-xml-automation/`. No tokens, browser session material, raw
+response bodies or instance credentials belong in workflow logs or artifacts.
+The XML-installed acceptance instance and sealed 0.4.6 candidate were unchanged.
+
+### Implementation boundary and next gate
+
+Until the platform/authentication contract is established, retain an explicit
+maintainer export handoff followed by the existing inspector and packager.
+Do not add an every-merge workflow that reports an SDK ZIP or an old XML as a
+fresh customer package. Public XML release wiring and the remaining acceptance
+gates are still open.
+
+For fully unattended generation, first establish either a supported publication
+and download API with an authorized non-interactive identity, or a separately
+validated browser runner using the normal publication/export UI and a dedicated
+packaging account. The latter requires its own session/login lifecycle,
+protected credential provisioning and failure/recovery testing; the current
+interactive desktop browser is not a GitHub Actions authentication mechanism.
+Do not disable CSRF/authentication checks, copy a personal browser session into
+CI, or install a privileged custom export endpoint to bypass this limitation.
+
+The export proof must produce a fresh platform set, explicitly exclude demo
+and runtime data, preserve downloaded bytes, pass the inspector and source
+comparison, and repeat without mixing builds. Only after that proof should the
+merge-triggered candidate workflow be enabled. A failure after publication must
+retain the set identity for inspection rather than blindly retrying creation.
+
 ## Dependency and access review
 
 | Area | Required review and acceptance |
