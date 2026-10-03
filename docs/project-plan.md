@@ -6,7 +6,32 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-10-02
+- **Updated:** 2026-10-03
+- **dev317694 XML upgrade acceptance passed (2026-10-03 UTC):** This
+  supersedes the removal/upgrade blockers below. Owner completed standard app
+  deletion in a regular browser; read-only checks confirmed zero Topo scopes,
+  metadata files, tables, roles and routes. Preserved 0.4.5 XML was then
+  imported. Its preview encountered 427 newer local deletion records from the
+  earlier disposable test. Every conflict was checked against the scoped
+  local DELETE and incoming source XML: exact values matched after reference
+  display/source decorations, `_NULL`/`_null` naming, and twelve platform
+  licensing-record identity remaps were accounted for. Only those reviewed
+  conflicts were accepted through the platform UI; 0.4.5 commit succeeded.
+  Created an inactive pool, local discovery profile (revision 7), and future
+  inactive schedule; saved their record IDs and 23 visible field values.
+  Imported the exact sealed 0.4.6 XML. **Actual upgrade preview: 441 updates,
+  zero inserts/deletes, zero problems; commit succeeded.** Verified installed
+  0.4.6, 12 tables, 5 roles, 37 ACLs, 7 routes and 3 Script Includes. The live
+  mapper script exactly matches the reviewed 0.4.6 XML. All three fixture IDs
+  and all 23 captured values were unchanged after upgrade; all remain inactive.
+  Tested build: `glide-australia-02-11-2026__patch3-05-25-2026`.
+  Private evidence: `dist/servicenow-0.4.6-acceptance/acceptance-summary.json`,
+  preview/commit JSON, collision review, and before/after fixture snapshots.
+  Clean install, identical repeat import/commit, and the 0.4.5-to-0.4.6 upgrade
+  now pass on dev317694. Preservation evidence covers these three non-secret
+  records only, not Password2 credentials or run history. Real Linux/IRE,
+  security/recovery acceptance and public release remain pending. No worker
+  or discovery schedule was started; leave the inactive fixtures for review.
 - **Direct-removal method approved but unavailable (2026-10-03 UTC):** Owner
   explicitly approved invoking the native application deletion processor for
   the exact disposable Topo application and its 440 files. Auto-review allowed

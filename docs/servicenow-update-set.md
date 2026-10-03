@@ -1,8 +1,6 @@
 # Install the Topo pilot application from XML
 
-**Status: 0.4.6 clean installation and identical reimport/commit passed on dev317694; upgrade and broader pilot acceptance remain open.**
-The earlier 0.4.5 clean XML installation passed. That evidence does not
-validate the new 0.4.6 artifact. The published
+**Status: 0.4.6 clean installation, identical reimport/commit, and 0.4.5-to-0.4.6 upgrade passed on dev317694. Broader pilot acceptance remains open.** The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
 Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
 clean-instance installation, repeat and upgrade test must pass before the
@@ -364,3 +362,26 @@ and no problems. Its second commit succeeded, with all 440 application-file
 identities and classes unchanged. This proves this artifact's clean and repeat
 installation on this instance; it does not prove the still-pending
 0.4.5-to-0.4.6 upgrade or broader discovery/security acceptance.
+
+## 0.4.5-to-0.4.6 upgrade — dev317694
+
+On 2026-10-03 UTC, the actual upgrade of installed 0.4.5 to the exact sealed
+0.4.6 XML passed on Australia Patch 3, build
+`glide-australia-02-11-2026__patch3-05-25-2026`. Preview reported 441 updates,
+zero inserts/deletes and no problems; commit completed. Version, twelve tables,
+five roles, 37 ACLs, seven REST routes and three Script Includes were verified.
+The installed mapper script exactly matched the reviewed 0.4.6 XML.
+
+An inactive worker pool, inactive local discovery profile and inactive future
+schedule retained their three record IDs and all 23 captured field values,
+including references, revision, limits and next-run time. No discovery ran.
+This preservation evidence does not cover Password2 credentials or run history.
+
+Test setup required removing the prior disposable 0.4.6 installation before
+installing 0.4.5. ServiceNow retained 427 local deletion updates; each baseline
+preview collision was reviewed against the original scoped XML and DELETE
+record before accepting the incoming update through the platform UI. This is
+baseline-reset handling, not an error-free older-version clean-install claim
+or a customer rollback procedure. The subsequent actual upgrade had no
+preview conflicts. Broader discovery, credential/security and recovery tests
+and public distribution approval remain outstanding.

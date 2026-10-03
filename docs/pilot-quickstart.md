@@ -18,9 +18,9 @@ or observation history.
 The customer distribution path is the [XML update-set guide](servicenow-update-set.md):
 download, verify, import through Retrieved Update Sets, preview, resolve
 issues and commit. The earlier 0.4.5 clean XML installation passed on Australia Patch 3.
-The 0.4.6 XML clean installation and identical reimport/commit passed on
-dev317694. Its upgrade, broader pilot acceptance and public publication
-remain pending. The
+The 0.4.6 XML clean installation, identical reimport/commit, and
+0.4.5-to-0.4.6 upgrade passed on dev317694. Broader pilot acceptance and
+public publication remain pending. The
 published beta SDK ZIP must not be renamed or imported as an update set.
 
 For development on an approved instance, use the [SDK/source instructions](../integrations/servicenow/topo-control-plane/README.md#install).
