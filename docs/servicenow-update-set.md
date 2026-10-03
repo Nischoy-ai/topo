@@ -1,6 +1,6 @@
 # Install the Topo pilot application from XML
 
-**Status: 0.4.6 XML candidate packaged and checked offline; installation acceptance remains open.**
+**Status: 0.4.6 clean installation and identical reimport/commit passed on dev317694; upgrade and broader pilot acceptance remain open.**
 The earlier 0.4.5 clean XML installation passed. That evidence does not
 validate the new 0.4.6 artifact. The published
 worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
@@ -349,3 +349,18 @@ Local parser fixtures prove only offline rejection and byte preservation.
 Earlier SDK upgrades on `dev441060` and simulator scale tests do not satisfy
 this matrix. Source installation and export are approved and completed; a
 separate authorized clean instance is still required.
+
+## 0.4.6 clean and repeat installation — dev317694
+
+On 2026-10-03 UTC, the unchanged 0.4.6 XML with SHA-256
+`c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`
+was imported into dev317694 after confirming no Topo scope or retrieved sets.
+Preview reported 441 inserts and zero updates, deletes or problems. Commit
+completed successfully. Read-only verification found version 0.4.6, twelve
+tables, five roles, 37 ACLs, seven REST routes and three Script Includes.
+
+An identical-file reimport preview reported 441 updates, zero inserts/deletes
+and no problems. Its second commit succeeded, with all 440 application-file
+identities and classes unchanged. This proves this artifact's clean and repeat
+installation on this instance; it does not prove the still-pending
+0.4.5-to-0.4.6 upgrade or broader discovery/security acceptance.

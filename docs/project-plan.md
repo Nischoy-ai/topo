@@ -7,6 +7,29 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-02
+- **dev317694 clean/repeat XML acceptance passed (2026-10-03 UTC):** Owner
+  authorized installation and upgrade testing and signed in to the in-app
+  browser. Before upload the Topo scope and Retrieved Update Sets lists were
+  empty. Imported unchanged 0.4.6 XML (digest `c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`)
+  through the official XML import UI. Remote set
+  `ad03443793ebc750682e74dcebba10b5` previewed with 441 inserts, zero updates,
+  zero deletes and zero preview problems; commit succeeded. Verified version
+  0.4.6, 12 tables, 5 roles, 37 ACLs, 7 REST routes and 3 Script Includes.
+  Reimported the identical file, previewed 441 updates with zero inserts,
+  deletes or problems, and committed successfully a second time. All 440
+  application-file `(sys_id, class)` pairs remained identical. Private JSON
+  evidence is in `dist/servicenow-0.4.6-acceptance/` (clean-preview,
+  clean-commit, clean-metadata-ids, repeat-preview, repeat-commit).
+  **Upgrade remains pending:** to establish a genuine 0.4.5 baseline, selected
+  the Topo scope and used the app's Delete action for this disposable test
+  installation. The confirmation reports exactly the app plus 440 files,
+  but its Delete button closes without executing removal; browser dialog API
+  returns no prompt. Two attempts produced no removal. No underlying metadata
+  was manually deleted, no old XML was installed over 0.4.6, and no worker or
+  discovery schedule started. Next: owner completes the native app-removal
+  confirmation on dev317694; verify empty scope/tables, install preserved
+  0.4.5 XML, create inactive preservation fixtures, then import/preview/commit
+  0.4.6 and compare fixtures. Preserve both XML hashes and current evidence.
 - **0.4.6 XML candidate sealed (2026-10-02):** Official publication from
   dev394887 now produces 441 application updates. The first post-cleanup
   publication still included 29 DELETE updates; its 30 source deletion markers
