@@ -12,7 +12,7 @@ ServiceNow application to reconcile through IRE.
 Install the app through the ServiceNow interface:
 
 1. Obtain the Nischoy Topo XML update package and its matching manifest and
-   checksums from the [manual XML preview release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1). Confirm package integrity and supported
+   checksums from the [XML preview release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1). Confirm package integrity and supported
    versions using the [XML installation guide](docs/servicenow-update-set.md).
 2. Sign in as an administrator and open **System Update Sets → Retrieved
    Update Sets → Import Update Set from XML**. Select the XML file and upload it.
@@ -25,7 +25,7 @@ App installation does not require a terminal, source checkout or ServiceNow SDK.
 The **0.4.6 XML preview** has passed clean-install, repeat-import, upgrade and
 single-host Linux discovery tests. It omits 32 required database indexes,
 including 17 uniqueness constraints; use it only for development evaluation.
-See the release notes before installation. XML releases are published manually.
+See the release notes before installation.
 
 ### 2. Install and start the Topo worker
 

@@ -1,16 +1,11 @@
 # Install the Topo pilot application from XML
 
-**Manual development preview:** [ServiceNow 0.4.6 preview 1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1)
+**Development preview:** [ServiceNow 0.4.6 preview 1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1)
 contains the unchanged platform XML tested on dev317694, its manifest,
 checksums and current installation notes. Clean installation, repeat import,
 0.4.5-to-0.4.6 upgrade and single-host Linux manual/repeat/scheduled discovery
 passed. This preview is not customer-ready: the missing-index limitation below
 remains unresolved. Worker beta `v0.1.0-beta.1` is a separate release.
-
-The owner chose manual publication on 2026-10-04. There is no automatic customer
-package publishing on code changes. Future changes require an explicit export,
-review, acceptance and new release; never overwrite a published XML asset.
-The existing manually dispatched export-proof workflow remains diagnostic only.
 
 **Customer distribution blocked by missing indexes (2026-10-04).** A clean
 SDK 4.9.0 build declares 32 indexes, including 17 unique indexes. A read-only
