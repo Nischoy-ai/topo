@@ -9,9 +9,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Updated:** 2026-10-04
 - **Owner changed XML distribution to manual (2026-10-04):** Explicitly
   authorized publication of the current package despite the documented index
-  gap, and deferred automated customer-package publishing. Publish the exact
-  sealed 0.4.6 XML as `servicenow-0.4.6-preview.1`, a development prerelease,
-  with current installation notes and checksums. Keep the missing 32 indexes
+  gap, and deferred automated customer-package publishing. Published the exact
+  sealed 0.4.6 XML as `servicenow-0.4.6-preview.1`, a development prerelease
+  at tag commit `29a07f4`, with six assets: XML, manifest, checksums, start guide,
+  installation notes and ZIP. Downloaded the public assets again and verified
+  all checksums, exact local-byte matches and ZIP integrity. Release:
+  <https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1>. Keep the missing 32 indexes
   (17 unique), incomplete source equivalence and remaining acceptance limits
   explicit. Do not call it customer-ready or change the worker beta artifacts.
   Future changes require a new manually reviewed export/release. Historical
