@@ -6,6 +6,43 @@ Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
 XML candidate has passed those installation tests; it still requires the
 remaining pilot gates and publication approval before customer distribution.
 
+**Customer distribution blocked by missing indexes (2026-10-04).** A clean
+SDK 4.9.0 build declares 32 indexes, including 17 unique indexes. A read-only
+inventory of all twelve XML-installed tables on dev317694 found none of those
+32 ordered-column definitions. The task table has only its primary key and
+five automatic reference indexes; the eight source-defined task indexes,
+including pool/worker lease-slot constraints, are absent. The packaging
+instance's task table has those eight additional indexes. The sealed XML has
+no `sys_index`/`sys_index_column` records. Earlier single-host tests remain
+valid observations but do not establish concurrency/idempotency correctness.
+Do not distribute this candidate to customers or enable automatic promotion.
+
+ServiceNow's [developer deployment guidance](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=pro-dev-intro&module=guide&release=yokohama)
+identifies database-index creation as a manual step outside update-set tracking.
+A supported installation mechanism for the source-defined indexes, exact
+uniqueness verification, repeat-install/upgrade tests and concurrent claim/result
+tests are now required gates. Do not patch exported XML or assume a successful
+preview/commit implies that indexes were installed.
+
+The build now emits `servicenow-index-requirements` as a separate CI artifact.
+To audit column coverage after installation, use a clean SDK build and a bounded
+JSON array of `v_index_creator` records (`logical_table_name`, `index_col_name`)
+queried for each exact `sys_db_object` table ID. Name-prefix filtering of this
+virtual view returned an empty result in this investigation; it is not evidence
+that a table has no indexes.
+
+```sh
+python3 scripts/check-servicenow-index-coverage.py \
+  --dictionary integrations/servicenow/topo-control-plane/dist/app/dictionary \
+  --observed /private/path/physical-indexes.json
+```
+
+The audit exits 1 for missing ordered-column definitions, 2 for invalid input,
+and 0 for complete column coverage. Even a zero exit does **not** verify unique
+constraints or source/export equivalence: the observed view does not expose
+uniqueness, and the report always sets `customer_release` to false. Keep this
+separate from the configuration-only XML inspector and public release approval.
+
 ## Customer installation
 
 Once a validated XML release is available:

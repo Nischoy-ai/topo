@@ -27,6 +27,8 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_servicenow_update_set.py'
       - name: Test bounded ServiceNow XML export proof (offline fixtures)
         run: python3 -m unittest discover -s scripts -p 'test_servicenow_xml_export.py'
+      - name: Test physical index coverage audit (offline fixtures)
+        run: python3 -m unittest discover -s scripts -p 'test_servicenow_index_coverage.py'
       - run: go vet ./...
       - name: Reject reachable known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
@@ -40,6 +42,18 @@ jobs:
         run: scripts/build-packages.sh v0.0.0-ci "$RUNNER_TEMP/topo-raw" "$RUNNER_TEMP/topo-packages"
       - name: Reproduce and validate the installable ServiceNow application
         run: scripts/build-servicenow-app.sh "$RUNNER_TEMP/topo-packages"
+      - name: Derive required ServiceNow indexes from the compiled application
+        run: >-
+          python3 scripts/check-servicenow-index-coverage.py
+          --dictionary integrations/servicenow/topo-control-plane/dist/app/dictionary
+          > "$RUNNER_TEMP/servicenow-index-requirements.json"
+      - name: Retain source-derived index requirements for installation acceptance
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: servicenow-index-requirements
+          path: ${{ runner.temp }}/servicenow-index-requirements.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Exercise DEB and RPM install/uninstall semantics
         run: scripts/test-linux-packages.sh "$RUNNER_TEMP/topo-packages" v0.0.0-ci
       - name: Share verified package inputs with platform jobs
