@@ -6,7 +6,56 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-10-03
+- **Updated:** 2026-10-04
+- **Owner changed XML distribution to manual (2026-10-04):** Explicitly
+  authorized publication of the current package despite the documented index
+  gap, and deferred automated customer-package publishing. Published the exact
+  sealed 0.4.6 XML as `servicenow-0.4.6-preview.1`, a development prerelease
+  at tag commit `29a07f4`, with six assets: XML, manifest, checksums, start guide,
+  installation notes and ZIP. Downloaded the public assets again and verified
+  all checksums, exact local-byte matches and ZIP integrity. Release:
+  <https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1>. Keep the missing 32 indexes
+  (17 unique), incomplete source equivalence and remaining acceptance limits
+  explicit. Do not call it customer-ready or change the worker beta artifacts.
+  Future changes require a new manually reviewed export/release. Historical
+  automatic-candidate next steps below are superseded by this decision.
+
+- **XML index-delivery blocker (2026-10-04 UTC):** Before wiring automatic
+  source-bound customer packages, a clean SDK 4.9.0 build at `eff70a4` identified
+  32 source-defined indexes (17 unique). Exact-table-ID reads of
+  `v_index_creator` across all twelve XML-installed dev317694 tables returned
+  34 physical primary/reference indexes but none of the 32 required column
+  definitions. The task table has six physical indexes versus fourteen on the
+  packaging instance. Sealed 0.4.6 XML contains no index records. Source
+  deployment was not performed on acceptance and no indexes were changed.
+  This adds a customer-release blocker; prior single-host discovery and upgrade
+  observations do not establish concurrency correctness. Added a bounded,
+  offline build-derived index manifest/coverage audit and CI artifact, with
+  eight regression tests; coverage alone explicitly cannot verify uniqueness.
+  Private evidence: `dist/servicenow-xml-automation/index-audit-2026-10-04/`.
+  Next: establish a supported
+  index-installation mechanism, verify all 32 definitions and 17 uniqueness
+  contracts after clean XML installation and upgrade, then resume full source
+  equivalence and automatic candidate generation. Do not silently downgrade
+  unique indexes, fabricate XML, or declare the package customer-ready.
+
+- **Unattended password-session XML export passed (2026-10-04 UTC):** PR #65
+  merged as `3a2d92a9736fe6d29ee3946313c946beafd5142c` after all seven CI checks
+  passed. Owner approved the `servicenow-packaging` deployment for Actions run
+  `37177224670`. Every step passed: environment protection check, offline tests,
+  fresh admin password login, native publication without demo data, download,
+  offline inspection, payload-free evidence retention and raw XML cleanup.
+  App 0.4.6 produced 441 updates, 1,324,927 XML bytes, SHA-256
+  `66bd9d6ea25769ce110e871de4e559a3be524d2b27a1fff4c331a6d14bb0933f`.
+  Local set: `68669a1493fb0f50682e74dcebba1003`; exported set:
+  `33661e9493fb0f50682e74dcebba10a6`. This supersedes the unattended-login/export
+  blockers below for this exact developer-instance/native-processor path.
+  No password or session material was retrieved locally. The job tested the
+  existing installed app; source equivalence remains unchecked and this is not
+  a customer release. Next slice: deploy an exact reviewed source revision to
+  the isolated packaging instance, prove source/export equivalence, retain
+  reviewed candidate bytes, then enable merge triggers and release acceptance.
+  Evidence: Actions run and `dist/servicenow-xml-automation/live-proof-37177224670/`.
 - **Password-session XML proof implementation (2026-10-04 UTC):** Owner
   provisioned `servicenow-packaging` with the developer-instance admin password
   as `SN_SDK_USER_PWD`, plus instance/user variables. Verified secret names only;

@@ -1,10 +1,54 @@
 # Install the Topo pilot application from XML
 
-**Status: 0.4.6 clean installation, identical reimport/commit, 0.4.5-to-0.4.6 upgrade, and real Linux manual/repeat/scheduled discovery passed on dev317694. Broader security/recovery acceptance remains open.** The published
-worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
-Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
-XML candidate has passed those installation tests; it still requires the
-remaining pilot gates and publication approval before customer distribution.
+**Manual development preview:** [ServiceNow 0.4.6 preview 1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1)
+contains the unchanged platform XML tested on dev317694, its manifest,
+checksums and current installation notes. Clean installation, repeat import,
+0.4.5-to-0.4.6 upgrade and single-host Linux manual/repeat/scheduled discovery
+passed. This preview is not customer-ready: the missing-index limitation below
+remains unresolved. Worker beta `v0.1.0-beta.1` is a separate release.
+
+The owner chose manual publication on 2026-10-04. There is no automatic customer
+package publishing on code changes. Future changes require an explicit export,
+review, acceptance and new release; never overwrite a published XML asset.
+The existing manually dispatched export-proof workflow remains diagnostic only.
+
+**Customer distribution blocked by missing indexes (2026-10-04).** A clean
+SDK 4.9.0 build declares 32 indexes, including 17 unique indexes. A read-only
+inventory of all twelve XML-installed tables on dev317694 found none of those
+32 ordered-column definitions. The task table has only its primary key and
+five automatic reference indexes; the eight source-defined task indexes,
+including pool/worker lease-slot constraints, are absent. The packaging
+instance's task table has those eight additional indexes. The sealed XML has
+no `sys_index`/`sys_index_column` records. Earlier single-host tests remain
+valid observations but do not establish concurrency/idempotency correctness.
+The owner authorized publishing the current bytes as a development preview.
+Do not represent that preview as customer-ready; automatic promotion remains disabled.
+
+ServiceNow's [developer deployment guidance](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=pro-dev-intro&module=guide&release=yokohama)
+identifies database-index creation as a manual step outside update-set tracking.
+A supported installation mechanism for the source-defined indexes, exact
+uniqueness verification, repeat-install/upgrade tests and concurrent claim/result
+tests are now required gates. Do not patch exported XML or assume a successful
+preview/commit implies that indexes were installed.
+
+The build now emits `servicenow-index-requirements` as a separate CI artifact.
+To audit column coverage after installation, use a clean SDK build and a bounded
+JSON array of `v_index_creator` records (`logical_table_name`, `index_col_name`)
+queried for each exact `sys_db_object` table ID. Name-prefix filtering of this
+virtual view returned an empty result in this investigation; it is not evidence
+that a table has no indexes.
+
+```sh
+python3 scripts/check-servicenow-index-coverage.py \
+  --dictionary integrations/servicenow/topo-control-plane/dist/app/dictionary \
+  --observed /private/path/physical-indexes.json
+```
+
+The audit exits 1 for missing ordered-column definitions, 2 for invalid input,
+and 0 for complete column coverage. Even a zero exit does **not** verify unique
+constraints or source/export equivalence: the observed view does not expose
+uniqueness, and the report always sets `customer_release` to false. Keep this
+separate from the configuration-only XML inspector and public release approval.
 
 ## Customer installation
 
@@ -152,12 +196,13 @@ records; those are not customer distribution inputs.
 
 ## Build-pipeline automation — feasibility checked 2026-10-03
 
-**Status: unattended publication/export is not established.** The SDK build,
+**Status: password-session publication/export passed in Actions on 2026-10-04; source-bound automatic candidates remain pending.** The SDK build,
 metadata checks and exact-byte candidate packager already run locally; they do
 not replace the platform publication step. A customer XML must not be fabricated
 from SDK files or mislabeled as a successful platform export.
 
-The proposed pipeline has four stages:
+The following automation proposal is retained as historical design context;
+it is deferred by the owner’s manual-publication decision:
 
 | Trigger | Work | Artifact boundary |
 | --- | --- | --- |
@@ -219,8 +264,9 @@ Unattended login, download capture and CI execution still require proof.
 
 ### Implementation boundary and next gate
 
-Until the platform/authentication contract is established, retain an explicit
-maintainer export handoff followed by the existing inspector and packager.
+The password-session proof below establishes the tested native export path.
+Until source-bound candidates are established, retain the reviewed maintainer
+export handoff for customer packages.
 Do not add an every-merge workflow that reports an SDK ZIP or an old XML as a
 fresh customer package. Public XML release wiring and the remaining acceptance
 gates are still open.
@@ -250,8 +296,8 @@ administrator bypass is disabled, and self-review is allowed so the owner can
 approve a manually triggered run. These settings are rechecked before the job
 uses the password. No secret value was retrieved during setup.
 
-The **ServiceNow XML export proof** workflow is manual-only and must first be
-merged to `main`. In Actions, select that workflow, choose **Run workflow** on
+The **ServiceNow XML export proof** workflow is manual-only and landed on
+`main` through PR #65. In Actions, select that workflow, choose **Run workflow** on
 `main`, then approve the pending `servicenow-packaging` deployment. The password
 is mapped only into the proof-client step, not checkout or offline tests. The
 job runs on a disposable GitHub-hosted runner, serializes use of the packaging
@@ -291,6 +337,35 @@ change push triggers and release promotion. Offline tests cannot establish that
 the native processor accepts the session or parameters; the first live proof
 may expose a platform-contract difference and must retain a failed status rather
 than claim a package was built.
+
+### Successful unattended export — 2026-10-04 UTC
+
+[Actions run 37177224670](https://github.com/Nischoy-ai/topo/actions/runs/37177224670)
+passed on commit `3a2d92a9736fe6d29ee3946313c946beafd5142c` after the owner's
+required environment approval. The disposable runner performed fresh admin
+password login, native publication, XML download and offline inspection without
+a browser or further interactive login. All steps passed, including protection
+verification, evidence upload and raw XML cleanup.
+
+| Evidence | Result |
+| --- | --- |
+| Installed app | 0.4.6 |
+| Customer updates | 441 |
+| XML size | 1,324,927 bytes |
+| XML SHA-256 | `66bd9d6ea25769ce110e871de4e559a3be524d2b27a1fff4c331a6d14bb0933f` |
+| Local publication set | `68669a1493fb0f50682e74dcebba1003` |
+| Exported set | `33661e9493fb0f50682e74dcebba10a6` |
+
+The retained `status.json` explicitly records `source_equivalence: not_checked`
+and `customer_release: false`. The workflow exported the already-installed app;
+it did not install the workflow commit's source. No raw XML, password or session
+material was uploaded as an Actions artifact. The earlier sealed 0.4.6 candidate
+remains unchanged. This proves the password/session route on this instance and
+platform build, not a supported public API contract or future-version guarantee.
+
+The next gate is exact source deployment and source/export comparison before
+reviewed candidate retention, automatic merge triggers and customer release
+acceptance. Those are no longer blocked on proving password-based login/export.
 
 ## Dependency and access review
 

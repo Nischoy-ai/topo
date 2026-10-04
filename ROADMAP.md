@@ -256,9 +256,11 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   publish the installed app to a platform-generated update set, and distribute
   reviewed immutable XML with integrity metadata. Customer import/preview/commit
   and a consistent XML upgrade path replace the SDK prerequisite only after
-  separate-instance clean/repeat/upgrade evidence. Offline candidate tooling and
-  a [customer/maintainer guide](docs/servicenow-update-set.md) are in progress;
-  no XML artifact is published or validated, and no Store/licensing entitlement
+  separate-instance clean/repeat/upgrade evidence. The 0.4.6 development XML preview is manually distributed with a
+  [customer/maintainer guide](docs/servicenow-update-set.md). Clean/repeat/upgrade
+  and single-host discovery tests passed, but all 32 source-defined indexes
+  are missing after XML installation. Index delivery and broader acceptance
+  remain open. Future XML releases are manual; no Store/licensing entitlement
   or production-readiness claim is made.
 - **In progress (first signed beta distribution):** the public
   `Nischoy-ai/topo-packages` and `Nischoy-ai/homebrew-tap` repositories now
