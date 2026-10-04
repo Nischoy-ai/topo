@@ -1,10 +1,16 @@
 # Install the Topo pilot application from XML
 
-**Status: 0.4.6 clean installation, identical reimport/commit, 0.4.5-to-0.4.6 upgrade, and real Linux manual/repeat/scheduled discovery passed on dev317694. Broader security/recovery acceptance remains open.** The published
-worker beta is `v0.1.0-beta.1`; it does not contain a customer update-set XML.
-Do not rename its SDK ZIP or upload an arbitrary XML record export. A separate
-XML candidate has passed those installation tests; it still requires the
-remaining pilot gates and publication approval before customer distribution.
+**Manual development preview:** [ServiceNow 0.4.6 preview 1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1)
+contains the unchanged platform XML tested on dev317694, its manifest,
+checksums and current installation notes. Clean installation, repeat import,
+0.4.5-to-0.4.6 upgrade and single-host Linux manual/repeat/scheduled discovery
+passed. This preview is not customer-ready: the missing-index limitation below
+remains unresolved. Worker beta `v0.1.0-beta.1` is a separate release.
+
+The owner chose manual publication on 2026-10-04. There is no automatic customer
+package publishing on code changes. Future changes require an explicit export,
+review, acceptance and new release; never overwrite a published XML asset.
+The existing manually dispatched export-proof workflow remains diagnostic only.
 
 **Customer distribution blocked by missing indexes (2026-10-04).** A clean
 SDK 4.9.0 build declares 32 indexes, including 17 unique indexes. A read-only
@@ -15,7 +21,8 @@ including pool/worker lease-slot constraints, are absent. The packaging
 instance's task table has those eight additional indexes. The sealed XML has
 no `sys_index`/`sys_index_column` records. Earlier single-host tests remain
 valid observations but do not establish concurrency/idempotency correctness.
-Do not distribute this candidate to customers or enable automatic promotion.
+The owner authorized publishing the current bytes as a development preview.
+Do not represent that preview as customer-ready; automatic promotion remains disabled.
 
 ServiceNow's [developer deployment guidance](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=pro-dev-intro&module=guide&release=yokohama)
 identifies database-index creation as a manual step outside update-set tracking.
@@ -194,7 +201,8 @@ metadata checks and exact-byte candidate packager already run locally; they do
 not replace the platform publication step. A customer XML must not be fabricated
 from SDK files or mislabeled as a successful platform export.
 
-The proposed pipeline has four stages:
+The following automation proposal is retained as historical design context;
+it is deferred by the owner’s manual-publication decision:
 
 | Trigger | Work | Artifact boundary |
 | --- | --- | --- |
