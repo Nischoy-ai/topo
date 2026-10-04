@@ -7,6 +7,53 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-03
+- **Password-session XML proof implementation (2026-10-04 UTC):** Owner
+  provisioned `servicenow-packaging` with the developer-instance admin password
+  as `SN_SDK_USER_PWD`, plus instance/user variables. Verified secret names only;
+  the password is not readable through the GitHub API. Added the intended owner
+  reviewer (`soumiks`), disabled administrator bypass, retained main-only branch
+  access and allowed self-review as previously instructed. The staged objective
+  is now a bounded manual Actions proof of fresh password login, native platform
+  publication/download and offline XML inspection of the existing 0.4.6 app.
+  Deliverables are `.github/workflows/servicenow-xml-proof.yml`, the standard-
+  library proof client and offline security/failure tests. Acceptance requires
+  a real approved main-branch run; no live success is claimed from fixture tests.
+  The client pins dev394887, preserves CSRF/session checks, bounds requests and
+  polling, never retries mutations, and records a created-set ID before publish.
+  Only payload-free status/digest evidence is uploaded; unreviewed XML is removed
+  from the ephemeral runner. Non-goals: source deployment/equivalence, automatic
+  merge-triggered candidates, acceptance-instance changes and public release.
+  The main-only environment means PR #65 must land before the first live run;
+  do not loosen it to test this branch or extract the password locally.
+- **Admin browser publication follow-up (2026-10-03):** Owner signed in as
+  admin on dev394887. Native Publish to Update Set succeeded in ten seconds
+  with demo data unchecked; set `579831c893f78b50682e74dcebba101d` is Complete,
+  created by admin, with 441 updates. Export to XML produced a browser download
+  event, but no local artifact path was exposed by the tool, so the bytes have
+  not been inspected/sealed. Browser publication works; unattended CI login
+  and artifact capture remain unproven. Preserve the prior sealed 0.4.6 XML.
+- **XML automation feasibility result (2026-10-03):** Pinned SDK inspection,
+  official SDK/CI-CD documentation and live dev394887 probes do not establish
+  unattended customer XML export. The OAuth identity read the actual native
+  publication form, but its single `createUpdateSet` POST returned 401; a
+  follow-up query confirmed no probe set was created. Newer SDK `cicd publish`
+  targets Application Repository, not this XML distribution contract. No source,
+  permissions, acceptance fixtures or public assets changed. The pipeline stages,
+  exact-byte promotion rules and next authentication/API or dedicated browser
+  runner proof are documented in `docs/servicenow-update-set.md`. Private status
+  evidence is in `dist/servicenow-xml-automation/`. Keep the platform export
+  handoff explicit; no every-merge XML automation has been enabled or claimed.
+- **XML automation feasibility slice staged (2026-10-03):** Owner approved
+  proceeding with unattended export investigation. Objective: determine whether
+  the platform-generated XML can be produced by the build pipeline without an
+  interactive browser. Deliverables: inspect the pinned SDK and official CI/CD
+  contracts, probe the existing dev394887 packaging instance with its protected
+  OAuth identity, and document the supported path or precise blocker. Acceptance:
+  a genuine bounded platform export with source/version provenance and offline
+  inspection, or an explicit negative result without claiming automation works.
+  A native publication probe may create a disposable update set for the existing
+  0.4.6 app; do not modify dev317694's acceptance fixtures, weaken authentication,
+  fabricate XML, enable a custom privileged endpoint, or publish public assets.
 - **README customer installation clarified:** Step 1 now describes obtaining
   the XML package and importing, previewing and committing it through the
   ServiceNow interface. SDK/source installation is no longer linked from that

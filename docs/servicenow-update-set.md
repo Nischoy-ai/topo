@@ -150,6 +150,148 @@ records; those are not customer distribution inputs.
    that publication remains pending; this local tool creates candidates only.
    Never replace or append a substitute for beta.1's existing SDK artifact.
 
+## Build-pipeline automation — feasibility checked 2026-10-03
+
+**Status: unattended publication/export is not established.** The SDK build,
+metadata checks and exact-byte candidate packager already run locally; they do
+not replace the platform publication step. A customer XML must not be fabricated
+from SDK files or mislabeled as a successful platform export.
+
+The proposed pipeline has four stages:
+
+| Trigger | Work | Artifact boundary |
+| --- | --- | --- |
+| Pull request | Compile and test the app; check stable metadata identities | SDK/build evidence only |
+| Relevant app change merged to main | Deploy the exact source revision to an isolated packaging instance; publish and export through a validated platform mechanism; inspect the export | Private candidate XML, source/version manifest and checksums |
+| Release candidate | Test those exact bytes on a separate acceptance instance: clean install, repeat, upgrade preservation and discovery/security/recovery gates | Acceptance evidence bound to XML digest |
+| Approved app release | Promote the already-tested bytes with authenticated checksums/provenance and compatibility notes | Immutable GitHub Release assets |
+
+Documentation-only changes need no new XML. Worker-only releases may reference
+an existing compatible app package. Source revision and artifact identity must
+be explicit even when the app version has not changed; customer versions must
+not be silently replaced. Serialize packaging-instance operations so two builds
+cannot export each other's installed metadata. Do not rebuild after acceptance.
+
+### What was checked
+
+- Pinned SDK 4.9.0 packaging produces the SDK ZIP; its inspected command surface
+  does not establish unattended application-to-update-set publication.
+- The [newer SDK CLI's `cicd publish`](https://servicenow.github.io/sdk/4.13.0/cli#cicd-publish)
+  targets the Application Repository, not customer update-set XML. Upgrading the
+  SDK alone is not evidence that this export requirement is solved.
+- The official [publication procedure](https://www.servicenow.com/docs/r/application-development/t_PublishApplicationsToAnUpdateSet.html)
+  describes the platform UI. The reviewed [CI/CD API](https://www.servicenow.com/docs/r/api-reference/rest-apis/cicd-api.html)
+  did not establish an equivalent standalone XML publication/export contract.
+  This is a bounded research finding, not a claim that no supported option exists.
+- On the existing Australia packaging instance, read-only inspection confirmed
+  app 0.4.6 and the native UI implementation. Publication uses
+  `com.snc.apps.AppsAjaxProcessor`; export uses the platform's `UpdateSetExport`
+  action followed by its download processor. These internal implementation
+  details are not treated as a supported REST contract.
+- The protected SDK OAuth identity read the actual publication form successfully
+  (HTTP 200, publication form present, no login form). A single bounded POST to
+  the native `createUpdateSet` action returned HTTP 401. A subsequent metadata
+  query confirmed no probe update set existed. No publication or export occurred.
+  An unrelated `/api/sn_cicd/version` probe returned an unknown-resource response;
+  that does not establish plugin availability or the absence of other routes.
+
+The read-only and publication status evidence is retained privately under
+`dist/servicenow-xml-automation/`. No tokens, browser session material, raw
+response bodies or instance credentials belong in workflow logs or artifacts.
+The XML-installed acceptance instance and sealed 0.4.6 candidate were unchanged.
+
+### Admin browser follow-up
+
+After the owner signed in as admin, the normal publication UI succeeded on
+2026-10-03. The standalone application form was used because its link did not
+open the dialog inside the navigation frame. Version remained 0.4.6; Include
+demo data was unchecked before submission. The resulting update set
+`579831c893f78b50682e74dcebba101d` was Complete, created by admin, with 441
+Customer Updates. The platform reported success in ten seconds. The native
+Export to XML action produced a browser download event.
+
+This proves publication through the signed-in admin browser. The current tool
+interface did not provide a filesystem path for that download, so the new XML
+bytes have not been inspected or sealed. It is not a new validated candidate
+and does not replace the existing sealed 0.4.6 package. No browser credentials
+were extracted, and the earlier OAuth-only 401 result remains a separate fact.
+Unattended login, download capture and CI execution still require proof.
+
+### Implementation boundary and next gate
+
+Until the platform/authentication contract is established, retain an explicit
+maintainer export handoff followed by the existing inspector and packager.
+Do not add an every-merge workflow that reports an SDK ZIP or an old XML as a
+fresh customer package. Public XML release wiring and the remaining acceptance
+gates are still open.
+
+For fully unattended generation, first establish either a supported publication
+and download API with an authorized non-interactive identity, or a separately
+validated browser runner using the normal publication/export UI and a dedicated
+packaging account. The latter requires its own session/login lifecycle,
+protected credential provisioning and failure/recovery testing; the current
+interactive desktop browser is not a GitHub Actions authentication mechanism.
+Do not disable CSRF/authentication checks, copy a personal browser session into
+CI, or install a privileged custom export endpoint to bypass this limitation.
+
+The export proof must produce a fresh platform set, explicitly exclude demo
+and runtime data, preserve downloaded bytes, pass the inspector and source
+comparison, and repeat without mixing builds. Only after that proof should the
+merge-triggered candidate workflow be enabled. A failure after publication must
+retain the set identity for inspection rather than blindly retrying creation.
+
+### Password-based Actions proof
+
+The owner approved using the developer instance's admin account and provisioned
+its password directly in GitHub. `servicenow-packaging` contains environment
+secret `SN_SDK_USER_PWD` and variables `SN_SDK_INSTANCE_URL` and `SN_SDK_USER`.
+Its branch policy permits only `main`, `soumiks` is the sole required reviewer,
+administrator bypass is disabled, and self-review is allowed so the owner can
+approve a manually triggered run. These settings are rechecked before the job
+uses the password. No secret value was retrieved during setup.
+
+The **ServiceNow XML export proof** workflow is manual-only and must first be
+merged to `main`. In Actions, select that workflow, choose **Run workflow** on
+`main`, then approve the pending `servicenow-packaging` deployment. The password
+is mapped only into the proof-client step, not checkout or offline tests. The
+job runs on a disposable GitHub-hosted runner, serializes use of the packaging
+instance and has a ten-minute ceiling.
+
+`scripts/probe-servicenow-xml-export.py` implements the pinned SDK's password
+login/session-CSRF pattern with standard-library HTTP and the existing native
+UI processors. This is an experimental Australia-specific adapter, not a claim
+that those processors are a supported public REST API. It accepts only the
+configured dev394887 origin and admin identity, requires the installed scope
+and app version 0.4.6, creates a non-current set, publishes without demo data,
+waits for Complete, submits the native export action and accepts only the
+same-origin native download redirect. Login/MFA challenges, unexpected
+responses, redirects, formats or timeouts fail closed. Nothing weakens instance
+security or changes dev317694.
+
+All network reads, XML size and polling are bounded. Cookies/passwords/CSRF
+values stay in memory; errors never include response bodies. A write with an
+ambiguous response is never automatically retried. If creation returned a set
+ID, `created-set.json` records it before publication so an operator can inspect
+the set before deciding whether to rerun. If creation itself times out, inspect
+the packaging instance for the proof-named set before rerunning. The workflow
+leaves platform records for diagnosis rather than automatically deleting them.
+
+The exported bytes are inspected using the existing offline checker. Actions
+retains only `status.json` and, when available, `created-set.json`; raw XML is
+never uploaded and is removed at job completion. Artifacts of a public repository
+must not be treated as private secret storage. A successful proof records the XML
+digest, byte count and inventory count, but explicitly marks source equivalence
+unchecked and customer release false. It tests the existing app, not deployment
+of the workflow commit's source. The previous sealed 0.4.6 candidate is unchanged.
+
+After this live proof passes, the next slice must bind a clean source deployment
+to the export, check exact source equivalence and exclusions, retain reviewed
+candidate bytes, and run separate-instance acceptance. Only then enable app-
+change push triggers and release promotion. Offline tests cannot establish that
+the native processor accepts the session or parameters; the first live proof
+may expose a platform-contract difference and must retain a failed status rather
+than claim a package was built.
+
 ## Dependency and access review
 
 | Area | Required review and acceptance |
