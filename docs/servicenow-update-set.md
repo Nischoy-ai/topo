@@ -152,7 +152,7 @@ records; those are not customer distribution inputs.
 
 ## Build-pipeline automation — feasibility checked 2026-10-03
 
-**Status: unattended publication/export is not established.** The SDK build,
+**Status: password-session publication/export passed in Actions on 2026-10-04; source-bound automatic candidates remain pending.** The SDK build,
 metadata checks and exact-byte candidate packager already run locally; they do
 not replace the platform publication step. A customer XML must not be fabricated
 from SDK files or mislabeled as a successful platform export.
@@ -219,8 +219,9 @@ Unattended login, download capture and CI execution still require proof.
 
 ### Implementation boundary and next gate
 
-Until the platform/authentication contract is established, retain an explicit
-maintainer export handoff followed by the existing inspector and packager.
+The password-session proof below establishes the tested native export path.
+Until source-bound candidates are established, retain the reviewed maintainer
+export handoff for customer packages.
 Do not add an every-merge workflow that reports an SDK ZIP or an old XML as a
 fresh customer package. Public XML release wiring and the remaining acceptance
 gates are still open.
@@ -250,8 +251,8 @@ administrator bypass is disabled, and self-review is allowed so the owner can
 approve a manually triggered run. These settings are rechecked before the job
 uses the password. No secret value was retrieved during setup.
 
-The **ServiceNow XML export proof** workflow is manual-only and must first be
-merged to `main`. In Actions, select that workflow, choose **Run workflow** on
+The **ServiceNow XML export proof** workflow is manual-only and landed on
+`main` through PR #65. In Actions, select that workflow, choose **Run workflow** on
 `main`, then approve the pending `servicenow-packaging` deployment. The password
 is mapped only into the proof-client step, not checkout or offline tests. The
 job runs on a disposable GitHub-hosted runner, serializes use of the packaging
@@ -291,6 +292,35 @@ change push triggers and release promotion. Offline tests cannot establish that
 the native processor accepts the session or parameters; the first live proof
 may expose a platform-contract difference and must retain a failed status rather
 than claim a package was built.
+
+### Successful unattended export — 2026-10-04 UTC
+
+[Actions run 37177224670](https://github.com/Nischoy-ai/topo/actions/runs/37177224670)
+passed on commit `3a2d92a9736fe6d29ee3946313c946beafd5142c` after the owner's
+required environment approval. The disposable runner performed fresh admin
+password login, native publication, XML download and offline inspection without
+a browser or further interactive login. All steps passed, including protection
+verification, evidence upload and raw XML cleanup.
+
+| Evidence | Result |
+| --- | --- |
+| Installed app | 0.4.6 |
+| Customer updates | 441 |
+| XML size | 1,324,927 bytes |
+| XML SHA-256 | `66bd9d6ea25769ce110e871de4e559a3be524d2b27a1fff4c331a6d14bb0933f` |
+| Local publication set | `68669a1493fb0f50682e74dcebba1003` |
+| Exported set | `33661e9493fb0f50682e74dcebba10a6` |
+
+The retained `status.json` explicitly records `source_equivalence: not_checked`
+and `customer_release: false`. The workflow exported the already-installed app;
+it did not install the workflow commit's source. No raw XML, password or session
+material was uploaded as an Actions artifact. The earlier sealed 0.4.6 candidate
+remains unchanged. This proves the password/session route on this instance and
+platform build, not a supported public API contract or future-version guarantee.
+
+The next gate is exact source deployment and source/export comparison before
+reviewed candidate retention, automatic merge triggers and customer release
+acceptance. Those are no longer blocked on proving password-based login/export.
 
 ## Dependency and access review
 

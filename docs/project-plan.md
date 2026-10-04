@@ -6,7 +6,24 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-10-03
+- **Updated:** 2026-10-04
+- **Unattended password-session XML export passed (2026-10-04 UTC):** PR #65
+  merged as `3a2d92a9736fe6d29ee3946313c946beafd5142c` after all seven CI checks
+  passed. Owner approved the `servicenow-packaging` deployment for Actions run
+  `37177224670`. Every step passed: environment protection check, offline tests,
+  fresh admin password login, native publication without demo data, download,
+  offline inspection, payload-free evidence retention and raw XML cleanup.
+  App 0.4.6 produced 441 updates, 1,324,927 XML bytes, SHA-256
+  `66bd9d6ea25769ce110e871de4e559a3be524d2b27a1fff4c331a6d14bb0933f`.
+  Local set: `68669a1493fb0f50682e74dcebba1003`; exported set:
+  `33661e9493fb0f50682e74dcebba10a6`. This supersedes the unattended-login/export
+  blockers below for this exact developer-instance/native-processor path.
+  No password or session material was retrieved locally. The job tested the
+  existing installed app; source equivalence remains unchecked and this is not
+  a customer release. Next slice: deploy an exact reviewed source revision to
+  the isolated packaging instance, prove source/export equivalence, retain
+  reviewed candidate bytes, then enable merge triggers and release acceptance.
+  Evidence: Actions run and `dist/servicenow-xml-automation/live-proof-37177224670/`.
 - **Password-session XML proof implementation (2026-10-04 UTC):** Owner
   provisioned `servicenow-packaging` with the developer-instance admin password
   as `SN_SDK_USER_PWD`, plus instance/user variables. Verified secret names only;
