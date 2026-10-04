@@ -1,0 +1,72 @@
+name: ServiceNow XML export proof
+
+# Bootstrap proof only. Enable merge-triggered candidates only after native
+# password login, export, source equivalence and artifact review are proven.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: servicenow-packaging
+  cancel-in-progress: false
+
+jobs:
+  export-proof:
+    if: github.repository == 'Nischoy-ai/topo' && github.ref == 'refs/heads/main'
+    environment: servicenow-packaging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Verify the protected environment before using its password
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/Nischoy-ai/topo/environments/servicenow-packaging > "$RUNNER_TEMP/packaging-environment.json"
+          gh api repos/Nischoy-ai/topo/environments/servicenow-packaging/deployment-branch-policies > "$RUNNER_TEMP/packaging-branches.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          env = json.loads((root / 'packaging-environment.json').read_text())
+          branches = json.loads((root / 'packaging-branches.json').read_text())
+          assert env['can_admins_bypass'] is False
+          assert env['deployment_branch_policy'] == {'protected_branches': False, 'custom_branch_policies': True}
+          reviewers = [r for r in env['protection_rules'] if r['type'] == 'required_reviewers']
+          assert len(reviewers) == 1
+          assert [(r['type'], r['reviewer']['id']) for r in reviewers[0]['reviewers']] == [('User', 6027359)]
+          assert branches['total_count'] == 1
+          assert [(b['name'], b['type']) for b in branches['branch_policies']] == [('main', 'branch')]
+          PY
+      - name: Test the proof client without credentials or network
+        run: python3 -m unittest discover -s scripts -p 'test_servicenow_xml_export.py'
+      - name: Log in and exercise native publication and download
+        env:
+          SN_SDK_INSTANCE_URL: ${{ vars.SN_SDK_INSTANCE_URL }}
+          SN_SDK_USER: ${{ vars.SN_SDK_USER }}
+          SN_SDK_USER_PWD: ${{ secrets.SN_SDK_USER_PWD }}
+          TOPO_XML_PROOF_OUTPUT: ${{ runner.temp }}/topo-xml-proof
+        run: python3 scripts/probe-servicenow-xml-export.py
+      - name: Retain only payload-free proof evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: servicenow-xml-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/topo-xml-proof/status.json
+            ${{ runner.temp }}/topo-xml-proof/created-set.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove unreviewed export bytes
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/topo-xml-proof/raw-export.xml"

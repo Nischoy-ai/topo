@@ -240,6 +240,58 @@ comparison, and repeat without mixing builds. Only after that proof should the
 merge-triggered candidate workflow be enabled. A failure after publication must
 retain the set identity for inspection rather than blindly retrying creation.
 
+### Password-based Actions proof
+
+The owner approved using the developer instance's admin account and provisioned
+its password directly in GitHub. `servicenow-packaging` contains environment
+secret `SN_SDK_USER_PWD` and variables `SN_SDK_INSTANCE_URL` and `SN_SDK_USER`.
+Its branch policy permits only `main`, `soumiks` is the sole required reviewer,
+administrator bypass is disabled, and self-review is allowed so the owner can
+approve a manually triggered run. These settings are rechecked before the job
+uses the password. No secret value was retrieved during setup.
+
+The **ServiceNow XML export proof** workflow is manual-only and must first be
+merged to `main`. In Actions, select that workflow, choose **Run workflow** on
+`main`, then approve the pending `servicenow-packaging` deployment. The password
+is mapped only into the proof-client step, not checkout or offline tests. The
+job runs on a disposable GitHub-hosted runner, serializes use of the packaging
+instance and has a ten-minute ceiling.
+
+`scripts/probe-servicenow-xml-export.py` implements the pinned SDK's password
+login/session-CSRF pattern with standard-library HTTP and the existing native
+UI processors. This is an experimental Australia-specific adapter, not a claim
+that those processors are a supported public REST API. It accepts only the
+configured dev394887 origin and admin identity, requires the installed scope
+and app version 0.4.6, creates a non-current set, publishes without demo data,
+waits for Complete, submits the native export action and accepts only the
+same-origin native download redirect. Login/MFA challenges, unexpected
+responses, redirects, formats or timeouts fail closed. Nothing weakens instance
+security or changes dev317694.
+
+All network reads, XML size and polling are bounded. Cookies/passwords/CSRF
+values stay in memory; errors never include response bodies. A write with an
+ambiguous response is never automatically retried. If creation returned a set
+ID, `created-set.json` records it before publication so an operator can inspect
+the set before deciding whether to rerun. If creation itself times out, inspect
+the packaging instance for the proof-named set before rerunning. The workflow
+leaves platform records for diagnosis rather than automatically deleting them.
+
+The exported bytes are inspected using the existing offline checker. Actions
+retains only `status.json` and, when available, `created-set.json`; raw XML is
+never uploaded and is removed at job completion. Artifacts of a public repository
+must not be treated as private secret storage. A successful proof records the XML
+digest, byte count and inventory count, but explicitly marks source equivalence
+unchecked and customer release false. It tests the existing app, not deployment
+of the workflow commit's source. The previous sealed 0.4.6 candidate is unchanged.
+
+After this live proof passes, the next slice must bind a clean source deployment
+to the export, check exact source equivalence and exclusions, retain reviewed
+candidate bytes, and run separate-instance acceptance. Only then enable app-
+change push triggers and release promotion. Offline tests cannot establish that
+the native processor accepts the session or parameters; the first live proof
+may expose a platform-contract difference and must retain a failed status rather
+than claim a package was built.
+
 ## Dependency and access review
 
 | Area | Required review and acceptance |
