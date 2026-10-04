@@ -7,6 +7,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-04
+- **Customer wording:** Removed publication-process language from the README,
+  customer installation introduction and GitHub release notes. Maintainer
+  workflow history remains internal to the maintainer sections; package
+  limitations and integrity information remain visible.
+
 - **Owner changed XML distribution to manual (2026-10-04):** Explicitly
   authorized publication of the current package despite the documented index
   gap, and deferred automated customer-package publishing. Published the exact
