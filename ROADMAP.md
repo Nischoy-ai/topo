@@ -4,15 +4,24 @@ Topo discovers infrastructure through locally approved operations and publishes
 normalized observations to destination systems. ServiceNow controls the current
 managed Linux discovery workflow and reconciles supported CIs through IRE.
 
-## Current releases
+## Current release
 
-- **ServiceNow application 0.4.6 preview 2:** one native XML batch containing
-  the application and 32 required indexes. See [installation](docs/servicenow-update-set.md)
-  and [package validation](docs/servicenow-validation.md).
-- **Worker v0.1.0-beta.1:** signed Linux APT/RPM packages and a macOS Homebrew
-  formula, available on amd64 and arm64. See [distribution](docs/distribution.md).
-- Windows package publication and stable channels are planned. The current
-  macOS CLI beta uses Homebrew and is not Apple Developer ID signed or notarized.
+**Topo 0.4.6 Beta** provides the combined ServiceNow application/index XML and
+an outbound worker installed through signed Linux APT/RPM repositories or
+macOS Homebrew on amd64 and arm64. See [installation](docs/servicenow-update-set.md)
+and [worker distribution](docs/distribution.md). Exact component builds are
+recorded in release manifests and validation records.
+
+Windows package publication and stable channels are planned. The macOS CLI
+formula does not use Apple Developer ID signing or notarization.
+
+## Release engineering baseline
+
+Release/security builds use exact **Go 1.26.9** with Go 1.26 compatibility.
+The 2026-10-08 vulnerability scan required this patch and `golang.org/x/net`
+0.60.0; the [security record](docs/security-review.md#2026-10-08-build-baseline-update)
+retains the affected scan and verification scope. This patch update preserves
+M3 capability priorities.
 
 ## Available capabilities
 
@@ -29,11 +38,8 @@ managed Linux discovery workflow and reconciles supported CIs through IRE.
 | Credentials | Bounded env/file, Vault KV2, and Kubernetes Secret references | [Credential references](docs/credential-references.md) |
 | Distribution | Reproducible worker archives, signed checksums, SBOM/provenance, signed Linux repositories, and tested public-channel installs | [Releases](docs/releases.md) |
 
-Protocol guides describe the tested environments and compatibility boundaries.
-The ServiceNow package has passed fresh and repeat installation plus a 0.4.5
-to 0.4.6 combined-package upgrade preserving the tested configuration records.
-The validation record distinguishes each acceptance run. Simulated scale gates
-cover 1K, 10K and 100K assets; those timings do not measure live ServiceNow capacity.
+Protocol compatibility and package validation are recorded separately in the
+[documentation evidence index](docs/evidence/README.md).
 
 ## Current development focus
 

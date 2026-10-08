@@ -6,7 +6,7 @@ truthful commit attribution and do not rewrite shared history.
 
 ## Checks
 
-Use Go 1.26 compatibility and exact Go 1.26.8 for release/security evidence.
+Use Go 1.26 compatibility and exact Go 1.26.9 for release/security evidence.
 For Go changes, run formatting, `go vet ./...`, `go test -race ./...`, and
 `go build -trimpath ./cmd/topo`. Windows-tagged changes also require Windows
 amd64 vet/build. Run `scripts/security-review-checks.sh` for security-sensitive

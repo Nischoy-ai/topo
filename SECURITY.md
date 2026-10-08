@@ -2,10 +2,10 @@
 
 ## Versions receiving fixes
 
-The current published worker is **v0.1.0-beta.1**. The current ServiceNow XML
-package is **0.4.6 preview 2**. Security fixes are developed on `main` and
-published with release notes and compatible application/worker versions.
-Use the current package for new installations and verify its release manifest.
+The current application release is **Topo 0.4.6 Beta**. Security fixes are
+maintained on `main` and published through the Beta worker channel. Verify the
+release manifest and record `topo version` when reporting an issue. Exact build
+and vulnerability-scan results are retained in the [security review record](docs/security-review.md).
 
 ## Report a vulnerability
 
@@ -76,7 +76,7 @@ See [IRE setup](docs/servicenow.md) and
 
 ## Release verification
 
-Worker archives are built reproducibly with exact Go 1.26.8. Release workflows
+Release builds produce reproducible worker archives with exact Go 1.26.9. Release workflows
 use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
 provenance attestations. Linux package/repository metadata is signed; protected
 signing and promotion environments require review. The published beta has
@@ -85,13 +85,13 @@ both Linux and Mac architectures.
 
 The macOS beta is a Homebrew CLI formula without Apple Developer ID signing
 or notarization. Windows and stable publication are planned. The manually
-published ServiceNow XML preview has checksums but no cryptographic signature
+published ServiceNow XML package has checksums but no cryptographic signature
 or provenance attestation. Its checksum detects corruption; verify the download
 origin as part of your installation process. Never disable platform security
 protections to install Topo.
 
 See [consumer verification](docs/releases.md#verify-a-downloaded-release),
-[distribution evidence](docs/distribution.md#first-beta-operational-evidence),
+[distribution evidence](docs/evidence/distribution.md),
 and [ServiceNow package validation](docs/servicenow-validation.md).
 
 ## Security review

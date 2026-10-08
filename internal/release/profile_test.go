@@ -48,7 +48,7 @@ func testBetaBuildAndRefresh(t *testing.T, profile string) {
 	compiler := filepath.Join(root, "fake-go")
 	script := `#!/bin/sh
 set -eu
-if [ "$1" = env ]; then echo go1.26.8; exit; fi
+if [ "$1" = env ]; then echo go1.26.9; exit; fi
 test "$1" = build
 while [ "$1" != -o ]; do shift; done
 shift

@@ -1,6 +1,6 @@
 # ServiceNow index checklist for Topo 0.4.6
 
-Preview 2 includes all **32 indexes**, including **17 unique indexes**, in the
+Topo 0.4.6 Beta includes all **32 indexes**, including **17 unique indexes**, in the
 combined application XML. Upload once, then preview and commit the batch from
 its Nischoy Topo base. Confirm the application and index child are Committed.
 Follow the [installation guide](servicenow-update-set.md#customer-installation).

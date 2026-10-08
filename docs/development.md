@@ -2,13 +2,13 @@
 
 This guide is for building and exercising Topo from source. Customers starting
 ServiceNow-controlled Linux discovery should use the [three-step
-README](../README.md) and the [ServiceNow Linux pilot
-quickstart](pilot-quickstart.md).
+README](../README.md) and the [ServiceNow Linux setup
+guide](pilot-quickstart.md).
 
 ## Build and run locally
 
 Topo requires Go 1.26 or later. Release and security evidence uses exact Go
-1.26.8.
+1.26.9.
 
 ```sh
 make test
@@ -44,7 +44,7 @@ probe, pattern, or sensor. See [ServiceNow IRE publishing](servicenow.md).
 
 ## Component guides
 
-- [ServiceNow Linux pilot](pilot-quickstart.md)
+- [ServiceNow Linux setup](pilot-quickstart.md)
 - [ServiceNow-managed stateless worker](servicenow-worker.md)
 - [Topo Lab and deterministic simulation](topo-lab.md)
 - [Linux SSH discovery](ssh-discovery.md)
