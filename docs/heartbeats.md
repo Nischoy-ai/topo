@@ -1,10 +1,7 @@
 # Collector heartbeats
 
 Heartbeats let the controller tell a collector is alive between discovery
-scans, without waiting for the next full observation delivery. This is
-slice 4 of the "collector enrollment, outbound mTLS, rotation, heartbeats,
-and jobs" milestone; see [project plan](project-plan.md) for the full
-staged plan. Unlike enrollment, outbound mTLS, and certificate rotation
+scans, without waiting for the next full observation delivery. Unlike enrollment, outbound mTLS, and certificate rotation
 ([Collector enrollment](enrollment.md)), heartbeats require no additional
 infrastructure to use: `POST /v1/heartbeats` authenticates with whatever
 credential a collector already presents — the bearer API key or a verified

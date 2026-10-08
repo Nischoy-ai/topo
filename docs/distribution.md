@@ -9,12 +9,11 @@ DEB, RPM, MSI, raw archive, and chart bytes referenced by every channel.
 The reviewed release workflow selects `linux-homebrew-beta`: four raw archives
 (Linux/macOS, amd64/arm64), no Windows ZIPs or MSIs, and no WinGet manifests.
 Windows code and full-platform tooling remain supported but Windows signing
-provisioning is deferred. The unused Azure signing account was deleted with
-owner approval. The ServiceNow application, offline bundle, and existing Helm
-artifact path remain included; no discovery capability changes.
+provisioning is deferred. The ServiceNow application, offline bundle, and existing Helm artifact path
+remain included.
 
 Apple Developer Program membership is not a prerequisite for this CLI formula.
-The owner explicitly deferred Developer ID/notarization for the beta. It keeps
+This beta uses the Homebrew CLI distribution profile. It keeps
 checksummed formula downloads, Sigstore-signed release checksums, GitHub
 provenance/SBOM attestations, and protected reviews, but has **no Apple publisher
 identity or notarization ticket**. Go's ARM64 ad-hoc signature is not a developer

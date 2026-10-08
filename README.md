@@ -82,9 +82,8 @@ and cleanup procedure is in the [pilot quickstart](docs/pilot-quickstart.md).
 - [ServiceNow control-plane design](docs/servicenow-control-plane.md)
 - [ServiceNow worker behavior and evidence](docs/servicenow-worker.md)
 - [ServiceNow IRE publishing](docs/servicenow.md)
-- [Security policy and deployment posture](SECURITY.md)
-- [Project roadmap and current status](ROADMAP.md)
-- [Current milestone plan and handoff](docs/project-plan.md)
+- [Security and vulnerability reporting](SECURITY.md)
+- [Product roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 
 Nischoy Topo is licensed under the Apache License 2.0.

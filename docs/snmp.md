@@ -74,4 +74,4 @@ Each simulated host answers with one interface (`primary`, matching the "primary
 
 ## Current limitations and next slice
 
-This slice covers MIB-II `system` and `interfaces` only — no vendor MIBs, no LLDP/CDP topology, no SNMPv1/v2c. `authPriv` is implemented but not yet verified against a real device; Topo Lab's `noAuthNoPriv`-only agent proves the plugin's own parsing and mapping logic, not interoperability with real network equipment. VMware vCenter discovery is the next slice in this milestone; see `docs/project-plan.md` for the full spec.
+This slice covers MIB-II `system` and `interfaces` only — no vendor MIBs, no LLDP/CDP topology, no SNMPv1/v2c. `authPriv` is implemented but not yet verified against a real device; Topo Lab's `noAuthNoPriv`-only agent proves the plugin's own parsing and mapping logic, not interoperability with real network equipment. See [VMware discovery](vmware.md) for virtualization inventory and the [roadmap](../ROADMAP.md) for planned topology discovery.

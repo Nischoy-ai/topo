@@ -3,9 +3,7 @@
 Scheduling lets an operator ask the controller to keep a specific
 collector discovering on a recurring cadence, independent of whatever
 `-interval` that collector's own `topo agent run` happens to be started
-with. This is slice 3, the final slice, of the "persistent observation/audit
-storage and scheduling" milestone; see [project plan](project-plan.md) for
-the full staged plan. It builds directly on [job delivery](jobs.md): a
+with. It builds directly on [job delivery](jobs.md): a
 schedule is a standing instruction to queue a `discover` job for a
 collector every so often, using the exact same `POST /v1/jobs` /
 `GET /v1/jobs` machinery already in place.
@@ -118,6 +116,3 @@ distinction from a one-off `POST /v1/jobs`.
 - **One job type, one schedule per collector.** There is no way to
   schedule two different kinds of work, or the same kind of work at two
   different cadences, against one collector.
-- **This completes the "persistent observation/audit storage and
-  scheduling" milestone.** See [project plan](project-plan.md) for what
-  comes after.

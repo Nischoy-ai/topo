@@ -215,7 +215,7 @@ lists. Its real XML upgrade and Azure Linux retest passed: two manual scans and
 one automatic scheduled scan each delivered three assets and two relationships
 with zero collection errors. The repeat and scheduled deliveries preserved all
 CI and relationship IDs without duplicates. See the
-[real workflow evidence](servicenow-update-set.md#real-azure-linux-workflow--acceptance-instance).
+[real workflow evidence](servicenow-validation.md#real-linux-workflow).
 
 The architecture, worker/API denial matrix, manual and scheduled sanitized
 Docker discovery, repeated IRE reconciliation, lease recovery, and raw-result

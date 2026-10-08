@@ -1,592 +1,103 @@
 # Security policy
 
-Nischoy Topo is pre-alpha and has no supported production release yet. Report vulnerabilities privately to the maintainers; do not open a public issue containing exploit details or credentials.
-
-## Trust boundaries
-
-Collectors and agents process data from untrusted infrastructure. Destination APIs and discovery targets must be treated as hostile. Plugins must validate all configuration, use bounded reads and deadlines, avoid locally constructed or user-supplied shell text, redact secrets, and return structured errors. A plugin must never accept arbitrary commands from the controller.
-
-ServiceNow IRE is a destination boundary, never a source of discovery
-authority. The retained experimental ECC transport treats every ECC record as
-untrusted input, not an executable instruction. Native MID selection,
-capabilities, applications, IP ranges, and credentials do not replace Topo's
-local policy. No target-bearing ECC translator is supported; generic `Command`,
-arbitrary `SSHCommand`, PowerShell, JavaScript, Groovy, and unknown topics are
-denied by default with a correlated result.
-
-The controller's bearer-key authentication is an evaluation bootstrap, not the final enterprise trust model. Operator and collector authorization are separated for certificate-authenticated collectors: operator reads and control-plane mutations require the bearer key, while collector certificates are limited to the data plane. Individual collector certificates can be revoked durably by serial number. Before production readiness, Nischoy Topo still requires encrypted persistent secrets, signed plugin manifests, completed real package-channel promotions, and external penetration testing. Raw release archives now have reproducible builds, an SBOM, keyless signatures, and provenance; DEB/RPM/Helm/offline artifacts preserve those verified payloads. Full-platform release automation fails closed without RPM, OIDC-authorized Azure Artifact Signing, Developer ID, and notarization identities. The explicit Homebrew-only beta exception is documented under "Release platform scope" below; it is not a production signing claim. Windows signing uses no exportable PFX or long-lived Azure client secret. The channel automation and rotation boundary are implemented, but no production key or public promotion has yet exercised them. The reviewer scope, maintainer pre-review findings, and remediation/closure rules are in [External security review](docs/security-review.md); that preparation is not an independent assessment.
-
-## Deployment guidance
-
-- Bind evaluation controllers to localhost or a private management interface.
-- Use a long random API key and TLS-terminating reverse proxy.
-- Use dedicated read-only discovery identities and restrict targets by allowlist.
-- Verify SSH host keys with a managed `known_hosts` file. `-insecure-host-key` exists only for isolated Topo Lab evaluation.
-- Require HTTPS with normal certificate and hostname verification for non-Lab WinRM targets. Production NTLMv2 never falls back to Basic authentication. Basic authentication and HTTP are restricted to the explicit loopback-only Topo Lab mode.
-- Require SNMPv3 `authPriv` with SHA authentication and AES privacy for non-Lab SNMP targets; there is no weaker fallback. `noAuthNoPriv` is restricted to the explicit loopback-only Topo Lab mode.
-- Require HTTPS with normal certificate verification for non-Lab VMware targets; there is no fallback. `-lab` (HTTP, skipped certificate verification) is restricted to loopback `vcsim` targets. Use a read-only vCenter role — the plugin never issues a configuration, power, or lifecycle operation.
-- For a persistent controller, use `-db-driver sqlite -db-dsn <path>`. Topo creates or tightens the live database and SQLite sidecars to POSIX mode `0600`, rejects a symlink as the final database/sidecar path, and stages backups inside a mode-`0700` private directory before publishing a mode-`0600` file. Keep the containing directories non-writable by untrusted users; on Windows, apply an NTFS ACL for the Topo service identity because Go file modes do not replace ACLs. The default `-db-driver memory` loses all discovery data, audit log entries, recurring discovery schedules, and certificate revocations on every restart. Losing revocations re-enables otherwise valid compromised certificates, so memory mode is not an operational compromise boundary. Before every binary/package upgrade, run `topo storage backup` with the currently installed binary and retain the verified snapshot. Restore only to a new path while the controller is stopped; never overwrite the failed/upgraded database. There is no encryption at rest or in Topo-created backups yet — copy them into encrypted, access-controlled storage and treat every database file as sensitive. See [backup, restore, and upgrade procedures](docs/storage.md#backup-and-restore).
-- The audit log (`GET /v1/audit`) is tamper-evident, not tamper-proof: it detects an edited, reordered, or removed entry via `internal/audit.VerifyChain`, but does not prevent someone with direct database access from rewriting the whole chain undetected if they also have write access to `-db-dsn`. Treat database file access as equivalent to audit log access; export or forward `GET /v1/audit` to a separate, append-only sink if you need audit records to survive a compromise of the controller host itself.
-- Never place credentials in job options, labels, logs, or observation attributes.
-- Pass credential provider references, never credential values, as CLI arguments. Restrict credential-file permissions to the Topo process identity.
-- Review ServiceNow IRE preview output before enabling destination writes,
-  and configure identification/reconciliation rules for every CI class Topo
-  emits; see [ServiceNow publishing](docs/servicenow.md).
-- For the candidate ServiceNow-managed mode, bind a dedicated integration user
-  to exactly one active Topo worker pool and restrict its OAuth token to the seven
-  custom worker resources. Do not grant that identity the generic Table API,
-  CMDB, IRE, reporting, schedule, or application-administration access. The
-  worker token is resolved through a credential reference and must not be
-  shared with the direct IRE publisher. Set `-max-concurrency` to a deployment-
-  reviewed local ceiling; ServiceNow pool capacity cannot increase it. See
-  [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
-- For the Password2 SSH pilot, assign `x_664635_topo.credential_admin` only to
-  dedicated credential custodians. Workers get no credential-table ACL and
-  retrieve a password only from the fixed live-lease broker route after local
-  CIDR authorization. Mount canonical IPv4 allowlist and OpenSSH `known_hosts`
-  files read-only, keep normal host-key verification enabled, and never reuse
-  the worker OAuth identity as a credential administrator. Password2 is the
-  only implemented managed credential mode in Slice C1; external Vault support
-  and real-instance acceptance remain pending.
-- `topo mid run` is an experiment, not the supported ServiceNow publication
-  path. If reproducing it in a disposable environment, use a dedicated user
-  with the built-in
-  `mid_server` role, an exact unique MID name, a password credential reference,
-  and an owner-only absolute state directory. The client accepts only a strict
-  HTTPS instance origin, one fixed SOAP ECC path, and no redirects. Do not
-  advertise discovery or orchestration capabilities or attach a native
-  Discovery Schedule. See
-  [Experimental ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
-- `topo publish servicenow` is the supported ServiceNow write boundary. It
-  previews locally unless `-apply` is present, resolves the bearer token only
-  from the shared credential-reference contract, accepts only bounded Topo
-  observation JSON Lines, and maps only reviewed asset classes, relationship
-  types, and CMDB fields. Unsupported service/cloud/Kubernetes assets, VMware
-  relationships, arbitrary CMDB attribute names, malformed/dangling graph
-  edges, and ambiguous duplicate source identities are rejected before a
-  credential is resolved or a network request is made. Automatic retries are
-  limited to transport errors, HTTP 429, and 5xx; a 4xx response,
-  `hasError:true`, `hasWarning:true`, or an oversized/ambiguous response is not
-  replayed blindly. Every apply first sends the exact payload to ServiceNow's
-  documented non-committing `queryEnhanced` endpoint and proceeds to the write
-  endpoint only when that server-side preflight succeeds without errors or
-  warnings. See [ServiceNow publishing](docs/servicenow.md).
-- Before installing a downloaded raw release, verify both its `SHA256SUMS`
-  keyless Sigstore bundle and its GitHub artifact attestation; checking an
-  unsigned digest alone detects corruption but not an attacker who replaced
-  both the artifact and digest. See [release artifacts and
-  verification](docs/releases.md#verify-a-downloaded-release).
-
-## Release supply chain
-
-Semantic release tags must resolve to a commit already reachable from `main`.
-The tag workflow uses exact Go 1.26.8, CGO disabled, path/VCS stamping removed,
-fixed archive metadata, and two independent source paths; any byte difference
-blocks publication. Release actions are pinned to immutable commit digests.
-The security gate requires zero reachable `govulncheck` findings; the direct
-`golang.org/x/crypto` dependency is pinned to `v0.56.0` or newer to remediate
-`GO-2026-6303` plus the reachable SSH connection deadlocks
-`GO-2026-6354`/`GO-2026-6355`. The latter fix requires Go 1.26, so the
-release/security baseline moved from 1.25.13 to exact 1.26.8 on 2026-09-03.
-`SHA256SUMS` is signed keylessly by the tag workflow's GitHub OIDC identity, and
-GitHub stores signed SLSA provenance and SPDX SBOM attestations for the archive
-digests. The workflow verifies both signature and provenance before it creates
-the GitHub Release, and no long-lived general artifact-signing secret is stored
-in Actions.
-
-Consumers must constrain Sigstore verification to the exact Nischoy Topo
-release workflow identity and GitHub Actions OIDC issuer, then verify the
-individual archive against the authenticated checksum manifest. GitHub
-attestation verification independently binds its digest to this repository,
-commit, tag event, and workflow. Release evidence is additive: it does not
-replace APT/RPM repository OpenPGP keys, Windows Authenticode, macOS code
-signing/notarization, or their key-rotation processes. Full-platform release jobs
-isolate and require all three native identities; protected promotion jobs
-verify them, add signed repository metadata, and expose an old/new public-key
-overlap mechanism. Those controls remain unverified in production until real
-beta and N-1 stable promotions pass. Repository private keys never enter
-ordinary CI, and distribution tokens have no Topo source write scope. See
-[release artifacts and verification](docs/releases.md) and
-[package-manager distribution](docs/distribution.md).
-
-Maintainers can run `scripts/check-production-distribution.sh` before tagging.
-It queries only repository/environment policy and environment-secret names,
-never secret values; bounds GitHub responses, discards command stderr, and
-fails closed when reviewers, bypass policy, branches, Pages, repositories, or
-required names are wrong. Passing this configuration preflight does not prove
-that a stored credential is valid or least-privileged—the signed release and
-promotion workflows must still exercise each identity without exposing it.
-
-## Controller authorization boundary
-
-When `topo serve` is configured with `-api-key-ref`, the bearer key is the
-operator credential. It is required for inventory/audit reads, collector
-status reads, enrollment-token issuance, certificate revocation/listing, job
-creation/status reads, and all schedule operations. A verified enrolled certificate without the bearer key
-receives `403 Forbidden` from those endpoints. The same certificate can
-deliver observations, send heartbeats, poll and report its own jobs, and
-rotate itself; its subject binds the collector identity for each of those
-identity-bearing operations, including observation delivery.
-
-The bearer key remains accepted on collector endpoints for compatibility with
-agents that have not enrolled. It therefore still carries operator authority:
-do not distribute it to a collector when certificate-only least privilege is
-required. If no API key is configured, both endpoint classes retain the
-existing unauthenticated evaluation behavior; do not expose that mode to an
-untrusted network. `POST /v1/enroll` is authenticated by its one-time token,
-`POST /v1/rotate` is certificate-only, and `GET /healthz` is open. Revoking a
-certificate does not revoke a separately possessed bearer key; rotate that
-key too when an incident may have exposed both credentials.
-
-## SSH discovery
-
-The Linux SSH plugin never accepts a command from a controller job. Its commands are compiled into the binary and matched exactly by the Topo Lab SSH frontend. Passwords and private keys are resolved through `env:` or absolute-path `file:` references; neither is accepted as a command-line value or emitted in observations. Each command has a deadline and a bounded output buffer. Package and service permission failures produce partial inventory, while failures of identity or hardware commands reject that target's inventory.
-
-## WinRM discovery
-
-The Windows plugin's operation set consists of compiled-in WS-Management action, CIM resource URI, and WQL tuples plus one compiled-in PowerShell command for software inventory. Targets and jobs cannot provide SOAP actions, resource URIs, queries, PowerShell, or command text. The Topo Lab frontend independently matches the same exact tuples and command argument vector, rejects mismatched SOAP body operations, filters, selectors, shell options, enumeration contexts, and command IDs, and refuses arbitrary executables. Optional volume, service, and patch collection uses fixed, read-only CIM queries. Software collection reads only the 64-bit and 32-bit machine-wide uninstall registry views; it does not use `Win32_Product`, collect uninstall command strings, or inspect per-user hives.
-
-Non-Lab targets must use HTTPS; Go's standard TLS hostname and certificate verification remains enabled. Production `ntlm` mode implements NTLMv2 over server `NTLM` or `Negotiate` challenges, disables HTTP/2 to retain connection affinity, caps authentication headers and tokens, and never answers a Basic-only challenge. It does not implement Kerberos/SPNEGO. The CLI resolves the password from an `env:` or absolute-path `file:` reference rather than a value flag. Lab Basic remains explicitly limited to loopback Topo Lab endpoints.
-
-Each CIM or software operation has a deadline, responses and cumulative command output are bounded, enumeration pages, receive messages, objects, and software records are capped, and target concurrency is controlled. Remote shell and command identifiers are length- and control-character-checked before reuse, and created shells are deleted after command completion or failure while the operation context remains active. Required identity/hardware failures reject that target; optional network, volume, service, patch, or software permission and parse failures retain a partial host and identify the affected operation. The concurrent mixed 500-Linux/500-Windows simulated acceptance gate passes; reviewed real-system compatibility fixtures are still required before claiming the Windows milestone complete.
-
-## SNMP discovery
-
-The SNMP plugin queries a fixed, compiled-in set of MIB-II OIDs (`system` and `interfaces` groups only); targets and jobs cannot supply an OID, community string, or arbitrary SNMP operation. Asset identity is the SNMPv3 engine ID discovered during the USM handshake, never an IP address. Production requires `authPriv` — SHA authentication and AES privacy — with no fallback to `authNoPriv` or `noAuthNoPriv`; those weaker levels are accepted only with the explicit `-lab` flag and a loopback target, the same restriction pattern as WinRM's Basic-authentication Lab mode. Authentication and privacy passphrases resolve through the same `env:`/`file:`/`vault:`/`k8s:` credential-reference contract as every other Topo secret and are never accepted as command-line values. The interface-table walk is bounded to 4096 entries so a malformed or hostile agent cannot force unbounded memory use. `authPriv` uses gosnmp's own client-side USM implementation and has not yet been verified against a real device — Topo Lab's `noAuthNoPriv`-only hand-rolled agent proves the plugin's own message framing and parsing logic, not interoperability with real network equipment. See [SNMP network device discovery](docs/snmp.md).
-
-## VMware discovery
-
-The VMware plugin creates a read-only property-collector container view scoped to `HostSystem` and `VirtualMachine` objects and retrieves a fixed property set; targets and jobs cannot supply a managed object reference, property filter, or any write operation — no configuration, power, or lifecycle operation is ever issued. Asset identity is a host's hardware UUID or a VM's VC-managed instance UUID (falling back to its BIOS UUID only for a standalone ESXi host with no vCenter to assign one), never an IP address or vCenter inventory path. Production requires HTTPS with normal certificate verification; `-lab` (HTTP, skipped certificate verification) is restricted to loopback `vcsim` targets, the same restriction pattern as WinRM's Basic-authentication Lab mode and SNMP's `-lab`. The username and password resolve through the same `env:`/`file:`/`vault:`/`k8s:` credential-reference contract as every other Topo secret and are never accepted as command-line values or embedded in a target URL — a target containing credentials is rejected outright. Host and VM listings are each bounded to 100,000 objects. Listing hosts is required; listing VMs is optional and degrades to host-only inventory on failure rather than failing the whole target. Real vCenter/ESXi verification has not been performed — the two-scan idempotency and fault-isolation acceptance tests run against `govmomi/simulator` (`vcsim`) with TLS and real credential enforcement deliberately turned on, not a real vCenter. See [VMware vCenter discovery](docs/vmware.md).
-
-## Persistent storage and the audit log
-
-The controller's storage backend (`store.Repository`) is opt-in persistent: the default `-db-driver memory` keeps every prior release's behavior exactly (nothing survives a restart), and `-db-driver sqlite -db-dsn <path>` opts into a SQLite-backed store that does. There is no encryption at rest — the database file's confidentiality depends entirely on filesystem permissions, the same trust boundary this project already places on the enrollment CA's private key and Topo Agent's offline spool. Topo establishes owner-only POSIX modes before SQLite opens a new live database or starts copying a backup rather than trying to repair exposure afterward; the containing directory/Windows ACL remains an operator boundary. Enrollment tokens, collector heartbeats, and one-off job state remain in-memory only regardless of `-db-driver`; a controller restart still invalidates outstanding enrollment tokens and loses heartbeat/job history. Recurring discovery schedules and certificate revocations are persisted with SQLite because losing either is a silent policy/security change. `SaveObservation` is idempotent by observation ID in both backends — a collector retrying a delivery whose response was lost replaces the existing record rather than creating a duplicate, so retried delivery cannot be used to inflate stored observation counts.
-
-`-source-precedence` is a resolution policy, not an authorization boundary.
-It determines which plugin's same-ID asset claim appears as the current value
-and exposes every competing claim and timestamp through operator-only
-`GET /v1/assets`; it does not make a source trusted to authenticate requests or
-let one collector act as another. mTLS observation identity remains bound to
-the verified certificate subject. Bearer-key compatibility still carries its
-documented broader authority, so an operator must protect that key rather than
-assuming a high precedence rank makes bearer-submitted data trustworthy. See
-[source precedence and asset freshness](docs/source-resolution.md).
-
-`topo storage backup` creates a transactionally consistent SQLite snapshot
-inside an already-private staging directory, verifies it, and refuses to
-replace an existing destination. `topo storage
-restore` validates the source read-only and publishes a verified owner-only copy
-at a new path. Pending schema upgrades commit in one transaction; a later
-migration failure leaves the database at its starting schema. Topo deliberately
-does not implement reverse migrations or a force-restore mode: rollback uses the
-old binary and a pre-upgrade backup restored to a new path, preserving the
-failed database for diagnosis. Database backups contain persisted security
-state, including audit entries and certificate revocations, and therefore have
-the same confidentiality and integrity sensitivity as the live database.
-
-`GET /v1/audit` returns a hash-chained log of enrollment token issuance, collector enrollment, certificate rotation/revocation, job creation, and schedule changes. Each entry's hash covers its own content and the previous entry's hash, so `internal/audit.VerifyChain` detects an entry edited, reordered, or removed after the fact — a Merkle/hash-chain class guarantee, not cryptographic non-repudiation, and not protection against someone who can rewrite the underlying database file wholesale (see "Deployment guidance" above). Audit detail values are always short strings and never secret material: an enrollment token is referenced only by a truncated SHA-256 fingerprint, never the token itself. Appending the hash-chain entry is best-effort; the durable `certificate_revocations` row is the authoritative enforcement record even if its supplementary audit append fails. See [Persistent storage and the audit log](docs/storage.md).
-
-## Credential references
-
-The shared resolver accepts `env:<name>`, `file:<absolute-path>`,
-`vault:<path>#<field>`, and `k8s:[<namespace>/]<secret-name>#<field>`. It
-bounds references to 4 KiB and resolved values to 1 MiB, accepts only regular
-files, preserves credential bytes exactly, and never includes a resolved value
-in an error. Consumer-specific validation applies tighter limits where needed.
-Environment variables can be exposed through process inspection or inherited
-by child processes on some systems, so restricted mounted files, Vault, or
-Kubernetes Secret references are preferred for managed deployments. The Vault
-provider verifies the Vault server's TLS identity and never disables
-certificate verification; connection settings (address, token, mount) come
-from environment variables, never the reference itself. The Kubernetes
-provider authenticates in-cluster with the pod's own service account token
-and relies entirely on that service account's RBAC grants for least-privilege
-scoping — Topo does not enforce which Secrets may be read beyond what
-Kubernetes itself authorizes.
-
-The Vault and Kubernetes API adapters require absolute HTTPS base URLs and
-normal server-identity verification. They reject URL credentials, paths,
-queries, and fragments and do not follow redirects, so provider bearer tokens
-cannot be sent in plaintext or forwarded to a redirect target. Their responses
-and token-file reads remain bounded and cancellable.
-
-## Topo Agent
-
-The outbound-only agent (`topo agent run`) only makes outbound HTTPS/HTTP
-requests to a configured controller URL; it never listens for inbound
-connections and never accepts jobs or remote commands. It authenticates with
-the same bearer API-key contract as any other controller client. When the
-controller is unreachable, observations are buffered to a local spool
-encrypted with AES-256-GCM using a key from the same credential-reference
-contract (never a CLI argument); spool files and their directory are created
-with owner-only permissions, tampering is detected via AEAD authentication
-rather than silently returning corrupted data, and total spool size is
-bounded so an extended outage cannot grow it without limit. Collector
-enrollment and outbound mTLS now exist (see below): `topo agent run
--mtls-cert-dir` authenticates with the enrolled certificate instead of, or
-alongside, the bearer API-key contract.
-
-The packaged Linux systemd unit (`packaging/systemd/topo-agent.service`)
-runs as a dedicated non-root system user with an empty capability set,
-`NoNewPrivileges=yes`, `ProtectSystem=strict`, and the other hardening
-directives verified with `systemd-analyze verify`; only its `StateDirectory`
-is writable. `topo agent install`/`uninstall` on Windows register the
-service with automatic start and restart-on-failure and never write a
-resolved secret value into the service's persisted command line — only the
-credential *reference* (`env:`/`file:`/`vault:`/`k8s:`) is stored, matching
-every other Topo credential consumer. Windows service registration is
-verified by cross-compilation and code review only; it has not yet been
-exercised against a real Windows Service Control Manager, so treat it as
-unverified on real Windows until that gate closes, the same posture already
-applied to WinRM real-host compatibility.
-
-## Collector enrollment
-
-The controller can act as its own certificate authority (ECDSA P-256,
-self-signed, `-ca-dir`) and issue collectors short-lived (90-day) client
-certificates through `POST /v1/enrollment-tokens` (existing bearer-key
-auth, mints a single-use one-hour token bound to an operator-selected
-collector ID) and `POST /v1/enroll` (redeems the token only for that identity
-and signs a submitted CSR). A request for another collector identity is
-rejected without consuming the token. The private key is generated on the
-collector and never transmitted; only the CSR — a public key plus a
-signature proving possession of the private key — crosses the network. A
-malformed enrollment request is rejected before the token is redeemed, so
-it cannot burn a valid token. The CA's own private key is protected by
-filesystem permissions, matching every other private key in this project,
-not a second application-level encryption layer. The token store is
-in-memory only and does not survive a controller restart. A collector
-certificate can be revoked early by its exact serial through operator-only
-`POST /v1/certificate-revocations`; `GET /v1/certificate-revocations` lists
-the immutable records. With SQLite, these records survive controller restarts;
-the memory backend loses them and is evaluation-only. Enrollment is opt-in and does not change any existing
-bearer-key-authenticated behavior when `-ca-dir` is not set.
-
-The issued certificate now authenticates live traffic: `topo serve -mtls`
-runs a native TLS listener, issuing itself a server certificate from the
-same CA (1-year TTL, reissued fresh on every start rather than persisted
-or renewed while the process keeps running — collector certificate
-rotation, below, does not change that, since the server certificate is
-never persisted in the first place), and verifies client certificates
-presented against that CA. A request with a certificate verified during
-the TLS handshake reaches collector data-plane endpoints without the bearer
-API key; it does not gain operator authority.
-The TLS layer still accepts a handshake with no client certificate at all
-— a collector's first-ever request, `POST /v1/enroll`, has none to present
-yet, authenticating instead with its one-time enrollment token — so
-per-endpoint enforcement happens in application-layer middleware, not the
-TLS handshake itself.
-`topo agent enroll -controller-ca-cert` pins the controller's self-signed
-CA certificate (distributed out-of-band alongside the enrollment token) so
-the bootstrap enrollment request itself can complete against an `-mtls`
-controller, whose certificate an ordinary HTTPS client would otherwise not
-trust.
-
-A collector's certificate can be renewed before its 90-day expiry with
-`POST /v1/rotate`, authenticated by the certificate being renewed rather
-than a new token — and deliberately with no bearer-API-key fallback for
-this one endpoint, since accepting the shared key here would let any
-holder mint a certificate for any collector ID, defeating per-collector
-identity entirely. The reissued certificate's identity always comes from
-the peer certificate the TLS handshake already verified, never from
-anything the client claims in the CSR or request body, so a collector can
-only ever rotate its own certificate. Rotation generates a fresh key pair,
-not just a fresh certificate for the existing key. `topo agent rotate` is
-the collector-side command; it overwrites the same certificate directory
-`topo agent enroll` wrote, and a running `topo agent run` must be
-restarted afterward to pick up the renewed certificate — it is loaded once
-at startup, not reloaded live. Rotation leaves the old certificate valid to
-avoid a lost-response lockout; after verifying the new serial, the operator
-should explicitly revoke the old one. A revoked certificate cannot rotate.
-Revocation-versus-rotation races are linearized within Topo's supported
-single-controller process: a rotation already authorized finishes before a
-competing revocation returns, while a revocation that wins first makes the
-rotation return 401. See
-[Collector enrollment](docs/enrollment.md).
-
-Revocation is enforced in application authorization after the CA-verifying TLS
-handshake: a revoked serial receives 401 on collector certificate endpoints,
-including rotation, and a revocation-store lookup failure fails closed with
-503. Topo does not publish a CRL or OCSP responder, so the TLS handshake itself
-can still succeed. Native `topo serve -mtls` must receive the peer certificate;
-a TLS-terminating reverse proxy that does not forward a cryptographically
-trustworthy identity cannot enforce this boundary. Revocations are immutable
-and serial-specific. Compromise recovery is a fresh one-time token and
-re-enrollment of the same collector ID, producing a fresh key and serial; there
-is deliberately no unrevoke operation. See
-[Revoking and recovering a certificate](docs/enrollment.md#revoking-and-recovering-a-certificate).
-
-## Collector heartbeats
-
-`POST /v1/heartbeats` is a lightweight liveness signal, distinct from
-observation delivery, so the controller can tell a collector is alive
-without waiting on the discovery/delivery interval, which is often 15
-minutes or longer. Unlike `POST /v1/rotate`, it accepts either the bearer
-API key or a verified mTLS client certificate — the collector data-plane
-authorization policy — since a heartbeat only asserts liveness rather than
-getting new certificate material issued to
-it, so there is no analogous "any bearer-key holder can impersonate any
-collector" risk to guard against. When a verified peer certificate is
-present, its subject still overrides whatever `collector_id` the request
-body claims, matching the same identity rule as certificate rotation, so
-a collector authenticated by mTLS can never appear alive under a
-different collector's identity; a bearer-key-authenticated heartbeat has
-no such stronger signal and is recorded under whatever `collector_id` the
-body states. Operator-only `GET /v1/collectors` lists every collector's most
-recent heartbeat and whether it falls within a fixed three-minute staleness
-window. Heartbeat state is in-memory only, like the enrollment token
-store, and does not survive a controller restart. A failed heartbeat is
-logged and dropped — never spooled or retried the way a failed
-observation delivery is — since a stale heartbeat has no lasting value
-once the next one supersedes it. Heartbeats are always available, unlike
-enrollment/mTLS/rotation: they require no CA, no `-mtls`, and no opt-in
-flag, only whichever credential a collector already presents. See
-[Collector heartbeats](docs/heartbeats.md).
-
-## Job delivery
-
-Topo Agent is deliberately outbound-only and never accepts inbound
-connections, so a controller cannot push work to it; instead an operator
-queues a job with `POST /v1/jobs`, and the collector picks it up by
-polling `GET /v1/jobs` on the same `-heartbeat-interval` cadence it
-already uses for liveness heartbeats. `GET /v1/jobs` marks a job
-dispatched the moment it is returned, so a job is delivered at most
-once — there is no redelivery if a collector crashes between polling and
-reporting a result via `POST /v1/jobs/{id}/result`. Polling and result
-reporting are identity-bound the same way as `POST /v1/rotate` and
-`POST /v1/heartbeats`: a verified mTLS peer certificate's subject always
-overrides whatever `collector_id` the caller claims in a query parameter
-or request body field, so a collector can only ever poll for and report
-its own jobs, never another collector's; a bearer-key-only request has no
-such stronger signal and uses the claimed value as-is, the same
-limitation heartbeats already have. `POST /v1/jobs` itself — queuing a
-job for a collector — and `GET /v1/jobs/{id}` are operator endpoints and
-require the configured bearer key; a collector certificate alone is not
-accepted. There is exactly one job type, `discover`, since it
-is the only real capability `topo agent run` has; a request for any
-other type is rejected at creation, not silently accepted and left
-unrunnable. Job state is in-memory only, like the enrollment token store
-and heartbeat store, and does not survive a controller restart. See
-[Job delivery](docs/jobs.md).
-
-## Server-side recurring discovery scheduling
-
-`POST /v1/schedules` lets an operator set a recurring `discover` cadence
-for a collector, upserted and keyed by `collector_id` (at most one
-schedule per collector); `GET /v1/schedules` lists every schedule, and
-`DELETE /v1/schedules/{collector_id}` removes one. All three are operator
-endpoints and require the configured bearer key; a collector certificate
-alone is not accepted.
-`interval_seconds` is bounded to between 60 and 604800 (one week) — below
-the minimum a misconfigured schedule could hammer a collector on every
-poll, and there is no server-side rate limit protecting against that
-beyond this bound. There is no background ticker: a schedule only becomes
-an actual job the moment its collector next polls `GET /v1/jobs` and the
-schedule is found due, reusing job delivery's existing
-collector-initiated-polling trust model exactly (see "Job delivery"
-above) rather than introducing a second one. If a job of the schedule's
-type is already outstanding for that collector, the controller does not
-queue a second one, so a slow or temporarily unreachable collector cannot
-be made to accumulate a growing backlog by a schedule alone. Unlike
-enrollment tokens, heartbeats, and one-off job state, a schedule is
-persisted under `-db-driver sqlite` — a lost recurring-discovery policy on
-restart is a silent, indefinitely-lasting behavior change an operator is
-unlikely to notice, unlike a lost heartbeat or a lost single job. Schedule
-creation, update, and deletion are each recorded in the audit log (see
-"Persistent storage and the audit log" above). See
-[Server-side recurring discovery scheduling](docs/scheduling.md).
-
-## Release platform scope
-
-On 2026-09-14 the owner approved `linux-homebrew-beta` for the first Linux/macOS
-CLI beta, explicitly deferring Apple Developer ID and notarization. This
-distinct profile rejects stable tags and Windows artifacts, keeps RPM signing,
-Sigstore/provenance/SBOMs, repository signatures, and protected reviews, and
-requires Homebrew install/local-discovery/uninstall tests on Intel and ARM64.
-No Gatekeeper settings are changed and no quarantine attributes are removed.
-The macOS payload has no Apple publisher identity or notarization ticket;
-ARM64's required ad-hoc signature is only structural integrity, not publisher
-authentication. Browser downloads and managed-Mac policy may behave differently
-from the tested CLI formula. Do not advise users to bypass macOS protections.
-
-The earlier `linux-macos-beta` still requires Apple signing/notarization, and
-`all` retains all native signing requirements and Windows CI. Apple signing
-can be skipped only when the authenticated profile explicitly selects the
-Homebrew-only beta and both architecture tests pass. Failed or absent required
-jobs block publication; no secret-dependent fallback exists. Profile selection
-is a reviewed source change, not inferred from whichever secrets happen to exist.
-The `v0.1.0-beta.1` release has passed protected RPM signing and both Homebrew
-architecture tests; independent downloaded checksum, Sigstore identity, and
-GitHub provenance checks passed. Independently approved promotion
-`35485290078` passed repository signing, Linux and both Mac gates, authenticated
-OCI pull/byte comparison, and Git publication to both distribution repositories.
-GitHub CLI's helper reads the protected step-scoped token without embedding it
-in remote URLs or Git configuration. Pages now serves signed beta metadata;
-post-publication tests separately check public installs, pin the reviewed key
-and formula, and require signatures without security bypasses. Those tests
-use only public data, never production signing secrets. Anonymous OCI access,
-stable/N-1 promotion and production readiness are not claimed. Secret-name
-checks alone do not prove key usability. See
-[distribution evidence](docs/distribution.md#first-beta-operational-evidence).
-
-## ServiceNow publishing
-
-Topo-owned discovery followed by the documented IRE API is the supported
-ServiceNow architecture. ServiceNow receives normalized evidence; it does not
-supply commands, scripts, OIDs, queries, or targets to Topo. This preserves the
-same compiled-in operation and local target-authorization boundaries used for
-every other destination.
-
-Topo's ServiceNow IRE payload builder deduplicates by `source_native_key`
-and by relationship `(type, from, to)` within a batch, and is validated to
-produce an identical `(source_native_key, className)` set across
-independently repeated Topo Lab discovery scans — the condition ServiceNow's
-own IRE relies on to reconcile a CI rather than create a duplicate one.
-That condition has been verified against a real ServiceNow developer
-instance for `cmdb_ci_computer`, `cmdb_ci_network_adapter`, and their
-`Owns::Owned by` relation. A 22-item/21-relation local-laptop batch applied
-without warnings; an identical repeat returned `NO_CHANGE` for every item and
-relation. A separate real preflight exposed mandatory dependency/key contracts
-for disk, software-package, and VM classes; Topo now rejects those asset types
-rather than guessing fields or creating partial CIs. Additional CI classes and
-relationship types remain open focused slices. ServiceNow's IRE response
-schema is only partially parsed: `PublishBatch` recognizes the
-real-instance-observed `hasError: true` and `hasWarning: true` semantic bits at
-any JSON nesting depth and treats either as a non-retryable rejection, while
-retaining the remaining bounded body as diagnostics rather than coupling to
-proprietary response fields. The strongest validated machine setup uses a
-dedicated internal-integration user with only the native `asset` role, a
-short-lived OAuth client-credentials token, an exact authentication scope,
-token restrictions, and two non-global API Access Policies limited to POST
-`queryEnhanced` and `enhanced`; the same token received HTTP 401 from an
-unrelated Table API. It requires an absolute HTTPS instance URL and a bearer
-token supplied through the same credential-reference contract as every other
-Topo secret. See
-[ServiceNow publishing](docs/servicenow.md).
-
-## ServiceNow-managed stateless workers
-
-M3's `topo worker run` is an outbound HTTPS client with no inbound
-listener and no database, journal, spool, schedule store, result history, or
-retry queue. Its startup policy fixes the ServiceNow origin, pool, site,
-compiled-operation authority, task-duration ceiling, and concurrency ceiling. The worker refuses URL
-userinfo/path/query/fragment, redirects, unknown response fields, unknown
-operation versions, and any task object containing extra command, script,
-query, URL, class, field, or relationship authority. Target partitions must
-have canonical bounded CIDRs and SHA-256 partition identity. Production
-`local.v1` rejects them; `ssh_linux.v1` requires exactly one IPv4 `/32`, fixed
-port 22, local CIDR authorization before credential retrieval, and local
-OpenSSH `known_hosts` verification.
-
-The worker role is limited to seven Scripted REST resources and receives no
-generic scoped-table ACL. Every resource binds `gs.getUserID()` to a configured
-pool/site, worker record, boot ID, live attempt, and lease. Claiming uses a
-conditional `ready`-to-`leased` update; only a SHA-256 lease-token digest is
-stored. Slice B additionally reserves unique pool and worker capacity-slot
-keys on each active task, so concurrent claims cannot exceed either server
-ceiling while the worker independently enforces its local maximum. Results are limited to one 1 MiB checksummed JSON chunk,
-unique by `(task, attempt, chunk)`, and late attempts are rejected. ServiceNow
-lease expiry—not local retry state—recovers a crashed worker.
-
-Slice C1's seventh resource is a Password2 credential broker, not a generic
-secret API. It revalidates the caller/pool, worker boot, live attempt and lease,
-operation, immutable profile/scope/binding, and active credential before one
-bounded `no-store` response. The credential table is credential-admin-only,
-generic web-service access is disabled, the Password2 field is not audited or
-replicated, and access events contain no secret. Workers never receive table
-ACLs or durable secret storage. These are source-enforced candidate properties;
-real developer-instance ACL/encryption/broker evidence remains pending.
-
-Leases renew only through the attempt-bound fixed resource. Renewal failure
-cancels execution at expiry. Operator cancellation is cooperative and is
-delivered by heartbeat and renewal; cancelled attempts cannot upload a late
-result or claim successful completion. Neither path creates a local retry
-record.
-
-The scoped application is defined as source-driven ServiceNow Fluent metadata
-with `@servicenow/sdk` pinned exactly in an npm lock file. Generated application
-metadata is not committed or treated as source. The Fluent package contains no
-worker token, OAuth authorization code, refresh token, client secret, target,
-or discovery credential; SDK authentication belongs in the SDK's protected
-credential store and worker authentication remains a separately provisioned,
-least-privilege identity.
-
-The scoped application treats result JSON as untrusted. It bounds structure,
-validates the Topo envelope against the task/pool, ignores unreviewed
-attributes, maps only computers, network adapters, and `Owns::Owned by`, and
-uses scoped IRE preflight before one apply. It never opens a CMDB CI or
-relationship table for writing. An interrupted or malformed apply response is
-ambiguous and non-replayable. Successful raw attachments expire after 24 hours;
-failed, superseded, and ambiguous results after seven days. Simulator tests do
-not prove ServiceNow's transaction, ACL, attachment, scoped IRE, or
-reconciliation behavior. Separate 2026-08-30 Slice A real-instance evidence proves the
-six-resource token cannot call an unrelated Table API, a 32-competitor claim
-has one winner, a crashed lease is retried by a fresh boot, identical chunks
-remain one row, repeated 22/21 deliveries reconcile through IRE, and retention
-removes the raw row and attachment while preserving the run/task/IRE summary.
-Slice B's approved Fluent `0.3.0` upgrade preserved the known Slice A records,
-and a separate admin-seeded real fixture proves bounded capacity reservations,
-lease extension, cancellation, late-call denial, terminal reporting, and slot
-release without an IRE/CMDB write. Its 1K/10K/100K reconciliation and 100K
-retention-volume findings remain simulator-only and are not ServiceNow
-throughput or capacity claims.
-See [ServiceNow-managed stateless worker](docs/servicenow-worker.md).
-
-## Experimental ServiceNow ECC-compatible MID transport
-
-`topo mid run` polls only `ecc_queue` records whose agent is exactly
-`mid.server.<configured-name>`, queue is `output`, and state is `ready`. It
-uses ServiceNow's direct document/literal SOAP operations at the fixed
-`/ecc_queue.do?SOAP` endpoint with Basic authentication from a credential
-reference. Instance URL userinfo/path/query/fragment are rejected, redirects
-are refused, each request is cancellable and time-bounded, and SOAP bodies,
-XML depth/tokens, record counts, fields, payloads, and error results are
-bounded. XML directives are rejected.
-
-The output `sys_id` and a digest of its operation-bearing fields are synced to
-an owner-only local journal before `ready` becomes `processing`. An OS file lock
-prevents a second process using the same local state directory/MID identity.
-After a crash, the next process resumes the journal; it queries for an existing
-`input` response by `response_to` before inserting, then marks the output
-`processed`. More than one existing response is left visible as an error rather
-than hidden. ServiceNow's public direct SOAP `update` operation does not expose
-a compare-and-swap condition, so a unique MID name remains a native
-configuration boundary across hosts. No target-bearing topic is enabled or
-planned for this path.
-
-Only `Heartbeat` is recognized in the simulator-backed implementation. A real
-2026-08-28 official-MID run used `HeartbeatProbe`, proving this is not the stock
-liveness contract for the tested release. `Command`,
-`SSHCommand`, PowerShell, JavaScript, Groovy, and every other topic receive a
-bounded `topo_unsupported_topic` result; Topo never parses their payload/name
-as operations. No capability or IP-range record grants local authority. ECC is
-a topic-specific probe/sensor transport, not Topo's CMDB ingestion path. See
-[Experimental ServiceNow ECC-compatible MID transport](docs/servicenow-mid.md).
-
-## Experimental scoped-app ServiceNow Relay
-
-`topo relay run` polls only fixed Topo scoped-application HTTPS resources and
-never listens for inbound connections. A ServiceNow job can select only the
-compiled-in `discover` type and one locally defined profile ID. Plugin type,
-targets, SSH host-key verification, concurrency, deadlines, output bounds, and
-credential references remain in an absolute-path owner-controlled JSON file on
-the Relay host; the job contract has no fields capable of carrying those
-values or arbitrary commands. The client rejects unknown response fields,
-refuses redirects, bounds responses, and claims at most one job per poll.
-
-Each Relay record is bound to a dedicated ServiceNow integration user; both
-Scripted REST resources match `gs.getUserID()` and the requested Relay ID, so
-one Relay credential cannot claim another Relay's work. One process per Relay
-ID is the supported alpha shape. Observations and result metadata are written
-to a bounded owner-only AES-256-GCM spool before IRE publication, survive a
-process restart, and remain until the result endpoint acknowledges them.
-Transient IRE failures retry at most three times; `hasError: true` and 4xx
-validation failures are reported without blind replay because real validation
-showed a rejected IRE request can leave an incomplete identification artifact.
-The ServiceNow bearer token and spool key are credential references and never
-ordinary CLI values. See
-[experimental ServiceNow-controlled Topo Relay](docs/servicenow-relay.md).
-
-This PR #47 transport is retained as experimental behavior. Its custom
-application/tables/resources are not required for direct IRE publication and
-are not the required ServiceNow architecture.
+## Versions receiving fixes
+
+The current published worker is **v0.1.0-beta.1**. The current ServiceNow XML
+package is **0.4.6 preview 2**. Security fixes are developed on `main` and
+published with release notes and compatible application/worker versions.
+Use the current package for new installations and verify its release manifest.
+
+## Report a vulnerability
+
+Use [GitHub private vulnerability reporting](https://github.com/Nischoy-ai/topo/security/advisories/new).
+Include the affected version or commit, configuration, reproduction steps,
+expected behavior, and impact. Use synthetic credentials and sanitized data.
+Do not publish credentials, customer observations or exploit details in an issue.
+Maintainers will triage the report, coordinate remediation and publish an
+advisory when appropriate. No response-time SLA is currently offered.
+
+## Credential and target controls
+
+- Discovery executes compiled-in, reviewed operations. Controllers and jobs
+  cannot supply arbitrary SSH commands, PowerShell or scripts.
+- SSH verifies host keys against an operator-managed `known_hosts` file.
+  WinRM, VMware and remote credential providers verify HTTPS certificates.
+  Weaker protocol modes are restricted to isolated simulation.
+- Targets are explicitly authorized locally. Discovery uses bounded reads,
+  deadlines, cancellation and controlled concurrency.
+- CLI arguments accept credential references rather than secret values.
+  Env/file, Vault KV2 and Kubernetes Secret providers redact secret material
+  from errors. Never put credentials in labels, observations or job options.
+- ServiceNow stores managed SSH passwords in Password2 fields. A dedicated
+  credential-custodian role manages them. Worker identities cannot read the
+  credential table; the broker requires an authorized, live task attempt and
+  the worker independently checks its local target policy.
+- Use separate least-privilege discovery, worker, credential-administration
+  and direct IRE publisher identities. Restrict worker OAuth to the seven
+  documented custom resources and deny generic Table API access.
+
+See [managed-worker setup](docs/pilot-quickstart.md),
+[worker security](docs/servicenow-worker.md), and
+[credential references](docs/credential-references.md).
+
+## Controller and storage controls
+
+With an API key configured, operator reads and mutations require the bearer
+key. Verified collector certificates authenticate only the collector data
+plane, bind request identity, and support serial-specific revocation. The
+bearer key retains operator authority, including when used on a collector route.
+No-key and memory-backed controller modes are for evaluation.
+
+The persistent controller supports one process with SQLite. Topo restricts
+database, sidecar and backup permissions, uses transactional migrations, and
+provides verified, non-overwriting backup/restore. Database and backup files
+are not encrypted by Topo; protect their storage with encryption and OS access
+controls. The audit chain detects changes but is not a write-once external log.
+Enrollment tokens, heartbeats and individual jobs remain in memory; recurring
+schedules and revocations persist with SQLite.
+
+Agent offline spools use authenticated AES-256-GCM encryption with a
+credential-referenced key. Certificate rotation requires restarting the agent
+to load its renewed files. Recovery from compromise uses revocation and fresh
+enrollment. See [storage](docs/storage.md), [enrollment](docs/enrollment.md),
+and [agent operation](docs/topo-agent.md).
+
+## ServiceNow publication
+
+Topo uses the documented IRE API with stable source identities rather than
+writing CMDB tables directly. Direct publication previews by default; apply
+performs non-committing IRE preflight, rejects unsupported mappings and limits
+retries. The supported mapping covers computers, network adapters and their
+ownership relationships. Register the documented discovery-source choice and
+review CMDB identification/reconciliation rules before applying observations.
+
+See [IRE setup](docs/servicenow.md) and
+[XML installation and recovery](docs/servicenow-update-set.md).
+
+## Release verification
+
+Worker archives are built reproducibly with exact Go 1.26.8. Release workflows
+use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
+provenance attestations. Linux package/repository metadata is signed; protected
+signing and promotion environments require review. The published beta has
+passed real package-channel promotion and fresh public installation checks on
+both Linux and Mac architectures.
+
+The macOS beta is a Homebrew CLI formula without Apple Developer ID signing
+or notarization. Windows and stable publication are planned. The manually
+published ServiceNow XML preview has checksums but no cryptographic signature
+or provenance attestation. Its checksum detects corruption; verify the download
+origin as part of your installation process. Never disable platform security
+protections to install Topo.
+
+See [consumer verification](docs/releases.md#verify-a-downloaded-release),
+[distribution evidence](docs/distribution.md#first-beta-operational-evidence),
+and [ServiceNow package validation](docs/servicenow-validation.md).
+
+## Security review
+
+The [security review record](docs/security-review.md) identifies the evaluated
+commits, fixed findings, regression evidence and retest status. Public records
+distinguish automated/source review from a human penetration assessment and
+independently verified remediation. A change of release or documentation does
+not close an outstanding retest.

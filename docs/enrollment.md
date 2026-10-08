@@ -12,8 +12,7 @@ expires, authenticated by itself rather than a new token, or revoked by
 serial number before expiry after a suspected compromise. This is the
 certificate lifecycle foundation used by the other collector capabilities —
 [Collector heartbeats](heartbeats.md) and [job delivery](jobs.md) — are
-separate capabilities that do not require enrollment or mTLS. See
-[project plan](project-plan.md) for the full staged plan.
+separate capabilities that do not require enrollment or mTLS. See the [architecture guide](architecture.md) for the collector model.
 
 Enrollment and mTLS are entirely opt-in and additive. `topo serve` without
 `-ca-dir` behaves exactly as it did before either slice existed, and

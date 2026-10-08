@@ -6,3 +6,8 @@
 !examples/servicenow/ire-validation.jsonl
 *.db
 .DS_Store
+
+# Local maintainer records and private-repository links
+/.maintainer/
+/AGENTS.md
+/docs/project-plan.md
