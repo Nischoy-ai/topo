@@ -9,12 +9,11 @@ DEB, RPM, MSI, raw archive, and chart bytes referenced by every channel.
 The reviewed release workflow selects `linux-homebrew-beta`: four raw archives
 (Linux/macOS, amd64/arm64), no Windows ZIPs or MSIs, and no WinGet manifests.
 Windows code and full-platform tooling remain supported but Windows signing
-provisioning is deferred. The unused Azure signing account was deleted with
-owner approval. The ServiceNow application, offline bundle, and existing Helm
-artifact path remain included; no discovery capability changes.
+provisioning is deferred. The ServiceNow application, offline bundle, and existing Helm artifact path
+remain included.
 
 Apple Developer Program membership is not a prerequisite for this CLI formula.
-The owner explicitly deferred Developer ID/notarization for the beta. It keeps
+This beta uses the Homebrew CLI distribution profile. It keeps
 checksummed formula downloads, Sigstore-signed release checksums, GitHub
 provenance/SBOM attestations, and protected reviews, but has **no Apple publisher
 identity or notarization ticket**. Go's ARM64 ad-hoc signature is not a developer
@@ -339,6 +338,29 @@ stable APT/RPM channel, stable Homebrew formula, or WinGet release yet.
 Use a pilot host, with `curl`, CA certificates and GnuPG installed for Linux.
 The reviewed package-signing fingerprint is
 `6049C01BB18CE8EC395DA16F9C64F25B652F0673`; stop on any mismatch.
+
+### Optional Linux setup helper
+
+Add the signed repository once using the Debian/Ubuntu or Fedora/RHEL steps
+below. After setup, install with `sudo apt-get install topo` or
+`sudo dnf install topo`.
+
+For a combined setup-and-install operation, the repository also includes
+`scripts/install-linux.sh` for APT/DNF on amd64/arm64.
+It needs curl, GnuPG, standard shell utilities, and root or sudo access. It
+checks the pinned archive-key fingerprint before changing repository setup,
+retains native package/metadata signature verification, installs the beta and
+prints its version. It does not configure or start discovery.
+
+Run:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-ai/topo/main/scripts/install-linux.sh | sh
+```
+
+The helper passed fresh hosted-container installation on APT and RPM, on
+both amd64 and arm64, including signed-package installation, binary comparison,
+local discovery and removal. See the [acceptance run](https://github.com/Nischoy-ai/topo/actions/runs/37809561514).
 
 ### Debian and Ubuntu
 

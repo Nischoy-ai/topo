@@ -2,10 +2,7 @@
 
 Job delivery lets an operator ask a specific collector to do something
 sooner than its next scheduled discovery pass, without the controller
-ever making an inbound connection to the collector. This is slice 5, the
-final slice, of the "collector enrollment, outbound mTLS, rotation,
-heartbeats, and jobs" milestone; see [project plan](project-plan.md) for
-the full staged plan. Like [heartbeats](heartbeats.md), job delivery
+ever making an inbound connection to the collector. Like [heartbeats](heartbeats.md), job delivery
 requires no additional infrastructure to use — collector polling and result
 reporting authenticate with whatever credential a collector already presents,
 while job creation and status lookup require the operator bearer key. It is always
@@ -102,6 +99,3 @@ ignored later.
 - **No job history beyond the single current record per job.** Once
   reported, a job's record stays exactly as it was left; there is no
   audit trail of state transitions.
-- **This completes the "collector enrollment, outbound mTLS, rotation,
-  heartbeats, and jobs" milestone.** See [project plan](project-plan.md)
-  for what comes after.

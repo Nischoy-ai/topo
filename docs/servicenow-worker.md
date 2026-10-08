@@ -1,47 +1,25 @@
 # ServiceNow-managed stateless Topo worker
 
-## Status
+## Supported workflow
 
-M3 Slice A implements the first bounded vertical slice of the architecture in
-[`servicenow-control-plane.md`](servicenow-control-plane.md). The Go worker,
-the source-driven ServiceNow Fluent application, and deterministic simulator
-evidence are implemented and merged. The Fluent application was installed from source on
-the real developer instance under its required company-prefixed scope,
-`x_664635_topo`. The separate 2026-08-30 real-instance evidence below validates
-the bounded runtime path; installed metadata and simulator output are not used
-as substitutes for that evidence.
+The stateless worker supports two reviewed operations: `local.v1` discovers
+its own machine and `ssh_linux.v1` discovers explicitly approved IPv4 Linux
+targets over port 22. Workers connect outbound and check a deployment-owned
+target allowlist and SSH `known_hosts`. ServiceNow validates normalized
+observations and publishes supported CI mappings through IRE.
 
-Slice B is implemented and merged on top of that baseline. It adds immutable
-target-scope planning metadata, deterministic partitions, local and pool
-backpressure, renewable leases, cooperative cancellation, and bounded
-retention/scale tests. Its Fluent `0.3.0` upgrade is installed on the developer
-instance, and the separately labelled real evidence below covers record
-preservation and focused API behavior. It does not turn simulator scale timing
-into ServiceNow platform evidence.
+Application 0.4.6 preview 2 is installed from one combined XML containing the
+app and its 32 required indexes. The compatible published worker is
+v0.1.0-beta.1. Follow the [installation guide](servicenow-update-set.md) and
+[pilot quickstart](pilot-quickstart.md) for setup.
 
-Slice C1 is locally and real-instance verified and merged. Fluent `0.4.3`
-adds a protected
-Password2 SSH credential, an immutable profile/scope/credential binding, a
-secret-free access log, and one fixed attempt-bound credential route. The
-worker adds locally authorized `ssh_linux.v1` over port 22 with a deployment-
-owned IPv4 CIDR allowlist and OpenSSH `known_hosts`. External Vault bindings
-remain deferred to Slice C2 by explicit user decision.
-
-The production path supports two compiled-in operations: `local.v1` discovers
-the worker machine, while `ssh_linux.v1` discovers explicitly selected Linux
-targets. Both return destination-neutral Topo observations; the scoped
-application alone validates, maps, preflights, and applies supported data
-through IRE. The real developer instance now separately proves installation,
-focused Password2 behavior, the exact credential-route OAuth boundary, one
-live-attempt broker behavior, the complete role/ACL and broker-denial matrix,
-secret-free access rows,
-manual and scheduled sanitized-Docker SSH discovery, repeat IRE reconciliation,
-and raw-result retention. All staged Slice C1 acceptance gates are complete.
-The C1.1 onboarding candidate adds a non-claiming worker preflight, dormant
-Linux worker packaging, a reproducible release app artifact, and a
-[pilot quickstart](pilot-quickstart.md) without expanding that discovery or
-credential boundary. Fluent `0.4.4` and the preflight are installed and
-verified on the disposable developer instance.
+Implemented controls include deterministic partitions, bounded concurrency,
+renewable leases, cancellation, raw-result retention, Password2 credential
+storage and an attempt-bound broker. Workers cannot read the credential table.
+The [package validation record](servicenow-validation.md) describes current
+installation and Linux workflow evidence. Historical protocol, security and
+upgrade tests below retain their original version and scope; simulator timing
+does not measure live ServiceNow capacity.
 
 ## Components
 
@@ -50,7 +28,7 @@ The reviewable, installable scoped-application source is under
 
 - `src/fluent/*.now.ts` is the authoritative ServiceNow Fluent definition of
   the tables, indexes, roles, ACLs, application menu, Script Includes,
-  seven-route Scripted REST API, scheduled scripts, IRE cross-scope privilege,
+  seven-route Scripted REST API and scheduled scripts,
   immutable profile/target-scope/credential-binding rules, **Run now**, and **Cancel run** UI actions;
 - `now.config.json`, `package.json`, and `package-lock.json` make the
   application reproducibly buildable with exactly ServiceNow SDK 4.9.0;
@@ -358,12 +336,12 @@ IRE, or a real SSH server:
 
 Real source-driven upgrade preservation, installed metadata, Password2 broker
 and ACL evidence, and sanitized Docker SSH/IRE/retention evidence are documented
-below. The complete staged Slice C1 acceptance matrix now passes; this remains a
-candidate until its pull request is reviewed and merged.
+below. The staged Slice C1 acceptance matrix passed, and the implementation
+is merged.
 
 ### Real ServiceNow Slice C1 installation evidence — 2026-08-30
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence was collected on a real developer instance, separately from `controlsim`.
 It proves installation metadata and upgrade preservation only; it does not
 prove Password2 runtime behavior or SSH discovery:
 
@@ -400,7 +378,7 @@ seventh OAuth route, a disposable Password2 record, and a focused broker run.
 
 ### Real ServiceNow Slice C1 Password2 broker evidence — 2026-08-31
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence was collected on a real developer instance, separately from `controlsim`.
 It deliberately used a documentation-only TEST-NET address and did not execute
 SSH, submit discovery data, invoke IRE, or write CMDB:
 
@@ -437,7 +415,7 @@ matrix evidence.
 
 ### Real ServiceNow Slice C1 Docker SSH/IRE evidence — 2026-08-31
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence was collected on a real developer instance, separately from `controlsim`.
 The target was a disposable Debian 12 Docker container bound only to laptop
 loopback `127.0.0.1:22`; its source, password file, allowlist, and pinned public
 host keys lived under `/private/tmp`, outside the repository. No credential,
@@ -482,7 +460,7 @@ retention gates. It is not throughput evidence or a production network scan.
 
 ### Real ServiceNow Slice C1 security acceptance matrix — 2026-09-01
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence was collected on a real developer instance, separately from `controlsim`.
 The test harness lived under `/private/tmp`, outside the repository; it read
 owner-only OAuth material without printing it, retained credentials only in
 process memory, and emitted status/shape assertions rather than secret values.
@@ -532,7 +510,7 @@ the deliberate Slice C2 follow-up and are not implied by this evidence.
 
 ### Real ServiceNow C1.1 onboarding preflight evidence — 2026-09-02
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence was collected on a real developer instance, separately from `controlsim`.
 It proves source upgrade and the non-claiming preflight only; it is not a new
 discovery, IRE, CMDB, package-channel, or consumer ZIP-install proof:
 
@@ -562,16 +540,16 @@ The release app normalizer also produced an identical validated ZIP from two
 independent SDK builds after canonicalizing only SDK-generated BOM UUID/time
 and ZIP metadata. The pinned SDK is a build-only development dependency and
 the shipped app has no npm runtime dependency tree. Its 4.9.0 development tree
-currently reports nine moderate and two high transitive npm advisories; that
+recorded audit reports nine moderate and two high transitive npm advisories; that
 build-tool exposure remains explicit and is not described as a clean audit.
 The required Go vulnerability gate separately found reachable SSH deadlocks
-`GO-2026-6354`/`GO-2026-6355`; the user-approved candidate moves to exact Go
+`GO-2026-6354`/`GO-2026-6355`; the remediation uses exact Go
 1.26.8 and `x/crypto` 0.56.0. The full pinned gate then reports zero reachable
 vulnerabilities and passes native plus Windows amd64 tests/builds.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`:
+This evidence was collected on a real developer instance, separately from `controlsim`:
 
 - `now-sdk install --auth topo-dev` upgraded the same application sys_id
   `d4e2151fdcbc7d97f8c155d1ba873e46` to `0.3.0` from the Fluent source and
@@ -625,8 +603,8 @@ gates and are not inferred from the focused fixture.
 
 ### Real ServiceNow Slice A evidence — 2026-08-30
 
-This evidence is from the Australia-release developer instance
-`dev441060.service-now.com`, not `controlsim`:
+This evidence was collected on a real Australia-release developer instance,
+separately from `controlsim`:
 
 - Fluent SDK install/update created application
   `d4e2151fdcbc7d97f8c155d1ba873e46`; the installed metadata has eight scoped
