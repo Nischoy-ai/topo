@@ -52,6 +52,11 @@ requires real tests.
 
 ## Upgrades and recovery
 
+The combined package has passed a native XML upgrade from 0.4.5 to 0.4.6,
+preserving the tested pool, profile and schedule configuration. See the
+[upgrade validation](servicenow-validation.md#combined-file-upgrade-2026-10-08)
+for its exact scope.
+
 Retain the XML, manifest, checksum, preview/commit records and installed version
 for every deployment. Use the same scope and XML delivery for all pilot
 upgrades. ServiceNow explicitly warns against [mixing update sets and

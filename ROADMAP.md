@@ -30,15 +30,17 @@ managed Linux discovery workflow and reconciles supported CIs through IRE.
 | Distribution | Reproducible worker archives, signed checksums, SBOM/provenance, signed Linux repositories, and tested public-channel installs | [Releases](docs/releases.md) |
 
 Protocol guides describe the tested environments and compatibility boundaries.
-The ServiceNow package's fresh and repeat installation results are recorded
-separately from older application-only upgrade evidence. Simulated scale gates
+The ServiceNow package has passed fresh and repeat installation plus a 0.4.5
+to 0.4.6 combined-package upgrade preserving the tested configuration records.
+The validation record distinguishes each acceptance run. Simulated scale gates
 cover 1K, 10K and 100K assets; those timings do not measure live ServiceNow capacity.
 
 ## Current development focus
 
 M3 — hybrid discovery and managed ServiceNow deployment — remains the current
-milestone. The active work completes combined-package upgrade verification and
-customer installation documentation for the Linux workflow.
+milestone. Combined-package installation and focused upgrade acceptance are
+complete, with customer installation documentation for the Linux workflow.
+Further capability work follows the planned scopes below.
 
 ## Planned capabilities
 
