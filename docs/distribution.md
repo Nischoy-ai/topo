@@ -352,14 +352,13 @@ checks the pinned archive-key fingerprint before changing repository setup,
 retains native package/metadata signature verification, installs the beta and
 prints its version. It does not configure or start discovery.
 
-After this change is merged to main:
+Run:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-ai/topo/main/scripts/install-linux.sh | sh
 ```
 
-Until then, run `sh scripts/install-linux.sh` from this candidate checkout on
-Linux, or use the manual instructions below. The helper passed fresh hosted-container installation on APT and RPM, on
+The helper passed fresh hosted-container installation on APT and RPM, on
 both amd64 and arm64, including signed-package installation, binary comparison,
 local discovery and removal. See the [acceptance run](https://github.com/Nischoy-ai/topo/actions/runs/37809561514).
 
