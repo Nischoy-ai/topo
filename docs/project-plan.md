@@ -7,6 +7,35 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
+- **Fresh combined installation passed (2026-10-08):** Owner completed the
+  acceptance-instance reset. Native lists verified absent Topo scope/tables
+  and retrieved sets before upload. Exact published combined XML imported,
+  previewed (441 inserts, zero updates/deletes/collisions), and both base and
+  32-index child committed. Version 0.4.6, all 12 tables, and 32/32 ordered
+  physical index definitions verified (54 total physical indexes). No SDK
+  install, separate index import or manual index creation. Private captures
+  and summary: `dist/servicenow-acceptance-2026-10-08/fresh-*`.
+  Uniqueness probes were not repeated; prior evidence retains its own scope.
+  Next: establish a separate clean 0.4.5 baseline for the data-preserving
+  combined upgrade. Asked owner whether the other reset instance recovered or
+  to approve another acceptance-instance wipe; do not reset without that answer.
+  This result supersedes the reset-pending entries below.
+- **Reset target switched (2026-10-08):** Owner reported the packaging-instance
+  reset stalled and directed use of the acceptance instance instead. Its
+  identity was verified in the Developer portal; owner submitted reset and
+  the portal now shows `Reset and Wiping Instance...` for that instance too.
+  Private target record: `dist/servicenow-reset-backup-2026-10-08/reset-target.json`.
+  Neither reset completion nor a new empty baseline has been verified.
+  After owner signs in with the newly issued credentials, verify scope/table
+  absence before importing the combined XML; do not install via SDK first.
+- **Fresh-baseline reset in progress (2026-10-08):** Owner explicitly changed
+  the reset target to the packaging instance and submitted the native portal
+  reset confirmation. Portal now shows `Reset and Wiping Instance...`; the
+  acceptance instance is preserved. Private target and verified XML backups:
+  `dist/servicenow-reset-backup-2026-10-08/`. When complete, owner signs in with
+  newly issued credentials; first verify absent Topo scope/tables, then import
+  the unchanged combined XML. Do not install through SDK before this test.
+  Fresh-install completion and the previous-version upgrade are not yet proven.
 - **Customer materials refreshed:** Preview 2 release notes, INSTALLATION,
   INDEXES, START-HERE and manifest now link to the exact maintainer validation
   record at `3336ffc`; ZIP/checksums regenerated and all seven remote asset

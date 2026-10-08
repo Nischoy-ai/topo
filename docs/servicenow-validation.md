@@ -11,8 +11,8 @@ steps are in [Install from XML](servicenow-update-set.md#customer-installation).
 | All 32 indexes created from an absent-index baseline | Passed using the unchanged native index companion |
 | Required key uniqueness | All 17 duplicate attempts rejected; redundant composite explained below |
 | Exact combined-file repeat | Passed native reimport, preview and batch commit; all 32 definitions retained |
-| Fresh combined installation | Approved reset and test pending |
-| Previous-version upgrade using combined XML | Pending fresh-baseline test |
+| Fresh combined installation | Passed from absent scope/tables; version 0.4.6 and all 32 index definitions verified |
+| Previous-version upgrade using combined XML | Awaiting a separate clean 0.4.5 baseline |
 | Linux optional setup helper | Passed APT and RPM on amd64 and arm64, hosted disposable containers |
 | Worker scale and retention | Passed 1K/10K/100K simulation and 100K retention drain |
 
@@ -21,6 +21,25 @@ commit `bb7022f`. All four helper jobs verified the installed release bytes,
 local discovery, dormant services, removal and operator-file preservation.
 These are Linux container installation tests, not a booted-service test.
 Simulation timings are not measurements of live ServiceNow throughput.
+
+## Fresh combined installation (2026-10-08)
+
+After an owner-confirmed reset, native lists showed no Topo scope, no Topo
+application tables, and no retrieved update sets. The exact published combined
+XML (SHA-256 `487c29cbd7b0837d4017ac2d32254302efd80cece949395f839ba8c42bfebdaf`)
+was imported through the native XML form. Batch preview reported 441 app
+inserts, zero updates/deletes/collisions, and the 32-index child Previewed in
+Batch. Both sets subsequently reached Committed.
+
+The installed application reports version 0.4.6. All 12 tables exist. Native
+physical-index lists, with full forms for two truncated composite columns,
+contain all 32 required ordered-column definitions (54 total physical indexes,
+including platform/reference indexes). No SDK install, separate index import,
+or manual index creation was used. This proves the combined package creates
+the app and required index columns from an absent application baseline.
+Uniqueness probes were not repeated in this run; the separate 17-key database
+rejection evidence above remains distinct. Previous-version upgrade and data
+preservation require a separate 0.4.5 baseline.
 
 ## Combined-file repeat (2026-10-08)
 
