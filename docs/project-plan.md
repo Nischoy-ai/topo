@@ -7,6 +7,27 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
+- **Upgrade reset submitted (2026-10-08):** Owner submitted the second
+  acceptance-instance wipe. Portal showed Reset and Wiping Instance, then
+  Hibernating; the agent requested Wake instance and the portal now reports
+  Waking Instance. A later native instance reload returned HTTP 502. Empty
+  baseline and fresh sign-in remain unverified.
+  Bounded inactive pool/profile/schedule fixture creation and snapshot scripts
+  are prepared privately in `dist/servicenow-acceptance-2026-10-08/upgrade-*`.
+  They have not run. Preview 2 documentation/manifest now link to `d51a2fa`
+  and record the passed fresh combined installation; all seven GitHub asset
+  digests match local files. XML bytes unchanged. PR #68 description reflects
+  fresh/repeat/helper evidence. At `d51a2fa`, PR test and all live Linux/macOS
+  install jobs passed; remaining package jobs were still pending. Upgrade result
+  remains pending.
+- **Upgrade baseline handoff (2026-10-08):** Owner said proceed. The other
+  reset instance still returns HTTP 502. Prepared the native acceptance-instance
+  reset dialog, with "keep my instance name" selected; the owner must check
+  the permanent-erasure acknowledgment and submit the final reset. No second
+  wipe has been submitted by the agent. Reverified both saved XML checksums.
+  After reset and owner sign-in, verify empty scope/tables, install the saved
+  real 0.4.5 XML, create isolated inactive fixtures, then import the exact
+  combined 0.4.6 package and compare fixture content/identities plus indexes.
 - **Fresh combined installation passed (2026-10-08):** Owner completed the
   acceptance-instance reset. Native lists verified absent Topo scope/tables
   and retrieved sets before upload. Exact published combined XML imported,
