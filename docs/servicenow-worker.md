@@ -201,7 +201,7 @@ deployment authorization. ServiceNow can select `local.v1`, but it cannot
 expand the worker's local authority or supply a target, command, script, query,
 OID, URL, class, field, relationship, or executable payload.
 
-For the Password2 SSH pilot, create the target scope with partition prefix 32,
+For Password2 SSH discovery, create the target scope with partition prefix 32,
 the protected credential as a `credential_admin`, a matching immutable
 binding, and an `ssh_linux.v1` profile. On the laptop, prepare a canonical CIDR
 allowlist and a normal OpenSSH `known_hosts` file as read-only deployment

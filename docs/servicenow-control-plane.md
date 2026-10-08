@@ -5,8 +5,9 @@
 The Nischoy Topo scoped application controls discovery and stores operational
 state in ServiceNow. Stateless workers poll outbound, execute locally approved
 operations, and return destination-neutral observations for IRE reconciliation.
-The current application is **0.4.6**; the compatible published worker is
-**v0.1.0-beta.1**. Start with the [installation and setup guide](pilot-quickstart.md).
+Topo 0.4.6 Beta installs the application and indexes as one native XML batch.
+Install the worker from the Beta channel and follow the
+[installation and setup guide](pilot-quickstart.md).
 
 Implemented operations are `local.v1` and `ssh_linux.v1`. Worker pools provide
 capacity reservations, attempt-bound leases, renewal, cancellation and recovery.
@@ -14,7 +15,7 @@ The SSH operation uses explicitly listed IPv4 targets, local CIDR allowlists,
 verified host keys and a Password2-backed credential broker. The application
 maps computers, network adapters and their ownership relationships through IRE.
 
-The [worker validation record](servicenow-worker.md) separates real-system
+The [worker validation record](evidence/servicenow-worker.md) separates real-system
 security and functional checks from deterministic simulation. The
 [package validation record](servicenow-validation.md) covers native XML
 installation, indexes, repeat import and the tested configuration upgrade.
@@ -130,7 +131,7 @@ must not develop separate discovery implementations.
 The application uses the documented scoped `sn_cmdb.IdentificationEngine`
 interface for non-committing preflight and apply. It rejects reported warnings
 or errors and never writes CMDB CI tables directly. Focused real-system IRE
-and reconciliation results are recorded in [worker evidence](servicenow-worker.md)
+and reconciliation results are recorded in [worker evidence](evidence/servicenow-worker.md)
 and [package validation](servicenow-validation.md).
 
 ### Nischoy scoped application tables
@@ -414,7 +415,7 @@ Required controls:
 The ServiceNow credential resolver takes a binding identifier and calls the
 broker just in time, retaining the value only in operation memory. Focused
 Password2 encryption, ACL and attempt-bound broker checks are recorded in
-[worker evidence](servicenow-worker.md). Backup/clone recovery and protected
+[worker evidence](evidence/servicenow-worker.md). Backup/clone recovery and protected
 credential preservation on upgrade need separate operational checks. Password2
 does not provide an external-vault security boundary.
 
@@ -539,7 +540,7 @@ heartbeat and renewal.
 Deterministic tests cover 1K/10K/100K supported items and relationships, worker
 churn, renewal loss, late-call denial and a 100K eligible-result retention
 backlog. These tests establish simulator behavior, not ServiceNow throughput.
-See the [worker evidence](servicenow-worker.md) for exact test scope.
+See the [worker evidence](evidence/servicenow-worker.md) for exact test scope.
 
 ## Planned extensions
 
@@ -579,7 +580,7 @@ not automatically make them supported managed-worker operations. See the
   schedule, or credential-record resources.
 - Secrets and sensitive results do not appear in logs, errors, audit, labels,
   observations, tasks, or IRE payloads.
-- Exact Go 1.26.8 format, focused/full race tests, vet, Linux/macOS build,
+- Exact Go 1.26.9 format, focused/full race tests, vet, Linux/macOS build,
   Windows amd64 vet/build, and the pinned security-review gate pass.
 - Simulator evidence and real ServiceNow evidence are recorded separately.
 
@@ -597,24 +598,8 @@ not automatically make them supported managed-worker operations. See the
 
 ## Validation coverage
 
-Real-system checks cover application roles/ACLs, worker OAuth route restrictions,
-generic API denial, atomic claims, lease expiry/retry, cancellation,
-Password2/broker denials, manual and scheduled execution, IRE
-preflight/apply/reconciliation and focused retention. Native combined XML
-installation, repeat import and a 0.4.5 → 0.4.6 upgrade preserving three tested
-configuration records have passed; protected credentials and operational history
-were outside that upgrade comparison. See [package validation](servicenow-validation.md).
-
-Signed beta APT/RPM promotion and fresh Linux/macOS public-channel installs
-have passed. Stable/N-1 channel promotion and independent security remediation
-retest are separate evidence in [distribution](distribution.md) and
-[security review](security-review.md).
-
-Planned operational checks include Password2 backup/clone recovery,
-external Vault managed bindings, sustained live platform volume, broader data
-preservation on upgrade, and ServiceNow outage or ambiguous IRE recovery drills.
-These scenarios are not established by the focused fixtures above. Simulator
-results remain separate from real-system measurements.
+See the [architecture coverage record](evidence/servicenow-worker.md#validation-coverage)
+for dated checks and the scope of operational recovery evidence.
 
 ## Relationship to earlier ServiceNow work
 

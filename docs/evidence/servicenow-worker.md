@@ -414,3 +414,24 @@ fields remain rejected.
 It does not prove Slice B behavior by itself; the separately labelled evidence
 above does. Neither real section proves Slice B's simulator-only scale and
 retention-volume gates.
+
+## Validation coverage
+
+Real-system checks cover application roles/ACLs, worker OAuth route restrictions,
+generic API denial, atomic claims, lease expiry/retry, cancellation,
+Password2/broker denials, manual and scheduled execution, IRE
+preflight/apply/reconciliation and focused retention. Native combined XML
+installation, repeat import and a 0.4.5 → 0.4.6 upgrade preserving three tested
+configuration records have passed; protected credentials and operational history
+were outside that upgrade comparison. See [package validation](../servicenow-validation.md).
+
+Signed beta APT/RPM promotion and fresh Linux/macOS public-channel installs
+have passed. Stable/N-1 channel promotion and independent security remediation
+retest are separate evidence in [distribution](distribution.md) and
+[security review](../security-review.md).
+
+Planned operational checks include Password2 backup/clone recovery,
+external Vault managed bindings, sustained live platform volume, broader data
+preservation on upgrade, and ServiceNow outage or ambiguous IRE recovery drills.
+These scenarios are not established by the focused fixtures above. Simulator
+results remain separate from real-system measurements.

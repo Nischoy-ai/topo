@@ -55,7 +55,7 @@ Installation creates the unprivileged `topo-agent` and `topo-worker` system
 users when needed and reloads systemd metadata. It deliberately does not create
 live configuration, generate a secret, enable either unit, or start either
 service. Configure the desired service explicitly; see the
-[ServiceNow pilot quickstart](pilot-quickstart.md) for the worker path.
+[ServiceNow setup guide](pilot-quickstart.md) for the worker path.
 
 ```sh
 sudo install -d -o root -g topo-agent -m 0750 /etc/topo-agent
