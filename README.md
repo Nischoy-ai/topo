@@ -11,7 +11,7 @@ ServiceNow application to reconcile through IRE.
 
 [ServiceNow 0.4.6 preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2)
 includes the app and all **32 required indexes** in one XML file. This is a
-development preview, not a production-ready release. The older preview 1
+development preview, published for development evaluation. The older preview 1
 contains only the app and is missing those indexes.
 
 For the combined package:

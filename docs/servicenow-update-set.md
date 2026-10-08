@@ -1,24 +1,24 @@
 # Install the Topo pilot application from XML
 
 **Development preview:** [ServiceNow 0.4.6 preview 1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1)
-contains the unchanged platform XML tested on dev317694, its manifest,
+contains the unchanged platform XML tested on acceptance-instance, its manifest,
 checksums and current installation notes. Clean installation, repeat import,
 0.4.5-to-0.4.6 upgrade and single-host Linux manual/repeat/scheduled discovery
-passed. This preview is not customer-ready: the missing-index limitation below
+passed. The missing-index limitation below
 remains in its published bytes. Worker beta `v0.1.0-beta.1` is a separate release.
 
 **[Combined XML development preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2).** The native batch export
 `nischoy-topo-0.4.6-combined.xml` contains 441 application updates and all 32
 required index definitions (17 unique). One upload brings in the app and its
 index child set; preview and commit the batch from its **Nischoy Topo** base.
-The exact candidate imported, previewed and committed on dev394887 over the
+The exact candidate imported, previewed and committed on packaging-instance over the
 existing app and indexes; all 32 ordered-column definitions remain present.
 This is not fresh combined-installation or repeat-batch evidence. Its payload comparison
 with the earlier native exports passed with documented record-identity/display
 normalizations; no application logic or index payload was hand-edited.
 
 The separate index companion previously recreated all 32 definitions from an
-absent-index baseline on dev317694, with focused uniqueness checks. That is
+absent-index baseline on acceptance-instance, with focused uniqueness checks. That is
 separate evidence from the combined file's installation tests and the earlier
 app-only clean/repeat/upgrade tests. Fresh combined installation, a subsequent
 version upgrade and broader acceptance remain open. The older public
@@ -305,12 +305,12 @@ instance and has a ten-minute ceiling.
 login/session-CSRF pattern with standard-library HTTP and the existing native
 UI processors. This is an experimental Australia-specific adapter, not a claim
 that those processors are a supported public REST API. It accepts only the
-configured dev394887 origin and admin identity, requires the installed scope
+configured packaging-instance origin and admin identity, requires the installed scope
 and app version 0.4.6, creates a non-current set, publishes without demo data,
 waits for Complete, submits the native export action and accepts only the
 same-origin native download redirect. Login/MFA challenges, unexpected
 responses, redirects, formats or timeouts fail closed. Nothing weakens instance
-security or changes dev317694.
+security or changes acceptance-instance.
 
 All network reads, XML size and polling are bounded. Cookies/passwords/CSRF
 values stay in memory; errors never include response bodies. A write with an
@@ -383,9 +383,9 @@ acceptance. Those are no longer blocked on proving password-based login/export.
 
 With owner approval, SDK 4.9.0 installed source commit
 `27107afcb5177b6eb1ad72db3f5dbaa7a7304128` as application 0.4.4 on
-`dev394887` (Australia Patch 3, build
+`packaging-instance` (Australia Patch 3, build
 `glide-australia-02-11-2026__patch3-05-25-2026`). The owner confirmed this
-instance replaces the unavailable `dev441060`. OAuth used the official SDK
+instance replaces the unavailable `earlier-test-instance`. OAuth used the official SDK
 protected credential store and the built-in browser.
 
 The platform **Publish to Update Set** action succeeded with **Include demo
@@ -422,7 +422,7 @@ enforcement, customer entitlement, or upgrade compatibility.
 
 ## First clean-instance preview — failed
 
-The owner approved using a full reset of `dev394887` in place of a second
+The owner approved using a full reset of `packaging-instance` in place of a second
 simultaneous PDI. After reset, no Topo scope or retrieved update sets existed.
 The saved XML imported with 442 updates, but preview reported one error and
 zero warnings: the cross-scope privilege references missing `target_scope`
@@ -437,7 +437,7 @@ failed-test evidence and must not be distributed.
 ## Corrected platform export — 0.4.5
 
 On 2026-09-22, SDK 4.9.0 installed the clean tracked-source 0.4.5 build from
-`ba5fc765c02d359bd584335222d6225877c271f8` on `dev394887`. Platform publication
+`ba5fc765c02d359bd584335222d6225877c271f8` on `packaging-instance`. Platform publication
 with demo data unchecked produced completed set
 `cf74c1b09327c310682e74dcebba10f0`, exported as
 `6ea405b09327c310682e74dcebba10d1`: 441 updates, 1,290,748 bytes, SHA-256
@@ -488,7 +488,7 @@ successful manual/scheduled/IRE/retention acceptance remain pending.
 
 ### Recorded clean-install and repeat-preview evidence
 
-The corrected XML passed a clean installation on the owner-reset `dev394887`
+The corrected XML passed a clean installation on the owner-reset `packaging-instance`
 on 2026-09-22 (instance-displayed time), Australia Patch 3 build
 `glide-australia-02-11-2026__patch3-05-25-2026`. Before import, both the Topo
 scope lookup and retrieved-update-set list were empty. Preview succeeded in
@@ -559,15 +559,15 @@ obtain explicit approval at the irreversible reset step.
   instance restore. Record any limitation before recommending it to customers.
 
 Local parser fixtures prove only offline rejection and byte preservation.
-Earlier SDK upgrades on `dev441060` and simulator scale tests do not satisfy
+Earlier SDK upgrades on `earlier-test-instance` and simulator scale tests do not satisfy
 this matrix. Source installation and export are approved and completed; a
 separate authorized clean instance is still required.
 
-## 0.4.6 clean and repeat installation — dev317694
+## 0.4.6 clean and repeat installation — acceptance-instance
 
 On 2026-10-03 UTC, the unchanged 0.4.6 XML with SHA-256
 `c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`
-was imported into dev317694 after confirming no Topo scope or retrieved sets.
+was imported into acceptance-instance after confirming no Topo scope or retrieved sets.
 Preview reported 441 inserts and zero updates, deletes or problems. Commit
 completed successfully. Read-only verification found version 0.4.6, twelve
 tables, five roles, 37 ACLs, seven REST routes and three Script Includes.
@@ -578,7 +578,7 @@ identities and classes unchanged. This proves this artifact's clean and repeat
 installation on this instance; it does not prove the still-pending
 0.4.5-to-0.4.6 upgrade or broader discovery/security acceptance.
 
-## 0.4.5-to-0.4.6 upgrade — dev317694
+## 0.4.5-to-0.4.6 upgrade — acceptance-instance
 
 On 2026-10-03 UTC, the actual upgrade of installed 0.4.5 to the exact sealed
 0.4.6 XML passed on Australia Patch 3, build
@@ -602,7 +602,7 @@ preview conflicts. The subsequent Linux workflow evidence follows below;
 broader credential/security and recovery tests and public distribution
 approval remain outstanding.
 
-## Real Azure Linux workflow — dev317694
+## Real Azure Linux workflow — acceptance-instance
 
 On 2026-10-03 UTC, the XML-installed 0.4.6 app and unchanged published
 `v0.1.0-beta.1` Linux worker completed two independent manual scans and one

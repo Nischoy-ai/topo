@@ -7,6 +7,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
+- **Release documentation revised (2026-10-08):** At owner request, removed
+  blanket readiness labels and test-instance identifiers from public guides,
+  release notes and both preview packages. Specific index requirements and
+  outstanding validation checks remain documented. Replaced documentation,
+  manifests, ZIPs and checksums for previews 1 and 2; all remote asset hashes
+  verified. Both XML payload hashes remain unchanged. Runtime endpoint pins
+  in the internal export proof are operational configuration, not test-report
+  prose, and remain unchanged. Earlier package ZIP/document hashes are historical.
 - **Manual preview 2 published (2026-10-08):** Owner authorized commit and
   release. Implementation commit `0d5018f` is pushed on
   `codex/servicenow-index-installation`; PR #68 is open (CI pending at handoff,
@@ -58,7 +66,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   display attributes (reference value unchanged). All other payload content
   matches. Native export repeats the identical base header twice; preserved
   the export unmodified. Inspection evidence is `inspection.json` beside it.
-  On dev394887 the exact file imported as a 473-update batch; native preview
+  On packaging-instance the exact file imported as a 473-update batch; native preview
   and commit succeeded. Base: 441 updates, zero collisions/deletes; index child:
   32 inserts in preview and Committed afterward. All 32 required ordered-column
   definitions remain present across the twelve physical-index lists (66 total
@@ -82,7 +90,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   preview 1, or claiming production readiness. Linux installation must retain
   signed package verification; scale testing follows the installation work
   and uses simulation with separately stated live-platform evidence.
-  On dev317694, native Parent lookup set the original 32-update Global index
+  On acceptance-instance, native Parent lookup set the original 32-update Global index
   set `b9a9be94c37b4f50b49fbefdd4013156` under the existing 441-update app set
   `addeb0c8c3bb8b50b49fbefdd40131ff`. The app description matches sealed 0.4.6
   source `0d93e756216bfa62192d526f58720dc7bea8c74c`. Native UI now shows
@@ -93,7 +101,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   This historical export handoff is superseded by the inspected/committed
   candidate above. Existing XMLs and prior evidence remain intact.
 - **All-index XML recreation passed (2026-10-07):** Owner completed native
-  Drop for all 32 required definitions on dev317694. Twelve exact-table-ID
+  Drop for all 32 required definitions on acceptance-instance. Twelve exact-table-ID
   browser lists verified absence, retaining 22 primary/reference indexes.
   The unchanged companion was uploaded and previewed; all 32 deliberate-drop
   newer-local-update collisions were accepted. Commit succeeded in five seconds.
@@ -119,7 +127,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   fresh combined-package install and subsequent version upgrade with companion,
   complete source equivalence and broader acceptance; preserve prior evidence.
 - **Index repair slice staged:** Owner authorized repairing the XML-installed
-  dev317694 instance through the supported index-creator interface and proving
+  acceptance-instance instance through the supported index-creator interface and proving
   uniqueness/concurrent claims/retries before establishing customer setup.
   Objective: restore the 32 source-defined indexes without replacing the XML
   installation. Deliverables: source-derived administrator checklist, live
@@ -130,7 +138,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   publishing or claiming a self-contained installer before it is proven.
   `docs/servicenow-index-setup.md` records the proposed procedure and test gates.
   On 2026-10-04 all 32 indexes were created through Tables & Columns on
-  dev317694, with the owner completing browser dialogs. Exact-table-ID reads
+  acceptance-instance, with the owner completing browser dialogs. Exact-table-ID reads
   of `v_index_creator` now confirm all 32 ordered-column definitions (zero
   missing). All 32 native `sys_index` captures match the source uniqueness
   settings: 17 unique and 15 non-unique. This verifies creation/metadata,
@@ -163,7 +171,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   BTree, no extra records. Local candidate:
   `dist/servicenow-index-repair-2026-10-04/nischoy-topo-0.4.6-indexes.xml`.
   Native exported remote set is `03af4790c33f4f50b49fbefdd401316a`.
-  On dev394887 the native upload, preview and first commit succeeded with
+  On packaging-instance the native upload, preview and first commit succeeded with
   32 records and zero collisions. Post-commit physical coverage remains 32/32.
   Reuploading identical bytes and previewing again also succeeded with zero
   collisions. After explicit owner approval, the second commit succeeded.
@@ -172,7 +180,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   Existing source-installed indexes mean the first commit alone does not prove
   fresh physical creation.
   On 2026-10-05 the owner used the supported Database Indexes Drop action
-  for task `(u_cancel_requested,u_state)` on dev317694. Native success and
+  for task `(u_cancel_requested,u_state)` on acceptance-instance. Native success and
   the 11-row physical list confirmed absence. Importing the unchanged companion
   XML produced one expected newer-local-update collision for that deletion;
   accepting the remote definition and committing succeeded in four seconds.
@@ -208,14 +216,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   all checksums, exact local-byte matches and ZIP integrity. Release:
   <https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1>. Keep the missing 32 indexes
   (17 unique), incomplete source equivalence and remaining acceptance limits
-  explicit. Do not call it customer-ready or change the worker beta artifacts.
+  explicit. Keep the worker beta artifacts unchanged.
   Future changes require a new manually reviewed export/release. Historical
   automatic-candidate next steps below are superseded by this decision.
 
 - **XML index-delivery blocker (2026-10-04 UTC):** Before wiring automatic
   source-bound customer packages, a clean SDK 4.9.0 build at `eff70a4` identified
   32 source-defined indexes (17 unique). Exact-table-ID reads of
-  `v_index_creator` across all twelve XML-installed dev317694 tables returned
+  `v_index_creator` across all twelve XML-installed acceptance-instance tables returned
   34 physical primary/reference indexes but none of the 32 required column
   definitions. The task table has six physical indexes versus fourteen on the
   packaging instance. Sealed 0.4.6 XML contains no index records. Source
@@ -229,7 +237,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   index-installation mechanism, verify all 32 definitions and 17 uniqueness
   contracts after clean XML installation and upgrade, then resume full source
   equivalence and automatic candidate generation. Do not silently downgrade
-  unique indexes, fabricate XML, or declare the package customer-ready.
+  unique indexes or fabricate XML.
 
 - **Unattended password-session XML export passed (2026-10-04 UTC):** PR #65
   merged as `3a2d92a9736fe6d29ee3946313c946beafd5142c` after all seven CI checks
@@ -259,7 +267,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   Deliverables are `.github/workflows/servicenow-xml-proof.yml`, the standard-
   library proof client and offline security/failure tests. Acceptance requires
   a real approved main-branch run; no live success is claimed from fixture tests.
-  The client pins dev394887, preserves CSRF/session checks, bounds requests and
+  The client pins packaging-instance, preserves CSRF/session checks, bounds requests and
   polling, never retries mutations, and records a created-set ID before publish.
   Only payload-free status/digest evidence is uploaded; unreviewed XML is removed
   from the ephemeral runner. Non-goals: source deployment/equivalence, automatic
@@ -267,14 +275,14 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   The main-only environment means PR #65 must land before the first live run;
   do not loosen it to test this branch or extract the password locally.
 - **Admin browser publication follow-up (2026-10-03):** Owner signed in as
-  admin on dev394887. Native Publish to Update Set succeeded in ten seconds
+  admin on packaging-instance. Native Publish to Update Set succeeded in ten seconds
   with demo data unchecked; set `579831c893f78b50682e74dcebba101d` is Complete,
   created by admin, with 441 updates. Export to XML produced a browser download
   event, but no local artifact path was exposed by the tool, so the bytes have
   not been inspected/sealed. Browser publication works; unattended CI login
   and artifact capture remain unproven. Preserve the prior sealed 0.4.6 XML.
 - **XML automation feasibility result (2026-10-03):** Pinned SDK inspection,
-  official SDK/CI-CD documentation and live dev394887 probes do not establish
+  official SDK/CI-CD documentation and live packaging-instance probes do not establish
   unattended customer XML export. The OAuth identity read the actual native
   publication form, but its single `createUpdateSet` POST returned 401; a
   follow-up query confirmed no probe set was created. Newer SDK `cicd publish`
@@ -288,12 +296,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   proceeding with unattended export investigation. Objective: determine whether
   the platform-generated XML can be produced by the build pipeline without an
   interactive browser. Deliverables: inspect the pinned SDK and official CI/CD
-  contracts, probe the existing dev394887 packaging instance with its protected
+  contracts, probe the existing packaging-instance packaging instance with its protected
   OAuth identity, and document the supported path or precise blocker. Acceptance:
   a genuine bounded platform export with source/version provenance and offline
   inspection, or an explicit negative result without claiming automation works.
   A native publication probe may create a disposable update set for the existing
-  0.4.6 app; do not modify dev317694's acceptance fixtures, weaken authentication,
+  0.4.6 app; do not modify acceptance-instance's acceptance fixtures, weaken authentication,
   fabricate XML, enable a custom privileged endpoint, or publish public assets.
 - **README customer installation clarified:** Step 1 now describes obtaining
   the XML package and importing, previewing and committing it through the
@@ -302,7 +310,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   are distinguished; worker installation remains the separate second step.
 - **XML-installed Azure Linux workflow passed (2026-10-03 UTC):** This
   completes the manual/repeat/scheduled acceptance slice staged below.
-  Owner saved the non-admin lab SSH credential on dev317694. Created the
+  Owner saved the non-admin lab SSH credential on acceptance-instance. Created the
   revision-1 binding and `xml-pilot-linux` profile, then ran the unchanged
   published beta worker against the single approved target with verified SSH
   host keys. Two independent **Run now** executions and one actual scheduled
@@ -334,7 +342,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   deallocated. Verified host SSH identity, target SSH reachability, and an
   exact match between the host's target keys and the Azure-verified local
   `known_hosts` fixture. Published worker `v0.1.0-beta.1` is unchanged.
-  On XML-installed dev317694, created the dedicated machine integration user
+  On XML-installed acceptance-instance, created the dedicated machine integration user
   with only the directly assigned worker role, a restricted OAuth client,
   seven exact POST/v1 scopes, seven matching policies and dedicated inbound
   profile mappings. All wildcard flags were verified false before activation.
@@ -358,7 +366,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   **Non-goals:** Windows/cloud inventory, broader mappings, scale or
   production-readiness claims. Preserve the inactive upgrade fixtures and
   sealed XML. Generic access to operational/credential tables stays disabled.
-- **dev317694 XML upgrade acceptance passed (2026-10-03 UTC):** This
+- **acceptance-instance XML upgrade acceptance passed (2026-10-03 UTC):** This
   supersedes the removal/upgrade blockers below. Owner completed standard app
   deletion in a regular browser; read-only checks confirmed zero Topo scopes,
   metadata files, tables, roles and routes. Preserved 0.4.5 XML was then
@@ -379,7 +387,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   Private evidence: `dist/servicenow-0.4.6-acceptance/acceptance-summary.json`,
   preview/commit JSON, collision review, and before/after fixture snapshots.
   Clean install, identical repeat import/commit, and the 0.4.5-to-0.4.6 upgrade
-  now pass on dev317694. Preservation evidence covers these three non-secret
+  now pass on acceptance-instance. Preservation evidence covers these three non-secret
   records only, not Password2 credentials or run history. Real Linux/IRE,
   security/recovery acceptance and public release remain pending. No worker
   or discovery schedule was started; leave the inactive fixtures for review.
@@ -405,7 +413,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   method or successful completion of the platform prompt is needed before
   establishing the 0.4.5 baseline. Clean/repeat evidence remains valid;
   upgrade evidence remains pending.
-- **dev317694 clean/repeat XML acceptance passed (2026-10-03 UTC):** Owner
+- **acceptance-instance clean/repeat XML acceptance passed (2026-10-03 UTC):** Owner
   authorized installation and upgrade testing and signed in to the in-app
   browser. Before upload the Topo scope and Retrieved Update Sets lists were
   empty. Imported unchanged 0.4.6 XML (digest `c9fdbb0c73986da0528679e828afd610b3c8e404d4fe0c494cb378f3679defec`)
@@ -425,11 +433,11 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   returns no prompt. Two attempts produced no removal. No underlying metadata
   was manually deleted, no old XML was installed over 0.4.6, and no worker or
   discovery schedule started. Next: owner completes the native app-removal
-  confirmation on dev317694; verify empty scope/tables, install preserved
+  confirmation on acceptance-instance; verify empty scope/tables, install preserved
   0.4.5 XML, create inactive preservation fixtures, then import/preview/commit
   0.4.6 and compare fixtures. Preserve both XML hashes and current evidence.
 - **0.4.6 XML candidate sealed (2026-10-02):** Official publication from
-  dev394887 now produces 441 application updates. The first post-cleanup
+  packaging-instance now produces 441 application updates. The first post-cleanup
   publication still included 29 DELETE updates; its 30 source deletion markers
   were privately backed up, matched exactly to the approved test-only cleanup,
   removed, and verified absent. Customer Update records were not edited.
@@ -451,7 +459,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   all eight file checksums and ZIP integrity passed. Bundle SHA-256:
   `96b86bffaf43ef846d6eb1591df78f988ceca1dc07aeb97bffe9f97c0535c9fe`.
   This supersedes the export blocker below, not the outstanding acceptance
-  gates: clean/repeat/upgrade XML installation on dev317694, real Linux
+  gates: clean/repeat/upgrade XML installation on acceptance-instance, real Linux
   rescan and repeat IRE reconciliation, role/credential/security and recovery
   checks. No worker was started; beta.1 and the installed local Topo remain
   unchanged. The package is an offline acceptance candidate, not a public or
@@ -470,7 +478,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   7 REST routes, 3 Script Includes, and no runtime privilege/layout additions.
   Evidence is under ignored `dist/servicenow-0.4.6-export-review/`.
   Ten offline inspector tests passed. The browser session has expired; owner
-  was asked to sign in to dev394887 for the already-approved platform publish
+  was asked to sign in to packaging-instance for the already-approved platform publish
   and fresh XML export. Do not source-install again or edit the previous XML.
   No clean 0.4.6 export or sealed candidate exists yet. Previously approved
   source cleanup may require runtime grants to be re-established before scans;
@@ -497,7 +505,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   repeat, upgrade and broader pilot acceptance remain separate gates.
 - **0.4.6 source upgrade and platform publication succeeded (2026-09-30):**
   After direct owner OAuth renewal, SDK 4.9.0 installed the pinned clean
-  `0d93e75` source on `dev394887` with demo data disabled. SDK returned success,
+  `0d93e75` source on `packaging-instance` with demo data disabled. SDK returned success,
   rollback context `a19e09d393e30750682e74dcebba1021`, and the existing app form
   shows 0.4.6. No instance reset occurred. This is source-install evidence,
   not XML-upgrade acceptance. Platform Publish to Update Set succeeded with
@@ -515,17 +523,17 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   allowlist or distribute this XML. Separate these 30 runtime/test metadata
   records from the platform packaging set, preserving live test configuration,
   and re-export through ServiceNow before offline/source comparison and XML
-  acceptance on `dev317694`. No XML has been imported there yet.
+  acceptance on `acceptance-instance`. No XML has been imported there yet.
 - **Export-instance repurposing approved; SDK login expired (2026-09-30):**
-  Owner explicitly approved source-upgrading `dev394887` to 0.4.6 for export,
+  Owner explicitly approved source-upgrading `packaging-instance` to 0.4.6 for export,
   replacing its untouched XML acceptance-baseline role, with separate XML
-  validation on `dev317694`. The authorized SDK install from the pinned clean
+  validation on `acceptance-instance`. The authorized SDK install from the pinned clean
   source stopped during authentication: expired access token, refresh rejected
   with `server_error (access_denied)`. No app installation occurred. Renew
-  `topo-dev394887-reset` using the official SDK OAuth flow with direct owner
+  `topo-packaging-instance-reset` using the official SDK OAuth flow with direct owner
   code entry in Mac Terminal, then resume the already-approved source install.
 - **Alternate export instance check (2026-09-30):** Owner asked to try
-  `dev394887` and whether a reset is needed. Boolean-only property inspection
+  `packaging-instance` and whether a reset is needed. Boolean-only property inspection
   confirmed this instance recognizes prefix `664635`; its existing Topo scope
   is present. No reset is indicated by the ownership check. Automatic approval
   review rejected the proposed SDK 0.4.6 source installation because it would
@@ -534,9 +542,9 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   upgrade/export only and conduct clean/repeat/XML-upgrade acceptance on a
   separate instance; do not relabel a source upgrade as XML validation.
 - **Separate 0.4.6 export instance authorized (2026-09-27):** Owner supplied
-  and signed in to `dev317694` for the requested source installation/export.
+  and signed in to `acceptance-instance` for the requested source installation/export.
   Read-only checks found no `x_664635_topo` scope and Australia Patch 3 build
-  `glide-australia-02-11-2026__patch3-05-25-2026`. Preserve `dev394887` as the
+  `glide-australia-02-11-2026__patch3-05-25-2026`. Preserve `packaging-instance` as the
   XML-installed acceptance baseline. All 13 PR checks passed at `0d93e75`.
   A clean archive of `0d93e756216bfa62192d526f58720dc7bea8c74c` in
   `/private/tmp/topo-046-source.IyhDNx` passed locked dependency installation,
@@ -563,7 +571,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
   this needs ServiceNow-supported ownership provisioning or an authoring
   instance that already recognizes the stable prefix; do not bypass the
   protected form or rename the scope to make installation pass. Preserve the
-  stable scope/metadata IDs and the XML-only dev394887 acceptance baseline.
+  stable scope/metadata IDs and the XML-only packaging-instance acceptance baseline.
   Never put authorization codes or tokens into chat/tool output.
 - **XML real SSH acceptance exposed a mapper defect (2026-09-27):** The owner
   saved `xml-pilot-linux-password` (`9a44095293670f10682e74dcebba1031`). Created
@@ -662,7 +670,7 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 - **Active follow-on:** C1.3 XML update-set pilot distribution is staged below.
   Main/PR #63 is verified merged at `c9c2295`; beta.1 assets remain immutable.
   Corrected 0.4.5 platform XML passed clean preview/commit on the owner-reset
-  dev394887; identical re-import preview passed with 441 updates. PR #64
+  packaging-instance; identical re-import preview passed with 441 updates. PR #64
   remains draft pending role/OAuth, worker-flow, repeated-commit preservation
   and version-upgrade acceptance. All 13 checks pass at `3ae4282`.
 - **Latest C1.2 status:** PR #62 merged at `dd3c349`. Independently approved
@@ -3717,7 +3725,7 @@ channels production-ready. Formatting, `git diff --check`, exact Go 1.26.8
 focused and full tests, repository vet, full race tests, native and Windows
 amd64 builds/vet, Fluent tests/build/pack validation, package-focused tests,
 and `scripts/security-review-checks.sh` must pass. Before proposing the
-candidate, reinstall or upgrade the source app on `dev441060`, run `topo worker
+candidate, reinstall or upgrade the source app on `earlier-test-instance`, run `topo worker
 check` against its exact worker API policy, and record that real evidence
 separately from local/simulator checks without disclosing any secret.
 
@@ -3747,7 +3755,7 @@ its metadata in `SHA256SUMS`, `package-metadata.json`, and the offline bundle.
 Focused tests reject malformed archives, contract drift, unsafe installer
 arguments, and any `worker check` path that claims or calls the credential,
 result, or completion resources. The installed `0.4.4` app on
-`dev441060.service-now.com` retained the existing pool and application sys_id
+`earlier-test-instance.service-now.com` retained the existing pool and application sys_id
 `d4e2151fdcbc7d97f8c155d1ba873e46`. A fresh exact-scope worker token then ran
 `topo worker check`: ServiceNow registered worker
 `aaad6112934f03d0ec251aebb9373cda`, stored its `local.v1` heartbeat with zero
@@ -4219,12 +4227,12 @@ No ServiceNow changes, XML publication or existing beta artifact changes have
 occurred. Next: obtain export approval and clean-instance access, inspect a real
 platform export, tighten the checker to that evidence, then execute the real
 matrix before claiming this slice complete. Public XML release wiring remains
-pending that evidence; do not label local candidates customer-ready.
+pending that evidence.
 
 
 **Real export handoff (2026-09-20 UTC).** The owner approved SDK authorization,
-installation and platform export on replacement instance `dev394887`; old
-`dev441060` is unavailable. SDK 4.9.0 installed app 0.4.4 from `27107af`, then
+installation and platform export on replacement instance `packaging-instance`; old
+`earlier-test-instance` is unavailable. SDK 4.9.0 installed app 0.4.4 from `27107af`, then
 Publish to Update Set succeeded with demo data explicitly excluded. Local set
 `464462ff93d74f10682e74dcebba1050` is complete; exported remote set
 `58c4a6ff93d74f10682e74dcebba1085` is loaded. The 442-update, 1,292,986-byte
@@ -4247,7 +4255,7 @@ instance to substitute for the separate-instance acceptance gate.
 
 
 **Reset-test plan amendment (2026-09-21).** The owner explicitly approved a
-full reset of `dev394887` after backup verification, superseding the earlier
+full reset of `packaging-instance` after backup verification, superseding the earlier
 requirement to retain this source instance and obtain a second simultaneous
 instance. Use the platform reset to establish a fresh baseline; an app
 uninstall alone is not a clean-instance test. The original XML, manifest and
@@ -4258,7 +4266,7 @@ and source backup, not a full instance or credential backup. The unchanged XML
 hash remains `f5aff043aed913002cacb38c04d74944cc0a5d5ddd9bfd6a5a113a1a4f433cdd`.
 The owner signed in and personally submitted Reset and wipe after automatic
 browser approval review required final-action confirmation. The portal now
-shows `Reset and Wiping Instance...` for `dev394887`; completion is not yet
+shows `Reset and Wiping Instance...` for `packaging-instance`; completion is not yet
 verified. Keep the instance name. When reset finishes, sign in with the newly
 issued credentials, record the empty-scope/platform baseline, and
 import/preview/commit the saved candidate. Repeat, functional/security and
@@ -4321,7 +4329,7 @@ separate reset approval; do not silently reuse this installed source instance.
 **Second clean-baseline reset (2026-09-22, owner-approved).** All five files
 in the 0.4.5 candidate's private backup inventory verified before the wipe.
 The owner explicitly confirmed another reset; the developer portal accepted
-the reset-and-wipe request, retaining `dev394887`, and displayed
+the reset-and-wipe request, retaining `packaging-instance`, and displayed
 `Reset and Wiping Instance...`. Wait for completion and fresh instance login,
 then verify empty scope and import the saved XML; do not install through SDK
 before that test. CI at `d326841` passed all six public-channel installs and

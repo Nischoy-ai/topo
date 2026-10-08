@@ -19,7 +19,7 @@ The customer distribution path is the [XML update-set guide](servicenow-update-s
 download, verify, import through Retrieved Update Sets, preview, resolve
 issues and commit. The earlier 0.4.5 clean XML installation passed on Australia Patch 3.
 The 0.4.6 XML clean installation, identical reimport/commit, and
-0.4.5-to-0.4.6 upgrade passed on dev317694. Real Azure Linux manual discovery,
+0.4.5-to-0.4.6 upgrade passed on acceptance-instance. Real Azure Linux manual discovery,
 duplicate-free repeat reconciliation and automatic scheduled execution also
 passed there. Broader security/recovery acceptance and public publication
 remain pending. The
@@ -215,11 +215,11 @@ lists. Its real XML upgrade and Azure Linux retest passed: two manual scans and
 one automatic scheduled scan each delivered three assets and two relationships
 with zero collection errors. The repeat and scheduled deliveries preserved all
 CI and relationship IDs without duplicates. See the
-[real workflow evidence](servicenow-update-set.md#real-azure-linux-workflow--dev317694).
+[real workflow evidence](servicenow-update-set.md#real-azure-linux-workflow--acceptance-instance).
 
 The architecture, worker/API denial matrix, manual and scheduled sanitized
 Docker discovery, repeated IRE reconciliation, lease recovery, and raw-result
-retention are already validated separately against `dev441060`; deterministic
+retention are already validated separately against `earlier-test-instance`; deterministic
 scale results remain simulator-only. This onboarding slice adds packaging,
 preflight, and install evidence—it does not reclassify simulator results as
 ServiceNow throughput evidence.

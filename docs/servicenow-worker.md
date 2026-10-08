@@ -363,7 +363,7 @@ candidate until its pull request is reviewed and merged.
 
 ### Real ServiceNow Slice C1 installation evidence — 2026-08-30
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`.
 It proves installation metadata and upgrade preservation only; it does not
 prove Password2 runtime behavior or SSH discovery:
 
@@ -400,7 +400,7 @@ seventh OAuth route, a disposable Password2 record, and a focused broker run.
 
 ### Real ServiceNow Slice C1 Password2 broker evidence — 2026-08-31
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`.
 It deliberately used a documentation-only TEST-NET address and did not execute
 SSH, submit discovery data, invoke IRE, or write CMDB:
 
@@ -437,7 +437,7 @@ matrix evidence.
 
 ### Real ServiceNow Slice C1 Docker SSH/IRE evidence — 2026-08-31
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`.
 The target was a disposable Debian 12 Docker container bound only to laptop
 loopback `127.0.0.1:22`; its source, password file, allowlist, and pinned public
 host keys lived under `/private/tmp`, outside the repository. No credential,
@@ -482,7 +482,7 @@ retention gates. It is not throughput evidence or a production network scan.
 
 ### Real ServiceNow Slice C1 security acceptance matrix — 2026-09-01
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`.
 The test harness lived under `/private/tmp`, outside the repository; it read
 owner-only OAuth material without printing it, retained credentials only in
 process memory, and emitted status/shape assertions rather than secret values.
@@ -532,7 +532,7 @@ the deliberate Slice C2 follow-up and are not implied by this evidence.
 
 ### Real ServiceNow C1.1 onboarding preflight evidence — 2026-09-02
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`.
+This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`.
 It proves source upgrade and the non-claiming preflight only; it is not a new
 discovery, IRE, CMDB, package-channel, or consumer ZIP-install proof:
 
@@ -571,7 +571,7 @@ vulnerabilities and passes native plus Windows amd64 tests/builds.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 
-This evidence is from `dev441060.service-now.com`, separate from `controlsim`:
+This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`:
 
 - `now-sdk install --auth topo-dev` upgraded the same application sys_id
   `d4e2151fdcbc7d97f8c155d1ba873e46` to `0.3.0` from the Fluent source and
@@ -626,7 +626,7 @@ gates and are not inferred from the focused fixture.
 ### Real ServiceNow Slice A evidence — 2026-08-30
 
 This evidence is from the Australia-release developer instance
-`dev441060.service-now.com`, not `controlsim`:
+`earlier-test-instance.service-now.com`, not `controlsim`:
 
 - Fluent SDK install/update created application
   `d4e2151fdcbc7d97f8c155d1ba873e46`; the installed metadata has eight scoped

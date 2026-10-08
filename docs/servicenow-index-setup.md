@@ -1,7 +1,7 @@
 # ServiceNow index setup for Topo 0.4.6
 
 Status (2026-10-07): the local native companion XML recreated all 32 required
-indexes from a verified absent-index baseline on dev317694. Post-import tests
+indexes from a verified absent-index baseline on acceptance-instance. Post-import tests
 accepted 17 baseline keys and rejected all 17 duplicate keys; the redundant
 service-user/pool-ID constraint has the isolation limit described below.
 The standalone companion remains unpublished; preview 2 includes its index
@@ -55,7 +55,7 @@ Create Index clicks. No private index API is used.
    can contain unrelated configuration and authentication records. A captured
    record still requires an export/import test before claiming XML delivery.
 3. Open **System Definition → Tables & Columns**, select the exact table
-   below, and use **Index creator**. This is the path exercised on dev317694.
+   below, and use **Index creator**. This is the path exercised on acceptance-instance.
 4. Select the specified columns in exactly the listed order. Select **Unique
    Index** only where the checklist says **Yes**, and use **btree**.
 5. Create the index and wait for completion before continuing. If creation
@@ -157,14 +157,14 @@ cleanup. Test rows and the attachment were removed; IRE was not invoked.
 A native companion XML export now contains exactly 32 `sys_index` updates,
 matching the required ordered columns and uniqueness flags. Its SHA-256 is
 `83de78f055477320c136138ce05782c9dff4d4e79c8501b701ffab74ba260b82`.
-It is a local candidate. Upload, preview and first commit passed on dev394887
+It is a local candidate. Upload, preview and first commit passed on packaging-instance
 with 32 records and zero collisions; ordered physical coverage remained 32/32.
 An identical reupload and preview also passed. After explicit owner approval, the second commit also succeeded. All 66
 physical index rows remained identical, preserving all 32 required definitions.
 Import onto existing source-installed indexes cannot prove fresh physical index
 creation; clean absent-index and repeat/upgrade evidence is still required.
 
-On 2026-10-05, a bounded absent-index test passed on dev317694. The owner
+On 2026-10-05, a bounded absent-index test passed on acceptance-instance. The owner
 dropped task `(u_cancel_requested,u_state)` through the supported Database
 Indexes form. The native success message and 11-row physical list confirmed
 absence. The unchanged companion XML preview reported one newer-local-update
@@ -188,7 +188,7 @@ creation of all 32 definitions together remains unverified.
 ## All-index absent-state XML acceptance (2026-10-07)
 
 The owner dropped all 32 required definitions through native Database Indexes
-forms on XML-installed dev317694. Complete lists filtered by each of the twelve
+forms on XML-installed acceptance-instance. Complete lists filtered by each of the twelve
 exact table IDs verified that none remained. There were 22 retained physical
 primary/reference indexes. No application records were deleted for this reset.
 
@@ -219,7 +219,7 @@ and production readiness remain open. Public preview 1 has not changed.
 ## Combined native batch (2026-10-07)
 
 The unchanged native combined export contains 441 app updates and 32 index
-updates. Native import, preview and batch commit passed on dev394887 over
+updates. Native import, preview and batch commit passed on packaging-instance over
 existing app/indexes, with zero base collisions and both sets Committed.
 All 32 ordered-column definitions were observed afterward across the twelve
 physical-index lists (66 total indexes); truncated composites were opened in
