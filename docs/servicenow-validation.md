@@ -12,7 +12,7 @@ steps are in [Install from XML](servicenow-update-set.md#customer-installation).
 | Required key uniqueness | All 17 duplicate attempts rejected; redundant composite explained below |
 | Exact combined-file repeat | Passed native reimport, preview and batch commit; all 32 definitions retained |
 | Fresh combined installation | Passed from absent scope/tables; version 0.4.6 and all 32 index definitions verified |
-| Previous-version upgrade using combined XML | Awaiting a separate clean 0.4.5 baseline |
+| Previous-version upgrade using combined XML | Passed 0.4.5 → 0.4.6; three configuration IDs and 21 field values preserved, all 32 index definitions verified |
 | Linux optional setup helper | Passed APT and RPM on amd64 and arm64, hosted disposable containers |
 | Worker scale and retention | Passed 1K/10K/100K simulation and 100K retention drain |
 
@@ -38,8 +38,34 @@ including platform/reference indexes). No SDK install, separate index import,
 or manual index creation was used. This proves the combined package creates
 the app and required index columns from an absent application baseline.
 Uniqueness probes were not repeated in this run; the separate 17-key database
-rejection evidence above remains distinct. Previous-version upgrade and data
-preservation require a separate 0.4.5 baseline.
+rejection evidence above remains distinct. The previous-version upgrade used
+the separate 0.4.5 baseline described below.
+
+## Combined-file upgrade (2026-10-08)
+
+An independent reset baseline had no Topo scope, tables or retrieved update
+sets. The saved native 0.4.5 XML (SHA-256
+`dad292dc3c7395c6d8d27e7da068a1318fd854776aca8f2f9577280c5e6f7981`)
+was imported, previewed and committed: 441 inserts, zero updates/deletes or
+collisions. Version 0.4.5 and all 12 tables were verified before creating an
+isolated inactive pool, local profile and future schedule.
+
+The exact published combined 0.4.6 XML (SHA-256
+`487c29cbd7b0837d4017ac2d32254302efd80cece949395f839ba8c42bfebdaf`)
+then passed native batch preview and commit. Preview reported 441 app updates,
+zero inserts/deletes/collisions, and the index child Previewed in Batch. Both
+sets reached Committed. The installed version is 0.4.6, all 12 tables remain,
+and native lists plus full forms for the two truncated composite definitions
+verify all 32 required ordered-column definitions (54 total physical indexes).
+No SDK install, separate companion import or manual index creation was used.
+
+Before/after snapshots matched all three configuration record IDs and all 21
+selected field values exactly, including references, inactive flags and the
+future schedule time. Only those three temporary records were then removed;
+bounded queries confirmed none remained. This establishes preservation of the
+tested configuration fields. Protected credentials and operational history
+were outside this fixture comparison. The earlier key-enforcement tests retain
+their separate scope; duplicate probes were not repeated for this upgrade.
 
 ## Combined-file repeat (2026-10-08)
 
@@ -89,7 +115,7 @@ tables, roles, ACLs, routes and the mapper script were verified after commit.
 An inactive pool, local profile and future schedule preserved their three
 record IDs and all 23 captured field values. This covers those configuration
 records; Password2 credentials and run-history preservation were not exercised.
-The combined-file upgrade is a separate test listed above.
+The combined-file upgrade above is a separate acceptance run.
 
 ## Real Linux workflow
 
