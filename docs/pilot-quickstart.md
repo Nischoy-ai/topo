@@ -15,19 +15,17 @@ or observation history.
 
 ## 1. Install the scoped application
 
-The customer distribution path is the [XML update-set guide](servicenow-update-set.md):
-download, verify, import through Retrieved Update Sets, preview, resolve
-issues and commit. The earlier 0.4.5 clean XML installation passed on Australia Patch 3.
-The 0.4.6 XML clean installation, identical reimport/commit, and
-0.4.5-to-0.4.6 upgrade passed on acceptance-instance. Real Azure Linux manual discovery,
-duplicate-free repeat reconciliation and automatic scheduled execution also
-passed there. Broader security/recovery acceptance and public publication
-remain pending. The
-published beta SDK ZIP must not be renamed or imported as an update set.
+Install application **0.4.6 preview 2** using the [XML installation guide](servicenow-update-set.md):
+download and verify the package, upload the single combined XML through
+Retrieved Update Sets, then preview and commit the batch. The package includes
+all 32 required indexes. Confirm both app and index child are Committed before
+configuring discovery. No SDK or source checkout is needed.
 
-For development on an approved instance, use the [SDK/source instructions](../integrations/servicenow/topo-control-plane/README.md#install).
-Those instructions remain the previously validated developer workflow, not a
-customer prerequisite. After the app is installed, continue below.
+The exact package passed fresh and repeat installation. The
+[validation record](servicenow-validation.md) distinguishes those results from
+the earlier application-only upgrade and records the real Linux workflow.
+For source development, use the separate [SDK instructions](../integrations/servicenow/topo-control-plane/README.md#install).
+The worker release's SDK ZIP is not an XML update set.
 
 Have the instance administrator register the exact `Nischoy Topo` choice on
 `cmdb_ci.discovery_source` before discovery; see [IRE prerequisites](servicenow.md).
@@ -207,30 +205,23 @@ token/client access, deactivate the worker integration user and Password2
 credential, remove the package, and only then delete operator-owned files if
 the customer's retention policy permits it.
 
-## Evidence boundary and known gaps
+## Validation and feedback
 
-The XML-installed 0.4.5 app rejected Linux observations whose package or service
-list exceeded 256 entries. Candidate 0.4.6 adds separately bounded host inventory
-lists. Its real XML upgrade and Azure Linux retest passed: two manual scans and
-one automatic scheduled scan each delivered three assets and two relationships
-with zero collection errors. The repeat and scheduled deliveries preserved all
-CI and relationship IDs without duplicates. See the
-[real workflow evidence](servicenow-validation.md#real-linux-workflow).
+The XML-installed 0.4.6 app and published worker completed two manual scans and
+one automatic scheduled scan of an approved Linux target. Each delivered three
+assets and two relationships with zero collection errors; repeat deliveries
+preserved CI and relationship IDs. See the [workflow and package validation](servicenow-validation.md)
+and [worker security evidence](servicenow-worker.md). Scale tests use simulation;
+their timings do not measure ServiceNow throughput.
 
-The architecture, worker/API denial matrix, manual and scheduled sanitized
-Docker discovery, repeated IRE reconciliation, lease recovery, and raw-result
-retention are already validated separately against `earlier-test-instance`; deterministic
-scale results remain simulator-only. This onboarding slice adds packaging,
-preflight, and install evidence—it does not reclassify simulator results as
-ServiceNow throughput evidence.
+Follow the [upgrade and recovery procedure](servicenow-update-set.md#upgrades-and-recovery)
+and review the validation record's tested preservation scope before changing an
+existing deployment. The [security review record](security-review.md) tracks
+remediation and independent retest status.
 
-Still required before a broad production claim: the remaining XML pilot security,
-credential/run-history preservation and recovery gates, N-1 stable upgrade evidence, external Vault bindings,
-Password2 clone/backup operational
-guidance, broader CI/protocol mappings, platform volume/upgrade testing, and
-independent security-review retest. The shipped scoped app has no npm runtime
-dependency tree, but the pinned ServiceNow SDK 4.9.0 build-only tree currently
-reports nine moderate and two high transitive advisories; keep app builds on a
-short-lived trusted builder while that upstream toolchain exposure is tracked.
-Report pilot feedback without secrets, tokens, private hostnames/addresses,
-raw observations, or credential values.
+The shipped scoped app has no npm runtime dependency tree. The recorded audit
+of its pinned ServiceNow SDK 4.9.0 build-only tree found nine moderate and two
+high transitive advisories. Source developers should use a short-lived trusted
+builder; customers installing XML do not need that toolchain.
+Report feedback without secrets, tokens, private hostnames/addresses,
+raw observations or credential values.

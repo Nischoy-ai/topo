@@ -540,16 +540,16 @@ The release app normalizer also produced an identical validated ZIP from two
 independent SDK builds after canonicalizing only SDK-generated BOM UUID/time
 and ZIP metadata. The pinned SDK is a build-only development dependency and
 the shipped app has no npm runtime dependency tree. Its 4.9.0 development tree
-currently reports nine moderate and two high transitive npm advisories; that
+recorded audit reports nine moderate and two high transitive npm advisories; that
 build-tool exposure remains explicit and is not described as a clean audit.
 The required Go vulnerability gate separately found reachable SSH deadlocks
-`GO-2026-6354`/`GO-2026-6355`; the user-approved candidate moves to exact Go
+`GO-2026-6354`/`GO-2026-6355`; the remediation uses exact Go
 1.26.8 and `x/crypto` 0.56.0. The full pinned gate then reports zero reachable
 vulnerabilities and passes native plus Windows amd64 tests/builds.
 
 ### Real ServiceNow Slice B evidence — 2026-08-30
 
-This evidence is from `earlier-test-instance.service-now.com`, separate from `controlsim`:
+This evidence was collected on a real developer instance, separately from `controlsim`:
 
 - `now-sdk install --auth topo-dev` upgraded the same application sys_id
   `d4e2151fdcbc7d97f8c155d1ba873e46` to `0.3.0` from the Fluent source and
@@ -603,8 +603,8 @@ gates and are not inferred from the focused fixture.
 
 ### Real ServiceNow Slice A evidence — 2026-08-30
 
-This evidence is from the Australia-release developer instance
-`earlier-test-instance.service-now.com`, not `controlsim`:
+This evidence was collected on a real Australia-release developer instance,
+separately from `controlsim`:
 
 - Fluent SDK install/update created application
   `d4e2151fdcbc7d97f8c155d1ba873e46`; the installed metadata has eight scoped
