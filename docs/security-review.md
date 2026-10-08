@@ -93,3 +93,8 @@ Existing worker artifacts are not rebuilt or relabeled. A new signed worker
 must pass the full pinned security gate and protected release/promotion review
 before being offered as the patched channel build. Changing the XML's maturity
 label does not patch a worker or expand its measured compatibility.
+
+The patched preparation worktree passed `scripts/security-review-checks.sh`
+on 2026-10-08 with exact Go 1.26.9: module verification, vet, a zero-finding
+`govulncheck` v1.7.0 scan, full race tests, native build and Windows vet/build.
+This is source validation, not evidence of publication or independent retest.
