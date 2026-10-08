@@ -7,6 +7,12 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
+- **Customer materials refreshed:** Preview 2 release notes, INSTALLATION,
+  INDEXES, START-HERE and manifest now link to the exact maintainer validation
+  record at `3336ffc`; ZIP/checksums regenerated and all seven remote asset
+  digests verified. XML bytes unchanged. Fresh-install and previous-version
+  upgrade work is still pending Developer portal sign-in and approved reset;
+  do not treat the clearer instructions as closure of those two tests.
 - **Acceptance progress (2026-10-08):** Exact combined XML repeat passed native
   reimport/preview/commit: base updated 441, inserted/deleted/collisions zero,
   index child Committed. Twelve lists plus two full composite forms verify
