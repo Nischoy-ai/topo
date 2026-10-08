@@ -10,9 +10,9 @@ ServiceNow application to reconcile through IRE.
 ### 1. Install the Nischoy Topo app from the XML package
 
 [ServiceNow 0.4.6 preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2)
-includes the app and all **32 required indexes** in one XML file. This is a
-development preview, published for development evaluation. The older preview 1
-contains only the app and is missing those indexes.
+includes the app and all **32 required indexes** in one native XML batch.
+Use this package for new installations; preview 1 is the earlier app-only
+artifact. The release is currently a development preview.
 
 For the combined package:
 
@@ -75,15 +75,14 @@ SSH port 22. It is not a subnet scanner. Use non-privileged test credentials
 and begin with a disposable target. The complete setup, validation, upgrade,
 and cleanup procedure is in the [pilot quickstart](docs/pilot-quickstart.md).
 
-## Learn more
+## Documentation and verification
 
-- [Developer quickstart and component guide](docs/development.md)
-- [Architecture](docs/architecture.md)
-- [ServiceNow control-plane design](docs/servicenow-control-plane.md)
-- [ServiceNow worker behavior and evidence](docs/servicenow-worker.md)
-- [ServiceNow IRE publishing](docs/servicenow.md)
-- [Security and vulnerability reporting](SECURITY.md)
-- [Product roadmap](ROADMAP.md)
-- [Contributing](CONTRIBUTING.md)
+| Need | Guide |
+| --- | --- |
+| Install and operate discovery | [ServiceNow setup](docs/pilot-quickstart.md) · [Worker installation](docs/distribution.md) |
+| Check the published package | [XML validation](docs/servicenow-validation.md) · [Release verification](docs/releases.md) |
+| Review credential controls and report a vulnerability | [Security policy](SECURITY.md) · [Security review record](docs/security-review.md) |
+| Explore components or contribute | [Documentation index](docs/README.md) · [Developer quickstart](docs/development.md) · [Contributing](CONTRIBUTING.md) |
+| See implemented and planned capabilities | [Product roadmap](ROADMAP.md) |
 
-Nischoy Topo is licensed under the Apache License 2.0.
+Nischoy Topo is licensed under the [Apache License 2.0](LICENSE).

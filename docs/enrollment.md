@@ -15,7 +15,7 @@ certificate lifecycle foundation used by the other collector capabilities —
 separate capabilities that do not require enrollment or mTLS. See the [architecture guide](architecture.md) for the collector model.
 
 Enrollment and mTLS are entirely opt-in and additive. `topo serve` without
-`-ca-dir` behaves exactly as it did before either slice existed, and
+`-ca-dir` uses the bearer-key/evaluation authorization configuration.
 `-mtls` requires `-ca-dir` to be set.
 
 ## How it works

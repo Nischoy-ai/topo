@@ -1,6 +1,8 @@
 # VMware vCenter discovery
 
-Topo's VMware discovery slice collects virtual machine and host inventory from vCenter (or a standalone ESXi host) over the vSphere API, using read-only enumeration only. This is the second slice of the SNMP/VMware discovery milestone; it never issues a power, configuration, or lifecycle operation against a managed object.
+Topo discovers virtual machines and hosts from vCenter or standalone ESXi
+through read-only vSphere API enumeration. It never issues power,
+configuration or lifecycle operations against managed objects.
 
 ## What is collected
 

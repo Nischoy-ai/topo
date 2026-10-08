@@ -56,3 +56,13 @@ Stable/N-1 promotion, Windows publication and Apple notarization remain separate
 release work. Protocol guides state their real-host versus simulator coverage.
 ServiceNow XML installation and IRE results are scoped in the
 [package validation record](servicenow-validation.md) and [IRE guide](servicenow.md).
+
+## Build-tool dependencies
+
+The pinned ServiceNow SDK 4.9.0 is a build dependency. The shipped application
+has no npm runtime dependency tree. The recorded SDK dependency audit found
+nine moderate and two high transitive npm advisories (see the dated
+[worker evidence](servicenow-worker.md)); this remains a build-tool
+exposure and is not covered by a zero-reachable-finding Go scan. That historical
+audit is not a fresh npm assessment or a claim that these advisories are cleared.
+Keep the SDK lock file under review and isolate builds from production secrets.

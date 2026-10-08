@@ -1,6 +1,6 @@
 # Linux SSH discovery
 
-The `ssh-linux` plugin is the first agentless Topo Relay discovery plugin. It opens one authenticated SSH connection per target and gathers identity, operating-system, hardware, interface, package, and service evidence. It does not upload a script or accept shell text from a job.
+The `ssh-linux` plugin discovers Linux hosts without installing an agent. It opens one authenticated SSH connection per target and gathers identity, operating-system, hardware, interface, package, and service evidence. It does not upload a script or accept shell text from a job.
 
 ## Audited command contract
 
