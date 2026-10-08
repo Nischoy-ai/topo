@@ -7,12 +7,21 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
-- **Owner-authorized manual release:** Preparing `servicenow-0.4.6-preview.2`
-  with the exact tested combined XML (SHA-256 `487c29cbd7b0837d4017ac2d32254302efd80cece949395f839ba8c42bfebdaf`).
-  Publish as a prerelease, keep preview 1 and worker beta unchanged. Only
-  curated XML, installation/checklist files, manifest and checksums are public;
-  local test logs remain private. No automated customer-package publishing.
-  Earlier unpublished/local-only statements below describe historical handoffs.
+- **Manual preview 2 published (2026-10-08):** Owner authorized commit and
+  release. Implementation commit `0d5018f` is pushed on
+  `codex/servicenow-index-installation`; PR #68 is open (CI pending at handoff,
+  not merged). Published GitHub prerelease `servicenow-0.4.6-preview.2` at
+  16:08:30 UTC contains seven assets: one combined XML, ZIP, installation
+  instructions, index checklist, start-here note, manifest and checksums.
+  All seven uploaded SHA-256 digests matched local files before publication;
+  GitHub confirms public/non-draft prerelease state. Combined XML remains
+  `487c29cbd7b0837d4017ac2d32254302efd80cece949395f839ba8c42bfebdaf`.
+  Release files are in `dist/servicenow-0.4.6-preview.2/`; local test logs
+  were not uploaded. Preview 1 and worker beta are unchanged. This is not a
+  production/customer-readiness claim; fresh combined installation, exact-batch
+  repeat, subsequent-version upgrade and live Linux wrapper testing remain open.
+  The optional installer URL on main awaits PR merge. No automated publishing
+  was added. Earlier unpublished/local-only entries are historical evidence.
 - **Linux installation presentation:** Owner prefers native package-manager
   commands. README now leads with one-time signed-repository setup followed by
   `sudo apt-get install topo` or `sudo dnf install topo`. The setup/install
