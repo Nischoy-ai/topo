@@ -259,7 +259,11 @@ The detailed scope, decisions, acceptance gates, and current handoff are maintai
   separate-instance clean/repeat/upgrade evidence. The 0.4.6 development XML preview is manually distributed with a
   [customer/maintainer guide](docs/servicenow-update-set.md). Clean/repeat/upgrade
   and single-host discovery tests passed, but all 32 source-defined indexes
-  are missing after XML installation. Index delivery and broader acceptance
+  are missing from the published app XML. An unpublished native companion has
+  recreated all 32 from an absent-index baseline. Development preview 2 is a single native batch that
+  combines app and indexes and has committed over existing app/indexes; fresh
+  combined installation remains open. The companion has focused post-import
+  uniqueness checks. Combined-package clean/upgrade and broader acceptance
   remain open. Future XML releases are manual; no Store/licensing entitlement
   or production-readiness claim is made.
 - **In progress (first signed beta distribution):** the public

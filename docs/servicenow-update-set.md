@@ -5,26 +5,31 @@ contains the unchanged platform XML tested on dev317694, its manifest,
 checksums and current installation notes. Clean installation, repeat import,
 0.4.5-to-0.4.6 upgrade and single-host Linux manual/repeat/scheduled discovery
 passed. This preview is not customer-ready: the missing-index limitation below
-remains unresolved. Worker beta `v0.1.0-beta.1` is a separate release.
+remains in its published bytes. Worker beta `v0.1.0-beta.1` is a separate release.
 
-**Customer distribution blocked by missing indexes (2026-10-04).** A clean
-SDK 4.9.0 build declares 32 indexes, including 17 unique indexes. A read-only
-inventory of all twelve XML-installed tables on dev317694 found none of those
-32 ordered-column definitions. The task table has only its primary key and
-five automatic reference indexes; the eight source-defined task indexes,
-including pool/worker lease-slot constraints, are absent. The packaging
-instance's task table has those eight additional indexes. The sealed XML has
-no `sys_index`/`sys_index_column` records. Earlier single-host tests remain
-valid observations but do not establish concurrency/idempotency correctness.
-The owner authorized publishing the current bytes as a development preview.
-Do not represent that preview as customer-ready; automatic promotion remains disabled.
+**[Combined XML development preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2).** The native batch export
+`nischoy-topo-0.4.6-combined.xml` contains 441 application updates and all 32
+required index definitions (17 unique). One upload brings in the app and its
+index child set; preview and commit the batch from its **Nischoy Topo** base.
+The exact candidate imported, previewed and committed on dev394887 over the
+existing app and indexes; all 32 ordered-column definitions remain present.
+This is not fresh combined-installation or repeat-batch evidence. Its payload comparison
+with the earlier native exports passed with documented record-identity/display
+normalizations; no application logic or index payload was hand-edited.
 
-ServiceNow's [developer deployment guidance](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=pro-dev-intro&module=guide&release=yokohama)
-identifies database-index creation as a manual step outside update-set tracking.
-A supported installation mechanism for the source-defined indexes, exact
-uniqueness verification, repeat-install/upgrade tests and concurrent claim/result
-tests are now required gates. Do not patch exported XML or assume a successful
-preview/commit implies that indexes were installed.
+The separate index companion previously recreated all 32 definitions from an
+absent-index baseline on dev317694, with focused uniqueness checks. That is
+separate evidence from the combined file's installation tests and the earlier
+app-only clean/repeat/upgrade tests. Fresh combined installation, a subsequent
+version upgrade and broader acceptance remain open. The older public
+preview 1 still has no indexes. See [index evidence](servicenow-index-setup.md).
+
+ServiceNow's older [developer deployment guidance](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=pro-dev-intro&module=guide&release=yokohama)
+describes index creation outside update-set tracking. The tested Australia
+native creator instead captured `sys_index` updates, which we exported and
+validated as a companion. This is evidence for the tested platform build, not
+a compatibility claim for every release. Never assume a successful app-only
+preview/commit installed database indexes.
 
 The build now emits `servicenow-index-requirements` as a separate CI artifact.
 To audit column coverage after installation, use a clean SDK build and a bounded
@@ -47,33 +52,31 @@ separate from the configuration-only XML inspector and public release approval.
 
 ## Customer installation
 
-Once a validated XML release is available:
+For combined preview 2 (preview 1 is a different package):
 
-1. Download its XML, `manifest.json` and `SHA256SUMS` from the release identified
-   in the pilot instructions. Verify the authenticated release checksum
-   manifest, then the XML checksum (`shasum -a 256 -c SHA256SUMS` on macOS,
-   `sha256sum -c SHA256SUMS` on Linux). A checksum downloaded alongside the XML
-   detects corruption; it does not independently authenticate the publisher.
-   Check the manifest's supported platform, app version and worker version.
-2. Use a non-production instance on the tested ServiceNow release. Have the
-   instance administrator confirm custom-table/application entitlement and
-   CMDB/IRE availability. Stop if `x_664635_topo` already exists with an unknown
-   origin or was installed through Application Repository/Store. Do not mix
-   delivery mechanisms or rename the scope.
-3. Open **System Update Sets → Retrieved Update Sets → Import Update Set from
-   XML**, choose the downloaded XML, and upload it. Open the retrieved set and
-   select **Preview Update Set**.
-4. Review every preview problem with the administrator. Resolve missing
-   dependencies and investigate collisions against the release inventory;
-   do not bulk-ignore errors or accept an unrelated scope/global change.
-   Preserve the preview report. Commit only after review, then inspect the
-   commit result and application version. A successful upload is not a
-   successful installation.
-5. Follow [customer-owned identities and OAuth](pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities),
-   create the pool/target/credential/binding/profile, install the worker through
-   Homebrew or APT/RPM, and run `topo worker check` before starting discovery.
-   The XML supplies application definitions, not users, grants, tokens,
-   credentials, targets or discovery data.
+1. Obtain the package and matching checksum manifest. On macOS run
+   `shasum -a 256 -c SHA256SUMS`; on Linux run `sha256sum -c SHA256SUMS`.
+   Check the supported ServiceNow and worker versions. A checksum detects
+   corruption; it does not independently authenticate the publisher.
+2. As administrator on a development instance, open **System Update Sets →
+   Retrieved Update Sets → Import Update Set from XML**. Upload
+   `nischoy-topo-0.4.6-combined.xml`.
+3. Open the imported **Nischoy Topo** base set and select **Preview Update Set
+   Batch**. It must show **473 Customer Updates in Batch**: 441 app updates
+   and one child set with 32 indexes. Review any preview problems individually.
+4. Select **Commit Update Set Batch**. Wait for completion, confirm both sets
+   are committed, check application version **0.4.6**, and verify the
+   [32-index checklist](servicenow-index-setup.md). Do not drop indexes or
+   separately import the companion as part of this installation.
+5. Configure [identities, credentials and targets](pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities),
+   install the worker and run `topo worker check` before starting discovery.
+
+Confirm custom-table/application entitlement and CMDB/IRE availability with
+the instance administrator. Stop if the existing `x_664635_topo` app has an
+unknown origin or came from Application Repository/Store; do not mix delivery
+mechanisms. The XML supplies definitions, not users, grants, tokens,
+credentials, targets or discovery data. Keep workers and schedules inactive
+until installation checks pass.
 
 Before discovery, the instance administrator must register the exact choice
 value `Nischoy Topo` on `cmdb_ci.discovery_source`, as described in

@@ -6,7 +6,185 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 
 ## Current handoff
 
-- **Updated:** 2026-10-04
+- **Updated:** 2026-10-08
+- **Owner-authorized manual release:** Preparing `servicenow-0.4.6-preview.2`
+  with the exact tested combined XML (SHA-256 `487c29cbd7b0837d4017ac2d32254302efd80cece949395f839ba8c42bfebdaf`).
+  Publish as a prerelease, keep preview 1 and worker beta unchanged. Only
+  curated XML, installation/checklist files, manifest and checksums are public;
+  local test logs remain private. No automated customer-package publishing.
+  Earlier unpublished/local-only statements below describe historical handoffs.
+- **Linux installation presentation:** Owner prefers native package-manager
+  commands. README now leads with one-time signed-repository setup followed by
+  `sudo apt-get install topo` or `sudo dnf install topo`. The setup/install
+  helper remains optional in the distribution guide, with its pending-merge
+  and live-test limitations unchanged. Documentation-only follow-up; checked
+  links/anchors and `git diff --check`.
+- **Installation/docs/Linux/scale follow-through:** README now describes a
+  single batch import. `scripts/install-linux.sh` adds APT/DNF amd64/arm64
+  setup with pinned-key verification and native signatures; five isolated
+  command-mock tests pass and run in CI. The URL is explicitly pending merge.
+  No fresh Linux-host execution of this wrapper is claimed. All 34 Python
+  tests (installer plus ServiceNow tooling) pass. Exact Go 1.26.8 security
+  checks also pass: vet, pinned govulncheck (zero reachable vulnerabilities),
+  full race tests, native build, Windows vet and cross-build.
+  Exact Go 1.26.8 race-enabled controlsim suite passes: repeated 1K/10K/100K
+  identity reconciliation, capacity/fault tests and 100K bounded retention.
+  Local simulated two-scan times: 1.091s / 1.430s / 8.444s, not ServiceNow
+  sizing figures. Initial sandbox run could not bind loopback; the permitted
+  rerun passed. Evidence saved with the local combined candidate.
+  The one-XML package is `dist/servicenow-0.4.6-combined-candidate.zip`.
+  Public preview remains unchanged. Outstanding: fresh combined install,
+  exact-batch repeat, subsequent-version upgrade, and live Linux wrapper
+  acceptance. No commits, publishing, or automated XML publishing performed.
+- **Combined XML received and inspected:** Owner saved native batch export
+  `dist/sys_remote_update_set_6440c26dc3bf8790b49fbefdd40131c2.xml`.
+  Preserved candidate at
+  `dist/servicenow-0.4.6-combined-candidate/nischoy-topo-0.4.6-combined.xml`:
+  1,449,068 bytes, SHA-256
+  `487c29cbd7b0837d4017ac2d32254302efd80cece949395f839ba8c42bfebdaf`.
+  All 473 payloads compare semantically with the sealed app plus companion:
+  441 app updates, 32 unchanged index payloads. Explicit normalizations are
+  twelve dictionary update-name NULL/null suffixes, twelve licensing record
+  IDs/update names remapped during prior import, and the app package_json
+  display attributes (reference value unchanged). All other payload content
+  matches. Native export repeats the identical base header twice; preserved
+  the export unmodified. Inspection evidence is `inspection.json` beside it.
+  On dev394887 the exact file imported as a 473-update batch; native preview
+  and commit succeeded. Base: 441 updates, zero collisions/deletes; index child:
+  32 inserts in preview and Committed afterward. All 32 required ordered-column
+  definitions remain present across the twelve physical-index lists (66 total
+  indexes). This is installation over existing app/indexes, not fresh creation,
+  uniqueness enforcement, repeat-batch or subsequent-version upgrade proof.
+- **Scale revalidation staged:** Objective: rerun the existing worker/control-plane
+  simulation gates at 1K/10K/100K assets after packaging work. Deliverables:
+  exact Go 1.26.8 race-enabled logs and retention/capacity/fault checks.
+  Acceptance: repeat identity reconciliation, bounded capacity and successful
+  100K retention drain. Non-goals: live ServiceNow throughput, real network
+  compatibility or a production sizing promise.
+- **Owner-directed next work (2026-10-07):** Execute in this order: one
+  combined native XML, simpler README installation, a Linux one-line installer,
+  then scale testing. M3 remains current. The immediate objective is a single
+  customer upload containing the existing app and all required indexes.
+  Deliverables: native batch export, exact payload/inventory comparison,
+  installation evidence, then matching customer instructions. Acceptance:
+  441 application updates plus 32 indexes (17 unique), no unrelated updates,
+  native import/preview/commit and explicitly scoped fresh/repeat evidence.
+  Non-goals: hand-fabricated index XML, automatic publishing, changing public
+  preview 1, or claiming production readiness. Linux installation must retain
+  signed package verification; scale testing follows the installation work
+  and uses simulation with separately stated live-platform evidence.
+  On dev317694, native Parent lookup set the original 32-update Global index
+  set `b9a9be94c37b4f50b49fbefdd4013156` under the existing 441-update app set
+  `addeb0c8c3bb8b50b49fbefdd40131ff`. The app description matches sealed 0.4.6
+  source `0d93e756216bfa62192d526f58720dc7bea8c74c`. Native UI now shows
+  Update Sets In Batch (2), Child Update Sets (1), and Export Update Set Batch
+  to XML. Export generated a browser download event, but the browser tool
+  exposed no saved file path. Next: obtain that downloaded XML locally,
+  compare every payload with the sealed exports and test the exact batch.
+  This historical export handoff is superseded by the inspected/committed
+  candidate above. Existing XMLs and prior evidence remain intact.
+- **All-index XML recreation passed (2026-10-07):** Owner completed native
+  Drop for all 32 required definitions on dev317694. Twelve exact-table-ID
+  browser lists verified absence, retaining 22 primary/reference indexes.
+  The unchanged companion was uploaded and previewed; all 32 deliberate-drop
+  newer-local-update collisions were accepted. Commit succeeded in five seconds.
+  Twelve complete post-commit lists and two full composite-key forms verify
+  32/32 ordered definitions, 54 physical indexes and all 22 retained definitions.
+  A scoped workflow-disabled test accepted 17 baseline keys and rejected all
+  duplicates with explicit database unique-key violations. Distinct variants
+  passed except the redundant service-user/pool-ID case blocked by pool-ID
+  uniqueness; that composite is not independently isolated. Empty lease slots
+  passed. All 43 temporary rows were removed, zero cleanup failures. Execution
+  history `48a97121c3bf8790b49fbefdd4013140`. No IRE/discovery was invoked.
+  Evidence: `dist/servicenow-index-repair-2026-10-04/all-32-install-summary.json`
+  and before/after physical inventories. This proves all-index creation from
+  absence on an existing XML install, not a fresh full-instance combined install
+  or a subsequent version upgrade with the companion. Prior repeat/race tests
+  remain separate. Public preview 1 still omits indexes and is unchanged.
+  Finished local two-XML candidate:
+  `dist/servicenow-0.4.6-with-indexes-candidate-2026-10-07.zip`, containing both
+  unchanged XML exports, install/index instructions, source application manifest,
+  a package manifest and checksums. Offline app inspection, exact 32/17 companion
+  inventory comparison, checksum/ZIP validation and 29 ServiceNow Python tests
+  passed. No public publishing or automated publishing was added. Next gates:
+  fresh combined-package install and subsequent version upgrade with companion,
+  complete source equivalence and broader acceptance; preserve prior evidence.
+- **Index repair slice staged:** Owner authorized repairing the XML-installed
+  dev317694 instance through the supported index-creator interface and proving
+  uniqueness/concurrent claims/retries before establishing customer setup.
+  Objective: restore the 32 source-defined indexes without replacing the XML
+  installation. Deliverables: source-derived administrator checklist, live
+  per-index creation evidence, enforcement/race/retry tests and repeat/upgrade
+  checks. Acceptance requires all 32 definitions and all 17 unique contracts;
+  column coverage alone is insufficient. Non-goals: arbitrary private index
+  APIs, silently deleting duplicates, changing public preview bytes, automatic
+  publishing or claiming a self-contained installer before it is proven.
+  `docs/servicenow-index-setup.md` records the proposed procedure and test gates.
+  On 2026-10-04 all 32 indexes were created through Tables & Columns on
+  dev317694, with the owner completing browser dialogs. Exact-table-ID reads
+  of `v_index_creator` now confirm all 32 ordered-column definitions (zero
+  missing). All 32 native `sys_index` captures match the source uniqueness
+  settings: 17 unique and 15 non-unique. This verifies creation/metadata,
+  not duplicate-insert enforcement, concurrent claims or retry behavior.
+  All 32 native captures are now consolidated in the completed Global set
+  `b9a9be94c37b4f50b49fbefdd4013156` (Nischoy Topo 0.4.6 Index Repair).
+  The two original Default captures were reassigned through the native
+  customer-update form, preserving their payloads. Two incidental non-index
+  captures (test `GlideRecord.setWorkflow` cross-scope tracking and an index
+  form layout) were excluded to scope-matched sets; the export contains only
+  the 32 index definitions. Never export the entire Default set.
+  Isolated database tests accepted all 17 baseline keys and rejected all 17
+  duplicate keys. Distinct-key variants passed except changing only service
+  user with the same pool ID, correctly rejected by the stronger pool-ID
+  unique constraint; independent enforcement of the redundant composite index
+  cannot be isolated without removing that stronger constraint. Two tasks
+  with empty lease slots were accepted. All 43 temporary rows were removed.
+  Tests used minimal database fixtures with workflow disabled, not complete
+  application-valid records; no live credential values were used.
+  Restricted-worker HTTP tests on an isolated pool passed: 8 parallel claims
+  by one worker yielded one winner, 12 competing claims by three more workers
+  yielded one additional winner under pool limit 2, distinct tasks were
+  claimed, chunk upload/retry returned 201/200 with duplicate=true, cancelled
+  completion/retry returned 200/200, and the released slot was reusable.
+  Readback found one result row. Four tasks, four workers, pool/profile/run,
+  result row and attachment were removed. No IRE invocation was made.
+  Native index XML exported successfully: 74,714 bytes, SHA-256
+  `83de78f055477320c136138ce05782c9dff4d4e79c8501b701ffab74ba260b82`.
+  Offline inspection confirms all 32 ordered definitions, 17 unique flags,
+  BTree, no extra records. Local candidate:
+  `dist/servicenow-index-repair-2026-10-04/nischoy-topo-0.4.6-indexes.xml`.
+  Native exported remote set is `03af4790c33f4f50b49fbefdd401316a`.
+  On dev394887 the native upload, preview and first commit succeeded with
+  32 records and zero collisions. Post-commit physical coverage remains 32/32.
+  Reuploading identical bytes and previewing again also succeeded with zero
+  collisions. After explicit owner approval, the second commit succeeded.
+  All 66 physical index rows, including the 32 required definitions, are
+  identical before and after the repeat commit. The retrieved set is Committed.
+  Existing source-installed indexes mean the first commit alone does not prove
+  fresh physical creation.
+  On 2026-10-05 the owner used the supported Database Indexes Drop action
+  for task `(u_cancel_requested,u_state)` on dev317694. Native success and
+  the 11-row physical list confirmed absence. Importing the unchanged companion
+  XML produced one expected newer-local-update collision for that deletion;
+  accepting the remote definition and committing succeeded in four seconds.
+  The physical list returned to 12 rows with the exact ordered columns present.
+  This proves absent-index recreation for one non-unique definition only;
+  all-index fresh creation remains unproven.
+  On 2026-10-07 the owner successfully dropped task `u_task_id` after two
+  expired-session attempts left it intact. The physical list confirmed 11
+  indexes and no Task ID index. The identical companion XML was reuploaded;
+  its one newer-local-update conflict was the deliberate Task ID deletion.
+  Accepting that definition and committing succeeded in one second. The
+  physical list returned to 12 indexes including `u_task_id`. An isolated
+  scoped database test accepted a baseline key, rejected its duplicate with
+  an explicit database unique-key violation for `u_task_id`, and accepted a
+  distinct key. Both inserted rows were cleaned up (zero failures). Execution
+  history: `e3151ca9c3738790b49fbefdd4013181`. This proves XML recreation and
+  enforcement of one unique index, alongside the one non-unique index above;
+  it is not a clean all-32-index installation test. Public preview
+  bytes are unchanged. Evidence and test summaries are in the same local
+  untracked directory. User prefers `d` for completion of browser dialogs.
+
 - **Customer wording:** Removed publication-process language from the README,
   customer installation introduction and GitHub release notes. Maintainer
   workflow history remains internal to the maintainer sections; package

@@ -340,6 +340,31 @@ Use a pilot host, with `curl`, CA certificates and GnuPG installed for Linux.
 The reviewed package-signing fingerprint is
 `6049C01BB18CE8EC395DA16F9C64F25B652F0673`; stop on any mismatch.
 
+### Optional Linux setup helper
+
+Add the signed repository once using the Debian/Ubuntu or Fedora/RHEL steps
+below. After setup, install with `sudo apt-get install topo` or
+`sudo dnf install topo`.
+
+For a combined setup-and-install operation, the repository also includes
+`scripts/install-linux.sh` for APT/DNF on amd64/arm64.
+It needs curl, GnuPG, standard shell utilities, and root or sudo access. It
+checks the pinned archive-key fingerprint before changing repository setup,
+retains native package/metadata signature verification, installs the beta and
+prints its version. It does not configure or start discovery.
+
+After this change is merged to main:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-ai/topo/main/scripts/install-linux.sh | sh
+```
+
+Until then, run `sh scripts/install-linux.sh` from this candidate checkout on
+Linux, or use the manual instructions below. Mock-command tests cover both
+package-manager paths and failure handling; a fresh Linux execution of this
+new wrapper remains unverified. Prior live-channel evidence applies to the
+signed packages/repositories, not this new wrapper.
+
 ### Debian and Ubuntu
 
 APT uses a repository-scoped keyring, never global `apt-key` trust. Run this
