@@ -1,38 +1,28 @@
 # ServiceNow-controlled stateless Topo architecture
 
-## Status
+## Supported deployment
 
-This document records the approved target architecture for a managed Topo
-deployment in which the Nischoy Topo scoped application is the discovery
-control plane and ServiceNow is the only durable operational datastore. It was
-agreed on 2026-08-29. M3 Slice A implements the merged `local.v1`
-vertical slice in `internal/worker` and a ServiceNow SDK 4.9.0 Fluent
-application in `integrations/servicenow/topo-control-plane`, with deterministic
-simulator evidence. The Fluent package builds successfully and was installed
-from source on the real developer instance. Separate 2026-08-30 real-instance
-evidence now covers runtime API restrictions, manual and scheduled execution,
-a 32-competitor single-winner claim, crash/lease-expiry recovery, idempotent
-result replay, repeated application-side IRE reconciliation, and raw-result
-retention. See [`servicenow-worker.md`](servicenow-worker.md); simulator results
-remain explicitly separate from that evidence.
+The Nischoy Topo scoped application controls discovery and stores operational
+state in ServiceNow. Stateless workers poll outbound, execute locally approved
+operations, and return destination-neutral observations for IRE reconciliation.
+The current application is **0.4.6**; the compatible published worker is
+**v0.1.0-beta.1**. Start with the [installation and setup guide](pilot-quickstart.md).
 
-M3 Slice B is implemented and merged in the same worker and Fluent package.
-It adds deterministic target-scope/partition metadata, unique pool/worker
-capacity reservations, load-aware concurrent execution, lease renewal,
-cooperative cancellation, worker-churn recovery, and bounded 1K/10K/100K plus
-retention-volume simulator gates without adding a production operation. The
-Fluent `0.3.0` upgrade now preserves known Slice A records on the developer
-instance, and a separate admin-seeded real fixture proves a two-slot/eight-
-claimant capacity race, renewal, cancellation observation, and late-call
-denial through the worker API. It made no IRE/CMDB write and does not turn
-simulator timing into ServiceNow platform performance.
+Implemented operations are `local.v1` and `ssh_linux.v1`. Worker pools provide
+capacity reservations, attempt-bound leases, renewal, cancellation and recovery.
+The SSH operation uses explicitly listed IPv4 targets, local CIDR allowlists,
+verified host keys and a Password2-backed credential broker. The application
+maps computers, network adapters and their ownership relationships through IRE.
 
-The existing direct `topo publish servicenow` workflow remains the supported
-standalone publication mode. The scoped-app Relay and ECC-compatible MID
-transport remain experiments. This architecture supersedes the Relay as the
-target for a ServiceNow-managed mode; it does not make ECC a product path or
-claim compatibility with native ServiceNow Discovery schedules, probes,
-patterns, sensors, or Discovery Status.
+The [worker validation record](servicenow-worker.md) separates real-system
+security and functional checks from deterministic simulation. The
+[package validation record](servicenow-validation.md) covers native XML
+installation, indexes, repeat import and the tested configuration upgrade.
+
+Direct `topo publish servicenow` remains the standalone publication mode.
+Relay and ECC-compatible MID transports are experiments with separate contracts;
+this managed architecture does not claim native ServiceNow Discovery schedule,
+probe, pattern, sensor or Discovery Status compatibility.
 
 ## Decisions and constraints
 
@@ -118,8 +108,7 @@ No scoped application is required. This mode is implemented today.
 The Nischoy Topo scoped application owns discovery configuration and runtime
 state. One or more `topo worker run` processes poll the application, execute
 leased tasks, and return destination-neutral observations. The application
-performs the reviewed ServiceNow mapping and IRE submission. This document
-defines that target mode.
+performs the reviewed ServiceNow mapping and IRE submission.
 
 The modes share discovery plugins, observation schemas, stable source identity,
 credential-reference semantics, IRE mapping rules, and security bounds. They
@@ -138,22 +127,17 @@ must not develop separate discovery implementations.
 | Application-record audit | Native auditing where it can be enabled without recording secret values or raw secret fields. |
 | Bounded large result bodies | `sys_attachment` attached to a Nischoy result record when an ordinary field is insufficient; never an unbounded arbitrary upload. |
 
-The application must use a documented IRE interface available to scoped
-applications and must reproduce the established preflight-first behavior:
-perform the non-committing equivalent of `queryEnhanced`, reject every warning
-or error, and apply only a clean payload. The exact in-instance API and scoped
-access must be verified against the real developer instance before coding it as
-a product contract. The application never writes CMDB CI tables directly.
+The application uses the documented scoped `sn_cmdb.IdentificationEngine`
+interface for non-committing preflight and apply. It rejects reported warnings
+or errors and never writes CMDB CI tables directly. Focused real-system IRE
+and reconciliation results are recorded in [worker evidence](servicenow-worker.md)
+and [package validation](servicenow-validation.md).
 
 ### Nischoy scoped application tables
 
-The developer instance enforces its assigned company prefix, so the installed
-Slice A application contract uses scope `x_664635_topo`. That scope is kept
-distinct from the older experimental Relay/MID artifacts under
-`x_nischoy_topo`; changing the new Slice A scope did not rename or migrate
-those experiments. The names below include later-slice logical tables as well
-as the eight tables installed by Slice A and the target-scope table defined by
-the Slice B Fluent candidate.
+The installed application uses scope `x_664635_topo`, separate from the
+experimental Relay/MID scope `x_nischoy_topo`. Installation does not rename or
+migrate those experiments. The current application defines these twelve tables:
 
 | Table | Purpose |
 | --- | --- |
@@ -165,7 +149,9 @@ the Slice B Fluent candidate.
 | `x_664635_topo_run` | One scheduled or manual execution and its terminal summary. |
 | `x_664635_topo_task` | One bounded partition, state, attempt count, lease owner/token digest, lease expiry, deadline, and terminal result. |
 | `x_664635_topo_result` | Idempotency key, chunk metadata, bounded summary, processing state, and optional attachment reference. |
-| `x_664635_topo_credential_binding` | Mode, protocol, allowed profile/target scope, and reference to a protected ServiceNow credential record or external provider reference. |
+| `x_664635_topo_ssh_credential` | Protected SSH username and Password2 secret, accessible to credential custodians; generic web-service access is disabled. |
+| `x_664635_topo_credential_access` | Secret-free credential broker access events. |
+| `x_664635_topo_credential_binding` | Mode, protocol, allowed profile/target scope, and reference to a protected ServiceNow credential record. External managed providers are planned separately. |
 | `x_664635_topo_ire_delivery` | Preflight/apply state, item/relation counts, bounded redacted diagnostics, and timing. |
 
 Indexes and uniqueness constraints must cover schedule/run relationships, task
@@ -245,7 +231,7 @@ privilege, or host security.
 
 ## Scoped REST surface
 
-The versioned Slice A base path is `/api/x_664635_topo/v1/tasks`. Exact names
+The versioned worker base path is `/api/x_664635_topo/v1/tasks`. Exact names
 may change in later reviewed versions, but the semantic surface is fixed and
 deliberately small:
 
@@ -423,27 +409,26 @@ Required controls:
 - the response is bounded, redacted on error, marked `no-store`, and usable
   only for the current attempt.
 
-Topo adds a ServiceNow credential-reference provider whose input is a binding
-identifier and whose resolver calls the broker just in time. It retains the
-resolved value only in operation memory. The exact supported scoped API for
-reading Password2 fields, encryption behavior, ACL behavior, clone/backup
-implications, and application upgrade behavior must be tested against the real
-developer instance. Do not use an undocumented decryption trick or claim that
-Password2 provides an external-vault security boundary.
+The ServiceNow credential resolver takes a binding identifier and calls the
+broker just in time, retaining the value only in operation memory. Focused
+Password2 encryption, ACL and attempt-bound broker checks are recorded in
+[worker evidence](servicenow-worker.md). Backup/clone recovery and protected
+credential preservation on upgrade need separate operational checks. Password2
+does not provide an external-vault security boundary.
 
-### External secret provider
+### Planned external managed secret provider
 
-The binding stores a non-secret provider reference such as:
+The planned binding would store a non-secret provider reference such as:
 
 ```text
 vault:customer/topo/linux#password
 ```
 
-The worker resolves the reference using its deployment workload identity and
-Topo's existing bounded provider implementation. ServiceNow chooses the
-binding, but the secret value never transits or persists in ServiceNow. Initial
-support reuses `vault:` and `k8s:` providers; other enterprise providers require
-focused adapters and tests.
+The intended worker flow resolves the reference through its deployment
+workload identity and the existing bounded provider implementations. ServiceNow
+would select a binding without receiving the secret. Standalone `vault:` and
+`k8s:` credential references already exist; managed binding support requires
+its own implementation and real-system acceptance.
 
 ### Credential-mode acceptance matrix
 
@@ -526,87 +511,51 @@ Diagnostic strings are structured, short, redacted, and bounded. Observation
 attributes, target responses, and secret-provider errors are never promoted to
 metric labels.
 
-## Implementation slices
+## Implemented capabilities
 
-### Slice A: smallest control-plane vertical slice
+The managed worker and scoped application provide:
 
-Use only `local.v1` and the already validated computer/adapter/ownership IRE
-mapping:
+- profiles, schedules, runs, tasks, worker registration and capacity-limited
+  atomic claims;
+- stateless `topo worker run`, lease expiry/re-execution, attempt-bound renewal
+  and cooperative cancellation;
+- authenticated, checksummed, idempotent result chunks; IRE preflight and
+  reconciliation; bounded run summaries and retention;
+- Password2-backed Linux SSH bindings with credential-custodian controls and
+  an attempt-bound, no-store broker response after target authorization; and
+- registration/heartbeat-only `topo worker check`, dormant Linux service
+  installation, signed beta worker packages and a combined native app/index XML.
 
-1. Add application tables, roles, ACLs, schedule/run/task creation, worker
-   registration, atomic claim/lease, result ingestion, IRE processing, run
-   summary, and retention.
-2. Add stateless `topo worker run` with no spool or local state.
-3. Exercise one manual run and one schedule from ServiceNow through a real
-   worker to IRE and an entirely terminal run.
-4. Crash the worker before result upload and prove lease expiry/re-execution.
-5. Run two workers against one task and prove one live lease plus idempotent
-   recovery.
+`local.v1` runs as one targetless local partition. The SSH operation creates
+single-address IPv4 partitions. Multi-partition scale fixtures inject a
+test-only executor; no synthetic production operation is available. Go planning
+supports canonical IPv4 and IPv6 scopes, while the current application target
+form compiles IPv4 and cannot be bound to `local.v1`. Active tasks reserve
+unique pool and worker capacity-slot keys and receive cancellation through
+heartbeat and renewal.
 
-### Slice B: worker-pool scale and partitioning — implemented and merged
+Deterministic tests cover 1K/10K/100K supported items and relationships, worker
+churn, renewal loss, late-call denial and a 100K eligible-result retention
+backlog. These tests establish simulator behavior, not ServiceNow throughput.
+See the [worker evidence](servicenow-worker.md) for exact test scope.
 
-Add deterministic target partitions, load-aware claims, cancellation, lease
-renewal, concurrency tests, retention-volume tests, and simulator gates for
-1K/10K/100K assets. No new discovery protocol is required to prove scheduling
-and storage scale.
+## Planned extensions
 
-The candidate keeps production `local.v1` runs as one targetless local
-partition. Multi-partition scale fixtures inject a test-only executor; there is
-no synthetic production operation. Go planning supports canonical IPv4 and
-IPv6 scopes for later reviewed operations, while the current Fluent target-
-scope form compiles IPv4 only and cannot be bound to `local.v1`. Active tasks
-reserve unique pool and worker capacity-slot keys, renew attempt-bound leases,
-and receive cancellation through both heartbeat and renewal. Deterministic
-tests cover 1K/10K/100K stable supported items and relationships, worker churn,
-renewal loss, cancellation/late-call rejection, and a 100K eligible-result
-retention backlog. See [`servicenow-worker.md`](servicenow-worker.md) for exact
-simulator evidence and the outstanding real-instance boundary.
+External Vault-backed managed bindings require a real short-lived or rotated
+credential test and the same authorization-denial matrix. Password2 and an
+external vault have distinct storage and recovery properties.
 
-### Slice C1: Password2-backed Linux SSH pilot — implemented, accepted, and merged
+An opt-in credentialless LAN operation would need bounded ARP/NDP, a reviewed
+detection policy, provisional identity/freshness semantics and an approved IRE
+mapping. Reachability alone is not authoritative computer identity.
 
-Fluent `0.4.3` and the worker implement ServiceNow-managed Password2-backed bindings with the fixed
-`ssh_linux.v1` operation, single-address IPv4 target partitions, locally
-enforced CIDR allowlists, and local `known_hosts` trust. Record real ServiceNow
-encryption/ACL/broker evidence separately from simulator evidence. The worker
-receives no table ACL and resolves the credential only through an attempt-
-bound, no-store broker response after target authorization. Local/simulator
-tests and the separately recorded real developer-instance Password2, ACL,
-broker, Docker SSH/IRE, repeat reconciliation, and retention gates pass.
+Additional managed WinRM, SNMPv3, VMware, cloud and Kubernetes operations require
+schema, target-policy, credential, cancellation, fault-isolation, repeat-identity,
+IRE mapping and real-protocol evidence. Their standalone discovery plugins do
+not automatically make them supported managed-worker operations. See the
+[product roadmap](../ROADMAP.md).
 
-### Slice C1.1: pilot installation and first-run onboarding — implemented candidate
-
-Package the validated Fluent app as a checksummed/attested release artifact,
-add a registration-plus-heartbeat-only worker preflight, add a hardened dormant
-Linux worker unit, and document the first Password2 Linux run. See the
-[pilot quickstart](pilot-quickstart.md). No credential, protocol, mapping, or
-target-sweep scope is added. Fluent `0.4.4` is installed on the disposable
-developer instance; its real preflight registered and heartbeated with zero
-leases and no task claim. Consumer ZIP installation and public package-channel
-promotion remain separate gates.
-
-### Slice C2: external secret providers — deferred by user decision
-
-Add external Vault-backed bindings and re-prove the same operation and denial
-matrix with a real short-lived or rotated credential. Deferring C2 does not
-make Password2 equivalent to an external vault and does not remove the
-eventual two-mode architecture requirement.
-
-### Slice D: credentialless LAN discovery
-
-Add an opt-in compiled-in operation with bounded ARP/NDP and a fixed reviewed
-network detection policy. Treat reachability and classification hints as
-evidence, not authoritative computer identity. Define provisional asset
-semantics, freshness/expiry, and a reviewed ServiceNow class/mapping before any
-new CI is applied.
-
-### Later protocol slices
-
-Add SSH, WinRM, SNMPv3, VMware, cloud, and Kubernetes managed-mode operations
-one at a time by reusing existing plugins. Each operation requires schema,
-allowlist, credential, cancellation, fault-isolation, repeat-identity, IRE
-mapping, and real-protocol evidence appropriate to that integration.
-
-## Slice A acceptance gates
+## Validation requirements
 
 - ServiceNow is the only durable task/result store.
 - Two or more fresh worker processes can share a pool without local identity or
@@ -615,8 +564,8 @@ mapping, and real-protocol evidence appropriate to that integration.
   task.
 - Exactly one current lease is granted in a high-concurrency real-instance
   claim test; expired work is recoverable by a new attempt.
-- The worker accepts only `local.v1`, enforces local policy, and rejects
-  arbitrary or unknown operations visibly.
+- The worker accepts only reviewed `local.v1` and `ssh_linux.v1` operations,
+  enforces local policy, and rejects arbitrary or unknown operations visibly.
 - Result chunk ingestion is bounded, authenticated, checksummed, and
   idempotent.
 - The application maps only computer, adapter, and ownership data; IRE
@@ -643,27 +592,27 @@ mapping, and real-protocol evidence appropriate to that integration.
 - No claim that Password2 is equivalent to an external vault.
 - No indefinite raw-result retention.
 - No new IRE class or relationship without focused real-instance evidence.
-- No production signing, public package-channel promotion, or M2.5 independent
-  retest work as part of this architecture slice.
 
-## Evidence still required before broad production support
+## Validation coverage
 
-Real developer-instance evidence now covers source install/upgrade, roles/ACLs,
-generic API denial, worker OAuth route restrictions, atomic claims, lease
-expiry/retry, cancellation, Password2/broker denials, manual and scheduled
-execution, IRE preflight/apply/reconciliation, and focused retention. Remaining
-production evidence includes:
+Real-system checks cover application roles/ACLs, worker OAuth route restrictions,
+generic API denial, atomic claims, lease expiry/retry, cancellation,
+Password2/broker denials, manual and scheduled execution, IRE
+preflight/apply/reconciliation and focused retention. Native combined XML
+installation, repeat import and a 0.4.5 → 0.4.6 upgrade preserving three tested
+configuration records have passed; protected credentials and operational history
+were outside that upgrade comparison. See [package validation](servicenow-validation.md).
 
-- real clean-install/repeat/upgrade evidence for the staged [XML pilot path](servicenow-update-set.md);
-- Password2 backup/clone behavior and operational recovery guidance;
-- external Vault binding with a real short-lived or rotated credential;
-- real platform volume/upgrade behavior beyond focused fixtures;
-- ServiceNow outage and ambiguous IRE operator-recovery drills; and
-- protected package-channel beta/N-1 promotion plus independent security
-  review retest.
+Signed beta APT/RPM promotion and fresh Linux/macOS public-channel installs
+have passed. Stable/N-1 channel promotion and independent security remediation
+retest are separate evidence in [distribution](distribution.md) and
+[security review](security-review.md).
 
-Simulator tests are required for deterministic CI but are never a substitute
-for these real-instance findings.
+Planned operational checks include Password2 backup/clone recovery,
+external Vault managed bindings, sustained live platform volume, broader data
+preservation on upgrade, and ServiceNow outage or ambiguous IRE recovery drills.
+These scenarios are not established by the focused fixtures above. Simulator
+results remain separate from real-system measurements.
 
 ## Relationship to earlier ServiceNow work
 

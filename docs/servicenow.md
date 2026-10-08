@@ -192,11 +192,8 @@ payload shape `mapPayload` produces), not a mock or an assumption:
   submission, with `identificationAttempts` showing
   `sys_object_source MATCHED` on exactly the `source_name`/
   `source_native_key` pair `sys_object_source_info` carries. This is the
-  actual mechanism this project has flagged as unverified since the
-  ServiceNow IRE duplicate-CI validation milestone: it is the precondition
-  Topo's own payload construction (deduplication, idempotency across
-  scans) was built to satisfy, and it now has real evidence behind it, not
-  just an assumption about how `sys_object_source_info` would be used.
+  observed reconciliation mechanism for this tested class and payload. Topo's
+  stable source keys and batch deduplication supply its matching inputs.
 - **A previously-unknown real requirement: `discovery_source` on `cmdb_ci`
   is a registered choice field, not free text.** Submitting a payload with
   an unregistered `discovery_source` value fails with `INVALID_INPUT_DATA`

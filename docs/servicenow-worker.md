@@ -50,11 +50,9 @@ The reviewable, installable scoped-application source is under
   renewal, attempt-bound credential resolution, result ingestion, and
   completion.
 
-The older Relay and MID experiments retain their original
-`x_nischoy_topo` metadata. The real developer instance rejected that prefix
-for a newly created application because its assigned company code is `664635`;
-Slice A therefore uses `x_664635_topo` as its installed API and table contract
-without rewriting either experiment.
+The managed application uses `x_664635_topo` for its API and table contract.
+The older Relay and MID experiments retain their separate `x_nischoy_topo`
+metadata; installation does not migrate or rewrite them.
 
 The worker implementation is `internal/worker`, with CLI entry points
 `topo worker check` and `topo worker run`. `check` performs only registration
@@ -104,8 +102,7 @@ application-administration grant. The worker OAuth/API access policy must allow
 only the seven methods beneath `/api/x_664635_topo/v1/tasks`. A pool record binds one
 ServiceNow integration user to the pool and site; every resource resolves
 `gs.getUserID()` through that binding. Do not reuse the direct IRE publisher's
-OAuth client unless a separate review proves its exact policy—Slice A expects
-a distinct worker identity and the worker itself never calls IRE.
+OAuth client. Use a distinct worker identity; the worker itself never calls IRE.
 
 ## Run, claim, and recovery behavior
 
@@ -121,7 +118,7 @@ attempt ID survives that compare-and-swap receives the random lease token.
 The application stores only its SHA-256 digest. A 32-competitor real-instance
 race produced one winner and one attempt, as recorded below.
 
-Slice B adds two unique nullable slot keys on each active task. A claim reserves
+Each active task has two unique nullable capacity-slot keys. A claim reserves
 one slot from the pool ceiling and one from the registered worker ceiling in
 the same conditional task transition. Database uniqueness resolves concurrent
 slot contenders; terminal completion, cancellation, and expiry release both
@@ -252,6 +249,13 @@ recorded as `no_data`; IRE preflight/apply is skipped, the run retains its
 collection-error summary, and the successful raw chunk follows normal expiry.
 
 ## Verification
+
+For the current published XML and worker package, see
+[package validation](servicenow-validation.md) and
+[distribution evidence](distribution.md#first-beta-operational-evidence).
+The dated records below describe their specific source versions, fixtures and
+security checks; they are evidence records rather than customer installation
+steps. Use the [setup guide](pilot-quickstart.md) to install and configure a worker.
 
 Focused local gates are:
 
@@ -655,9 +659,9 @@ It does not prove Slice B behavior by itself; the separately labelled evidence
 above does. Neither real section proves Slice B's simulator-only scale and
 retention-volume gates.
 
-## Slice C1 boundaries
+## Managed SSH scope
 
-Slice C1 has one Password2-backed SSH credential per immutable binding and one
+The managed SSH operation has one Password2-backed SSH credential per immutable binding and one
 fixed `ssh_linux.v1` operation. It has no Vault/Kubernetes Secret/private-key
 provider, ordered credential list, password spraying, user-selected command,
 port, URL, shell, script, host-key bypass, IPv6/hostname target, credentialless

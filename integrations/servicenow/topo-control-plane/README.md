@@ -1,17 +1,18 @@
-# Nischoy Topo ServiceNow control plane
+# Nischoy Topo ServiceNow application source
 
-This directory is a source-driven ServiceNow application. The authoritative,
-installable metadata is defined with ServiceNow Fluent in `src/fluent`. The
-adjacent `application.json` is a review contract used by Go tests; it is not an
-installer and must remain consistent with the Fluent sources.
+This directory defines application **0.4.6** in ServiceNow Fluent under
+`src/fluent`. The adjacent `application.json` is a review contract used by Go
+tests; it must remain consistent with the sources and is not an installer.
 
-The package pins `@servicenow/sdk` 4.9.0 and a lock file. It contains no
-credentials, discovery targets, arbitrary operation payloads, or worker-side
-state.
+For customer installation, use the published [combined XML package](../../../docs/servicenow-update-set.md).
+It includes the application and all 32 required indexes. The compatible worker
+is **v0.1.0-beta.1**; application and worker versions are independent.
+[Package validation](../../../docs/servicenow-validation.md) records fresh,
+repeat and 0.4.5→0.4.6 native XML acceptance and the tested configuration scope.
 
 ## Build
 
-Use Node.js 20 or newer:
+The package pins `@servicenow/sdk` 4.9.0 and a lock file. Use Node.js 20 or newer:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
@@ -20,77 +21,53 @@ npm run build
 npm run pack
 ```
 
-The SDK compiles the twelve scoped tables, indexes, roles, ACLs, navigation,
-Script Includes, seven-route Scripted REST API, immutable profile/target-scope/
-credential-binding business rules, **Run now** and **Cancel run** UI actions, two scheduled
-scripts into `dist/app`. Version 0.4.5 removes the invalid cross-scope
-Script Include grant for the native `sn_cmdb` API namespace; scoped IRE access
-requires separate real-instance acceptance.
-Candidate 0.4.6 fixes rejection of ordinary Linux package inventories: host
-`packages` and `services` accept at most 4,096 strings each, with 4,096-character
-and control-character checks per entry. Other arrays retain their 256-entry
-bound, and the complete worker result remains capped at 1 MiB. These lists
-remain evidence only; IRE still receives only computers, adapters and ownership
-relationships. A versioned XML upgrade and real discovery retest are pending.
-Generated output is intentionally ignored; source and `package-lock.json` are
-reviewed and committed.
+The SDK compiles twelve scoped tables and index declarations, roles, ACLs,
+navigation, Script Includes, seven Scripted REST resources, immutable
+profile/target-scope/credential-binding rules, Run now/Cancel run actions and
+two scheduled scripts. Generated `dist/app` output is ignored. Source and the
+lock file are committed; no credentials or discovery data are bundled.
 
-`scripts/build-servicenow-app.sh` from the repository root runs this build
-twice for a release, validates the SDK inventory and exact application
-contract, and normalizes changing ZIP container metadata into a byte-
-reproducible release artifact.
+From the repository root, `scripts/build-servicenow-app.sh` builds twice,
+validates the SDK inventory and application contract, and normalizes ZIP
+container metadata to produce a reproducible SDK artifact. This build output
+is separate from the platform-exported customer XML. SDK build-tool audit
+status is recorded in the [security review record](../../../docs/security-review.md#build-tool-dependencies).
+
+Version 0.4.6 accepts at most 4,096 package/service strings per host, with
+4,096-character and control-character checks per entry. Other arrays retain
+their 256-entry bound; the complete result is capped at 1 MiB. These lists are
+observation evidence; IRE receives computers, adapters and ownership relations.
 
 ## Install
 
-Developer/export-instance workflow only. Use a reviewed release checkout on a
-non-production instance; the SDK requires Node.js 20.18.0+, npm 8.19.3+ and an
-installation administrator. See [SDK requirements](https://www.servicenow.com/docs/r/application-development/servicenow-sdk/install-servicenow-sdk.html).
-Clone `https://github.com/Nischoy-ai/topo.git`, check out the reviewed tag/commit,
-and enter `integrations/servicenow/topo-control-plane` before authenticating.
-The source's application version (`0.4.4`) differs from the worker beta version
-(`v0.1.0-beta.1`). Record both in distribution evidence.
+The SDK workflow is for developer/export instances. Customers should follow
+[XML installation](../../../docs/servicenow-update-set.md) instead. Keep the
+same delivery mechanism when upgrading an instance.
 
-
-Authenticate the SDK with a dedicated developer/admin identity and an owner-
-only credential store. Do not paste a password, authorization code, access
-token, refresh token, or client secret into an issue, pull request, terminal
-history, or chat.
+Use a reviewed checkout on a non-production instance. SDK installation needs
+Node.js 20.18.0+, npm 8.19.3+ and an installation administrator; see
+[SDK requirements](https://www.servicenow.com/docs/r/application-development/servicenow-sdk/install-servicenow-sdk.html).
+Enter `integrations/servicenow/topo-control-plane` before authentication.
+Use a dedicated developer/admin identity with an owner-only credential store;
+keep passwords, codes, tokens and client secrets out of issues and shell history.
 
 ```sh
 npx now-sdk auth --add dev-instance.service-now.com --type oauth --alias topo-dev
 npm run deploy -- --auth topo-dev
 ```
 
-From the repository root, `scripts/install-servicenow-app.sh topo-dev` performs
-the clean install/update sequence with that preconfigured OAuth alias. The
-helper has no password, token, authorization-code, or client-secret option.
-For developer upgrades, use the same SDK identity and reviewed source commit;
-do not use `--reinstall` without explicitly accepting removal of instance-created
-metadata absent from source. Keep SDK development separate from XML-installed
-customer pilots.
+From the repository root, `scripts/install-servicenow-app.sh topo-dev` uses
+that preconfigured alias. It accepts no password or token values. Do not use
+`--reinstall` without reviewing the removal of instance-created metadata absent
+from source. Do not handcraft update-set XML or recreate application definitions
+through forms, background scripts, Table API calls or direct metadata writes.
 
-The SDK remains the authoritative developer application-creation/update path.
-For customer pilots, the staged [XML distribution process](../../../docs/servicenow-update-set.md)
-publishes the installed source-built app through the platform. Do not handcraft
-update-set XML or recreate application definitions through forms, background
-scripts, the Table API, or direct metadata writes. After installation, create a
-separate least-privilege worker identity and API policy for the seven routes; do
-not reuse the direct IRE publisher identity.
-
-The Slice A/B contract is scoped as `x_664635_topo`, the company prefix assigned
-to the validation developer instance. This is intentionally separate from the
-older experimental Relay/MID source under `x_nischoy_topo`; installing Slice A
-does not migrate or rename those experiments.
-
-Version `0.4.4` contains the Password2-only Linux SSH pilot from `0.4.3`,
-denies credential retrieval as soon as ServiceNow requests cancellation, and
-explicitly nulls every attempt/lease field when a lease expires so a stale
-unique slot cannot block retry. The pilot provides protected credentials,
-immutable profile/scope bindings, secret-free credential-access events, the
-fixed attempt-bound `/credential` route, and reviewed `ssh_linux.v1` `/32`
-tasks. Workers still have no table ACL, generic Table/CMDB/IRE access, durable
-state, arbitrary-command surface, or inbound listener. External Vault binding
-is deliberately deferred to Slice C2; it is not silently treated as complete.
-This onboarding revision also uses stable Fluent application-menu references
-and explicit UTC starts for its two periodic jobs so separately built
-installation packages preserve the same application metadata.
+The app scope is `x_664635_topo`. It is separate from the older experimental
+Relay/MID scope `x_nischoy_topo`; installation does not migrate those experiments.
+After installation, create separate least-privilege worker and credential
+custodian identities. The worker uses only the seven custom resources and
+cannot read credential tables or call generic Table/CMDB/IRE APIs.
+[Managed-worker documentation](../../../docs/servicenow-worker.md) covers the
+Password2 credential broker, attempt-bound access, cancellation and lease
+cleanup. External Vault binding is planned separately; it is not included in
+the current managed-credential workflow.
