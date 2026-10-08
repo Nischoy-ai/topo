@@ -8,8 +8,8 @@ For customer installation, use the published [combined XML package](../../../doc
 Topo 0.4.6 Beta includes the application and all 32 required indexes.
 Install the worker through the Beta package channel and record its build
 using `topo version`.
-[Package validation](../../../docs/servicenow-validation.md) records fresh,
-repeat and 0.4.5→0.4.6 native XML acceptance and the tested configuration scope.
+Dated installation and upgrade results are kept in
+[package validation](../../../docs/servicenow-validation.md).
 
 ## Build
 

@@ -63,7 +63,7 @@ IRE behavior.
 
 ## Scoped data model
 
-The Nischoy application is the sole durable operational store. Fluent `0.4.4`
+The Nischoy application is the sole durable operational store. Fluent `0.4.6`
 defines these scoped records:
 
 | Table | Purpose |
