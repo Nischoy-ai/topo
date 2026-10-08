@@ -7,6 +7,18 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
+- **Acceptance closure staged (2026-10-08):** Owner requested mitigation of
+  the documented package gaps and simpler customer instructions. Objective:
+  prove exact combined-batch repeat, fresh installation, previous-version
+  upgrade with preserved data, and fresh APT/DNF helper execution on both
+  architectures. Deliverables: native platform evidence and disposable hosted
+  Linux acceptance logs; customer steps separated from maintainer test history.
+  Fresh baseline requires a separately approved reset; request is pending.
+  Keep all passed evidence and exact released XML intact. No invented future
+  version, private index API, weakening of uniqueness, or live-scale promise.
+  A unique pool ID already implies uniqueness of (service user, pool ID);
+  isolated proof of the redundant index is a physical-index diagnostic, not
+  an additional application data-integrity requirement.
 - **Release documentation revised (2026-10-08):** At owner request, removed
   blanket readiness labels and test-instance identifiers from public guides,
   release notes and both preview packages. Specific index requirements and

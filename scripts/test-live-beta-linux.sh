@@ -2,11 +2,13 @@
 # Public-channel acceptance, not a generated/file-mounted repository fixture.
 set -euo pipefail
 trap 'echo "Live channel assertion failed at line $LINENO" >&2' ERR
-if [[ $# != 1 || "${GITHUB_ACTIONS:-}" != true || "${RUNNER_ENVIRONMENT:-}" != github-hosted || ! -f /.dockerenv ]]; then
-  echo "usage: $0 apt|rpm (disposable GitHub-hosted Linux container only)" >&2
+if [[ $# -lt 1 || $# -gt 2 || "${GITHUB_ACTIONS:-}" != true || "${RUNNER_ENVIRONMENT:-}" != github-hosted || ! -f /.dockerenv ]]; then
+  echo "usage: $0 apt|rpm [manual|helper] (disposable GitHub-hosted Linux container only)" >&2
   exit 2
 fi
 channel=$1
+method=${2:-manual}
+case "$method" in manual|helper) ;; *) exit 2 ;; esac
 case "$channel" in apt|rpm) ;; *) exit 2 ;; esac
 version=v0.1.0-beta.1
 origin=https://nischoy-ai.github.io/topo-packages
@@ -17,6 +19,11 @@ if [[ "$channel" == apt ]]; then
 else
   dnf install -y ca-certificates curl gnupg2 jq
 fi
+if [[ "$method" == helper ]]; then
+  # Exercise the exact candidate script against public signed repositories.
+  test ! -e /usr/bin/topo
+  sh /test/install-linux.sh
+else
 curl -fsS --max-time 60 "$origin/keys/nischoy-topo-archive.asc" -o /tmp/topo-key.asc
 actual=$(gpg --batch --show-keys --with-colons /tmp/topo-key.asc | awk -F: '$1=="fpr" {print $10; exit}')
 test "$actual" = "$fingerprint"
@@ -35,6 +42,7 @@ else
   grep -Fx 'gpgcheck=1' /etc/yum.repos.d/nischoy-topo.repo
   grep -Fx 'repo_gpgcheck=1' /etc/yum.repos.d/nischoy-topo.repo
   dnf install -y topo
+fi
 fi
 topo version
 test "$(topo version)" = "$version"
@@ -66,4 +74,4 @@ cmp /usr/bin/topo "$raw"
 if [[ "$channel" == apt ]]; then apt-get remove -y topo; else dnf remove -y topo; fi
 test ! -e /usr/bin/topo
 test -f /etc/topo-worker/operator-owned
-printf 'Live %s %s: signature-checked install, exact release binary, local discovery, dormant worker, removal and operator-file preservation passed\n' "$channel" "$arch"
+printf 'Live %s %s (%s): signature-checked install, exact release binary, local discovery, dormant worker, removal and operator-file preservation passed\n' "$channel" "$arch" "$method"

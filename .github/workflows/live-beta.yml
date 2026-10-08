@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/live-beta.yml
       - scripts/test-live-beta-*.sh
+      - scripts/install-linux.sh
       - internal/release/workflow_test.go
       - README.md
       - docs/distribution.md
@@ -21,6 +22,7 @@ jobs:
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
         channel: [apt, rpm]
+        method: [manual, helper]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     steps:
@@ -28,6 +30,7 @@ jobs:
       - name: Install from the signed public Linux channel and remove
         env:
           CHANNEL: ${{ matrix.channel }}
+          METHOD: ${{ matrix.method }}
         run: |
           set -euo pipefail
           image=ubuntu:24.04
@@ -35,8 +38,9 @@ jobs:
             image=fedora@sha256:99e203b80b1c3d8f7e161ec10a68fd02b081ef83a3963553e513c82846b97814
           fi
           docker run --rm -e GITHUB_ACTIONS -e RUNNER_ENVIRONMENT \
-            -v "$PWD/scripts/test-live-beta-linux.sh:/test/check.sh:ro" "$image" \
-            bash /test/check.sh "$CHANNEL"
+            -v "$PWD/scripts/test-live-beta-linux.sh:/test/check.sh:ro" \
+            -v "$PWD/scripts/install-linux.sh:/test/install-linux.sh:ro" "$image" \
+            bash /test/check.sh "$CHANNEL" "$METHOD"
 
   homebrew:
     strategy:
