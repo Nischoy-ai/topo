@@ -26,8 +26,8 @@ For the combined package:
    committed and complete the guide's installation checks.
 
 No terminal, source checkout, SDK, or separate index import is needed for the
-ServiceNow app. Use a development instance; full fresh-install and upgrade
-validation of the combined package remains pending. Continue with the
+ServiceNow app. Start on a development instance and follow your organization’s
+change process. Continue with the
 [setup guide](docs/pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities)
 to configure access, credentials and approved targets.
 

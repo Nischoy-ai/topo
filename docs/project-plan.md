@@ -7,13 +7,25 @@ cross-chat continuity. `ROADMAP.md` is the shorter public release roadmap;
 ## Current handoff
 
 - **Updated:** 2026-10-08
+- **Acceptance progress (2026-10-08):** Exact combined XML repeat passed native
+  reimport/preview/commit: base updated 441, inserted/deleted/collisions zero,
+  index child Committed. Twelve lists plus two full composite forms verify
+  all 32 definitions and unchanged 66 total physical indexes. Four live helper
+  jobs (APT/RPM × amd64/arm64) passed in run `37809561514` at `bb7022f`,
+  including signed binary comparison/discovery/dormant service/removal checks.
+  Detailed evidence is now `docs/servicenow-validation.md`; customer guides
+  link to it instead of front-loading the test backlog. Fresh combined and
+  previous-version upgrade await the approved reset. Developer portal needs
+  owner sign-in; the application instance session is authenticated.
 - **Acceptance closure staged (2026-10-08):** Owner requested mitigation of
   the documented package gaps and simpler customer instructions. Objective:
   prove exact combined-batch repeat, fresh installation, previous-version
   upgrade with preserved data, and fresh APT/DNF helper execution on both
   architectures. Deliverables: native platform evidence and disposable hosted
   Linux acceptance logs; customer steps separated from maintainer test history.
-  Fresh baseline requires a separately approved reset; request is pending.
+  Owner approved resetting the acceptance instance; Developer portal sign-in
+  and final reset action are pending. Saved 0.4.5 and combined 0.4.6 XML
+  backups verified in `dist/servicenow-reset-backup-2026-10-08/`.
   Keep all passed evidence and exact released XML intact. No invented future
   version, private index API, weakening of uniqueness, or live-scale promise.
   A unique pool ID already implies uniqueness of (service user, pool ID);

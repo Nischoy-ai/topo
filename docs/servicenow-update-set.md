@@ -1,54 +1,13 @@
-# Install the Topo pilot application from XML
+# Install the Topo application from XML
 
-**Development preview:** [ServiceNow 0.4.6 preview 1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.1)
-contains the unchanged platform XML tested on acceptance-instance, its manifest,
-checksums and current installation notes. Clean installation, repeat import,
-0.4.5-to-0.4.6 upgrade and single-host Linux manual/repeat/scheduled discovery
-passed. The missing-index limitation below
-remains in its published bytes. Worker beta `v0.1.0-beta.1` is a separate release.
+[Download ServiceNow 0.4.6 preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2).
+The package contains one native XML batch with the application and all 32
+required indexes (17 unique). Compatible worker: **v0.1.0-beta.1**.
 
-**[Combined XML development preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2).** The native batch export
-`nischoy-topo-0.4.6-combined.xml` contains 441 application updates and all 32
-required index definitions (17 unique). One upload brings in the app and its
-index child set; preview and commit the batch from its **Nischoy Topo** base.
-The exact candidate imported, previewed and committed on packaging-instance over the
-existing app and indexes; all 32 ordered-column definitions remain present.
-This is not fresh combined-installation or repeat-batch evidence. Its payload comparison
-with the earlier native exports passed with documented record-identity/display
-normalizations; no application logic or index payload was hand-edited.
-
-The separate index companion previously recreated all 32 definitions from an
-absent-index baseline on acceptance-instance, with focused uniqueness checks. That is
-separate evidence from the combined file's installation tests and the earlier
-app-only clean/repeat/upgrade tests. Fresh combined installation, a subsequent
-version upgrade and broader acceptance remain open. The older public
-preview 1 still has no indexes. See [index evidence](servicenow-index-setup.md).
-
-ServiceNow's older [developer deployment guidance](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=pro-dev-intro&module=guide&release=yokohama)
-describes index creation outside update-set tracking. The tested Australia
-native creator instead captured `sys_index` updates, which we exported and
-validated as a companion. This is evidence for the tested platform build, not
-a compatibility claim for every release. Never assume a successful app-only
-preview/commit installed database indexes.
-
-The build now emits `servicenow-index-requirements` as a separate CI artifact.
-To audit column coverage after installation, use a clean SDK build and a bounded
-JSON array of `v_index_creator` records (`logical_table_name`, `index_col_name`)
-queried for each exact `sys_db_object` table ID. Name-prefix filtering of this
-virtual view returned an empty result in this investigation; it is not evidence
-that a table has no indexes.
-
-```sh
-python3 scripts/check-servicenow-index-coverage.py \
-  --dictionary integrations/servicenow/topo-control-plane/dist/app/dictionary \
-  --observed /private/path/physical-indexes.json
-```
-
-The audit exits 1 for missing ordered-column definitions, 2 for invalid input,
-and 0 for complete column coverage. Even a zero exit does **not** verify unique
-constraints or source/export equivalence: the observed view does not expose
-uniqueness, and the report always sets `customer_release` to false. Keep this
-separate from the configuration-only XML inspector and public release approval.
+Use preview 2 for index-inclusive installation. Preview 1 is retained as an
+older artifact and does not include the indexes. Start on a development
+instance and follow your organization's change process before deployment.
+Detailed test results are maintained in the [validation record](servicenow-validation.md).
 
 ## Customer installation
 

@@ -360,10 +360,9 @@ curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-a
 ```
 
 Until then, run `sh scripts/install-linux.sh` from this candidate checkout on
-Linux, or use the manual instructions below. Mock-command tests cover both
-package-manager paths and failure handling; a fresh Linux execution of this
-new wrapper remains unverified. Prior live-channel evidence applies to the
-signed packages/repositories, not this new wrapper.
+Linux, or use the manual instructions below. The helper passed fresh hosted-container installation on APT and RPM, on
+both amd64 and arm64, including signed-package installation, binary comparison,
+local discovery and removal. See the [acceptance run](https://github.com/Nischoy-ai/topo/actions/runs/37809561514).
 
 ### Debian and Ubuntu
 
