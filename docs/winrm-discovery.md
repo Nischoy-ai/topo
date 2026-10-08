@@ -1,6 +1,9 @@
 # Windows WinRM discovery
 
-Topo's current Windows discovery slices collect stable host and interface identity plus bounded volume, service, patch, and machine-wide installed-software inventory through fixed WS-Management operations. This remains an in-progress part of the Windows WinRM alpha, not yet an enterprise-ready WinRM implementation.
+Topo collects stable Windows host/interface identity and bounded volume,
+service, patch and machine-wide software inventory through fixed WS-Management
+operations. Protocol simulation coverage and real-host validation scope are
+recorded below.
 
 ## Audited operation contract
 
@@ -80,6 +83,6 @@ Topo uses the narrowly scoped [Azure NTLMSSP implementation](https://github.com/
 - Structured errors include the target and audited operation name, never credentials or arbitrary remote text.
 - The fixed operations do not use `Win32_Product`; the only remote command is the compiled-in read-only uninstall-registry script, and command output excludes uninstall strings.
 
-## Current limitations and next slice
+## Supported scope
 
-This slice collects only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, sanitized Windows Server 2022 plus one other supported-release fixture set, and broader real-host compatibility validation remain open. The real-host fixture evidence is explicitly deferred, not completed. Treat NTLMv2 as a narrowly scoped pilot transport, not proof of real-host compatibility.
+Software inventory covers only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, sanitized Windows Server 2022 plus one other supported-release fixture set, and broader real-host compatibility validation remain open. The real-host fixture evidence is explicitly deferred, not completed. Treat NTLMv2 as a narrowly scoped pilot transport, not proof of real-host compatibility.

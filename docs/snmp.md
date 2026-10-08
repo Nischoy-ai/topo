@@ -1,6 +1,8 @@
 # SNMP network device discovery
 
-Topo's SNMP discovery slice collects stable device identity and interface inventory from network equipment over SNMPv3, using only the MIB-II `system` and `interfaces` groups. This is the first slice of the SNMP/VMware discovery milestone; SNMPv1/v2c, vendor-specific MIBs, and topology protocols (LLDP/CDP) are deliberately out of scope for this slice, not silently unsupported forever.
+Topo discovers stable network-device identity and interfaces over SNMPv3
+using the MIB-II `system` and `interfaces` groups. Vendor-specific MIBs,
+LLDP/CDP topology and SNMPv1/v2c are outside the current supported scope.
 
 ## Audited operation contract
 
@@ -72,6 +74,6 @@ Each simulated host answers with one interface (`primary`, matching the "primary
 - Target concurrency is bounded and cancellation propagates through the underlying SNMP requests.
 - Structured errors include the target and failing operation, never credentials.
 
-## Current limitations and next slice
+## Supported scope
 
-This slice covers MIB-II `system` and `interfaces` only — no vendor MIBs, no LLDP/CDP topology, no SNMPv1/v2c. `authPriv` is implemented but not yet verified against a real device; Topo Lab's `noAuthNoPriv`-only agent proves the plugin's own parsing and mapping logic, not interoperability with real network equipment. See [VMware discovery](vmware.md) for virtualization inventory and the [roadmap](../ROADMAP.md) for planned topology discovery.
+Inventory covers MIB-II `system` and `interfaces` only — no vendor MIBs, no LLDP/CDP topology, no SNMPv1/v2c. `authPriv` is implemented but not yet verified against a real device; Topo Lab's `noAuthNoPriv`-only agent proves the plugin's own parsing and mapping logic, not interoperability with real network equipment. See [VMware discovery](vmware.md) for virtualization inventory and the [roadmap](../ROADMAP.md) for planned topology discovery.

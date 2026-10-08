@@ -257,7 +257,7 @@ set `Cache-Control: no-store` where they can contain task or credential data.
 ## Declarative task contract
 
 A task is immutable after it is leased and contains identifiers and bounded
-policy, not executable text. A representative wire object is:
+policy, not executable text. A representative SSH task is:
 
 ```json
 {
@@ -266,22 +266,24 @@ policy, not executable text. A representative wire object is:
   "attempt_id": "uuid",
   "lease_token": "random-secret",
   "lease_expires_at": "2026-08-29T22:00:00Z",
-  "operation": "lan_discovery.v1",
+  "operation": "ssh_linux.v1",
   "profile_id": "uuid",
   "profile_revision": 4,
   "target_partition": {
-    "cidrs": ["192.168.10.0/26"]
+    "key": "partition-digest",
+    "ordinal": 0,
+    "count": 1,
+    "cidrs": ["192.168.10.10/32"]
   },
-  "credential_binding_id": "uuid-or-empty",
+  "credential_binding_id": "binding-uuid",
   "deadline": "2026-08-29T22:05:00Z"
 }
 ```
 
-The supported operations form a compiled-in registry. Initial implementation
-uses `local.v1`; later reviewed slices may add `lan_discovery.v1`,
-`ssh_linux.v1`, `winrm.v1`, `snmpv3.v1`, or other existing plugins. A worker
-rejects unknown operation versions with a bounded result so the task does not
-hang.
+The compiled-in registry supports `local.v1` and `ssh_linux.v1`. Other
+managed operations require their own reviewed implementation and acceptance.
+A worker rejects unknown operation versions with a bounded result so the task
+does not hang.
 
 The application validates profile fields against the operation version's
 schema. An operator cannot turn a fixed field into arbitrary command, script,

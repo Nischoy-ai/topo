@@ -34,16 +34,16 @@ product ingestion path are recorded in
 the separate scoped-app prototype is in
 [experimental scoped-app Relay](servicenow-relay.md).
 
-M3 Slice A also implements a distinct candidate managed mode in which the
-Nischoy Topo scoped application owns schedules, runs, leases, raw results,
-application-side mapping, and IRE delivery while disposable `topo worker run`
-processes execute only `local.v1`. The application is an authoritative
-ServiceNow Fluent package pinned to SDK 4.9.0, built and installed from source
-rather than recreated through Studio forms. That path reuses the reviewed
-mapping in this document but does not reuse the direct publisher's OAuth
-authority: a worker has only six custom Scripted REST resources and never calls IRE. See
-[ServiceNow-managed stateless worker](servicenow-worker.md). Its simulator
-evidence is intentionally not represented as real ServiceNow validation.
+The managed mode uses the Nischoy Topo scoped application for schedules, runs,
+leases, raw results, application-side mapping and IRE delivery. Stateless
+`topo worker run` processes execute reviewed `local.v1` or `ssh_linux.v1`
+operations. The published [native XML package](servicenow-update-set.md)
+installs the application and required indexes; developer source is defined in
+ServiceNow Fluent with SDK 4.9.0. Workers use seven custom Scripted REST
+resources and never call IRE directly or reuse the direct publisher's OAuth
+authority. See [managed-worker behavior](servicenow-worker.md) and
+[package validation](servicenow-validation.md) for their separate real-system
+and simulator evidence.
 
 `topo publish servicenow` is the supported non-experimental operator workflow
 over the existing IRE mapper and publisher. It reads the JSON Lines observation
