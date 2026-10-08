@@ -88,4 +88,5 @@ The automated acceptance suite scans 500 Linux personas twice through 1,000 SSH 
 - No bastion/proxy-jump support yet.
 - No encrypted private-key passphrases, SSH certificates, or native Vault/Kubernetes API provider yet.
 - No target CIDR expansion; inventory targets must be explicitly supplied.
-- This is pre-alpha software and should be used in a lab or tightly controlled pilot until collector enrollment, mTLS, audit logging, and signed releases are complete.
+- Follow the [security policy](../SECURITY.md) for credentials, target approval,
+  enrolled collectors and verified release installation.

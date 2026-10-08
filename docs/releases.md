@@ -1,13 +1,13 @@
 # Release artifacts and verification
 
 For the current signed worker beta, see [package-manager installation](distribution.md).
-The [ServiceNow XML preview](servicenow-update-set.md) is a separate manual
+The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
 artifact with its own checksum and [validation record](servicenow-validation.md).
 The signature and provenance instructions below apply to tagged worker releases.
 
 Topo releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
 optional prerelease suffix) whose commit is already reachable from `main`.
-`.github/workflows/release.yml` uses the exact Go 1.26.8 toolchain and
+`.github/workflows/release.yml` uses the exact Go 1.26.9 toolchain and
 commit-pinned actions.
 
 The current reviewed workflow selects **`linux-homebrew-beta`**. It accepts
@@ -70,12 +70,13 @@ normalized packages and metadata files to match byte-for-byte. It does not
 rewrite application tables, ACLs, routes, scripts, navigation, or other
 functional metadata.
 
-To reproduce a release locally:
+To reproduce a release locally, use its tag and the compiler recorded in
+`release-metadata.json`. The following example uses the 0.4.6 Beta build tag:
 
 ```sh
-git checkout v0.1.0-beta.1
-GOTOOLCHAIN=go1.26.8 scripts/build-release.sh \
-  v0.1.0-beta.1 "$(git rev-parse HEAD)" dist-local linux-homebrew-beta
+git checkout v0.4.6-beta.1
+GOTOOLCHAIN=go1.26.9 scripts/build-release.sh \
+  v0.4.6-beta.1 "$(git rev-parse HEAD)" dist-local linux-homebrew-beta
 ```
 
 Compare `dist-local/SHA256SUMS` with the manifest downloaded from the release.
@@ -100,13 +101,14 @@ sha256sum -c SHA256SUMS --ignore-missing
 On macOS, the equivalent is `shasum -a 256 -c SHA256SUMS` after downloading
 all files named by the manifest.
 
-Then verify that the Nischoy Topo tag workflow signed the checksum manifest:
+Then verify that the Nischoy Topo tag workflow signed the checksum manifest.
+Substitute the exact tag and artifact names you downloaded in these examples:
 
 ```sh
 cosign verify-blob \
-  --bundle topo_0.1.0-beta.1_checksums.sigstore.json \
+  --bundle topo_0.4.6-beta.1_checksums.sigstore.json \
   --certificate-identity \
-    'https://github.com/Nischoy-ai/topo/.github/workflows/release.yml@refs/tags/v0.1.0-beta.1' \
+    'https://github.com/Nischoy-ai/topo/.github/workflows/release.yml@refs/tags/v0.4.6-beta.1' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   SHA256SUMS
 ```
@@ -119,7 +121,7 @@ that *someone* used Sigstore is not sufficient.
 Finally, verify GitHub's signed build provenance for the archive itself:
 
 ```sh
-gh attestation verify topo_0.1.0-beta.1_linux_amd64.tar.gz \
+gh attestation verify topo_0.4.6-beta.1_linux_amd64.tar.gz \
   --repo Nischoy-ai/topo
 ```
 
@@ -166,6 +168,6 @@ by Gatekeeper; this beta promises the tested Homebrew CLI path, not a GUI/cask
 or direct-download launch experience. Do not disable Gatekeeper or strip
 quarantine to install it. Release evidence does not replace signed APT/RPM repository
 metadata or repository-key rotation; protected package promotion adds those
-controls. The beta promotion evidence is recorded in [distribution](distribution.md#first-beta-operational-evidence);
+controls. The beta promotion evidence is recorded in [distribution](evidence/distribution.md#first-beta-operational-evidence);
 stable/N-1 promotion and independent security retest have their own acceptance
 requirements in [the roadmap](../ROADMAP.md) and [review record](security-review.md).

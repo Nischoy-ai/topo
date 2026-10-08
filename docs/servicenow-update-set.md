@@ -1,21 +1,16 @@
 # Install the Topo application from XML
 
-[Download ServiceNow 0.4.6 preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2).
+[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta).
 The package contains one native XML batch with the application and all 32
-required indexes (17 unique). Compatible worker: **v0.1.0-beta.1**.
-
-Use preview 2 for index-inclusive installation. Preview 1 is retained as an
-older artifact and does not include the indexes. Start on a development
-instance and follow your organization's change process before deployment.
-Detailed test results are maintained in the [validation record](servicenow-validation.md).
+required indexes (17 unique). Install the worker through the Beta package channel.
 
 ## Customer installation
 
-For combined preview 2 (preview 1 is a different package):
+Install the combined package:
 
 1. Obtain the package and matching checksum manifest. On macOS run
    `shasum -a 256 -c SHA256SUMS`; on Linux run `sha256sum -c SHA256SUMS`.
-   Check the supported ServiceNow and worker versions. A checksum detects
+   Check component compatibility in the release manifest. A checksum detects
    corruption; it does not independently authenticate the publisher.
 2. As administrator on a development instance, open **System Update Sets →
    Retrieved Update Sets → Import Update Set from XML**. Upload
@@ -45,21 +40,12 @@ payload with `INVALID_INPUT_DATA`, even when native IRE access works.
 
 ServiceNow documents [application publication to an update set](https://www.servicenow.com/docs/r/application-development/t_PublishApplicationsToAnUpdateSet.html)
 and [Retrieved Update Sets import, preview and commit](https://developer.servicenow.com/blog.do?p=/post/backup-your-pdi/).
-Those mechanisms do not establish licensing entitlement, Store certification
-or unrestricted commercial distribution rights. The platform documentation
-was checked against Australia on 2026-09-20; target-release compatibility still
-requires real tests.
+Confirm licensing and application entitlement with your instance administrator.
 
 ## Upgrades and recovery
 
-The combined package has passed a native XML upgrade from 0.4.5 to 0.4.6,
-preserving the tested pool, profile and schedule configuration. See the
-[upgrade validation](servicenow-validation.md#combined-file-upgrade-2026-10-08)
-for its exact scope.
-
 Retain the XML, manifest, checksum, preview/commit records and installed version
-for every deployment. Use the same scope and XML delivery for all pilot
-upgrades. ServiceNow explicitly warns against [mixing update sets and
+for every deployment. Use the same scope and XML delivery for upgrades. ServiceNow explicitly warns against [mixing update sets and
 Application Repository](https://www.servicenow.com/docs/r/application-development/application-repository-self-hosted/manage-apps.html).
 The private repository shares applications within one organization; it is not
 a marketplace for Nischoy's unrelated customers.
@@ -77,8 +63,13 @@ real upgrade evidence. Never import an older XML as an assumed rollback.
 [Update-set backout](https://www.servicenow.com/docs/r/application-development/system-update-sets/t_BackOutUpdateSet.html)
 requires separate analysis; it is not a transactional database restore or an
 uninstaller. Deleting a retrieved update-set record does not remove its
-committed application. Dropping app tables may destroy pilot history and
+committed application. Dropping app tables may destroy discovery history and
 credentials and does not undo IRE changes in CMDB. Removal therefore begins
 with disabling schedules, stopping workers, revoking OAuth and deactivating
 credentials; app/table removal and CMDB retention are administrator decisions.
 No automated removal or lossless backout is currently validated.
+
+## Validation records
+
+Dated installation, repeat-import and upgrade results are kept in the
+[package validation record](servicenow-validation.md).

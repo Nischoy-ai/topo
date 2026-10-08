@@ -8,7 +8,7 @@ quickstart](pilot-quickstart.md).
 ## Build and run locally
 
 Topo requires Go 1.26 or later. Release and security evidence uses exact Go
-1.26.8.
+1.26.9.
 
 ```sh
 make test

@@ -34,7 +34,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.8"
+          go-version: "1.26.9"
           cache: false
       - name: Set up the pinned ServiceNow build toolchain
         uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
@@ -53,8 +53,8 @@ jobs:
             echo "invalid semantic release tag: $version" >&2
             exit 1
           fi
-          if [[ "$(go env GOVERSION)" != "go1.26.8" ]]; then
-            echo "release requires exactly go1.26.8" >&2
+          if [[ "$(go env GOVERSION)" != "go1.26.9" ]]; then
+            echo "release requires exactly go1.26.9" >&2
             exit 1
           fi
           {
@@ -97,7 +97,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.8"
+          go-version: "1.26.9"
           cache: false
       - name: Download verified package inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -153,7 +153,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.8"
+          go-version: "1.26.9"
           cache: false
       - name: Download verified raw release inputs
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -237,7 +237,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.8"
+          go-version: "1.26.9"
           cache: false
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
@@ -353,7 +353,7 @@ jobs:
       - name: Set up the pinned release toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.8"
+          go-version: "1.26.9"
           cache: false
       - name: Download verified raw, Linux, and Helm artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

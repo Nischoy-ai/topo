@@ -35,7 +35,7 @@ remediation commit. Maintainer tests do not change that status.
 
 ## Reproducible checks
 
-The current release/security baseline is exact Go 1.26.8. Run:
+The current release/security baseline is exact Go 1.26.9. Run:
 
 ```sh
 scripts/security-review-checks.sh
@@ -51,18 +51,45 @@ scan applies to its tested commit and dependency versions; rerun it after change
 ## Release and compatibility evidence
 
 Published beta distribution has been exercised through signed APT/RPM channels
-and Homebrew on amd64/arm64. See [distribution evidence](distribution.md#first-beta-operational-evidence).
+and Homebrew on amd64/arm64. See [distribution evidence](evidence/distribution.md).
 Stable/N-1 promotion, Windows publication and Apple notarization remain separate
 release work. Protocol guides state their real-host versus simulator coverage.
 ServiceNow XML installation and IRE results are scoped in the
-[package validation record](servicenow-validation.md) and [IRE guide](servicenow.md).
+[package validation record](servicenow-validation.md) and [IRE evidence](evidence/servicenow-ire.md).
 
 ## Build-tool dependencies
 
 The pinned ServiceNow SDK 4.9.0 is a build dependency. The shipped application
 has no npm runtime dependency tree. The recorded SDK dependency audit found
 nine moderate and two high transitive npm advisories (see the dated
-[worker evidence](servicenow-worker.md)); this remains a build-tool
+[worker evidence](evidence/servicenow-worker.md)); this remains a build-tool
 exposure and is not covered by a zero-reachable-finding Go scan. That historical
 audit is not a fresh npm assessment or a claim that these advisories are cleared.
 Keep the SDK lock file under review and isolate builds from production secrets.
+
+## 2026-10-08 build baseline update
+
+The [main CI scan](https://github.com/Nischoy-ai/topo/actions/runs/37857414708)
+on `5439ef5b441e1145172190db94aa24ba4d809599` found nine reachable advisories
+in Go 1.26.8 / `golang.org/x/net` 0.57.0 after earlier PR checks had passed.
+The earlier results remain evidence for their scan dates, not a current
+vulnerability-free claim. Go 1.26.9 and `x/net` 0.60.0 are the scanner's fixes.
+See the [official Go patch release](https://go.dev/doc/devel/release#go1.26.9).
+
+| Advisory | Affected build dependency | Patch required |
+| --- | --- | --- |
+| GO-2026-6617 | Go `net/http`, `x/net` | Go 1.26.9, `x/net` 0.60.0 |
+| GO-2026-6613 | Go `net/http` | Go 1.26.9 |
+| GO-2026-6612 | Go `net/http`, `x/net` | Go 1.26.9, `x/net` 0.60.0 |
+| GO-2026-6611 | Go `net/http`, `x/net` | Go 1.26.9, `x/net` 0.60.0 |
+| GO-2026-6610 | Go `net/http`, `x/net` | Go 1.26.9, `x/net` 0.60.0 |
+| GO-2026-6608 | Go `mime/multipart` | Go 1.26.9 |
+| GO-2026-6607 | Go `crypto/tls` | Go 1.26.9 |
+| GO-2026-6605 | Go `net/http` | Go 1.26.9 |
+| GO-2026-6603 | Go `net/http`, `x/net` | Go 1.26.9, `x/net` 0.60.0 |
+
+Release preparation updates the exact compiler pins and module dependency.
+Existing worker artifacts are not rebuilt or relabeled. A new signed worker
+must pass the full pinned security gate and protected release/promotion review
+before being offered as the patched channel build. Changing the XML's maturity
+label does not patch a worker or expand its measured compatibility.

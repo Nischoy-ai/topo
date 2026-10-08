@@ -1,12 +1,10 @@
-# ServiceNow-managed Linux discovery pilot
+# ServiceNow-managed Linux discovery setup
 
-This is the shortest supported early-adopter path for the current managed
-mode: install the Nischoy Topo Fluent application on a **non-production**
-ServiceNow instance, install Topo on a machine that can reach both ServiceNow
-and the Linux targets, configure one Password2 SSH credential, and start a
-manual or scheduled run from the control panel.
+Install Topo 0.4.6 Beta, configure identities and approved Linux targets, then
+start manual or scheduled discovery from ServiceNow. Follow your organization’s
+change process and verify configuration before enabling schedules.
 
-The pilot discovers only explicit IPv4 `/32` Linux targets over SSH port 22.
+This workflow discovers only explicit IPv4 `/32` Linux targets over SSH port 22.
 It maps only computers, network adapters, and `Owns::Owned by` through IRE. It
 does not scan a subnet, try a list of credentials, accept a remote command, or
 use ECC, MID Server, native Discovery schedules, probes, patterns, or sensors.
@@ -15,17 +13,11 @@ or observation history.
 
 ## 1. Install the scoped application
 
-Install application **0.4.6 preview 2** using the [XML installation guide](servicenow-update-set.md):
+Install application **Topo 0.4.6 Beta** using the [XML installation guide](servicenow-update-set.md):
 download and verify the package, upload the single combined XML through
 Retrieved Update Sets, then preview and commit the batch. The package includes
 all 32 required indexes. Confirm both app and index child are Committed before
 configuring discovery. No SDK or source checkout is needed.
-
-The exact package passed fresh and repeat installation. The
-[validation record](servicenow-validation.md) distinguishes those results from
-the earlier application-only upgrade and records the real Linux workflow.
-For source development, use the separate [SDK instructions](../integrations/servicenow/topo-control-plane/README.md#install).
-The worker release's SDK ZIP is not an XML update set.
 
 Have the instance administrator register the exact `Nischoy Topo` choice on
 `cmdb_ci.discovery_source` before discovery; see [IRE prerequisites](servicenow.md).
@@ -94,8 +86,7 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-Use the worker version listed in the app release compatibility notes; the published beta is
-`v0.1.0-beta.1`. Configure the signed [APT or RPM beta
+Install the Beta worker and record `topo version`. Configure the signed [APT or RPM beta
 repository](distribution.md#user-installation), then install `topo` with your
 package manager. For offline installation, download matching release files and
 verify `SHA256SUMS`, its Sigstore bundle and GitHub attestation as described in
@@ -192,36 +183,22 @@ Confirm the resulting CIs through CMDB views; Topo itself writes them only
 through IRE. Repeat **Run now** and confirm reconciliation rather than duplicate
 CIs/relationships before activating the schedule.
 
-## 6. Upgrade and remove the pilot
+## 6. Upgrade and remove
 
 Stop the worker before changing its local policy or upgrading the app. Upgrade
 Topo through the same package family, rerun `worker check`, then restart it.
 Upgrade XML-installed apps only through the [reviewed XML upgrade path](servicenow-update-set.md#upgrades-and-recovery).
 Keep developer SDK instances separate; do not silently switch delivery methods.
 
-Package removal leaves `/etc/topo-worker` untouched. To end a pilot, first
+Package removal leaves `/etc/topo-worker` untouched. To remove the deployment, first
 disable schedules and profiles, stop/disable the worker, revoke its OAuth
 token/client access, deactivate the worker integration user and Password2
 credential, remove the package, and only then delete operator-owned files if
 the customer's retention policy permits it.
 
-## Validation and feedback
+## Feedback and evidence
 
-The XML-installed 0.4.6 app and published worker completed two manual scans and
-one automatic scheduled scan of an approved Linux target. Each delivered three
-assets and two relationships with zero collection errors; repeat deliveries
-preserved CI and relationship IDs. See the [workflow and package validation](servicenow-validation.md)
-and [worker security evidence](servicenow-worker.md). Scale tests use simulation;
-their timings do not measure ServiceNow throughput.
-
-Follow the [upgrade and recovery procedure](servicenow-update-set.md#upgrades-and-recovery)
-and review the validation record's tested preservation scope before changing an
-existing deployment. The [security review record](security-review.md) tracks
-remediation and independent retest status.
-
-The shipped scoped app has no npm runtime dependency tree. The recorded audit
-of its pinned ServiceNow SDK 4.9.0 build-only tree found nine moderate and two
-high transitive advisories. Source developers should use a short-lived trusted
-builder; customers installing XML do not need that toolchain.
 Report feedback without secrets, tokens, private hostnames/addresses,
-raw observations or credential values.
+raw observations or credential values. Use [private vulnerability reporting](../SECURITY.md#report-a-vulnerability)
+for security issues. Dated acceptance results are kept in
+[package validation](servicenow-validation.md) and [worker evidence](evidence/servicenow-worker.md).

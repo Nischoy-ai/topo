@@ -1,4 +1,4 @@
-# Nischoy Topo
+# Nischoy Topo 0.4.6 Beta
 
 Nischoy Topo lets ServiceNow control discovery of infrastructure that it
 cannot reach directly. A stateless Topo worker connects outbound, discovers
@@ -9,10 +9,8 @@ ServiceNow application to reconcile through IRE.
 
 ### 1. Install the Nischoy Topo app from the XML package
 
-[ServiceNow 0.4.6 preview 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-preview.2)
-includes the app and all **32 required indexes** in one native XML batch.
-Use this package for new installations; preview 1 is the earlier app-only
-artifact. The release is currently a development preview.
+[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta).
+The package includes the app and all **32 required indexes** in one native XML batch.
 
 For the combined package:
 
@@ -33,8 +31,9 @@ to configure access, credentials and approved targets.
 
 ### 2. Install and start the Topo worker
 
-Install **v0.1.0-beta.1** on a host that can reach ServiceNow and your approved
-targets. Use the compatible ServiceNow app version listed in its release manifest.
+Install the **Topo Beta** worker on a host that can reach ServiceNow and your
+approved targets. Run `topo version` to record the installed build; the package
+manifest identifies compatible component builds.
 
 ```sh
 # macOS
@@ -70,10 +69,10 @@ Open **Nischoy Topo → Discovery Profiles**, select the profile, and choose
 the expected CIs, repeat the scan to check reconciliation, and only then enable
 its schedule.
 
-The current Password2 pilot discovers explicitly listed IPv4 Linux hosts over
+Password2 discovery supports explicitly listed IPv4 Linux hosts over
 SSH port 22. It is not a subnet scanner. Use non-privileged test credentials
 and begin with a disposable target. The complete setup, validation, upgrade,
-and cleanup procedure is in the [pilot quickstart](docs/pilot-quickstart.md).
+and cleanup procedure is in the [ServiceNow setup guide](docs/pilot-quickstart.md).
 
 ## Documentation and verification
 

@@ -16,13 +16,15 @@ verification and component details.
 
 ## Security and release evidence
 
+Dated test history lives in the [evidence index](evidence/README.md).
+
 | Question | Record |
 | --- | --- |
 | What credential and authorization controls apply? | [Security policy](../SECURITY.md) · [Credential references](credential-references.md) |
 | How do I report a vulnerability privately? | [Confidential reporting](../SECURITY.md#report-a-vulnerability) |
 | What has been reviewed and independently retested? | [Security review record](security-review.md) |
 | What installation and upgrade checks passed? | [ServiceNow package validation](servicenow-validation.md) |
-| How do I verify worker artifacts and channel signatures? | [Release verification](releases.md) · [Public-channel evidence](distribution.md#first-beta-operational-evidence) |
+| How do I verify worker artifacts and channel signatures? | [Release verification](releases.md) · [Public-channel evidence](evidence/distribution.md) |
 
 Validation records distinguish real-system runs, simulation, source review and
 independent retest. Checksums, signatures and attestations have different trust

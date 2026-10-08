@@ -5,8 +5,9 @@ This directory defines application **0.4.6** in ServiceNow Fluent under
 tests; it must remain consistent with the sources and is not an installer.
 
 For customer installation, use the published [combined XML package](../../../docs/servicenow-update-set.md).
-It includes the application and all 32 required indexes. The compatible worker
-is **v0.1.0-beta.1**; application and worker versions are independent.
+Topo 0.4.6 Beta includes the application and all 32 required indexes.
+Install the worker through the Beta package channel and record its build
+using `topo version`.
 [Package validation](../../../docs/servicenow-validation.md) records fresh,
 repeat and 0.4.5→0.4.6 native XML acceptance and the tested configuration scope.
 

@@ -26,10 +26,10 @@ nFPM 2.47.0 is pinned by version and by the official release archive digest in
 `scripts/fetch-nfpm.sh`. To assemble Linux packages and the Helm chart locally:
 
 ```sh
-GOTOOLCHAIN=go1.26.8 scripts/build-release.sh \
-  v0.1.0 "$(git rev-parse HEAD)" dist-raw
-GOTOOLCHAIN=go1.26.8 scripts/build-packages.sh \
-  v0.1.0 dist-raw dist-packages
+GOTOOLCHAIN=go1.26.9 scripts/build-release.sh \
+  v0.4.6-beta.1 "$(git rev-parse HEAD)" dist-raw
+GOTOOLCHAIN=go1.26.9 scripts/build-packages.sh \
+  v0.4.6-beta.1 dist-raw dist-packages
 ```
 
 The second command copies and verifies the raw input twice, assembles from two
@@ -88,8 +88,8 @@ Silent enterprise installation and removal use standard Windows Installer
 commands:
 
 ```powershell
-msiexec.exe /i topo_0.1.0_windows_amd64.msi /qn /norestart
-msiexec.exe /x topo_0.1.0_windows_amd64.msi /qn /norestart
+msiexec.exe /i topo_<version>_windows_amd64.msi /qn /norestart
+msiexec.exe /x topo_<version>_windows_amd64.msi /qn /norestart
 ```
 
 The tag workflow refuses to publish unless its protected GitHub environment
@@ -106,7 +106,7 @@ outside Helm, then pass only its name:
 
 ```sh
 kubectl create secret generic topo-api-key --from-file=api-key=/path/to/api-key
-helm install topo topo-0.1.0.tgz --set apiKeySecret.name=topo-api-key
+helm install topo topo-<version>.tgz --set apiKeySecret.name=topo-api-key
 ```
 
 The pod runs as a fixed non-root identity, drops every capability, uses a
@@ -123,8 +123,8 @@ attestation first. Extract it, then verify every contained file without network
 access:
 
 ```sh
-tar -xzf topo_0.1.0_offline.tar.gz
-cd topo_0.1.0_offline
+tar -xzf topo_<version>_offline.tar.gz
+cd topo_<version>_offline
 sha256sum --check OFFLINE-SHA256SUMS
 ```
 
