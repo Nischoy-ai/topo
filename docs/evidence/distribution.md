@@ -52,4 +52,3 @@ Use the official beta channel above for new installations. An earlier withdrawn
 build used `x/crypto` v0.54.0 and was rejected by the security gate for reachable
 `GO-2026-6303`; the development successor used v0.55.0. Those historical checks
 do not establish current vulnerability status.
-

@@ -125,4 +125,3 @@ or the full IRE response schema. `PublishBatch` recognizes only the observed
 `hasError` and `hasWarning` semantic bits; a 2xx response with either set is
 rejected, while other successful response details remain bounded diagnostics
 rather than a version-coupled contract.
-

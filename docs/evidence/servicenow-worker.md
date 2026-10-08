@@ -414,4 +414,3 @@ fields remain rejected.
 It does not prove Slice B behavior by itself; the separately labelled evidence
 above does. Neither real section proves Slice B's simulator-only scale and
 retention-volume gates.
-
