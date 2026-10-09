@@ -1,5 +1,11 @@
 # Persistent storage and the audit log
 
+This guide applies to the optional standalone controller. The ServiceNow-managed
+worker does not use this database. For a persistent controller, put the database,
+WAL/sidecars, backup staging and backup destination on encrypted storage, manage
+backup encryption keys separately, and require operator authentication and TLS
+for remote access. See [deployment security](deployment-security.md#optional-standalone-controller).
+
 Topo's controller stores discovery data — observations, per-source asset claims, resolved assets, and resolved relationships — a hash-chained audit log of admin/security-relevant actions, recurring discovery schedules, and certificate revocations behind a single `store.Repository` interface. Two implementations exist today: `Memory` (in-memory only, the default) and a SQLite-backed `Store` (`internal/store/sqlite`), opt-in via `topo serve -db-driver sqlite`.
 
 ```sh

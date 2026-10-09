@@ -53,6 +53,7 @@ jobs:
       - name: Log in and exercise native publication and download
         env:
           SN_SDK_INSTANCE_URL: ${{ vars.SN_SDK_INSTANCE_URL }}
+          TOPO_XML_PROOF_ORIGIN_SHA256: ${{ vars.TOPO_XML_PROOF_ORIGIN_SHA256 }}
           SN_SDK_USER: ${{ vars.SN_SDK_USER }}
           SN_SDK_USER_PWD: ${{ secrets.SN_SDK_USER_PWD }}
           TOPO_XML_PROOF_OUTPUT: ${{ runner.temp }}/topo-xml-proof

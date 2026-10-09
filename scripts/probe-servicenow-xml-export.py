@@ -19,7 +19,6 @@ import xml.etree.ElementTree as ET
 
 APP = 'd4e2151fdcbc7d97f8c155d1ba873e46'
 SCOPE = 'x_664635_topo'
-ORIGIN = 'https://dev394887.service-now.com'
 EXPORT_ACTION = 'fb1a56050a0a3c1e01f8b4066aff9aa7'
 MAX_BYTES = 32 * 1024 * 1024
 
@@ -39,9 +38,14 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class Session:
-    def __init__(self, origin):
-        # This proof intentionally cannot point at the acceptance/customer instance.
-        require(origin == ORIGIN)
+    def __init__(self, origin, approved_origin_sha256):
+        # The protected environment pins the approved disposable destination.
+        # No instance name or credentials belong in public source. A missing pin
+        # fails closed; this is not permission to export an arbitrary instance.
+        require(isinstance(origin, str) and isinstance(approved_origin_sha256, str))
+        require(re.fullmatch(r'https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.service-now\.com', origin))
+        require(re.fullmatch(r'[0-9a-f]{64}', approved_origin_sha256))
+        require(hashlib.sha256(origin.encode('ascii')).hexdigest() == approved_origin_sha256)
         self.origin = origin
         self.deadline = time.monotonic() + 300
         self.token = ''
@@ -201,7 +205,8 @@ def main():
         output = Path(os.environ['TOPO_XML_PROOF_OUTPUT'])
         output.mkdir(mode=0o700)  # No overwrite or reuse of another run.
         created = True
-        session = Session(os.environ['SN_SDK_INSTANCE_URL'])
+        session = Session(os.environ['SN_SDK_INSTANCE_URL'],
+                          os.environ['TOPO_XML_PROOF_ORIGIN_SHA256'])
         username = os.environ.pop('SN_SDK_USER')
         password = os.environ.pop('SN_SDK_USER_PWD')
         report['stage'] = 'login'

@@ -13,7 +13,10 @@ an issue. Exact source scans and published-build status are retained in the
 
 ## Report a vulnerability
 
-Use [GitHub private vulnerability reporting](https://github.com/Nischoy-ai/topo/security/advisories/new).
+Private vulnerability reporting is enabled. Use
+[Report a vulnerability](https://github.com/Nischoy-ai/topo/security/advisories/new)
+on the repository's **Security → Advisories** page; reports are confidential,
+not public GitHub issues. Sign in to GitHub to submit a report.
 Include the affected version or commit, configuration, reproduction steps,
 expected behavior, and impact. Use synthetic credentials and sanitized data.
 Do not publish credentials, customer observations or exploit details in an issue.
@@ -45,6 +48,12 @@ See [managed-worker setup](docs/pilot-quickstart.md),
 [credential references](docs/credential-references.md).
 
 ## Controller and storage controls
+
+The ServiceNow-managed worker does not run `topo serve`, create a controller
+database or use the controller's API key. ServiceNow authenticates worker
+requests with scoped OAuth and stores application configuration, credentials
+and discovery history. See [deployment security](docs/deployment-security.md)
+for the credential lifecycle and the controls for each deployment mode.
 
 With an API key configured, operator reads and mutations require the bearer
 key. Verified collector certificates authenticate only the collector data

@@ -46,25 +46,39 @@ class Response(io.BytesIO):
         self.headers = headers or {}
 
 
+ORIGIN = 'https://packaging-test.service-now.com'
+ORIGIN_PIN = hashlib.sha256(ORIGIN.encode('ascii')).hexdigest()
+
+
 class ExportProofTests(unittest.TestCase):
-    def test_destination_is_fixed_and_https_only(self):
-        for origin in ['http://dev394887.service-now.com', m.ORIGIN + '/',
-                       'https://dev317694.service-now.com', 'https://admin:password@dev394887.service-now.com']:
+    def test_destination_is_pinned_and_https_only(self):
+        for origin in ['http://packaging-test.service-now.com', ORIGIN + '/',
+                       'https://acceptance-test.service-now.com',
+                       'https://fixture-user:fixture-value@packaging-test.service-now.com',
+                       ORIGIN + ':443', ORIGIN + '?q=x', ORIGIN + '#fragment',
+                       'https://packaging-test.service-now.com.evil.example',
+                       'https://-bad.service-now.com']:
             with self.subTest(origin=origin), self.assertRaises(m.Rejected):
-                m.Session(origin)
+                m.Session(origin, ORIGIN_PIN)
+
+    def test_missing_or_wrong_destination_pin_fails_before_network(self):
+        for pin in ['', 'not-a-digest', '0' * 64, ORIGIN_PIN.upper()]:
+            with self.subTest(pin=pin), self.assertRaises(m.Rejected):
+                m.Session(ORIGIN, pin)
+        self.assertEqual(m.Session(ORIGIN, ORIGIN_PIN).origin, ORIGIN)
 
     def test_network_redirect_is_not_followed(self):
         handler = m.NoRedirect()
         self.assertIsNone(handler.redirect_request(None, None, 302, '', {}, 'https://evil.example'))
-        s = m.Session(m.ORIGIN)
+        s = m.Session(ORIGIN, ORIGIN_PIN)
         with patch.object(s.opener, 'open', side_effect=urllib.error.HTTPError(
-                m.ORIGIN, 302, 'secret-response', {'Location': 'https://evil.example'}, io.BytesIO())) as request:
+                ORIGIN, 302, 'secret-response', {'Location': 'https://evil.example'}, io.BytesIO())) as request:
             with self.assertRaises(m.Rejected):
                 s.request('/angular.do', {'user_password': 'sentinel-secret'})
             self.assertEqual(request.call_count, 1)
 
     def test_read_limit_and_expired_deadline(self):
-        s = m.Session(m.ORIGIN)
+        s = m.Session(ORIGIN, ORIGIN_PIN)
         with patch.object(m, 'MAX_BYTES', 10), patch.object(s.opener, 'open', return_value=Response(b'x' * 11)):
             with self.assertRaises(m.Rejected):
                 s.request('/xmlhttp.do')
@@ -76,12 +90,12 @@ class ExportProofTests(unittest.TestCase):
 
     def test_login_requires_success_and_csrf(self):
         for body in [b'{"status":"error"}', b'{"status":"mfa_code_required"}', b'{}']:
-            s = m.Session(m.ORIGIN)
+            s = m.Session(ORIGIN, ORIGIN_PIN)
             with patch.object(s, 'request', return_value=(200, {}, body)) as request:
                 with self.assertRaises(m.Rejected):
                     s.login('admin', 'sentinel-secret')
                 self.assertEqual(request.call_count, 1)
-        s = m.Session(m.ORIGIN)
+        s = m.Session(ORIGIN, ORIGIN_PIN)
         with patch.object(s, 'request', side_effect=[(200, {}, b'{"status":"success"}'), (401, {}, b'')]):
             with self.assertRaises(m.Rejected):
                 s.login('admin', 'sentinel-secret')
@@ -97,19 +111,19 @@ class ExportProofTests(unittest.TestCase):
                '/export_update_set.do?sysparm_sys_id=' + 'a' * 32 + '&extra=secret',
                '/export_update_set.do?sysparm_sys_id=' + 'a' * 32 + '&sysparm_sys_id=' + 'b' * 32]
         for location in bad:
-            s = m.Session(m.ORIGIN)
+            s = m.Session(ORIGIN, ORIGIN_PIN)
             with patch.object(s, 'request', return_value=(302, {'Location': location}, b'')) as request:
                 with self.subTest(location=location), self.assertRaises(m.Rejected):
                     s.download('b' * 32)
                 self.assertEqual(request.call_count, 1)
-        s = m.Session(m.ORIGIN)
+        s = m.Session(ORIGIN, ORIGIN_PIN)
         location = '/export_update_set.do?sysparm_sys_id=' + 'a' * 32
         with patch.object(s, 'request', side_effect=[(302, {'Location': location}, b''), (200, {}, b'xml')]):
             self.assertEqual(s.download('b' * 32), b'xml')
 
     def test_ajax_rejects_entities_and_wrong_root(self):
         for body in [b'<!DOCTYPE xml><xml/>', b'<html/>', b'<!ENTITY x "secret"><xml/>']:
-            s = m.Session(m.ORIGIN)
+            s = m.Session(ORIGIN, ORIGIN_PIN)
             with patch.object(s, 'request', return_value=(200, {}, body)):
                 with self.subTest(body=body), self.assertRaises(m.Rejected):
                     s.ajax({})
@@ -163,7 +177,8 @@ class ExportProofTests(unittest.TestCase):
     def test_main_redacts_exception_and_does_not_reuse_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'proof'
-            env = {'TOPO_XML_PROOF_OUTPUT': str(output), 'SN_SDK_INSTANCE_URL': m.ORIGIN,
+            env = {'TOPO_XML_PROOF_OUTPUT': str(output), 'SN_SDK_INSTANCE_URL': ORIGIN,
+                   'TOPO_XML_PROOF_ORIGIN_SHA256': ORIGIN_PIN,
                    'SN_SDK_USER': 'admin', 'SN_SDK_USER_PWD': 'sentinel-secret'}
             console = io.StringIO()
             with patch.dict(os.environ, env), patch.object(m.Session, 'login', side_effect=ValueError('sentinel-secret')):

@@ -11,6 +11,11 @@ use ECC, MID Server, native Discovery schedules, probes, patterns, or sensors.
 The worker is outbound-only and keeps no database, journal, spool, retry queue,
 or observation history.
 
+SSH passwords for this workflow are stored in protected ServiceNow Password2
+fields and released only for an authorized task attempt. Review [password
+storage and rotation](deployment-security.md#where-ssh-passwords-live) with the
+credential custodian before entering credentials.
+
 ## 1. Install the scoped application
 
 Install application **Topo 0.4.6 Beta** using the [XML installation guide](servicenow-update-set.md):
