@@ -121,9 +121,21 @@ requires Windows Authenticode. Missing keys never trigger an unsigned fallback.
 
 Stable promotion requires an actual previous stable release and an install/
 upgrade test through the generated channel. Stable/N-1 and Windows publication
-remain planned. APT metadata uses Acquire-By-Hash and a 30-day Valid-Until;
-active metadata needs regular signed refreshes. A partially completed promotion
+remain planned. APT metadata uses Acquire-By-Hash and a bounded 90-day
+Valid-Until. Renew active channels every month through the protected promotion
+workflow, using the same published tag when no new worker is available. Each run
+uses its own creation time for the metadata date, authenticates the original
+release again, and requires independent approval before signing and publication.
+This is reviewed renewal, not unattended signing. Never disable APT expiry or
+signature verification. A partially completed promotion
 can leave channels at different states, so verify each public channel result.
+
+The APT `Version` field comes from the authenticated DEB control archive, not its
+filename or Git tag. For `v0.4.6-beta.1` it is `0.4.6~beta.1-1`; a future stable
+`v0.4.6` package is `0.4.6-1`. The tilde makes the beta sort earlier. Both Linux
+architectures must agree with their package metadata before promotion proceeds.
+CI also exercises signed repositories with synthetic beta-to-beta and
+beta-to-stable transitions; this is separate from a published stable release.
 
 ## Upgrade an existing worker
 

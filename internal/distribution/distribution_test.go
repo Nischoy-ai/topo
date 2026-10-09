@@ -201,6 +201,13 @@ func writeProfileFixture(t *testing.T, dir, version, profile, omit string) map[s
 			continue
 		}
 		files[name] = []byte("fixture:" + name + "\n")
+		if strings.HasSuffix(name, ".deb") {
+			arch := "amd64"
+			if strings.HasSuffix(name, "_arm64.deb") {
+				arch = "arm64"
+			}
+			files[name] = fixtureDeb(t, "topo", strings.Replace(plain, "-", "~", 1)+"-1", arch)
+		}
 	}
 	metadata, err := json.Marshal(releaseMetadata{
 		Profile:       profile,

@@ -204,7 +204,11 @@ jobs:
               install -D -m 0644 /repo/keys/nischoy-topo-archive.gpg /etc/apt/keyrings/nischoy-topo.gpg
               echo "deb [signed-by=/etc/apt/keyrings/nischoy-topo.gpg] file:/repo/apt $CHANNEL main" >/etc/apt/sources.list.d/topo.list
               apt-get update
+              candidate=$(apt-cache policy topo | awk "/Candidate:/ { print \$2 }")
+              native=$(dpkg-deb --field /repo/apt/pool/main/t/topo/topo_*_amd64.deb Version)
+              test "$candidate" = "$native"
               apt-get install --yes topo
+              test "$(dpkg-query -W -f="\${Version}" topo)" = "$candidate"
               test "$(topo version)" = "$VERSION"
               test -f /etc/topo-agent/operator-owned
               test -d /var/lib/topo-agent/operator-owned
@@ -406,8 +410,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/topo-packages/apt/dists" "$RUNNER_TEMP/topo-packages/apt/pool" \
             "$RUNNER_TEMP/topo-packages/rpm" "$RUNNER_TEMP/topo-packages/keys"
           rsync -a "$RUNNER_TEMP/distribution/apt/pool/" "$RUNNER_TEMP/topo-packages/apt/pool/"
-          rm -rf "$RUNNER_TEMP/topo-packages/apt/dists/$CHANNEL" "$RUNNER_TEMP/topo-packages/rpm/$CHANNEL"
-          cp -R "$RUNNER_TEMP/distribution/apt/dists/$CHANNEL" "$RUNNER_TEMP/topo-packages/apt/dists/$CHANNEL"
+          # Retain old by-hash indexes for clients holding a still-valid Release.
+          # Pool files are also retained; the new signed metadata replaces only
+          # current names. Pages publishes this Git snapshot atomically.
+          mkdir -p "$RUNNER_TEMP/topo-packages/apt/dists/$CHANNEL"
+          rsync -a "$RUNNER_TEMP/distribution/apt/dists/$CHANNEL/" "$RUNNER_TEMP/topo-packages/apt/dists/$CHANNEL/"
+          rm -rf "$RUNNER_TEMP/topo-packages/rpm/$CHANNEL"
           cp -R "$RUNNER_TEMP/distribution/rpm/$CHANNEL" "$RUNNER_TEMP/topo-packages/rpm/$CHANNEL"
           cp "$RUNNER_TEMP/distribution"/apt/*.sources "$RUNNER_TEMP/topo-packages/apt/"
           cp "$RUNNER_TEMP/distribution"/rpm/*.repo "$RUNNER_TEMP/topo-packages/rpm/"

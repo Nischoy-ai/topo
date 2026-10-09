@@ -25,6 +25,11 @@ import (
 
 const maxArtifactSize = 512 << 20
 
+// APT metadata is renewed monthly through the independently reviewed promotion
+// workflow. Ninety days permits recovery from a missed renewal while retaining
+// a bounded replay window; clients must continue checking Valid-Until.
+const aptValidity = 90 * 24 * time.Hour
+
 var versionPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
 var commitPattern = regexp.MustCompile(`^[0-9a-f]{40,64}$`)
 
@@ -269,7 +274,11 @@ func writeAPT(options Options, checksums map[string]checksumEntry, version strin
 			return err
 		}
 		entry := checksums[name]
-		packages := fmt.Sprintf("Package: topo\nVersion: %s\nArchitecture: %s\nMaintainer: Nischoy <security@nischoy.com>\nFilename: %s\nSize: %d\nSHA256: %s\nSection: admin\nPriority: optional\nHomepage: https://github.com/Nischoy-ai/topo\nDescription: Destination-neutral infrastructure discovery data plane\n\n", version, arch, poolPath, entry.Size, entry.Digest)
+		packageVersion, err := debVersion(filepath.Join(options.ArtifactDir, name), version, arch)
+		if err != nil {
+			return fmt.Errorf("inspect %s: %w", name, err)
+		}
+		packages := fmt.Sprintf("Package: topo\nVersion: %s\nArchitecture: %s\nMaintainer: Nischoy <security@nischoy.com>\nFilename: %s\nSize: %d\nSHA256: %s\nSection: admin\nPriority: optional\nHomepage: https://github.com/Nischoy-ai/topo\nDescription: Destination-neutral infrastructure discovery data plane\n\n", packageVersion, arch, poolPath, entry.Size, entry.Digest)
 		relative := filepath.ToSlash(filepath.Join("main", "binary-"+arch, "Packages"))
 		path := filepath.Join(options.OutputDir, "apt", "dists", options.Channel, filepath.FromSlash(relative))
 		if err := writeFile(path, []byte(packages)); err != nil {
@@ -294,7 +303,7 @@ func writeAPT(options Options, checksums map[string]checksumEntry, version strin
 	sort.Strings(indexFiles)
 	var release strings.Builder
 	fmt.Fprintf(&release, "Origin: Nischoy\nLabel: Nischoy Topo\nSuite: %s\nCodename: %s\n", options.Channel, options.Channel)
-	fmt.Fprintf(&release, "Date: %s\nValid-Until: %s\n", options.PublishedAt.Format(time.RFC1123), options.PublishedAt.Add(30*24*time.Hour).Format(time.RFC1123))
+	fmt.Fprintf(&release, "Date: %s\nValid-Until: %s\n", options.PublishedAt.Format(time.RFC1123), options.PublishedAt.Add(aptValidity).Format(time.RFC1123))
 	release.WriteString("Architectures: amd64 arm64\nComponents: main\nDescription: Nischoy Topo packages\nAcquire-By-Hash: yes\nSHA256:\n")
 	root := filepath.Join(options.OutputDir, "apt", "dists", options.Channel)
 	for _, name := range indexFiles {
