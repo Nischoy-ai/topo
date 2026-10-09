@@ -3,10 +3,9 @@
 ## Versions receiving fixes
 
 The current application release is **Topo 0.4.6 Beta**. The patched worker
-`v0.4.6-beta.1` is published; package-channel promotion is pending.
-APT/RPM still serve `v0.1.0-beta.1`, which lacks the latest security
-updates; Homebrew’s older release downloads have been withdrawn. Do not use that older worker for new deployments. Consult
-[worker availability](docs/distribution.md#release-availability) before installing.
+`v0.4.6-beta.1` is available through signed Linux APT/RPM repositories and
+the official Homebrew Beta tap. Upgrade earlier workers using the
+[package installation guide](docs/distribution.md#upgrade-an-existing-worker).
 
 Security fixes are maintained on `main`. Record `topo version` when reporting
 an issue. Exact source scans and published-build status are retained in the
@@ -84,10 +83,10 @@ See [IRE setup](docs/servicenow.md) and
 Release builds produce reproducible worker archives with exact Go 1.26.9. Release workflows
 use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
 provenance attestations. Linux package/repository metadata is signed; protected
-signing and promotion environments require review. Historical channel tests
-cover `v0.1.0-beta.1`; they do not establish publication or public-channel
-installation of the patched `v0.4.6-beta.1` worker. A source scan does not
-patch binaries already installed on customer hosts.
+signing and promotion environments require review. The
+[distribution record](docs/evidence/distribution.md#046-beta-worker) identifies
+the published build and public-channel installation checks. A source scan does
+not patch binaries already installed on customer hosts.
 
 The macOS beta is a Homebrew CLI formula without Apple Developer ID signing
 or notarization. Windows and stable publication are planned. The manually

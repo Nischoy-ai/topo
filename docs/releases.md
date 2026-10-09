@@ -3,7 +3,7 @@
 Check [worker availability](distribution.md#release-availability) before downloading.
 The signed [worker `v0.4.6-beta.1`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
 is published with its binary archives, signed checksum manifest and provenance.
-Package-channel promotion is separate; check availability before installing.
+It is also available through the Beta Homebrew/APT/RPM channels.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
 artifact with its own checksum and [validation record](servicenow-validation.md).
 The signature and provenance instructions below apply to tagged worker releases.
@@ -185,6 +185,6 @@ by Gatekeeper; this beta promises the tested Homebrew CLI path, not a GUI/cask
 or direct-download launch experience. Do not disable Gatekeeper or strip
 quarantine to install it. Release evidence does not replace signed APT/RPM repository
 metadata or repository-key rotation; protected package promotion adds those
-controls. The beta promotion evidence is recorded in [distribution](evidence/distribution.md#first-beta-operational-evidence);
+controls. The current beta promotion evidence is recorded in [distribution](evidence/distribution.md#046-beta-worker);
 stable/N-1 promotion and independent security retest have their own acceptance
 requirements in [the roadmap](../ROADMAP.md) and [review record](security-review.md).

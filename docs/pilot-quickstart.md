@@ -86,10 +86,7 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-First check [worker availability](distribution.md#release-availability). The
-required patched build is `v0.4.6-beta.1`; do not configure discovery with the
-older worker still served by the channels while promotion is pending.
-After promotion, configure the signed [APT or RPM beta
+The matching worker build is `v0.4.6-beta.1`. Configure the signed [APT or RPM Beta
 repository](distribution.md#user-installation), install the worker, and confirm
 `topo version` prints `v0.4.6-beta.1`. For offline installation, download matching release files and
 verify `SHA256SUMS`, its Sigstore bundle and GitHub attestation as described in
@@ -105,7 +102,7 @@ sudo dpkg -i topo_<version>_amd64.deb
 sudo rpm -Uvh topo-<version>-1.x86_64.rpm
 ```
 
-After the availability notice confirms promotion, macOS installs with
+macOS installs with
 `brew install nischoy-ai/tap/topo-beta`. Confirm the exact version before supplying
 credentials. This beta is not
 Apple-notarized; do not bypass Gatekeeper. The older development tap is separate

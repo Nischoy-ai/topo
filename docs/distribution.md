@@ -1,33 +1,24 @@
 # Install Topo with a package manager
 
-Use signed Linux APT/RPM repositories or the official macOS Homebrew tap on
-amd64 and arm64 after the required worker is published and promoted.
+Install the Topo 0.4.6 Beta worker from signed Linux APT/RPM repositories or
+the official macOS Homebrew tap on amd64 and arm64.
 
 ## Release availability
 
 The [Topo 0.4.6 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta)
-is published with all 32 indexes. The required patched worker is
-**`v0.4.6-beta.1`**, built from `5f7aecf08cb9b66c8724f4b1d4f399decab31543`
-with Go 1.26.9 and `golang.org/x/crypto` 0.57.0.
+is published with all 32 indexes. Its matching signed worker,
+**`v0.4.6-beta.1`**, is available through the Beta APT/RPM repositories and
+official Homebrew tap. The [worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+also provides archives and verification files for offline installation.
 
-Its [signed worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
-is published. All downloaded asset digests, the signed manifest and Linux/Mac
-provenance have been independently verified. The public-channel update is
-awaiting [protected promotion](https://github.com/Nischoy-ai/topo/actions/runs/37865026033).
-APT/RPM still serve `v0.1.0-beta.1` until that promotion completes. The
-Homebrew formula still points at that old release, whose downloads are now
-withdrawn; it cannot yet install the new worker. Do not use the older worker
-for a new deployment.
-
-The setup commands below are for use after promotion is confirmed. For offline
-installation, download and [verify the published 0.4.6 worker](releases.md#verify-a-downloaded-release).
+Use the setup commands below, or download and
+[verify the published worker](releases.md#verify-a-downloaded-release).
 Confirm `topo version` is **`v0.4.6-beta.1`** before configuring credentials or
 starting discovery. Source fixes do not update an installed worker.
 
 ## User installation
 
-The distribution channel is **Beta**; check [availability](#release-availability)
-before using these commands. There is no
+The distribution channel is **Beta**. There is no
 stable APT/RPM channel, stable Homebrew formula, or WinGet release yet.
 Use a host with `curl`, CA certificates and GnuPG installed for Linux.
 The reviewed package-signing fingerprint is
@@ -116,8 +107,7 @@ formula before installing this one. Installation does not start a worker.
 
 Linux packages install a dormant service, not credentials or configuration.
 Continue with [worker configuration](pilot-quickstart.md#4-install-and-configure-the-worker).
-Use raw files for offline installation only after the required signed release
-is published and verified. The
+Verify raw files before offline installation. The
 experimental controller Helm chart is not required for ServiceNow workers and
 is not part of the managed-worker installation path.
 
@@ -143,6 +133,29 @@ upgrade test through the generated channel. Stable/N-1 and Windows publication
 remain planned. APT metadata uses Acquire-By-Hash and a 30-day Valid-Until;
 active metadata needs regular signed refreshes. A partially completed promotion
 can leave channels at different states, so verify each public channel result.
+
+## Upgrade an existing worker
+
+Stop the worker and let active discovery attempts finish or expire before
+upgrading. Keep its configuration and credential files. Refresh the repository
+metadata and upgrade through the same channel:
+
+```sh
+# Debian/Ubuntu
+sudo apt-get update && sudo apt-get install topo
+
+# Fedora
+sudo dnf upgrade topo
+
+# macOS
+brew update && brew upgrade nischoy-ai/tap/topo-beta
+```
+
+Confirm `topo version` prints `v0.4.6-beta.1`, run `topo worker check` with
+the existing configuration, then restart the worker. See the
+[worker setup guide](pilot-quickstart.md#4-install-and-configure-the-worker)
+for service commands. Users of a separate development tap must remove its
+conflicting formula before installing the official Beta formula.
 
 ## Key rotation and incident response
 

@@ -1,9 +1,10 @@
 # Package artifacts and lifecycle
 
-Each semantic Topo release assembles packages only after the six raw release
+Each semantic Topo release assembles packages only after its selected raw release
 archives reproduce byte-for-byte and pass their checksum verification. Package
-assembly extracts those binaries; it never compiles Topo again. The release set
-contains:
+assembly extracts those binaries; it never compiles Topo again. The current
+`linux-homebrew-beta` release contains Linux/macOS archives and Linux packages;
+it excludes Windows artifacts. The full-platform package tooling supports:
 
 - DEB and RPM packages for Linux amd64 and arm64;
 - Authenticode-signed MSI installers for Windows amd64 and arm64;
@@ -152,12 +153,12 @@ database in place. See [backup, restore, and upgrade procedures](storage.md#back
 
 ## Package-manager promotion
 
-The next release stage promotes these exact bytes through signed APT/RPM
+Package-manager promotion distributes these exact bytes through signed APT/RPM
 repositories, the Nischoy Homebrew tap, Microsoft's WinGet catalog, and a GHCR
 OCI Helm registry. It adds native signing, stable/beta policy, key rotation,
 and clean-machine gates without rebuilding Topo. See
 [package-manager distribution](distribution.md). Linux and Homebrew Beta
-channels exist, but APT/RPM currently serve the historical `v0.1.0-beta.1` build
-and Homebrew’s old release download has been withdrawn.
-The patched 0.4.6 worker must complete signing and promotion before those
-channels can deliver it. Stable/N-1 and Windows publication remain separate.
+channels publish the signed `v0.4.6-beta.1` worker. See the
+[distribution evidence](evidence/distribution.md#046-beta-worker) for the
+published source and channel validation. Stable/N-1 and Windows publication
+remain separate.

@@ -31,16 +31,25 @@ to configure access, credentials and approved targets.
 
 ### 2. Install and start the Topo worker
 
-The required worker build is **`v0.4.6-beta.1`**. Its signed release is published;
-package-channel promotion is pending. APT/RPM still serve
-`v0.1.0-beta.1`; Homebrew’s old downloads have been withdrawn. Those channels
-do not yet install the patched worker.
-Wait for the [worker availability notice](docs/distribution.md#release-availability)
-to confirm promotion before installing or starting discovery.
+The signed **`v0.4.6-beta.1`** worker is available through the Linux Beta
+repositories and official Mac tap.
 
-The application XML is already available. A source tag alone is not a signed
-worker download. After promotion, install through the signed Linux repository
-or official Mac tap and confirm `topo version` prints `v0.4.6-beta.1`.
+On macOS:
+
+```sh
+brew install nischoy-ai/tap/topo-beta
+```
+
+On Debian/Ubuntu or Fedora, set up the signed repository and install in one line:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-ai/topo/main/scripts/install-linux.sh | sh
+```
+
+With the repository already configured, use `sudo apt-get install topo` or
+`sudo dnf install topo`. See [package installation and upgrades](docs/distribution.md)
+for repository trust checks, prerequisites and existing installations.
+Confirm `topo version` prints **`v0.4.6-beta.1`** before configuring credentials.
 
 Configure the OAuth token file, target allowlist, and verified SSH `known_hosts`;
 run `topo worker check`, then start the worker. The [worker setup
