@@ -4,8 +4,8 @@
 
 The current application release is **Topo 0.4.6 Beta**. The patched worker
 `v0.4.6-beta.1` is published; package-channel promotion is pending.
-The package channels still serve `v0.1.0-beta.1`, which lacks the latest security
-updates. Do not use that older worker for new deployments. Consult
+APT/RPM still serve `v0.1.0-beta.1`, which lacks the latest security
+updates; Homebrew’s older release downloads have been withdrawn. Do not use that older worker for new deployments. Consult
 [worker availability](docs/distribution.md#release-availability) before installing.
 
 Security fixes are maintained on `main`. Record `topo version` when reporting

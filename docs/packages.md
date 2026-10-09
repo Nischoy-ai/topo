@@ -157,6 +157,7 @@ repositories, the Nischoy Homebrew tap, Microsoft's WinGet catalog, and a GHCR
 OCI Helm registry. It adds native signing, stable/beta policy, key rotation,
 and clean-machine gates without rebuilding Topo. See
 [package-manager distribution](distribution.md). Linux and Homebrew Beta
-channels exist, but currently serve the historical `v0.1.0-beta.1` build.
+channels exist, but APT/RPM currently serve the historical `v0.1.0-beta.1` build
+and Homebrew’s old release download has been withdrawn.
 The patched 0.4.6 worker must complete signing and promotion before those
 channels can deliver it. Stable/N-1 and Windows publication remain separate.

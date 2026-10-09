@@ -14,8 +14,10 @@ Its [signed worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4
 is published. All downloaded asset digests, the signed manifest and Linux/Mac
 provenance have been independently verified. The public-channel update is
 awaiting [protected promotion](https://github.com/Nischoy-ai/topo/actions/runs/37865026033).
-Homebrew, APT and RPM still serve `v0.1.0-beta.1` until that promotion completes.
-Do not use the older worker for a new deployment.
+APT/RPM still serve `v0.1.0-beta.1` until that promotion completes. The
+Homebrew formula still points at that old release, whose downloads are now
+withdrawn; it cannot yet install the new worker. Do not use the older worker
+for a new deployment.
 
 The setup commands below are for use after promotion is confirmed. For offline
 installation, download and [verify the published 0.4.6 worker](releases.md#verify-a-downloaded-release).

@@ -119,7 +119,7 @@ versions 1.7.0 and 1.8.0 reports **GO-2026-5932** for the unmaintained
 `golang.org/x/crypto/openpgp` packages. Do not call those binary scans clean.
 The worker uses other packages from `x/crypto`, including SSH, but its compiled
 package dependency list contains no OpenPGP package. The source scan has no
-reachable findings. The [official advisory](https://pkg.go.dev/vuln/GO-2026-5932)
+reachable or imported-package findings and one module-level advisory. The [official advisory](https://pkg.go.dev/vuln/GO-2026-5932)
 applies to OpenPGP packages across all versions, not to the entire SSH module.
 
 Release binaries use `-s -w`. When symbols are absent, the
