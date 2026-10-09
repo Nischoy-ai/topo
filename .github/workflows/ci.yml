@@ -202,6 +202,12 @@ jobs:
             "$RUNNER_TEMP"/distribution/winget/manifests/n/Nischoy/Topo/0.0.0-ci/*.yaml
           gzip -cd "$RUNNER_TEMP/distribution/apt/dists/beta/main/binary-amd64/Packages.gz" \
             | diff - "$RUNNER_TEMP/distribution/apt/dists/beta/main/binary-amd64/Packages"
+          for arch in amd64 arm64; do
+            native=$(dpkg-deb --field "$RUNNER_TEMP/dist/topo_0.0.0-ci_$arch.deb" Version)
+            grep -Fx "Version: $native" "$RUNNER_TEMP/distribution/apt/dists/beta/main/binary-$arch/Packages"
+          done
+          dpkg --compare-versions 0.4.6~beta.1-1 lt 0.4.6~beta.2-1
+          dpkg --compare-versions 0.4.6~beta.2-1 lt 0.4.6-1
           test "$(sha256sum "$RUNNER_TEMP/distribution/apt/pool/main/t/topo/topo_0.0.0-ci_amd64.deb" | cut -d ' ' -f 1)" = \
             "$(sha256sum "$RUNNER_TEMP/dist/topo_0.0.0-ci_amd64.deb" | cut -d ' ' -f 1)"
           test "$(sha256sum "$RUNNER_TEMP/distribution/helm/topo-0.0.0-ci.tgz" | cut -d ' ' -f 1)" = \
@@ -212,6 +218,8 @@ jobs:
           gpg --batch --verify \
             "$RUNNER_TEMP/distribution/rpm/beta/x86_64/repodata/repomd.xml.asc" \
             "$RUNNER_TEMP/distribution/rpm/beta/x86_64/repodata/repomd.xml"
+      - name: Exercise signed APT beta-to-stable version transitions and expiry rejection
+        run: bash scripts/test-apt-upgrade.sh "$RUNNER_TEMP/dist/topo_0.0.0-ci_amd64.deb"
       - name: Retain validated promotion inputs
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:

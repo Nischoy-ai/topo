@@ -47,6 +47,13 @@ than byte reproduction: CI silently installs it and proves that the installed
 
 ## Linux packages
 
+Debian package versions use `~` for prereleases and a package revision: the
+`topo_0.4.6-beta.1_amd64.deb` filename contains `Version: 0.4.6~beta.1-1`.
+The worker still reports the semantic release tag, `v0.4.6-beta.1`. APT indexes
+must advertise the version inside the package. A future stable `0.4.6-1` sorts
+after this beta without a downgrade option or epoch. See
+[Debian's version comparison rules](https://www.debian.org/doc/debian-policy/ch-controlfields.html#version).
+
 Both DEB and RPM install:
 
 - `/usr/bin/topo`;
