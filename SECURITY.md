@@ -2,10 +2,15 @@
 
 ## Versions receiving fixes
 
-The current application release is **Topo 0.4.6 Beta**. Security fixes are
-maintained on `main` and published through the Beta worker channel. Verify the
-release manifest and record `topo version` when reporting an issue. Exact build
-and vulnerability-scan results are retained in the [security review record](docs/security-review.md).
+The current application release is **Topo 0.4.6 Beta**. The patched worker
+candidate is `v0.4.6-beta.1`; signed publication and channel promotion are pending.
+The package channels still serve `v0.1.0-beta.1`, which lacks the latest security
+updates. Do not use that older worker for new deployments. Consult
+[worker availability](docs/distribution.md#release-availability) before installing.
+
+Security fixes are maintained on `main`. Record `topo version` when reporting
+an issue. Exact source scans and published-build status are retained in the
+[security review record](docs/security-review.md).
 
 ## Report a vulnerability
 
@@ -79,9 +84,10 @@ See [IRE setup](docs/servicenow.md) and
 Release builds produce reproducible worker archives with exact Go 1.26.9. Release workflows
 use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
 provenance attestations. Linux package/repository metadata is signed; protected
-signing and promotion environments require review. The published beta has
-passed real package-channel promotion and fresh public installation checks on
-both Linux and Mac architectures.
+signing and promotion environments require review. Historical channel tests
+cover `v0.1.0-beta.1`; they do not establish publication or public-channel
+installation of the patched `v0.4.6-beta.1` candidate. A source scan does not
+patch binaries already installed on customer hosts.
 
 The macOS beta is a Homebrew CLI formula without Apple Developer ID signing
 or notarization. Windows and stable publication are planned. The manually

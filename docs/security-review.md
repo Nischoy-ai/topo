@@ -98,3 +98,15 @@ The patched preparation worktree passed `scripts/security-review-checks.sh`
 on 2026-10-08 with exact Go 1.26.9: module verification, vet, a zero-finding
 `govulncheck` v1.7.0 scan, full race tests, native build and Windows vet/build.
 This is source validation, not evidence of publication or independent retest.
+
+
+## Published worker status after the baseline update
+
+The zero-finding source scan above covers the patched source, not the installed
+`v0.1.0-beta.1` binary. That historical build used Go 1.26.8 and `x/crypto`
+0.56.0. The new `v0.4.6-beta.1` candidate uses Go 1.26.9, `x/net` 0.60.0 and
+`x/crypto` 0.57.0. Its [release build](https://github.com/Nischoy-ai/topo/actions/runs/37862256387)
+passed scanning, reproduction and package/Mac installation checks, but awaits
+protected signing review. No patched public-channel installation is established
+yet. [Worker availability](distribution.md#release-availability) records that
+boundary. Historical signatures, test results and findings retain their scope.

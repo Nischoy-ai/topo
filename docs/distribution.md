@@ -1,13 +1,34 @@
 # Install Topo with a package manager
 
-Install the Topo Beta worker through signed Linux APT/RPM repositories or the
-official macOS Homebrew tap on amd64 and arm64. For Topo 0.4.6 Beta discovery,
-install the [combined application XML](servicenow-update-set.md), then configure
-the worker. Run `topo version` to record the exact worker build for your deployment.
+Use signed Linux APT/RPM repositories or the official macOS Homebrew tap on
+amd64 and arm64 after the required worker is published and promoted.
+
+## Release availability
+
+The [Topo 0.4.6 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta)
+is published with all 32 indexes. The required patched worker is
+**`v0.4.6-beta.1`**, built from `5f7aecf08cb9b66c8724f4b1d4f399decab31543`
+with Go 1.26.9 and `golang.org/x/crypto` 0.57.0.
+
+Its [release workflow](https://github.com/Nischoy-ai/topo/actions/runs/37862256387)
+has passed reproducible builds, security scanning, Linux package lifecycles
+and both Mac install tests. It is waiting for independent signing review;
+no signed worker release assets or new package-channel promotion are available.
+Homebrew, APT and RPM still serve **`v0.1.0-beta.1`**, built with Go 1.26.8 and
+`x/crypto` 0.56.0. Do not install that build for a new deployment or treat the
+0.4.6 source tag as a binary release.
+
+The setup commands below are retained for use **after promotion is confirmed**.
+Do not run the Linux helper or generic package-manager install commands while
+this notice says signing/promotion is pending. Existing installations should
+record their version and follow their security/change process; source fixes
+do not update an installed worker. Confirm `topo version` is `v0.4.6-beta.1`
+before configuring credentials or starting discovery.
 
 ## User installation
 
-The available channel is **Beta**. There is no
+The distribution channel is **Beta**; check [availability](#release-availability)
+before using these commands. There is no
 stable APT/RPM channel, stable Homebrew formula, or WinGet release yet.
 Use a host with `curl`, CA certificates and GnuPG installed for Linux.
 The reviewed package-signing fingerprint is
@@ -96,7 +117,8 @@ formula before installing this one. Installation does not start a worker.
 
 Linux packages install a dormant service, not credentials or configuration.
 Continue with [worker configuration](pilot-quickstart.md#4-install-and-configure-the-worker).
-Raw release files remain available for verified offline installation. The
+Use raw files for offline installation only after the required signed release
+is published and verified. The
 experimental controller Helm chart is not required for ServiceNow workers and
 is not part of the managed-worker installation path.
 
@@ -140,7 +162,9 @@ Never silently replace immutable worker release assets or reuse a release tag.
 is published as one native batch containing the application and 32 indexes.
 Follow [XML installation](servicenow-update-set.md). The manually exported XML
 has checksums; it is not covered by the signed worker's provenance attestations.
-Check the release manifest for the exact component builds and download origin.
+The XML manifest identifies application bytes and its export source; its
+`worker_channel` field does not establish a compatible worker build's availability.
+Use the [availability notice](#release-availability) for worker publication status.
 
 ## Validation records
 

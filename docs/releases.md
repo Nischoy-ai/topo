@@ -1,6 +1,10 @@
 # Release artifacts and verification
 
-For the current signed worker beta, see [package-manager installation](distribution.md).
+Check [worker availability](distribution.md#release-availability) before downloading.
+The `v0.4.6-beta.1` source tag currently has no signed worker release assets;
+its release workflow is awaiting signing review. The commands below are a
+verification procedure for a published artifact set, not a claim that the
+candidate's files are available.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
 artifact with its own checksum and [validation record](servicenow-validation.md).
 The signature and provenance instructions below apply to tagged worker releases.
@@ -70,8 +74,11 @@ normalized packages and metadata files to match byte-for-byte. It does not
 rewrite application tables, ACLs, routes, scripts, navigation, or other
 functional metadata.
 
-To reproduce a release locally, use its tag and the compiler recorded in
-`release-metadata.json`. The following example uses the 0.4.6 Beta build tag:
+To reproduce a published release locally, use its tag and the compiler recorded
+in its authenticated `release-metadata.json`. For source-only candidate builds,
+the following produces local archives from the existing 0.4.6 tag. These are
+not signed release downloads and cannot be compared with a published candidate
+manifest until that release has completed:
 
 ```sh
 git checkout v0.4.6-beta.1
@@ -79,7 +86,9 @@ GOTOOLCHAIN=go1.26.9 scripts/build-release.sh \
   v0.4.6-beta.1 "$(git rev-parse HEAD)" dist-local linux-homebrew-beta
 ```
 
-Compare `dist-local/SHA256SUMS` with the manifest downloaded from the release.
+For a published release, compare reproduced raw-archive digests with its signed
+manifest. Native signing changes package bytes; unsigned local package checksums
+are not final signed-package checksums.
 The build needs network access only when the pinned Go modules are not already
 in the local module cache.
 
@@ -91,39 +100,50 @@ are rejected.
 
 ## Verify a downloaded release
 
-Download one archive plus `SHA256SUMS` and its Sigstore bundle from the same
-GitHub Release. First verify ordinary content integrity:
+Choose a **published worker release** with complete binary and verification
+assets. Do not substitute a source-only tag or a ServiceNow XML release. With
+GitHub CLI, `jq`, Cosign, and `sha256sum` installed, download the Linux amd64
+archive and matching verification files into a new directory. Set `tag` to
+the published worker tag you intend to verify; stop if its assets are absent.
 
 ```sh
-sha256sum -c SHA256SUMS --ignore-missing
+(
+  set -eu
+  : "${tag:?Set tag to a published worker release tag first}"
+  repo=Nischoy-ai/topo
+  version=${tag#v}
+  archive="topo_${version}_linux_amd64.tar.gz"
+  bundle="topo_${version}_checksums.sigstore.json"
+  gh release view "$tag" --repo "$repo" --json isDraft,publishedAt,assets > release.json
+  jq -e --arg archive "$archive" --arg bundle "$bundle" '
+    .isDraft == false and .publishedAt != null and
+    ([.assets[].name] | index($archive) != null and
+      index($bundle) != null and index("SHA256SUMS") != null)
+  ' release.json >/dev/null
+  gh release download "$tag" --repo "$repo" \
+    --pattern "$archive" --pattern SHA256SUMS --pattern "$bundle"
+  cosign verify-blob \
+    --bundle "$bundle" \
+    --certificate-identity \
+      "https://github.com/$repo/.github/workflows/release.yml@refs/tags/$tag" \
+    --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+    SHA256SUMS
+  awk -v name="$archive" '$2 == name {print; found=1} END {if (!found) exit 1}' \
+    SHA256SUMS > archive.sha256
+  sha256sum --check archive.sha256
+  gh attestation verify "$archive" --repo "$repo"
+)
 ```
 
-On macOS, the equivalent is `shasum -a 256 -c SHA256SUMS` after downloading
-all files named by the manifest.
-
-Then verify that the Nischoy Topo tag workflow signed the checksum manifest.
-Substitute the exact tag and artifact names you downloaded in these examples:
-
-```sh
-cosign verify-blob \
-  --bundle topo_0.4.6-beta.1_checksums.sigstore.json \
-  --certificate-identity \
-    'https://github.com/Nischoy-ai/topo/.github/workflows/release.yml@refs/tags/v0.4.6-beta.1' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  SHA256SUMS
-```
+On macOS replace `sha256sum --check archive.sha256` with
+`shasum -a 256 -c archive.sha256`. Do not execute an archive before these checks
+pass. `SHA256SUMS --ignore-missing` alone is insufficient: the command above
+requires the selected archive to be listed and present.
 
 The bundle contains the short-lived signing certificate, signature, and public
 transparency-log proof; Topo keeps no long-lived general release-signing key in
 GitHub Actions. The identity and issuer checks are essential—verifying only
 that *someone* used Sigstore is not sufficient.
-
-Finally, verify GitHub's signed build provenance for the archive itself:
-
-```sh
-gh attestation verify topo_0.4.6-beta.1_linux_amd64.tar.gz \
-  --repo Nischoy-ai/topo
-```
 
 GitHub stores the provenance and SBOM attestations through its attestation API;
 the release also retains their Sigstore bundles so the evidence is downloadable

@@ -27,10 +27,14 @@ nFPM 2.47.0 is pinned by version and by the official release archive digest in
 
 ```sh
 GOTOOLCHAIN=go1.26.9 scripts/build-release.sh \
-  v0.4.6-beta.1 "$(git rev-parse HEAD)" dist-raw
+  v0.0.0-local "$(git rev-parse HEAD)" dist-raw linux-homebrew-beta
 GOTOOLCHAIN=go1.26.9 scripts/build-packages.sh \
-  v0.4.6-beta.1 dist-raw dist-packages
+  v0.0.0-local dist-raw dist-packages
 ```
+
+This is a local source-build example, not a published release download. Its
+unsigned packages must not be promoted or presented as the signed Beta worker.
+For actual publication status see [worker availability](distribution.md#release-availability).
 
 The second command copies and verifies the raw input twice, assembles from two
 different absolute paths, and rejects any byte difference across the DEB, RPM,
@@ -152,6 +156,7 @@ The next release stage promotes these exact bytes through signed APT/RPM
 repositories, the Nischoy Homebrew tap, Microsoft's WinGet catalog, and a GHCR
 OCI Helm registry. It adds native signing, stable/beta policy, key rotation,
 and clean-machine gates without rebuilding Topo. See
-[package-manager distribution](distribution.md). These channels are not public
-until their one-time repositories/credentials are provisioned and a real beta
-and N-1 stable promotion complete.
+[package-manager distribution](distribution.md). Linux and Homebrew Beta
+channels exist, but currently serve the historical `v0.1.0-beta.1` build.
+The patched 0.4.6 worker must complete signing and promotion before those
+channels can deliver it. Stable/N-1 and Windows publication remain separate.
