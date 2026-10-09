@@ -31,9 +31,8 @@ to configure access, credentials and approved targets.
 
 ### 2. Install and start the Topo worker
 
-The required worker build is **`v0.4.6-beta.1`**. Its release build has passed
-security and installation checks, but signing and package-channel promotion
-are pending. The existing Homebrew/APT/RPM channels still install
+The required worker build is **`v0.4.6-beta.1`**. Its signed release is published;
+package-channel promotion is pending. The existing Homebrew/APT/RPM channels still install
 `v0.1.0-beta.1`; that build does not contain the latest security updates.
 Wait for the [worker availability notice](docs/distribution.md#release-availability)
 to confirm promotion before installing or starting discovery.

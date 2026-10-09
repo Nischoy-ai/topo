@@ -100,13 +100,33 @@ on 2026-10-08 with exact Go 1.26.9: module verification, vet, a zero-finding
 This is source validation, not evidence of publication or independent retest.
 
 
-## Published worker status after the baseline update
+## Published worker after the baseline update
 
-The zero-finding source scan above covers the patched source, not the installed
-`v0.1.0-beta.1` binary. That historical build used Go 1.26.8 and `x/crypto`
-0.56.0. The new `v0.4.6-beta.1` candidate uses Go 1.26.9, `x/net` 0.60.0 and
-`x/crypto` 0.57.0. Its [release build](https://github.com/Nischoy-ai/topo/actions/runs/37862256387)
-passed scanning, reproduction and package/Mac installation checks, but awaits
-protected signing review. No patched public-channel installation is established
-yet. [Worker availability](distribution.md#release-availability) records that
-boundary. Historical signatures, test results and findings retain their scope.
+The signed [worker `v0.4.6-beta.1`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+was built from `5f7aecf08cb9b66c8724f4b1d4f399decab31543` by
+[release run 37862256387](https://github.com/Nischoy-ai/topo/actions/runs/37862256387).
+Independent verification of all 25 downloaded asset digests, the full checksum
+manifest, its exact workflow signing identity and Linux/Mac provenance passed.
+Published Linux amd64 and Mac arm64 build information confirms Go 1.26.9,
+`x/net` 0.60.0 and `x/crypto` 0.57.0. Executing the downloaded Mac binary's
+version command returned `v0.4.6-beta.1`. Channel promotion and fresh installs
+are recorded separately in [distribution evidence](evidence/distribution.md).
+
+### Binary scanner interpretation
+
+A `govulncheck` binary-mode scan of the published Linux amd64 executable with
+versions 1.7.0 and 1.8.0 reports **GO-2026-5932** for the unmaintained
+`golang.org/x/crypto/openpgp` packages. Do not call those binary scans clean.
+The worker uses other packages from `x/crypto`, including SSH, but its compiled
+package dependency list contains no OpenPGP package. The source scan has no
+reachable findings. The [official advisory](https://pkg.go.dev/vuln/GO-2026-5932)
+applies to OpenPGP packages across all versions, not to the entire SSH module.
+
+Release binaries use `-s -w`. When symbols are absent, the
+[pinned scanner falls back to module-level precision](https://github.com/golang/vuln/blob/v1.7.0/internal/vulncheck/binary.go#L107-L113)
+and conservatively reports known vulnerable packages in a linked module.
+This explains the binary warning without establishing an OpenPGP call path.
+Retain the scan and actual import evidence during review; do not suppress the
+advisory globally, claim an advisory fix that does not exist, or equate a source
+scan with every scanner's binary result. Historical signatures, tests and
+independent finding statuses retain their original scope.

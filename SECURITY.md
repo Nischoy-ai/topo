@@ -3,7 +3,7 @@
 ## Versions receiving fixes
 
 The current application release is **Topo 0.4.6 Beta**. The patched worker
-candidate is `v0.4.6-beta.1`; signed publication and channel promotion are pending.
+`v0.4.6-beta.1` is published; package-channel promotion is pending.
 The package channels still serve `v0.1.0-beta.1`, which lacks the latest security
 updates. Do not use that older worker for new deployments. Consult
 [worker availability](docs/distribution.md#release-availability) before installing.
@@ -86,7 +86,7 @@ use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
 provenance attestations. Linux package/repository metadata is signed; protected
 signing and promotion environments require review. Historical channel tests
 cover `v0.1.0-beta.1`; they do not establish publication or public-channel
-installation of the patched `v0.4.6-beta.1` candidate. A source scan does not
+installation of the patched `v0.4.6-beta.1` worker. A source scan does not
 patch binaries already installed on customer hosts.
 
 The macOS beta is a Homebrew CLI formula without Apple Developer ID signing

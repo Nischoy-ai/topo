@@ -10,20 +10,17 @@ is published with all 32 indexes. The required patched worker is
 **`v0.4.6-beta.1`**, built from `5f7aecf08cb9b66c8724f4b1d4f399decab31543`
 with Go 1.26.9 and `golang.org/x/crypto` 0.57.0.
 
-Its [release workflow](https://github.com/Nischoy-ai/topo/actions/runs/37862256387)
-has passed reproducible builds, security scanning, Linux package lifecycles
-and both Mac install tests. It is waiting for independent signing review;
-no signed worker release assets or new package-channel promotion are available.
-Homebrew, APT and RPM still serve **`v0.1.0-beta.1`**, built with Go 1.26.8 and
-`x/crypto` 0.56.0. Do not install that build for a new deployment or treat the
-0.4.6 source tag as a binary release.
+Its [signed worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+is published. All downloaded asset digests, the signed manifest and Linux/Mac
+provenance have been independently verified. The public-channel update is
+awaiting [protected promotion](https://github.com/Nischoy-ai/topo/actions/runs/37865026033).
+Homebrew, APT and RPM still serve `v0.1.0-beta.1` until that promotion completes.
+Do not use the older worker for a new deployment.
 
-The setup commands below are retained for use **after promotion is confirmed**.
-Do not run the Linux helper or generic package-manager install commands while
-this notice says signing/promotion is pending. Existing installations should
-record their version and follow their security/change process; source fixes
-do not update an installed worker. Confirm `topo version` is `v0.4.6-beta.1`
-before configuring credentials or starting discovery.
+The setup commands below are for use after promotion is confirmed. For offline
+installation, download and [verify the published 0.4.6 worker](releases.md#verify-a-downloaded-release).
+Confirm `topo version` is **`v0.4.6-beta.1`** before configuring credentials or
+starting discovery. Source fixes do not update an installed worker.
 
 ## User installation
 

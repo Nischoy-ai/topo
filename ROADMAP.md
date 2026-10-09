@@ -7,8 +7,8 @@ managed Linux discovery workflow and reconciles supported CIs through IRE.
 ## Current release
 
 **Topo 0.4.6 Beta** provides the published combined ServiceNow application/index
-XML. Its patched worker candidate, `v0.4.6-beta.1`, awaits protected signing
-and promotion to Linux APT/RPM and macOS Homebrew. See
+XML. Its signed patched worker, `v0.4.6-beta.1`, awaits protected
+promotion to Linux APT/RPM and macOS Homebrew. See
 [XML installation](docs/servicenow-update-set.md) and
 [worker availability](docs/distribution.md#release-availability) for the actual
 download and channel status. Historical channel evidence covers the older

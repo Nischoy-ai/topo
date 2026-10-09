@@ -1,10 +1,9 @@
 # Release artifacts and verification
 
 Check [worker availability](distribution.md#release-availability) before downloading.
-The `v0.4.6-beta.1` source tag currently has no signed worker release assets;
-its release workflow is awaiting signing review. The commands below are a
-verification procedure for a published artifact set, not a claim that the
-candidate's files are available.
+The signed [worker `v0.4.6-beta.1`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+is published with its binary archives, signed checksum manifest and provenance.
+Package-channel promotion is separate; check availability before installing.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
 artifact with its own checksum and [validation record](servicenow-validation.md).
 The signature and provenance instructions below apply to tagged worker releases.
@@ -75,10 +74,8 @@ rewrite application tables, ACLs, routes, scripts, navigation, or other
 functional metadata.
 
 To reproduce a published release locally, use its tag and the compiler recorded
-in its authenticated `release-metadata.json`. For source-only candidate builds,
-the following produces local archives from the existing 0.4.6 tag. These are
-not signed release downloads and cannot be compared with a published candidate
-manifest until that release has completed:
+in its authenticated `release-metadata.json`. The following reproduces raw archives from the published 0.4.6 worker tag.
+It does not produce release signatures or signed native packages:
 
 ```sh
 git checkout v0.4.6-beta.1
@@ -103,13 +100,13 @@ are rejected.
 Choose a **published worker release** with complete binary and verification
 assets. Do not substitute a source-only tag or a ServiceNow XML release. With
 GitHub CLI, `jq`, Cosign, and `sha256sum` installed, download the Linux amd64
-archive and matching verification files into a new directory. Set `tag` to
-the published worker tag you intend to verify; stop if its assets are absent.
+archive and matching verification files into a new directory. The example uses the published `v0.4.6-beta.1` worker; when checking another
+version, substitute its exact tag and stop if its assets are absent.
 
 ```sh
 (
   set -eu
-  : "${tag:?Set tag to a published worker release tag first}"
+  tag=v0.4.6-beta.1
   repo=Nischoy-ai/topo
   version=${tag#v}
   archive="topo_${version}_linux_amd64.tar.gz"
