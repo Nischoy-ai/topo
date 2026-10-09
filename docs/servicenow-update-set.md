@@ -33,15 +33,25 @@ mechanisms. The XML supplies definitions, not users, grants, tokens,
 credentials, targets or discovery data. Keep workers and schedules inactive
 until installation checks pass.
 
-Before discovery, the instance administrator must register the exact choice
-value `Nischoy Topo` on `cmdb_ci.discovery_source`, as described in
-[IRE prerequisites](servicenow.md). This customer-owned global configuration
-is not included in the scoped XML. A missing choice causes IRE to reject the
-payload with `INVALID_INPUT_DATA`, even when native IRE access works.
-
 ServiceNow documents [application publication to an update set](https://www.servicenow.com/docs/r/application-development/t_PublishApplicationsToAnUpdateSet.html)
 and [Retrieved Update Sets import, preview and commit](https://developer.servicenow.com/blog.do?p=/post/backup-your-pdi/).
 Confirm licensing and application entitlement with your instance administrator.
+
+## Application identity and CMDB prerequisite
+
+The application name is **Nischoy Topo**, with scope `x_664635_topo` and
+application ID `d4e2151fdcbc7d97f8c155d1ba873e46`. Retain both for every XML
+upgrade; customers must not rename the scope or install a recreated app under
+a different prefix. ServiceNow documents how the
+[namespace identifies scoped application files](https://www.servicenow.com/docs/r/application-development/c_ApplicationScope.html).
+This package uses XML update-set delivery outside the ServiceNow Store.
+Vendor display fields do not establish Store certification or namespace ownership.
+
+For the current published package, check the exact **Nischoy Topo** choice on
+**Configuration Item [cmdb_ci] → discovery_source** before discovery. If an
+active choice with that value already exists, retain it. Otherwise create
+that one choice through the administrator interface described in
+[IRE prerequisites](servicenow.md#discovery-source-registration).
 
 ## Upgrades and recovery
 
