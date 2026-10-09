@@ -1,0 +1,88 @@
+name: Sign existing ServiceNow XML checksums
+
+# Manual authentication of reviewed, already-public bytes. Never imports,
+# builds, exports, modifies or publishes a customer package or release asset.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: servicenow-xml-signing
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    if: github.repository == 'Nischoy-ai/topo' && github.ref == 'refs/heads/main'
+    environment: distribution-beta
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Require the existing protected review and main-only policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/Nischoy-ai/topo/environments/distribution-beta > "$RUNNER_TEMP/signing-environment.json"
+          gh api repos/Nischoy-ai/topo/environments/distribution-beta/deployment-branch-policies > "$RUNNER_TEMP/signing-branches.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          env = json.loads((root / 'signing-environment.json').read_text())
+          branches = json.loads((root / 'signing-branches.json').read_text())
+          assert env['name'] == 'distribution-beta' and env['can_admins_bypass'] is False
+          assert env['deployment_branch_policy'] == {'protected_branches': False, 'custom_branch_policies': True}
+          reviewers = [r for r in env['protection_rules'] if r['type'] == 'required_reviewers']
+          assert len(reviewers) == 1 and reviewers[0]['prevent_self_review'] is True
+          assert len(reviewers[0]['reviewers']) >= 2
+          assert branches['total_count'] == 1
+          assert [(b['name'], b['type']) for b in branches['branch_policies']] == [('main', 'branch')]
+          PY
+      - name: Test signing-input rejection offline
+        run: python3 -m unittest discover -s scripts -p 'test_servicenow_signing_input.py'
+      - name: Download the existing manual release and require reviewed bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/topo-xml-signing"
+          gh release download servicenow-0.4.6-beta --repo Nischoy-ai/topo \
+            --pattern SHA256SUMS --pattern INDEXES.md --pattern INSTALLATION.md \
+            --pattern START-HERE.txt --pattern manifest.json \
+            --pattern nischoy-topo-0.4.6-combined.xml \
+            --pattern nischoy-topo-0.4.6-beta.zip \
+            --dir "$RUNNER_TEMP/topo-xml-signing"
+          python3 scripts/verify-servicenow-signing-input.py "$RUNNER_TEMP/topo-xml-signing"
+      - name: Install the pinned Cosign client
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign and verify the unchanged checksum manifest
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --bundle "$RUNNER_TEMP/topo-xml-signing/SHA256SUMS.sigstore.json" \
+            "$RUNNER_TEMP/topo-xml-signing/SHA256SUMS"
+          cosign verify-blob \
+            --bundle "$RUNNER_TEMP/topo-xml-signing/SHA256SUMS.sigstore.json" \
+            --certificate-identity https://github.com/Nischoy-ai/topo/.github/workflows/sign-servicenow-xml.yml@refs/heads/main \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-github-workflow-sha "$GITHUB_SHA" \
+            "$RUNNER_TEMP/topo-xml-signing/SHA256SUMS"
+      - name: Retain verification evidence for manual publication
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: servicenow-0.4.6-beta-signature
+          path: |
+            ${{ runner.temp }}/topo-xml-signing/SHA256SUMS
+            ${{ runner.temp }}/topo-xml-signing/SHA256SUMS.sigstore.json
+          if-no-files-found: error
+          retention-days: 30

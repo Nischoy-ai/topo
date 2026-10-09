@@ -40,14 +40,15 @@ On macOS:
 brew install nischoy-ai/tap/topo-beta
 ```
 
-On Debian/Ubuntu or Fedora, set up the signed repository and install in one line:
+On Linux, complete the one-time [signed repository setup](docs/distribution.md#debian-and-ubuntu),
+then install with your package manager:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-ai/topo/main/scripts/install-linux.sh | sh
+sudo apt-get install topo  # Debian/Ubuntu
+# or: sudo dnf install topo  # Fedora
 ```
 
-With the repository already configured, use `sudo apt-get install topo` or
-`sudo dnf install topo`. See [package installation and upgrades](docs/distribution.md)
+See [package installation and upgrades](docs/distribution.md)
 for repository trust checks, prerequisites and existing installations.
 Confirm `topo version` prints **`v0.4.6-beta.1`** before configuring credentials.
 
@@ -74,7 +75,7 @@ and cleanup procedure is in the [ServiceNow setup guide](docs/pilot-quickstart.m
 | --- | --- |
 | Install and operate discovery | [ServiceNow setup](docs/pilot-quickstart.md) · [Worker installation](docs/distribution.md) |
 | Check the published package | [XML validation](docs/servicenow-validation.md) · [Release verification](docs/releases.md) |
-| Review credential controls and report a vulnerability | [Security policy](SECURITY.md) · [Security review record](docs/security-review.md) |
+| Review credential controls and report a vulnerability | [Deployment security](docs/deployment-security.md) · [Security policy](SECURITY.md) · [Security review record](docs/security-review.md) |
 | Explore components or contribute | [Documentation index](docs/README.md) · [Developer quickstart](docs/development.md) · [Contributing](CONTRIBUTING.md) |
 | See implemented and planned capabilities | [Product roadmap](ROADMAP.md) |
 

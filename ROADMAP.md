@@ -17,6 +17,9 @@ download and channel status. Dated build and installation results are in the
 Windows package publication and stable channels are planned. The macOS CLI
 formula does not use Apple Developer ID signing or notarization.
 
+[Deployment security](docs/deployment-security.md) describes the managed
+credential lifecycle and the separate standalone-controller storage controls.
+
 ## Release engineering baseline
 
 Release/security builds use exact **Go 1.26.9** with Go 1.26 compatibility.

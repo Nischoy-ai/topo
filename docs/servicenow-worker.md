@@ -16,6 +16,8 @@ channel. Follow the [installation guide](servicenow-update-set.md) and
 Implemented controls include deterministic partitions, bounded concurrency,
 renewable leases, cancellation, raw-result retention, Password2 credential
 storage and an attempt-bound broker. Workers cannot read the credential table.
+The [deployment security guide](deployment-security.md#where-ssh-passwords-live)
+explains password storage, administrator trust, rotation and deployment modes.
 The [package validation record](servicenow-validation.md) describes current
 installation and Linux workflow evidence. Dated protocol, security and upgrade results are kept in the
 [worker evidence record](evidence/servicenow-worker.md).

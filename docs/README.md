@@ -20,6 +20,7 @@ Dated test history lives in the [evidence index](evidence/README.md).
 
 | Question | Record |
 | --- | --- |
+| Where do passwords live and which storage controls apply? | [Deployment security](deployment-security.md) |
 | What credential and authorization controls apply? | [Security policy](../SECURITY.md) · [Credential references](credential-references.md) |
 | How do I report a vulnerability privately? | [Confidential reporting](../SECURITY.md#report-a-vulnerability) |
 | What has been reviewed and independently retested? | [Security review record](security-review.md) |
