@@ -9,8 +9,8 @@ fi
 
 # Independently verified against the exact tag's Sigstore identity/provenance.
 # Updating this fixture requires a reviewed version AND checksum-manifest pin.
-version=v0.1.0-beta.1
-manifest_sha256=2da670111c37f7ad3249f790d9e1ba97cc700e9a7e38729fbc986e0251ab55ca
+version=v0.4.6-beta.1
+manifest_sha256=2b3d8ccd79e13503b15be185ee890fd1698f537e6e4a319ac657debec78f87cd
 tap=nischoy-ai/tap
 formula=$tap/topo-beta
 if brew list --formula topo >/dev/null 2>&1 || brew list --formula topo-beta >/dev/null 2>&1 ||
@@ -36,7 +36,7 @@ gh release download "$version" --repo Nischoy-ai/topo --dir "$fixture/artifacts"
 )
 go run ./internal/distributiontool -artifacts "$fixture/artifacts" \
   -out "$fixture/distribution" -version "$version" -channel beta \
-  -published-at 2026-09-19T00:00:00Z
+  -published-at 2026-10-09T00:27:41Z
 brew tap-new "$tap"
 created_tap=true
 tap_path=$(brew --repository "$tap")

@@ -1,13 +1,24 @@
 # Install Topo with a package manager
 
-Install the Topo Beta worker through signed Linux APT/RPM repositories or the
-official macOS Homebrew tap on amd64 and arm64. For Topo 0.4.6 Beta discovery,
-install the [combined application XML](servicenow-update-set.md), then configure
-the worker. Run `topo version` to record the exact worker build for your deployment.
+Install the Topo 0.4.6 Beta worker from signed Linux APT/RPM repositories or
+the official macOS Homebrew tap on amd64 and arm64.
+
+## Release availability
+
+The [Topo 0.4.6 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta)
+is published with all 32 indexes. Its matching signed worker,
+**`v0.4.6-beta.1`**, is available through the Beta APT/RPM repositories and
+official Homebrew tap. The [worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+also provides archives and verification files for offline installation.
+
+Use the setup commands below, or download and
+[verify the published worker](releases.md#verify-a-downloaded-release).
+Confirm `topo version` is **`v0.4.6-beta.1`** before configuring credentials or
+starting discovery. Source fixes do not update an installed worker.
 
 ## User installation
 
-The available channel is **Beta**. There is no
+The distribution channel is **Beta**. There is no
 stable APT/RPM channel, stable Homebrew formula, or WinGet release yet.
 Use a host with `curl`, CA certificates and GnuPG installed for Linux.
 The reviewed package-signing fingerprint is
@@ -96,7 +107,7 @@ formula before installing this one. Installation does not start a worker.
 
 Linux packages install a dormant service, not credentials or configuration.
 Continue with [worker configuration](pilot-quickstart.md#4-install-and-configure-the-worker).
-Raw release files remain available for verified offline installation. The
+Verify raw files before offline installation. The
 experimental controller Helm chart is not required for ServiceNow workers and
 is not part of the managed-worker installation path.
 
@@ -123,6 +134,29 @@ remain planned. APT metadata uses Acquire-By-Hash and a 30-day Valid-Until;
 active metadata needs regular signed refreshes. A partially completed promotion
 can leave channels at different states, so verify each public channel result.
 
+## Upgrade an existing worker
+
+Stop the worker and let active discovery attempts finish or expire before
+upgrading. Keep its configuration and credential files. Refresh the repository
+metadata and upgrade through the same channel:
+
+```sh
+# Debian/Ubuntu
+sudo apt-get update && sudo apt-get install topo
+
+# Fedora
+sudo dnf upgrade topo
+
+# macOS
+brew update && brew upgrade nischoy-ai/tap/topo-beta
+```
+
+Confirm `topo version` prints `v0.4.6-beta.1`, run `topo worker check` with
+the existing configuration, then restart the worker. See the
+[worker setup guide](pilot-quickstart.md#4-install-and-configure-the-worker)
+for service commands. Users of a separate development tap must remove its
+conflicting formula before installing the official Beta formula.
+
 ## Key rotation and incident response
 
 Repository trust is scoped to the published OpenPGP fingerprint. Planned
@@ -140,7 +174,9 @@ Never silently replace immutable worker release assets or reuse a release tag.
 is published as one native batch containing the application and 32 indexes.
 Follow [XML installation](servicenow-update-set.md). The manually exported XML
 has checksums; it is not covered by the signed worker's provenance attestations.
-Check the release manifest for the exact component builds and download origin.
+The XML manifest identifies application bytes and its export source; its
+`worker_channel` field does not establish a compatible worker build's availability.
+Use the [availability notice](#release-availability) for worker publication status.
 
 ## Validation records
 

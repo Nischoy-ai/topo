@@ -1,12 +1,53 @@
 # Package-channel validation evidence
 
-Historical evidence captured from source commit
-`5439ef5b441e1145172190db94aa24ba4d809599`. Versions, dates and test
-scopes below identify the tested artifacts; they are not installation steps.
+Versions, dates and test scopes below identify the tested artifacts; they are
+not installation steps. Use the [installation guide](../distribution.md) for
+current package commands.
+
+## 0.4.6 Beta worker
+
+The signed [v0.4.6-beta.1 worker](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+was published on 2026-10-09 UTC from
+`5f7aecf08cb9b66c8724f4b1d4f399decab31543`.
+[Release run 37862256387](https://github.com/Nischoy-ai/topo/actions/runs/37862256387)
+passed reproducible archive/package builds, protected RPM signing, Linux
+package lifecycle and Homebrew execution/removal on Intel and Apple Silicon.
+
+Independent downloads matched all 25 GitHub asset digests and every entry in
+`SHA256SUMS`. Cosign verified the manifest against the exact tagged
+`release.yml` identity and GitHub OIDC issuer. Linux amd64 and macOS arm64
+provenance verified the source commit above; build information confirmed
+Go 1.26.9, `x/crypto` 0.57.0 and `x/net` 0.60.0. The downloaded Mac binary
+returned `v0.4.6-beta.1`. These checks authenticate the worker release;
+public-channel installation is a separate gate. The
+[security record](../security-review.md#binary-scanner-interpretation) retains
+the binary scanner warning and its precise scope.
+
+[Promotion 37865026033](https://github.com/Nischoy-ai/topo/actions/runs/37865026033)
+passed protected preparation and publication reviews, signed-repository
+installation/removal and both Homebrew architecture gates. It published package
+commit `77e958e6e60170511b2f8ee9676775423c97cdc9` and tap commit
+`9531659747f4fc5f7767261d3f092f33a1311428`. The
+[Pages deployment](https://github.com/Nischoy-ai/topo-packages/actions/runs/37867623357)
+completed. Public HTTPS APT metadata for both architectures and RPM metadata
+for x86_64/aarch64 matched the promoted commit's bytes. The published formula
+SHA-256 is `400c179507ceba775c107fb2e2b05b249e4fc8011455a22bdabf6a82332ec5bd`;
+its archive URLs, checksums and version test identify `v0.4.6-beta.1`.
+
+[Public-channel acceptance, attempt 2](https://github.com/Nischoy-ai/topo/actions/runs/37865681687/attempts/2)
+checks ten fresh installations: APT/RPM on amd64/arm64 through both manual
+repository setup and the Linux helper, plus Homebrew on Intel/Apple Silicon.
+Each Linux check requires native signature verification, the exact version,
+an installed binary matching the authenticated release archive, local
+discovery, a dormant worker service and removal preserving an operator file.
+Mac checks require the reviewed formula hash, audit, exact version, discovery
+and removal. Consult the linked run for job conclusions. The first attempt
+rejected the old channels before promotion; those failures are retained.
+These are installation checks, separate from ServiceNow runtime acceptance.
 
 ## First beta operational evidence
 
-The [v0.1.0-beta.1 release](https://github.com/Nischoy-ai/topo/releases/tag/v0.1.0-beta.1)
+The historical [v0.1.0-beta.1 source](https://github.com/Nischoy-ai/topo/tree/v0.1.0-beta.1)
 was built from `57671b5407daabddd7ae08d14dd25395e0b9431f`.
 [Release attempt 2](https://github.com/Nischoy-ai/topo/actions/runs/34929267383/attempts/2)
 passed reproducible builds, Linux package lifecycle, protected RPM signing,
@@ -14,6 +55,8 @@ and Intel/ARM64 Homebrew installation, execution and removal. Independent
 downloads matched the checksum manifest; Sigstore identity matched the tagged
 release workflow, and Linux amd64/macOS arm64 provenance matched the repository
 and source commit.
+Its release downloads have since been withdrawn; the original tag and source
+history remain. These results do not validate the newer worker.
 
 [Promotion 35485290078](https://github.com/Nischoy-ai/topo/actions/runs/35485290078)
 passed protected signing and publication reviews on 2026-09-20. Package commit

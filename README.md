@@ -31,31 +31,25 @@ to configure access, credentials and approved targets.
 
 ### 2. Install and start the Topo worker
 
-Install the **Topo Beta** worker on a host that can reach ServiceNow and your
-approved targets. Run `topo version` to record the installed build; the package
-manifest identifies compatible component builds.
+The signed **`v0.4.6-beta.1`** worker is available through the Linux Beta
+repositories and official Mac tap.
+
+On macOS:
 
 ```sh
-# macOS
 brew install nischoy-ai/tap/topo-beta
-topo version
 ```
 
-On Linux, first add the Nischoy signed repository using the one-time
-[Debian/Ubuntu setup](docs/distribution.md#debian-and-ubuntu) or
-[Fedora/RHEL setup](docs/distribution.md#fedora-and-rhel-family). Then install:
+On Debian/Ubuntu or Fedora, set up the signed repository and install in one line:
 
 ```sh
-# Debian / Ubuntu
-sudo apt-get install topo
-
-# Fedora / RHEL
-sudo dnf install topo
+curl --proto '=https' --tlsv1.2 -fsS https://raw.githubusercontent.com/Nischoy-ai/topo/main/scripts/install-linux.sh | sh
 ```
 
-Linux packages support amd64 and arm64. Repository setup is needed only once
-per host; subsequent installs and updates use your package manager.
-Stable and Windows channels are unavailable; the Mac beta is not Apple-notarized.
+With the repository already configured, use `sudo apt-get install topo` or
+`sudo dnf install topo`. See [package installation and upgrades](docs/distribution.md)
+for repository trust checks, prerequisites and existing installations.
+Confirm `topo version` prints **`v0.4.6-beta.1`** before configuring credentials.
 
 Configure the OAuth token file, target allowlist, and verified SSH `known_hosts`;
 run `topo worker check`, then start the worker. The [worker setup

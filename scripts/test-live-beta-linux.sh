@@ -10,7 +10,7 @@ channel=$1
 method=${2:-manual}
 case "$method" in manual|helper) ;; *) exit 2 ;; esac
 case "$channel" in apt|rpm) ;; *) exit 2 ;; esac
-version=v0.1.0-beta.1
+version=v0.4.6-beta.1
 origin=https://nischoy-ai.github.io/topo-packages
 fingerprint=6049C01BB18CE8EC395DA16F9C64F25B652F0673
 if [[ "$channel" == apt ]]; then
@@ -60,11 +60,11 @@ printf '%s\n' operator-owned >/etc/topo-worker/operator-owned
 echo "Dormant service and operator fixture passed"
 # Pins were independently verified against the published tag's signed manifest.
 case "$(uname -m)" in
-  x86_64) arch=amd64; digest=9157d2c0f49d3b4040dcaad6c7ae1570dc4b7cc62c17331044c4c96f5349f320 ;;
-  aarch64) arch=arm64; digest=a806a9f4200d8da972bd44f33c2f577095a4a0c764f646c85e2b88e1177cd63d ;;
+  x86_64) arch=amd64; digest=4cf477608c17e13489d4b4789f64e801452ea9baf44c8ce979d78bb4b0f00086 ;;
+  aarch64) arch=arm64; digest=5657ed28624ec5305285116f12e313a90a5f8de9b586f3657cb1d274622dc10d ;;
   *) exit 1 ;;
 esac
-curl -fsSL --max-time 120 "https://github.com/Nischoy-ai/topo/releases/download/$version/topo_0.1.0-beta.1_linux_$arch.tar.gz" -o /tmp/topo.tar.gz
+curl -fsSL --max-time 120 "https://github.com/Nischoy-ai/topo/releases/download/$version/topo_0.4.6-beta.1_linux_$arch.tar.gz" -o /tmp/topo.tar.gz
 printf '%s  /tmp/topo.tar.gz\n' "$digest" | sha256sum --check -
 mkdir /tmp/topo-raw
 tar -xzf /tmp/topo.tar.gz -C /tmp/topo-raw

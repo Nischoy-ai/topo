@@ -2,7 +2,8 @@
 
 [Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta).
 The package contains one native XML batch with the application and all 32
-required indexes (17 unique). Install the worker through the Beta package channel.
+required indexes (17 unique). Check [worker availability](distribution.md#release-availability)
+before installing a worker; the XML release does not publish a worker binary.
 
 ## Customer installation
 
