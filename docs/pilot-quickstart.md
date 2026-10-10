@@ -24,9 +24,9 @@ Retrieved Update Sets, then preview and commit the batch. The package includes
 all 32 required indexes. Confirm both app and index child are Committed before
 configuring discovery. No SDK or source checkout is needed.
 
-Have the instance administrator register the exact `Nischoy Topo` choice on
-`cmdb_ci.discovery_source` before discovery; see [IRE prerequisites](servicenow.md).
-This global customer setting is not shipped in the scoped application XML.
+Complete the installation guide's **Run Fix Script** step to register
+`Nischoy Topo` on `cmdb_ci.discovery_source` before discovery. The combined
+package includes this Global setup script; no hand-entered choice is needed.
 
 ## 2. Create the least-privilege ServiceNow identities
 

@@ -23,19 +23,20 @@ limits; see the [roadmap](ROADMAP.md).
 
 ### 1. Install the Nischoy Topo app from the XML package
 
-[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta).
-The package includes the app and all **32 required indexes** in one native XML batch.
+[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2).
+The package includes the app, all **32 required indexes**, and CMDB source setup in one native XML batch.
 
 For the combined package:
 
-1. Download and unzip the package; verify its checksum using the
+1. Download and unzip the package; verify its signature and checksums using the
    [installation guide](docs/servicenow-update-set.md#customer-installation).
 2. As a ServiceNow administrator, open **System Update Sets → Retrieved
    Update Sets → Import Update Set from XML** and upload
    `nischoy-topo-0.4.6-combined.xml`.
 3. Open **Nischoy Topo**, choose **Preview Update Set Batch**, review any
    problems, then choose **Commit Update Set Batch**. Confirm both sets are
-   committed and complete the guide's installation checks.
+   committed. Run **Nischoy Topo — Register Discovery Source** from **Fix
+   Scripts**, with **Unloadable** cleared, then complete the guide's checks.
 
 No terminal, source checkout, SDK, or separate index import is needed for the
 ServiceNow app. Start on a development instance and follow your organization’s

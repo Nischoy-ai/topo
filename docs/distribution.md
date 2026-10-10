@@ -5,7 +5,7 @@ the official macOS Homebrew tap on amd64 and arm64.
 
 ## Release availability
 
-The [Topo 0.4.6 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta)
+The [Topo 0.4.6 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2)
 is published with all 32 indexes. Its matching signed worker,
 **`v0.4.6-beta.1`**, is available through the Beta APT/RPM repositories and
 official Homebrew tap. The [worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
@@ -173,10 +173,11 @@ Never silently replace immutable worker release assets or reuse a release tag.
 
 ## ServiceNow application XML
 
-[Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta)
-is published as one native batch containing the application and 32 indexes.
-Follow [XML installation](servicenow-update-set.md). The manually exported XML
-has checksums; it is not covered by the signed worker's provenance attestations.
+[Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2)
+is published as one native batch containing the application, 32 indexes and
+discovery-source setup. Follow [XML installation](servicenow-update-set.md).
+Verify its [signed checksum manifest](releases.md#verify-the-servicenow-package)
+and package checksums. The XML is not covered by the worker's provenance attestations.
 The XML manifest identifies application bytes and its export source; its
 `worker_channel` field does not establish a compatible worker build's availability.
 Use the [availability notice](#release-availability) for worker publication status.

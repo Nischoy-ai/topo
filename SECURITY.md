@@ -99,9 +99,11 @@ not patch binaries already installed on customer hosts.
 
 The macOS beta is a Homebrew CLI formula without Apple Developer ID signing
 or notarization. Windows and stable publication are planned. The manually
-published ServiceNow XML package has checksums but no cryptographic signature
-or provenance attestation. Its checksum detects corruption; verify the download
-origin as part of your installation process. Never disable platform security
+published ServiceNow XML package includes a keyless Sigstore signature for
+its checksum manifest. Verify that signature and all package checksums using
+the [XML verification guide](docs/releases.md#verify-the-servicenow-package).
+This authenticates package bytes; it is not a native XML-export provenance
+attestation. Never disable platform security
 protections to install Topo.
 
 See [consumer verification](docs/releases.md#verify-a-downloaded-release),

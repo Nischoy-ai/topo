@@ -10,7 +10,8 @@ export provenance, installation acceptance or Store certification.
 setup script. Application version remains 0.4.6; the suffix identifies package
 revision 2. The XML's SHA-256 is
 `d85b21f883bf5f2b599eaf570547c4d02a682f59dc5a1eaff8b4a6fa4d1374e9`.
-Revision 2 is prepared locally and has not been published or signed.
+Revision 2 is manually published with a protected checksum-manifest signature.
+Its release notes record the exact signing source commit and verification command.
 
 ## Manual signing and publication
 

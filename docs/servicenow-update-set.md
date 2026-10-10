@@ -1,29 +1,35 @@
 # Install the Topo application from XML
 
-[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta).
+[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2).
 The package contains one native XML batch with the application and all 32
-required indexes (17 unique). Check [worker availability](distribution.md#release-availability)
+required indexes (17 unique) and discovery-source setup. Check [worker availability](distribution.md#release-availability)
 before installing a worker; the XML release does not publish a worker binary.
 
 ## Customer installation
 
 Install the combined package:
 
-1. Obtain the package and matching checksum manifest. On macOS run
+1. Download the ZIP, `SHA256SUMS` and `SHA256SUMS.sigstore.json`. Verify the
+   [checksum-manifest signature](releases.md#verify-the-servicenow-package).
+   Unzip in the same directory and retain the ZIP. On macOS run
    `shasum -a 256 -c SHA256SUMS`; on Linux run `sha256sum -c SHA256SUMS`.
-   Check component compatibility in the release manifest. A checksum detects
-   corruption; it does not independently authenticate the publisher.
+   Check component compatibility in the release manifest.
 2. As administrator on a development instance, open **System Update Sets →
    Retrieved Update Sets → Import Update Set from XML**. Upload
    `nischoy-topo-0.4.6-combined.xml`.
 3. Open the imported **Nischoy Topo** base set and select **Preview Update Set
-   Batch**. It must show **473 Customer Updates in Batch**: 441 app updates
-   and one child set with 32 indexes. Review any preview problems individually.
+   Batch**. It must show **474 Customer Updates in Batch**: 441 app updates
+   and the **Nischoy Topo — Database Indexes** child with 32 indexes and one
+   discovery-source setup script. Review any preview problems individually.
 4. Select **Commit Update Set Batch**. Wait for completion, confirm both sets
    are committed, check application version **0.4.6**, and verify the
    [32-index checklist](servicenow-index-setup.md). Do not drop indexes or
    separately import the companion as part of this installation.
-5. Configure [identities, credentials and targets](pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities),
+5. Open **System Definition → Fix Scripts → Nischoy Topo — Register Discovery
+   Source**. Keep **Unloadable** cleared, then select **Run Fix Script →
+   Proceed**. It creates the source when absent or preserves an existing active
+   choice. Review inactive or duplicate matching choices before discovery.
+6. Configure [identities, credentials and targets](pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities),
    install the worker and run `topo worker check` before starting discovery.
 
 Confirm custom-table/application entitlement and CMDB/IRE availability with
@@ -47,11 +53,12 @@ a different prefix. ServiceNow documents how the
 This package uses XML update-set delivery outside the ServiceNow Store.
 Vendor display fields do not establish Store certification or namespace ownership.
 
-For the current published package, check the exact **Nischoy Topo** choice on
-**Configuration Item [cmdb_ci] → discovery_source** before discovery. If an
-active choice with that value already exists, retain it. Otherwise create
-that one choice through the administrator interface described in
-[IRE prerequisites](servicenow.md#discovery-source-registration).
+The packaged Fix Script registers the exact **Nischoy Topo** choice on
+**Configuration Item [cmdb_ci] → discovery_source**. Run it after committing
+the XML batch; automatic execution on XML commit is not assumed. It preserves
+existing active choices and leaves unrelated sources and translations intact.
+No hand-entered CMDB choice is needed for this package. Direct publishers
+without this package follow [IRE prerequisites](servicenow.md#discovery-source-registration).
 
 ## Upgrades and recovery
 
