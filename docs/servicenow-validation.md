@@ -3,11 +3,35 @@
 This document records test scope and release evidence for the published package. Customer installation
 steps are in [Install from XML](servicenow-update-set.md#customer-installation).
 
-## Current acceptance status
+## Current package
 
-This table applies to the published 473-update XML identified below. The
-revised installation-metadata candidate has separate evidence at the end of
-this document.
+The current package contains 474 updates and has XML SHA-256
+`d85b21f883bf5f2b599eaf570547c4d02a682f59dc5a1eaff8b4a6fa4d1374e9`.
+It passed existing-install and exact-byte repeat acceptance, discovery-source
+creation and preservation, and scoped IRE preflight. Details are in
+[revised installation metadata](#revised-installation-metadata-2026-10-09).
+Its checksum manifest has a protected, keyless signature; authentication does
+not expand native installation or XML-export provenance evidence.
+
+## Package authentication (2026-10-10)
+
+[Package revision 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2)
+was published manually after protected
+[signing run 38081078774](https://github.com/Nischoy-ai/topo/actions/runs/38081078774)
+succeeded at source commit `773b9d510760db4dcde56a0b8189eb8882ccf18d`.
+The signing workflow validated the reviewed checksum manifest; it did not
+inspect the package payloads. Separate full-file verification matched all six
+payloads against the reviewed manifest before publication and again from public
+downloads. Independent Cosign verification accepted the public signature with
+the exact workflow identity, GitHub OIDC issuer and signing-source commit.
+ZIP integrity and extracted-file equality also passed. Follow the
+[consumer verification procedure](releases.md#verify-the-servicenow-package).
+
+## Previous package acceptance (473-update XML)
+
+This table applies to the preceding XML digest identified below. Its fresh
+installation, upgrade and absent-index checks remain scoped to those bytes.
+The revised package preserves all 32 index payloads.
 
 | Check | Result |
 | --- | --- |
@@ -165,7 +189,7 @@ were remapped by table name during the earlier installation.
 Native import, batch preview and commit passed over the existing application.
 An exact-byte repeat also passed. Both sets reached Committed, and neither
 preview had errors or warnings. This is an installation-metadata and repeat
-test, separate from the published XML's fresh-install and upgrade tests.
+test, separate from the preceding XML's fresh-install and upgrade tests.
 
 The setup script created one active English discovery source from an absent
 choice baseline. Repeated runs preserved its ID, fields and update timestamp.
@@ -181,6 +205,6 @@ after committing the batch, with **Unloadable** cleared. Automatic execution
 on XML commit is not claimed. The package excludes the native whole-field
 discovery-source choice capture, which would include unrelated choices.
 
-This revised XML has not been published or signed. Its checks do not replace
-the published package's digest-specific evidence. The current customer guide
-continues to describe the published XML.
+This revised XML is delivered as package revision 2 with an authenticated
+checksum manifest. These checks remain distinct from the preceding XML's
+fresh-install and upgrade evidence; signing does not change their scope.
