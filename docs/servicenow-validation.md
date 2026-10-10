@@ -5,6 +5,10 @@ steps are in [Install from XML](servicenow-update-set.md#customer-installation).
 
 ## Current acceptance status
 
+This table applies to the published 473-update XML identified below. The
+revised installation-metadata candidate has separate evidence at the end of
+this document.
+
 | Check | Result |
 | --- | --- |
 | Native combined XML import and commit over existing app/indexes | Passed; 441 app updates plus 32 index updates |
@@ -145,3 +149,38 @@ source-defined uniqueness flags, and the database tests above cover their data
 invariants. Retain XML checksums and native preview/commit records for each
 customer installation. Follow [installation and recovery](servicenow-update-set.md)
 for deployment and upgrade steps.
+
+## Revised installation metadata (2026-10-09)
+
+The native export with SHA-256
+`d85b21f883bf5f2b599eaf570547c4d02a682f59dc5a1eaff8b4a6fa4d1374e9`
+contains 474 updates: 441 application definitions, the unchanged 32 index
+payloads, and one Global Fix Script, **Nischoy Topo — Register Discovery
+Source**. The Global child is named **Nischoy Topo — Database Indexes**.
+Application scope, ID and version are unchanged. The short description now
+describes the managed discovery workflow. Twelve native licensing records
+retain every setting, including `license_model=none`; their record identities
+were remapped by table name during the earlier installation.
+
+Native import, batch preview and commit passed over the existing application.
+An exact-byte repeat also passed. Both sets reached Committed, and neither
+preview had errors or warnings. This is an installation-metadata and repeat
+test, separate from the published XML's fresh-install and upgrade tests.
+
+The setup script created one active English discovery source from an absent
+choice baseline. Repeated runs preserved its ID, fields and update timestamp.
+Native snapshots preserved the 20 pre-existing discovery-source choices,
+including IDs and displayed fields. Contract tests separately cover customer
+labels, translations, dependent/domain choices, inactive entries, duplicates
+and insert failure; those fixtures are simulated. A scoped, non-committing
+`identifyCIEnhanced` request accepted the registered source without errors or
+warnings. It required no added CMDB table-read privilege.
+
+For XML installation, the administrator must run this packaged Fix Script
+after committing the batch, with **Unloadable** cleared. Automatic execution
+on XML commit is not claimed. The package excludes the native whole-field
+discovery-source choice capture, which would include unrelated choices.
+
+This revised XML has not been published or signed. Its checks do not replace
+the published package's digest-specific evidence or establish namespace-account
+custody. The current customer guide continues to describe the published XML.
