@@ -14,6 +14,7 @@ import sys
 MAX_BYTES = 32 * 1024 * 1024
 FILES = {'INDEXES.md', 'INSTALLATION.md', 'START-HERE.txt', 'manifest.json',
          'nischoy-topo-0.4.6-combined.xml', 'nischoy-topo-0.4.6-beta.zip'}
+REVIEWED_RELEASES = {'servicenow-0.4.6-beta', 'servicenow-0.4.6-beta.2'}
 
 
 def read_regular(path, maximum):
@@ -29,12 +30,9 @@ def read_regular(path, maximum):
     return body
 
 
-def verify(expected, directory):
+def parse_manifest(expected):
     if len(expected) > 4096:
         raise ValueError('manifest exceeds limit')
-    # Compare exact manifest bytes before accepting any downloaded pathname.
-    if read_regular(directory / 'SHA256SUMS', 4096) != expected:
-        raise ValueError('downloaded manifest differs from reviewed manifest')
     entries = {}
     for line in expected.decode('ascii').splitlines():
         match = re.fullmatch(r'([0-9a-f]{64})  ([A-Za-z0-9_.-]+)', line)
@@ -43,6 +41,14 @@ def verify(expected, directory):
         entries[match[2]] = match[1]
     if set(entries) != FILES:
         raise ValueError('missing signing input')
+    return entries
+
+
+def verify(expected, directory):
+    # Compare exact manifest bytes before accepting any downloaded pathname.
+    if read_regular(directory / 'SHA256SUMS', 4096) != expected:
+        raise ValueError('downloaded manifest differs from reviewed manifest')
+    entries = parse_manifest(expected)
     if {entry.name for entry in directory.iterdir()} != FILES | {'SHA256SUMS'}:
         raise ValueError('unexpected signing input')
     total = 0
@@ -55,15 +61,30 @@ def verify(expected, directory):
 
 def main():
     try:
-        if len(sys.argv) != 2:
-            raise ValueError('expected one directory')
+        if len(sys.argv) not in (2, 3, 4):
+            raise ValueError('expected directory and optional reviewed release tag')
+        release_tag = sys.argv[2] if len(sys.argv) >= 3 else 'servicenow-0.4.6-beta'
+        if release_tag not in REVIEWED_RELEASES:
+            raise ValueError('release tag has no reviewed signing manifest')
+        manifest_only = len(sys.argv) == 4
+        if manifest_only and (sys.argv[3] != '--manifest-only' or release_tag != 'servicenow-0.4.6-beta.2'):
+            raise ValueError('unsupported signing-input mode')
         root = Path(__file__).resolve().parent.parent
-        expected = read_regular(root / 'release/servicenow-0.4.6-beta.SHA256SUMS', 4096)
-        verify(expected, Path(sys.argv[1]))
+        expected = read_regular(root / 'release' / (release_tag + '.SHA256SUMS'), 4096)
+        directory = Path(sys.argv[1])
+        if manifest_only:
+            if {entry.name for entry in directory.iterdir()} != {'SHA256SUMS'} or read_regular(directory / 'SHA256SUMS', 4096) != expected:
+                raise ValueError('staged manifest differs from reviewed manifest')
+            parse_manifest(expected)
+        else:
+            verify(expected, directory)
     except Exception:
         print('ServiceNow signing inputs rejected.', file=sys.stderr)
         return 1
-    print('Existing ServiceNow release bytes match the reviewed manifest.')
+    if manifest_only:
+        print('Reviewed checksum manifest validated; package payloads not inspected.')
+    else:
+        print('ServiceNow release bytes match the reviewed manifest.')
     return 0
 
 
