@@ -20,7 +20,8 @@ TopoObservationMapper.prototype = {
         }
         var taskOperation = String(task.u_operation);
         var expectedPlugin = taskOperation === 'local.v1' ? 'local-host' :
-            (taskOperation === 'ssh_linux.v1' ? 'ssh-linux' : '');
+            (taskOperation === 'ssh_linux.v1' ? 'ssh-linux' :
+                (taskOperation === 'winrm_windows.v1' ? 'winrm-windows' : ''));
         if (!this._only(envelope, ['schema_version', 'observation_id', 'site_id', 'collector_id', 'plugin', 'job_id', 'observed_at', 'assets', 'relationships', 'errors', 'labels']) ||
                 envelope.schema_version !== 'v1alpha1' || !this._identity(envelope.observation_id) ||
                 !this._identity(envelope.site_id) || !this._identity(envelope.collector_id) ||
@@ -38,9 +39,9 @@ TopoObservationMapper.prototype = {
                 (typeof envelope.errors !== 'undefined' && (!Array.isArray(envelope.errors) || envelope.errors.length > 100))) {
             throw new Error('observation item, relationship, or collection-error bounds were exceeded');
         }
-        if (envelope.assets.length === 0 && (taskOperation !== 'ssh_linux.v1' || !Array.isArray(envelope.errors) || envelope.errors.length === 0 ||
+        if (envelope.assets.length === 0 && (['ssh_linux.v1', 'winrm_windows.v1'].indexOf(taskOperation) < 0 || !Array.isArray(envelope.errors) || envelope.errors.length === 0 ||
                 (Array.isArray(envelope.relationships) && envelope.relationships.length > 0))) {
-            throw new Error('an empty observation is accepted only as an SSH no-data result with a collection error');
+            throw new Error('an empty observation is accepted only as a remote no-data result with a collection error');
         }
         this._validateStringMap(envelope.labels, 32, 128, 1024, true);
 

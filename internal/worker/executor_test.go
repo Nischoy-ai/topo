@@ -18,7 +18,7 @@ type testCredentialSource struct {
 	calls      int
 }
 
-func (s *testCredentialSource) SSH(context.Context) (SSHCredential, error) {
+func (s *testCredentialSource) Password(context.Context) (SSHCredential, error) {
 	s.calls++
 	return s.credential, s.err
 }

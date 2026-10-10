@@ -22,6 +22,8 @@ import (
 const maxEnumerationPages = 16
 
 type Config struct {
+	// HostInterfacesOnly selects the fixed managed-pilot inventory; no WinRS shell is created.
+	HostInterfacesOnly bool
 	// Basic authentication is restricted to explicit loopback-only LabMode.
 	// Production NTLM uses HTTPS and never falls back to Basic authentication.
 	Username, Password               string
@@ -36,7 +38,7 @@ type Config struct {
 type Plugin struct{ Config Config }
 
 func (p Plugin) DescribeCapabilities(context.Context) discovery.Capability {
-	return discovery.Capability{
+	capability := discovery.Capability{
 		Name:       "winrm-windows",
 		Version:    "0.1.0",
 		AssetTypes: []model.AssetType{model.AssetHost, model.AssetNetworkInterface},
@@ -46,6 +48,13 @@ func (p Plugin) DescribeCapabilities(context.Context) discovery.Capability {
 			"optional WinRS access to run the compiled-in PowerShell uninstall-registry inventory command with read access to both machine-wide uninstall registry views",
 		},
 	}
+	if p.Config.HostInterfacesOnly {
+		capability.RequiredPermissions = []string{
+			"WS-Management read access to Win32_ComputerSystem, Win32_ComputerSystemProduct, Win32_BIOS, and Win32_OperatingSystem",
+			"WS-Management read access to IP-enabled Win32_NetworkAdapterConfiguration",
+		}
+	}
+	return capability
 }
 
 func (p Plugin) ValidateConfiguration(_ context.Context, request discovery.Request) error {
@@ -110,6 +119,7 @@ func (p Plugin) CheckConnectivity(ctx context.Context, request discovery.Request
 		return err
 	}
 	p = p.withHTTPClient()
+	defer p.Config.HTTPClient.CloseIdleConnections()
 	_, err := p.enumerate(ctx, request.Targets[0], auditedOperations[0])
 	return err
 }
@@ -119,6 +129,7 @@ func (p Plugin) Discover(ctx context.Context, request discovery.Request) (model.
 		return model.ObservationEnvelope{}, err
 	}
 	p = p.withHTTPClient()
+	defer p.Config.HTTPClient.CloseIdleConnections()
 	now := time.Now().UTC()
 	observation := model.ObservationEnvelope{
 		SchemaVersion: model.SchemaVersion,
@@ -174,6 +185,9 @@ func (p Plugin) discoverTarget(ctx context.Context, target string) (*Inventory, 
 	results := map[string][]object{}
 	var collectionErrors []model.CollectionError
 	for _, operation := range auditedOperations {
+		if p.Config.HostInterfacesOnly && !operation.Required && operation.Name != OperationNetwork {
+			continue
+		}
 		objects, err := p.enumerate(ctx, target, operation)
 		if err != nil {
 			if operation.Required {
@@ -219,6 +233,9 @@ func (p Plugin) discoverTarget(ctx context.Context, target string) (*Inventory, 
 		} else {
 			inventory.Patches = patches
 		}
+	}
+	if p.Config.HostInterfacesOnly {
+		return &inventory, collectionErrors
 	}
 	softwareOutput, err := p.runCommand(ctx, target, AuditedSoftwareCommand())
 	if err != nil {

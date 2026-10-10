@@ -1,6 +1,11 @@
 # ServiceNow-managed stateless Topo worker
 
-## Supported workflow
+The unpublished 0.4.7 source candidate adds managed Windows computer/interface
+inventory and bounded IPv4 subnet selection. Its implementation and direct
+real-host evidence are separate from the published workflow below; see
+[candidate scope and acceptance](mixed-inventory-pilot.md).
+
+## Supported published workflow
 
 The stateless worker supports two reviewed operations: `local.v1` discovers
 its own machine and `ssh_linux.v1` discovers explicitly approved IPv4 Linux

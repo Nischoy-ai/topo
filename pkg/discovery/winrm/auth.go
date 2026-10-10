@@ -187,9 +187,25 @@ func ntlmBaseTransport(roundTripper http.RoundTripper) http.RoundTripper {
 	}
 	clone := transport.Clone()
 	clone.ForceAttemptHTTP2 = false
+	clone.Protocols = new(http.Protocols)
+	clone.Protocols.SetHTTP1(true)
+	if clone.TLSClientConfig == nil {
+		clone.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	} else {
+		clone.TLSClientConfig = clone.TLSClientConfig.Clone()
+	}
+	// An initialized source transport can already advertise h2 through ALPN.
+	// Disabling the handler alone would negotiate HTTP/2 and then parse it as HTTP/1.
+	clone.TLSClientConfig.NextProtos = []string{"http/1.1"}
 	clone.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
 	if clone.MaxResponseHeaderBytes == 0 || clone.MaxResponseHeaderBytes > maxAuthResponseHeader {
 		clone.MaxResponseHeaderBytes = maxAuthResponseHeader
 	}
 	return clone
+}
+
+func (transport ntlmRoundTripper) CloseIdleConnections() {
+	if closer, ok := transport.base.(interface{ CloseIdleConnections() }); ok {
+		closer.CloseIdleConnections()
+	}
 }

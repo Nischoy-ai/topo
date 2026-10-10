@@ -211,7 +211,18 @@ func (s *Server) RunNowSSH(workerPool, target, credentialBindingID string) strin
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.createSSHRunLocked("manual", workerPool, target, credentialBindingID)
+	return s.createRemoteRunLocked("manual", workerPool, target, credentialBindingID, worker.OperationSSHLinuxV1)
+}
+
+// RunNowWinRM seeds one explicit target for the Windows worker contract fixture.
+func (s *Server) RunNowWinRM(workerPool, target, credentialBindingID string) string {
+	prefix, err := netip.ParsePrefix(target)
+	if err != nil || !prefix.Addr().Is4() || prefix.Bits() != 32 || prefix != prefix.Masked() || credentialBindingID == "" {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.createRemoteRunLocked("manual", workerPool, target, credentialBindingID, worker.OperationWinRMWindowsV1)
 }
 
 // RunNowPartitions is a simulator-only scale fixture. It never adds a
@@ -271,8 +282,8 @@ func (s *Server) EnqueueDue() []string {
 		if !schedule.Active || schedule.NextRunAt.After(now) {
 			continue
 		}
-		if schedule.Operation == worker.OperationSSHLinuxV1 {
-			ids = append(ids, s.createSSHRunLocked("scheduled", schedule.WorkerPool, schedule.Target, schedule.CredentialBindingID))
+		if schedule.Operation == worker.OperationSSHLinuxV1 || schedule.Operation == worker.OperationWinRMWindowsV1 {
+			ids = append(ids, s.createRemoteRunLocked("scheduled", schedule.WorkerPool, schedule.Target, schedule.CredentialBindingID, schedule.Operation))
 		} else {
 			ids = append(ids, s.createRunLocked("scheduled", schedule.WorkerPool, 1))
 		}
@@ -377,7 +388,7 @@ func (s *Server) Snapshot() Snapshot {
 	return snapshot
 }
 
-func (s *Server) createSSHRunLocked(trigger, workerPool, target, credentialBindingID string) string {
+func (s *Server) createRemoteRunLocked(trigger, workerPool, target, credentialBindingID, operation string) string {
 	s.nextID++
 	runID := fmt.Sprintf("run-%08d", s.nextID)
 	now := s.now().UTC()
@@ -386,8 +397,8 @@ func (s *Server) createSSHRunLocked(trigger, workerPool, target, credentialBindi
 	key := sha256.Sum256([]byte("simulator-ssh-scope\n1\n" + target))
 	s.runs[runID] = &RunRecord{ID: runID, Trigger: trigger, State: "ready", StartedAt: now, TaskIDs: []string{taskID}}
 	s.tasks[taskID] = &TaskRecord{
-		ID: taskID, RunID: runID, WorkerPool: workerPool, Operation: worker.OperationSSHLinuxV1,
-		ProfileID: "ssh-linux-v1", ProfileRevision: 1, CredentialBindingID: credentialBindingID,
+		ID: taskID, RunID: runID, WorkerPool: workerPool, Operation: operation,
+		ProfileID: operation, ProfileRevision: 1, CredentialBindingID: credentialBindingID,
 		State: "ready", Deadline: now.Add(10 * time.Minute),
 		TargetPartition: &worker.TargetPartition{Key: hex.EncodeToString(key[:]), Ordinal: 0, Count: 1, CIDRs: []string{target}},
 	}
@@ -620,7 +631,7 @@ func (s *Server) credentialForTask(w http.ResponseWriter, r *http.Request, taskI
 		http.Error(w, `{"error":"invalid or expired lease"}`, http.StatusConflict)
 		return
 	}
-	if task.Operation != worker.OperationSSHLinuxV1 || task.CredentialBindingID == "" || s.credential.Username == "" || s.credential.Password == "" {
+	if (task.Operation != worker.OperationSSHLinuxV1 && task.Operation != worker.OperationWinRMWindowsV1) || task.CredentialBindingID == "" || s.credential.Username == "" || s.credential.Password == "" {
 		s.credentialLog = append(s.credentialLog, CredentialAccess{TaskID: taskID, AttemptID: request.AttemptID, WorkerID: request.WorkerID, Outcome: "denied", Reason: "binding_or_credential_invalid"})
 		http.Error(w, `{"error":"credential unavailable"}`, http.StatusConflict)
 		return
@@ -737,10 +748,14 @@ func (s *Server) complete(w http.ResponseWriter, r *http.Request, taskID string)
 		return
 	}
 	result := s.results[resultKey(taskID, request.AttemptID, 0)]
-	if task.Operation == worker.OperationSSHLinuxV1 {
+	if task.Operation == worker.OperationSSHLinuxV1 || task.Operation == worker.OperationWinRMWindowsV1 {
+		expectedPlugin := "ssh-linux"
+		if task.Operation == worker.OperationWinRMWindowsV1 {
+			expectedPlugin = "winrm-windows"
+		}
 		var noData model.ObservationEnvelope
 		if err := json.Unmarshal(result.Payload, &noData); err == nil && noData.SchemaVersion == model.SchemaVersion &&
-			noData.Plugin == "ssh-linux" && noData.JobID == task.ID && len(noData.Assets) == 0 &&
+			noData.Plugin == expectedPlugin && noData.JobID == task.ID && len(noData.Assets) == 0 &&
 			len(noData.Relationships) == 0 && len(noData.Errors) > 0 {
 			s.deliveries = append(s.deliveries, IREDelivery{RunID: run.ID, TaskID: task.ID, AttemptID: task.AttemptID, NoData: true, CompletedAt: s.now().UTC()})
 			task.State = "complete"
@@ -912,18 +927,23 @@ func randomHex() string {
 }
 
 func validCapabilities(values []string) bool {
-	if len(values) < 1 || len(values) > 2 {
+	if len(values) < 1 || len(values) > 3 {
 		return false
 	}
 	seen := map[string]bool{}
 	for _, value := range values {
-		if (value != worker.OperationLocalV1 && value != worker.OperationSSHLinuxV1) || seen[value] {
+		if (value != worker.OperationLocalV1 && value != worker.OperationSSHLinuxV1 && value != worker.OperationWinRMWindowsV1) || seen[value] {
 			return false
 		}
 		seen[value] = true
 	}
-	return (!seen[worker.OperationLocalV1] || values[0] == worker.OperationLocalV1) &&
-		(!seen[worker.OperationSSHLinuxV1] || values[len(values)-1] == worker.OperationSSHLinuxV1)
+	var canonical []string
+	for _, operation := range []string{worker.OperationLocalV1, worker.OperationSSHLinuxV1, worker.OperationWinRMWindowsV1} {
+		if seen[operation] {
+			canonical = append(canonical, operation)
+		}
+	}
+	return equalStrings(values, canonical)
 }
 
 func equalStrings(left, right []string) bool {

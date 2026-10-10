@@ -5,6 +5,20 @@ cannot reach directly. A stateless Topo worker connects outbound, discovers
 only explicitly approved targets, and returns normalized observations for the
 ServiceNow application to reconcile through IRE.
 
+## Beta scope
+
+This beta is a focused ServiceNow-managed Linux discovery pilot. It supports
+explicitly listed IPv4 Linux hosts over SSH port 22, with Password2 credentials.
+It does not scan subnets or discover Windows hosts through the managed workflow.
+Workers are distributed for Linux and macOS; macOS worker availability does not
+expand the managed target scope.
+
+CMDB publication supports only `cmdb_ci_computer`, `cmdb_ci_network_adapter`,
+and `host_has_interface` mapped to `Owns::Owned by`. This beta does not provide
+the broad estate coverage needed to replace Device42, particularly for Windows
+estates. Other discovery components in the source tree have separate validation
+limits; see the [roadmap](ROADMAP.md).
+
 ## Start ServiceNow discovery in three steps
 
 ### 1. Install the Nischoy Topo app from the XML package
@@ -77,6 +91,6 @@ and cleanup procedure is in the [ServiceNow setup guide](docs/pilot-quickstart.m
 | Check the published package | [XML validation](docs/servicenow-validation.md) · [Release verification](docs/releases.md) |
 | Review credential controls and report a vulnerability | [Deployment security](docs/deployment-security.md) · [Security policy](SECURITY.md) · [Security review record](docs/security-review.md) |
 | Explore components or contribute | [Documentation index](docs/README.md) · [Developer quickstart](docs/development.md) · [Contributing](CONTRIBUTING.md) |
-| See implemented and planned capabilities | [Product roadmap](ROADMAP.md) |
+| See beta scope, validation limits and plans | [Product roadmap](ROADMAP.md) |
 
 Nischoy Topo is licensed under the [Apache License 2.0](LICENSE).

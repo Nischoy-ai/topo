@@ -118,15 +118,15 @@ export const x_664635_topo_ssh_credential = Table({
     extensible: false,
     textIndex: false,
     name: 'x_664635_topo_ssh_credential',
-    label: 'Topo SSH Credential',
+    label: 'Topo Remote Credential',
     display: 'u_name',
     actions: ['read', 'create', 'update', 'delete'],
     schema: {
         u_credential_id: StringColumn({ label: 'Credential ID', maxLength: 128, mandatory: true }),
         u_name: StringColumn({ label: 'Name', maxLength: 255, mandatory: true }),
-        u_username: StringColumn({ label: 'SSH username', maxLength: 64, mandatory: true }),
+        u_username: StringColumn({ label: 'Remote username', maxLength: 256, mandatory: true }),
         u_password: Password2Column({
-            label: 'SSH password',
+            label: 'Remote password',
             mandatory: true,
             audit: false,
             attributes: { is_legacy_password2: true, no_data_replicate: true },
@@ -160,12 +160,12 @@ export const x_664635_topo_credential_binding = Table({
             mandatory: true,
             default: 'ssh_password',
             dropdown: 'dropdown_without_none',
-            choices: { ssh_password: { label: 'SSH password' } },
+            choices: { ssh_password: { label: 'SSH password' }, winrm_ntlm_password: { label: 'Windows NTLM password' } },
         }),
         u_profile_id: StringColumn({ label: 'Allowed profile ID', maxLength: 128, mandatory: true }),
         u_profile_revision: IntegerColumn({ label: 'Allowed profile revision', mandatory: true }),
         u_target_scope: ReferenceColumn({ label: 'Allowed target scope', referenceTable: 'x_664635_topo_target_scope', mandatory: true }),
-        u_credential: ReferenceColumn({ label: 'SSH credential', referenceTable: 'x_664635_topo_ssh_credential', mandatory: true }),
+        u_credential: ReferenceColumn({ label: 'Remote credential', referenceTable: 'x_664635_topo_ssh_credential', mandatory: true }),
         u_active: BooleanColumn({ label: 'Active', mandatory: true, default: true }),
     },
     index: [
@@ -237,6 +237,7 @@ export const x_664635_topo_profile = Table({
             choices: {
                 'local.v1': { label: 'Local discovery v1' },
                 'ssh_linux.v1': { label: 'Linux SSH discovery v1' },
+                'winrm_windows.v1': { label: 'Windows computer and interfaces v1' },
             },
         }),
         u_worker_pool: ReferenceColumn({
@@ -377,6 +378,7 @@ export const x_664635_topo_task = Table({
             choices: {
                 'local.v1': { label: 'Local discovery v1' },
                 'ssh_linux.v1': { label: 'Linux SSH discovery v1' },
+                'winrm_windows.v1': { label: 'Windows computer and interfaces v1' },
             },
         }),
         u_profile_id: StringColumn({ label: 'Profile ID', maxLength: 128, mandatory: true }),

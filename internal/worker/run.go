@@ -40,6 +40,7 @@ type credentialedTaskExecutor interface {
 }
 
 type RunConfig struct {
+	remoteStarts *remoteStartLimiter
 	Policy       Policy
 	Version      string
 	PollInterval time.Duration
@@ -84,7 +85,7 @@ type attemptCredentialSource struct {
 	task    Task
 }
 
-func (s attemptCredentialSource) SSH(ctx context.Context) (SSHCredential, error) {
+func (s attemptCredentialSource) Password(ctx context.Context) (SSHCredential, error) {
 	return s.control.Credential(ctx, s.task.TaskID, CredentialRequest{
 		SchemaVersion: ContractVersion,
 		WorkerID:      s.reg.workerID,
@@ -129,6 +130,7 @@ func Run(ctx context.Context, config RunConfig) error {
 	if err != nil {
 		return err
 	}
+	config.remoteStarts = &remoteStartLimiter{interval: config.Policy.remoteStartInterval()}
 	state := &activeTasks{cancel: make(map[string]context.CancelFunc)}
 	runCycle(ctx, config, reg, logger, state)
 	ticker := time.NewTicker(config.PollInterval)
@@ -307,10 +309,17 @@ func executeTask(rootCtx, taskCtx context.Context, taskCancel context.CancelFunc
 
 	var observation model.ObservationEnvelope
 	var err error
-	if executor, ok := config.Executor.(credentialedTaskExecutor); ok {
-		observation, err = executor.ExecuteWithCredentials(taskCtx, task, attemptCredentialSource{control: config.Control, reg: reg, task: task})
-	} else {
-		observation, err = config.Executor.Execute(taskCtx, task)
+	if task.Operation != OperationLocalV1 && config.remoteStarts != nil {
+		waitCtx, cancel := context.WithDeadline(taskCtx, task.Deadline)
+		err = config.remoteStarts.wait(waitCtx)
+		cancel()
+	}
+	if err == nil {
+		if executor, ok := config.Executor.(credentialedTaskExecutor); ok {
+			observation, err = executor.ExecuteWithCredentials(taskCtx, task, attemptCredentialSource{control: config.Control, reg: reg, task: task})
+		} else {
+			observation, err = config.Executor.Execute(taskCtx, task)
+		}
 	}
 	if err != nil {
 		if rootCtx.Err() != nil {

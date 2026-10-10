@@ -58,7 +58,7 @@ assert.match(firstRecord.u_plan_digest, /^[a-f0-9]{64}$/)
 const ipv6 = record()
 ipv6.u_cidrs = '2001:db8::/64'
 assert.throws(() => planner.compileTargetScope(ipv6), /IPv4 CIDRs only/)
-assert.throws(() => planner._partitionIPv4Range({ start: 0, end: 255 }, 32, 2), /100000 deterministic partitions/)
+assert.throws(() => planner._partitionIPv4Range({ start: 0, end: 255 }, 32, 2), /partition budget/)
 
 const excludedAll = record()
 excludedAll.u_cidrs = '192.0.2.0/24'
@@ -66,3 +66,17 @@ excludedAll.u_exclusions = '192.0.2.0/24'
 assert.throws(() => planner.compileTargetScope(excludedAll), /remove every selected address/)
 
 console.log('target-scope planner tests passed')
+
+const sweep = record()
+sweep.u_cidrs = '192.0.2.0/29\n192.0.2.0/30'
+sweep.u_exclusions = '192.0.2.0/32\n192.0.2.4/31\n192.0.2.7/32'
+sweep.u_ipv4_partition_prefix = 32
+assert.deepEqual(Array.from(planner.compileTargetScope(sweep).cidrs),
+    ['192.0.2.1/32', '192.0.2.2/32', '192.0.2.3/32', '192.0.2.6/32'])
+const exactLimit = record()
+exactLimit.u_cidrs = '192.0.0.0/22'; exactLimit.u_exclusions = ''; exactLimit.u_ipv4_partition_prefix = 32
+assert.equal(planner.compileTargetScope(exactLimit).cidrs.length, 1024)
+const tooLarge = record()
+tooLarge.u_cidrs = '192.0.0.0/21'; tooLarge.u_exclusions = ''; tooLarge.u_ipv4_partition_prefix = 32
+assert.throws(() => planner.compileTargetScope(tooLarge), /partition|bound|budget|limit/)
+console.log('Bounded remote subnet expansion tests passed')
