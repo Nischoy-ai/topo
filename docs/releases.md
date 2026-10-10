@@ -5,10 +5,33 @@ The signed [worker `v0.4.6-beta.1`](https://github.com/Nischoy-ai/topo/releases/
 is published with its binary archives, signed checksum manifest and provenance.
 It is also available through the Beta Homebrew/APT/RPM channels.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
-artifact with its own checksum and [validation record](servicenow-validation.md).
-The signature and provenance instructions below apply to tagged worker releases.
+artifact with its own signed checksum manifest and [validation record](servicenow-validation.md).
+Worker provenance is separate from XML-package authentication.
 
-Topo releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
+## Verify the ServiceNow package
+
+Download the ZIP, `SHA256SUMS` and `SHA256SUMS.sigstore.json` from the
+[ServiceNow release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2).
+The exact signing source commit is also recorded in the release notes:
+
+```sh
+cosign verify-blob \
+  --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity https://github.com/Nischoy-ai/topo/.github/workflows/sign-servicenow-xml.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-github-workflow-sha 773b9d510760db4dcde56a0b8189eb8882ccf18d \
+  SHA256SUMS
+```
+
+Then unzip the package in the same directory, retain the ZIP, and run
+`sha256sum -c SHA256SUMS` on Linux or `shasum -a 256 -c SHA256SUMS` on macOS.
+The signature authenticates the checksum manifest and its exact package bytes;
+it does not attest how the native XML was exported. The worker signature and
+provenance instructions below cover different files.
+
+## Worker release build
+
+Topo worker releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
 optional prerelease suffix) whose commit is already reachable from `main`.
 `.github/workflows/release.yml` uses the exact Go 1.26.9 toolchain and
 commit-pinned actions.

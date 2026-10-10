@@ -203,8 +203,12 @@ claim is made by the laptop validation above.
 Before enabling destination writes, confirm identification rules for the
 supported classes and register the exact source value **Nischoy Topo** on
 `cmdb_ci.discovery_source`. This applies to direct IRE publishing and to the
-current managed-app XML package. The managed package currently installs the
-app and indexes; it does not register this Global choice.
+managed-app XML package. For the combined package, run its **Nischoy Topo —
+Register Discovery Source** Fix Script after commit, with **Unloadable**
+cleared, as described in [XML installation](servicenow-update-set.md). It
+creates an absent active English choice and preserves an existing active entry.
+
+Direct publishers without that setup script use the manual procedure below.
 
 As a ServiceNow administrator in **Global**, open **System Definition →
 Choice Lists**. Filter **Table = cmdb_ci**, **Element = discovery_source**,
