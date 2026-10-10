@@ -182,5 +182,5 @@ on XML commit is not claimed. The package excludes the native whole-field
 discovery-source choice capture, which would include unrelated choices.
 
 This revised XML has not been published or signed. Its checks do not replace
-the published package's digest-specific evidence or establish namespace-account
-custody. The current customer guide continues to describe the published XML.
+the published package's digest-specific evidence. The current customer guide
+continues to describe the published XML.
