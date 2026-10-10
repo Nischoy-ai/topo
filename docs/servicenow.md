@@ -198,22 +198,37 @@ implemented and validated, use explicit SSH, WinRM, SNMPv3, VMware, cloud, or
 Kubernetes credentials for remote discovery. No credential-free LAN-device
 claim is made by the laptop validation above.
 
-Before enabling destination writes: confirm identification rules exist for
-every class Topo emits, and — a real requirement discovered during
-validation, not a hypothetical — register the discovery source name
-(`"Nischoy Topo"` by default, matching `Config.DiscoverySource`) as a
-valid choice value for `cmdb_ci`'s `discovery_source` field. From an
-account with rights to write `sys_choice`:
+## Discovery-source registration
 
-```sh
-curl -s -u "$SN_USER:$SN_PASS" -H 'Content-Type: application/json' \
-  -X POST "$SN_INSTANCE/api/now/table/sys_choice" \
-  -d '{"name":"cmdb_ci","element":"discovery_source","label":"Nischoy Topo","value":"Nischoy Topo","language":"en","inactive":"false"}'
-```
+Before enabling destination writes, confirm identification rules for the
+supported classes and register the exact source value **Nischoy Topo** on
+`cmdb_ci.discovery_source`. This applies to direct IRE publishing and to the
+current managed-app XML package. The managed package currently installs the
+app and indexes; it does not register this Global choice.
 
-Without this, every write is rejected with `INVALID_INPUT_DATA` — it is
-not optional, and there is no fallback default that lets an unregistered
-source through.
+As a ServiceNow administrator in **Global**, open **System Definition →
+Choice Lists**. Filter **Table = cmdb_ci**, **Element = discovery_source**,
+and **Value = Nischoy Topo**. If an active matching choice exists, retain it;
+do not insert a duplicate. If none exists, create a choice with:
+
+| Field | Value |
+| --- | --- |
+| Table | `cmdb_ci` |
+| Element | `discovery_source` |
+| Label | `Nischoy Topo` |
+| Value | `Nischoy Topo` |
+| Language | `en` |
+| Inactive | false |
+
+If a matching choice is inactive or customer-customized, review it through
+normal change control before enabling or replacing it. Keep other sources and
+translations intact. Capture the change in a customer-owned Global update set.
+ServiceNow documents [choice-list capture by update sets](https://www.servicenow.com/docs/r/application-development/system-update-sets/customizations-tracked-update-sets.html).
+
+Topo uses the registered value as both the IRE discovery source and stable
+source name. A missing choice causes IRE to reject the request with
+`INVALID_INPUT_DATA`; verify the source before starting scans. If a direct
+publisher uses a different configured source, register that exact value instead.
 
 ## Validation records
 

@@ -64,6 +64,30 @@ Slice B adds deterministic evidence for:
   leaving bounded tombstones with zero raw payload bytes. This measures the
   algorithm and test process, not ServiceNow attachment throughput or an SLA.
 
+### Scale result accounting — 2026-10-10
+
+A CI run retained 100,000 items and 50,000 relationships across 100 tasks,
+but its assertion failed on 101 raw result rows. Results are keyed by task,
+attempt and chunk; an upload can remain unprocessed if its lease expires
+before completion and the task is recovered by another attempt. The earlier
+one-raw-row-per-task assertion did not account for that supported recovery.
+The original log does not identify which attempt produced the extra row.
+
+A controlled-clock regression uploads 1,000 items, expires the lease before
+completion, reclaims the same task, rejects stale upload/completion requests,
+and completes the recovered attempt. It retains two raw rows but exactly one
+processed result and one applied delivery, with 1,000 items and 500
+relationships. Repeating the recovered upload is idempotent.
+
+The 1K/10K/100K gates now require exactly one processed current-attempt result
+and one successful current-attempt delivery per completed task. Superseded
+rows must belong to an actual earlier attempt and remain unprocessed. Exact
+inventory counts and repeat `NO_CHANGE` checks remain required. Negative
+fixtures reject missing/duplicate results, unknown attempts, processed
+superseded results, and duplicate/superseded deliveries. Workers are stopped
+on assertion failures as well as success. This remains simulator evidence;
+it does not measure ServiceNow database or IRE throughput.
+
 ### Slice C1 simulator and source evidence — 2026-08-30
 
 This evidence is local and deterministic; it is not evidence about ServiceNow

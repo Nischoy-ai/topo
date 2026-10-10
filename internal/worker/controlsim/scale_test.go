@@ -243,22 +243,30 @@ func TestScaleGatesRepeatWithoutDuplicateIdentity(t *testing.T) {
 			for index := 0; index < 4; index++ {
 				workers = append(workers, startWorkerWith(t, server, worker.Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowLocal: true, MaxConcurrency: 32}, executor, fmt.Sprintf("scale-%d-%d", assetCount, index)))
 			}
+			defer func() { stopWorkers(t, workers) }()
 			waitFor(t, 60*time.Second, func() bool { return runState(sim.Snapshot(), firstRun) == "complete" })
 			first := sim.Snapshot()
 			wantRelations := assetCount / 2
-			if first.Items != assetCount || first.Relations != wantRelations || len(first.Tasks) != partitions || len(first.Results) != partitions {
+			if first.Items != assetCount || first.Relations != wantRelations || len(first.Tasks) != partitions {
 				t.Fatalf("first scale snapshot: items=%d relations=%d tasks=%d results=%d", first.Items, first.Relations, len(first.Tasks), len(first.Results))
+			}
+			if err := validateCompletedScaleResults(first); err != nil {
+				t.Fatalf("first scale results: %v", err)
 			}
 
 			secondRun := sim.RunNowPartitions("pool-a", partitions)
 			waitFor(t, 60*time.Second, func() bool { return runState(sim.Snapshot(), secondRun) == "complete" })
 			stopWorkers(t, workers)
+			workers = nil
 			second := sim.Snapshot()
-			if second.Items != assetCount || second.Relations != wantRelations || len(second.Tasks) != partitions*2 || len(second.Results) != partitions*2 {
+			if second.Items != assetCount || second.Relations != wantRelations || len(second.Tasks) != partitions*2 {
 				t.Fatalf("repeat scale snapshot: items=%d relations=%d tasks=%d results=%d", second.Items, second.Relations, len(second.Tasks), len(second.Results))
 			}
+			if err := validateCompletedScaleResults(second); err != nil {
+				t.Fatalf("repeat scale results: %v", err)
+			}
 			for _, run := range second.Runs {
-				if run.Assets != assetCount || run.State != "complete" {
+				if run.Assets != assetCount || run.Relationships != wantRelations || run.State != "complete" {
 					t.Fatalf("scale run = %#v", run)
 				}
 			}
@@ -277,7 +285,164 @@ func TestScaleGatesRepeatWithoutDuplicateIdentity(t *testing.T) {
 					}
 				}
 			}
-			t.Logf("simulator processed and repeated %d stable assets across %d partitions in %s", assetCount, partitions, time.Since(started).Round(time.Millisecond))
+			t.Logf("simulator processed and repeated %d stable assets across %d partitions in %s; retained %d superseded result rows", assetCount, partitions, time.Since(started).Round(time.Millisecond), len(second.Results)-len(second.Tasks))
+		})
+	}
+}
+
+// Raw results belong to attempts, not tasks. A lease can expire between upload
+// and completion, leaving a superseded upload. Exactly one current result and
+// one successful delivery per task must be processed; old uploads must not be.
+func validateCompletedScaleResults(snapshot controlsim.Snapshot) error {
+	tasks := make(map[string]controlsim.TaskRecord, len(snapshot.Tasks))
+	attempts := make(map[string]string)
+	for _, task := range snapshot.Tasks {
+		if _, duplicate := tasks[task.ID]; duplicate || task.ID == "" || task.State != "complete" || task.Attempt < 1 {
+			return fmt.Errorf("invalid or duplicate completed task %s", task.ID)
+		}
+		tasks[task.ID] = task
+		for attempt := 1; attempt <= task.Attempt; attempt++ {
+			attempts[fmt.Sprintf("attempt-%s-%08d", task.ID, attempt)] = task.ID
+		}
+		if task.AttemptID != fmt.Sprintf("attempt-%s-%08d", task.ID, task.Attempt) {
+			return fmt.Errorf("task %s has an unknown current attempt", task.ID)
+		}
+	}
+	seenResults := make(map[string]bool)
+	processed := make(map[string]bool)
+	for _, result := range snapshot.Results {
+		task, exists := tasks[result.TaskID]
+		if !exists || attempts[result.AttemptID] != result.TaskID || result.ChunkNumber != 0 || result.ChunkCount != 1 || seenResults[result.AttemptID] {
+			return fmt.Errorf("unknown, invalid or duplicate result for task %s attempt %s", result.TaskID, result.AttemptID)
+		}
+		seenResults[result.AttemptID] = true
+		if result.AttemptID == task.AttemptID {
+			if result.Terminal != "complete" || result.ProcessedAt.IsZero() {
+				return fmt.Errorf("current result for task %s was not processed successfully", task.ID)
+			}
+			processed[task.ID] = true
+		} else if result.Terminal != "" || !result.ProcessedAt.IsZero() {
+			return fmt.Errorf("superseded result for task %s was processed", task.ID)
+		}
+	}
+	if len(processed) != len(tasks) {
+		return fmt.Errorf("processed current results=%d, want %d", len(processed), len(tasks))
+	}
+	delivered := make(map[string]bool)
+	for _, delivery := range snapshot.Deliveries {
+		task, exists := tasks[delivery.TaskID]
+		if !exists || delivery.AttemptID != task.AttemptID || delivery.RunID != task.RunID || !delivery.Preflighted || !delivery.Applied || delivery.NoData || delivered[task.ID] || len(delivery.ItemOperations) != 1000 || len(delivery.RelationOps) != 500 {
+			return fmt.Errorf("unknown, invalid or duplicate delivery for task %s", delivery.TaskID)
+		}
+		delivered[task.ID] = true
+	}
+	if len(delivered) != len(tasks) {
+		return fmt.Errorf("successful deliveries=%d, want %d", len(delivered), len(tasks))
+	}
+	return nil
+}
+
+func TestUploadedResultLeaseExpiryPublishesOnlyRecoveredAttempt(t *testing.T) {
+	clock := &testClock{now: time.Now().UTC()}
+	sim := controlsim.New(controlsim.Config{Token: testToken, LeaseDuration: time.Minute, Now: clock.Now})
+	server := httptest.NewTLSServer(sim.Handler())
+	defer server.Close()
+	client, err := worker.NewClient(server.URL, testToken, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const bootID = "uploaded-expired"
+	workerID := registerWorker(t, client, bootID)
+	sim.RunNowPartitions("pool-a", 1)
+	first, err := client.Claim(t.Context(), claimRequest(workerID, bootID))
+	if err != nil || first.Task == nil {
+		t.Fatalf("first claim = %#v, %v", first, err)
+	}
+	observation, err := (&syntheticExecutor{AssetsPerPartition: 1000}).Execute(t.Context(), *first.Task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(observation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(payload)
+	chunk := worker.ResultChunkRequest{SchemaVersion: worker.ContractVersion, WorkerID: workerID, BootID: bootID, AttemptID: first.Task.AttemptID, LeaseToken: first.Task.LeaseToken, ChunkNumber: 0, ChunkCount: 1, Checksum: hex.EncodeToString(sum[:]), ObservationJSON: string(payload)}
+	if ack, err := client.SubmitResult(t.Context(), first.Task.TaskID, chunk); err != nil || !ack.Accepted || ack.Duplicate {
+		t.Fatalf("first upload = %#v, %v", ack, err)
+	}
+	clock.Advance(2 * time.Minute)
+	recovered, err := client.Claim(t.Context(), claimRequest(workerID, bootID))
+	if err != nil || recovered.Task == nil || recovered.Task.TaskID != first.Task.TaskID || recovered.Task.AttemptID == first.Task.AttemptID {
+		t.Fatalf("recovered claim = %#v, %v", recovered, err)
+	}
+	completion := worker.CompleteRequest{SchemaVersion: worker.ContractVersion, WorkerID: workerID, BootID: bootID, AttemptID: first.Task.AttemptID, LeaseToken: first.Task.LeaseToken, Success: true, ChunkCount: 1}
+	if _, err := client.Complete(t.Context(), first.Task.TaskID, completion); err == nil {
+		t.Fatal("superseded attempt completed")
+	}
+	if _, err := client.SubmitResult(t.Context(), first.Task.TaskID, chunk); err == nil {
+		t.Fatal("superseded attempt uploaded again")
+	}
+	chunk.AttemptID, chunk.LeaseToken = recovered.Task.AttemptID, recovered.Task.LeaseToken
+	if ack, err := client.SubmitResult(t.Context(), recovered.Task.TaskID, chunk); err != nil || !ack.Accepted || ack.Duplicate {
+		t.Fatalf("recovered upload = %#v, %v", ack, err)
+	}
+	if ack, err := client.SubmitResult(t.Context(), recovered.Task.TaskID, chunk); err != nil || !ack.Accepted || !ack.Duplicate {
+		t.Fatalf("repeat upload = %#v, %v", ack, err)
+	}
+	completion.AttemptID, completion.LeaseToken = recovered.Task.AttemptID, recovered.Task.LeaseToken
+	if _, err := client.Complete(t.Context(), recovered.Task.TaskID, completion); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := sim.Snapshot()
+	if snapshot.Items != 1000 || snapshot.Relations != 500 || len(snapshot.Tasks) != 1 || snapshot.Tasks[0].Attempt != 2 || len(snapshot.Results) != 2 || len(snapshot.Deliveries) != 1 {
+		t.Fatalf("recovered snapshot: items=%d relations=%d tasks=%#v results=%d deliveries=%d", snapshot.Items, snapshot.Relations, snapshot.Tasks, len(snapshot.Results), len(snapshot.Deliveries))
+	}
+	if err := validateCompletedScaleResults(snapshot); err != nil {
+		t.Fatal(err)
+	}
+	// Allowing superseded raw rows must not hide missing or duplicate processing.
+	for _, test := range []struct {
+		name   string
+		mutate func(*controlsim.Snapshot)
+	}{
+		{"missing current result", func(s *controlsim.Snapshot) {
+			s.Results = nil
+		}},
+		{"processed superseded result", func(s *controlsim.Snapshot) {
+			for index := range s.Results {
+				if s.Results[index].AttemptID == first.Task.AttemptID {
+					s.Results[index].ProcessedAt = clock.Now()
+					s.Results[index].Terminal = "complete"
+				}
+			}
+		}},
+		{"duplicate current result", func(s *controlsim.Snapshot) {
+			for _, result := range s.Results {
+				if result.AttemptID == recovered.Task.AttemptID {
+					s.Results = append(s.Results, result)
+					break
+				}
+			}
+		}},
+		{"unknown attempt", func(s *controlsim.Snapshot) {
+			s.Results[0].AttemptID = "attempt-unknown"
+		}},
+		{"duplicate delivery", func(s *controlsim.Snapshot) {
+			s.Deliveries = append(s.Deliveries, s.Deliveries[0])
+		}},
+		{"superseded delivery", func(s *controlsim.Snapshot) {
+			s.Deliveries[0].AttemptID = first.Task.AttemptID
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			changed := snapshot
+			changed.Results = append([]controlsim.ResultRecord(nil), snapshot.Results...)
+			changed.Deliveries = append([]controlsim.IREDelivery(nil), snapshot.Deliveries...)
+			test.mutate(&changed)
+			if err := validateCompletedScaleResults(changed); err == nil {
+				t.Fatal("invalid completion evidence was accepted")
+			}
 		})
 	}
 }

@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "build": "now-sdk build",
-    "test": "node tests/target_scope_planner.test.js && node tests/password2_ssh_contract.test.js",
+    "test": "node tests/target_scope_planner.test.js && node tests/password2_ssh_contract.test.js && node ../global/register-discovery-source.test.js",
     "deploy": "now-sdk install",
     "pack": "now-sdk pack"
   },
