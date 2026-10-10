@@ -219,7 +219,7 @@ func (*stableSSHExecutor) Execute(context.Context, worker.Task) (model.Observati
 }
 
 func (*stableSSHExecutor) ExecuteWithCredentials(ctx context.Context, task worker.Task, source worker.CredentialSource) (model.ObservationEnvelope, error) {
-	if _, err := source.SSH(ctx); err != nil {
+	if _, err := source.Password(ctx); err != nil {
 		return model.ObservationEnvelope{}, err
 	}
 	return model.ObservationEnvelope{
@@ -410,4 +410,93 @@ func itoa(value int) string {
 		value /= 10
 	}
 	return string(digits[index:])
+}
+
+func TestManagedWindowsManualScheduleAndRepeatReconciliation(t *testing.T) {
+	sim := controlsim.New(controlsim.Config{Token: testToken, SSHCredential: worker.SSHCredential{Username: `SERVER\topo`, Password: "synthetic-password"}})
+	server := httptest.NewTLSServer(sim.Handler())
+	defer server.Close()
+	client, err := worker.NewClient(server.URL, testToken, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manual := sim.RunNowWinRM("pool-a", "192.0.2.7/32", "windows-binding")
+	sim.UpsertSchedule(controlsim.Schedule{ID: "win-schedule", WorkerPool: "pool-a", Operation: worker.OperationWinRMWindowsV1, Target: "192.0.2.7/32", CredentialBindingID: "windows-binding", Interval: time.Hour, NextRunAt: time.Now().Add(-time.Minute), Active: true})
+	policy := worker.Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowWinRMWindows: true, WinRMAllowlist: []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}, WinRMTrustDigest: strings.Repeat("a", 64), RemoteStartInterval: 100 * time.Millisecond}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- worker.Run(ctx, worker.RunConfig{Policy: policy, Version: "test", PollInterval: time.Second, Control: client, Executor: windowsFixtureExecutor{}, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	}()
+	waitFor(t, 5*time.Second, func() bool { return runState(sim.Snapshot(), manual) == "complete" })
+	scheduled := sim.EnqueueDue()
+	if len(scheduled) != 1 {
+		t.Fatal("missing scheduled Windows run")
+	}
+	waitFor(t, 5*time.Second, func() bool { return runState(sim.Snapshot(), scheduled[0]) == "complete" })
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := sim.Snapshot()
+	if snapshot.Items != 2 || snapshot.Relations != 1 || len(snapshot.CredentialAccesses) != 2 || len(snapshot.Deliveries) != 2 {
+		t.Fatalf("unexpected fixture counts: items=%d relations=%d accesses=%d deliveries=%d", snapshot.Items, snapshot.Relations, len(snapshot.CredentialAccesses), len(snapshot.Deliveries))
+	}
+	for _, operation := range append(snapshot.Deliveries[1].ItemOperations, snapshot.Deliveries[1].RelationOps...) {
+		if operation != "NO_CHANGE" {
+			t.Fatalf("repeat=%s", operation)
+		}
+	}
+}
+
+type windowsFixtureExecutor struct{}
+
+func (windowsFixtureExecutor) Execute(context.Context, worker.Task) (model.ObservationEnvelope, error) {
+	return model.ObservationEnvelope{}, errors.New("credential source required")
+}
+func (windowsFixtureExecutor) ExecuteWithCredentials(ctx context.Context, task worker.Task, source worker.CredentialSource) (model.ObservationEnvelope, error) {
+	envelope, err := (&stableSSHExecutor{}).ExecuteWithCredentials(ctx, task, source)
+	if task.Operation == worker.OperationWinRMWindowsV1 {
+		envelope.Plugin = "winrm-windows"
+		for i := range envelope.Assets {
+			envelope.Assets[i].NativeID = "windows:" + envelope.Assets[i].NativeID
+		}
+		for i := range envelope.Relationships {
+			envelope.Relationships[i].FromNativeID = "windows:" + envelope.Relationships[i].FromNativeID
+			envelope.Relationships[i].ToNativeID = "windows:" + envelope.Relationships[i].ToNativeID
+		}
+	}
+	return envelope, err
+}
+
+func TestOneWorkerDrainsMixedLinuxAndWindowsProfiles(t *testing.T) {
+	sim := controlsim.New(controlsim.Config{Token: testToken, SSHCredential: worker.SSHCredential{Username: "topo", Password: "synthetic"}})
+	server := httptest.NewTLSServer(sim.Handler())
+	defer server.Close()
+	client, err := worker.NewClient(server.URL, testToken, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	linux := sim.RunNowSSH("pool-a", "192.0.2.20/32", "ssh-binding")
+	windows := sim.RunNowWinRM("pool-a", "192.0.2.30/32", "windows-binding")
+	policy := worker.Policy{WorkerPool: "pool-a", SiteID: "site-a", AllowSSHLinux: true, AllowWinRMWindows: true, SSHAllowlist: []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}, SSHHostKeyDigest: strings.Repeat("a", 64), WinRMAllowlist: []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}, WinRMTrustDigest: strings.Repeat("b", 64), MaxConcurrency: 2, RemoteStartInterval: 100 * time.Millisecond}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- worker.Run(ctx, worker.RunConfig{Policy: policy, Version: "test", Control: client, PollInterval: time.Second, Executor: windowsFixtureExecutor{}, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	}()
+	waitFor(t, 5*time.Second, func() bool {
+		snapshot := sim.Snapshot()
+		return runState(snapshot, linux) == "complete" && runState(snapshot, windows) == "complete"
+	})
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := sim.Snapshot()
+	if snapshot.Items != 4 || snapshot.Relations != 2 || len(snapshot.CredentialAccesses) != 2 {
+		t.Fatalf("mixed fixture: items=%d relationships=%d credentials=%d", snapshot.Items, snapshot.Relations, len(snapshot.CredentialAccesses))
+	}
 }

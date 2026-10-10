@@ -85,4 +85,15 @@ Topo uses the narrowly scoped [Azure NTLMSSP implementation](https://github.com/
 
 ## Supported scope
 
-Software inventory covers only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, sanitized Windows Server 2022 plus one other supported-release fixture set, and broader real-host compatibility validation remain open. The real-host fixture evidence is explicitly deferred, not completed. Treat NTLMv2 as a narrowly scoped pilot transport, not proof of real-host compatibility.
+Software inventory covers only machine-wide software entries from the native and WOW6432Node uninstall views. Per-user uninstall hives are not loaded or inspected. The concurrent, repeated 500-Linux/500-Windows protocol acceptance gate passes. Kerberos and certificate authentication, a reusable sanitized multi-version fixture set, and broader real-host compatibility validation remain open. Focused Windows Server 2022/2025 host/interface candidate results are recorded below; they do not close broader inventory validation. Treat NTLMv2 as a narrowly scoped pilot transport, not proof of real-host compatibility.
+
+## Unpublished mixed-inventory candidate
+
+The 0.4.7 source candidate adds `-host-interfaces-only`, limiting collection to
+computer identity and network adapters without a WinRS shell. It corrects WQL
+namespace URI and NTLM HTTP/1.1 ALPN behavior. Production-executor tests on
+non-admin Windows Server 2022 and 2025 returned two assets and one relationship
+per scan, zero errors and stable identities across two scans, with verified TLS.
+See [candidate evidence](evidence/mixed-inventory.md). This focused result does
+not validate broader standalone inventory, the Windows service wrapper or the
+managed ServiceNow installation. The published worker is unchanged.

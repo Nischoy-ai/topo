@@ -265,6 +265,15 @@ func enumerateResponse(context string) string {
 
 func pullResponse(operation winrm.Operation, host Host) string {
 	resource := operation.ResourceURI
+	if operation.Query != "" {
+		fields := strings.Fields(operation.Query)
+		for i, field := range fields {
+			if field == "FROM" && i+1 < len(fields) {
+				resource = strings.TrimSuffix(resource, "*") + fields[i+1]
+				break
+			}
+		}
+	}
 	objects := []string{}
 	appendObject := func(write func(*strings.Builder)) {
 		var object strings.Builder

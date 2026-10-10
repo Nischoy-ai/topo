@@ -1,6 +1,14 @@
-# Nischoy Topo ServiceNow application source
+# Unpublished 0.4.7 mixed-inventory source candidate
 
-This directory defines application **0.4.6** in ServiceNow Fluent under
+This checkout adds fixed Windows computer/interface discovery and protocol-bound
+Password2 bindings to the managed app. It is awaiting real ServiceNow
+installation/upgrade and IRE acceptance. The published 0.4.6 XML and worker
+remain Linux-only. See [candidate scope and gates](../../../docs/mixed-inventory-pilot.md).
+Do not deploy this candidate over the existing development installation.
+
+## Application source
+
+This directory defines candidate application **0.4.7** in ServiceNow Fluent under
 `src/fluent`. The adjacent `application.json` is a review contract used by Go
 tests; it must remain consistent with the sources and is not an installer.
 

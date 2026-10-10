@@ -59,7 +59,9 @@ TopoIREProcessor.prototype = {
             delivery.u_preflight_at = new GlideDateTime();
             delivery.u_items = 0;
             delivery.u_relationships = 0;
-            delivery.u_diagnostics = 'validated SSH no-data observation; IRE preflight and apply skipped';
+            delivery.u_diagnostics = String(task.u_operation) === 'winrm_windows.v1' ?
+                'validated Windows no-data observation; IRE preflight and apply skipped' :
+                'validated SSH no-data observation; IRE preflight and apply skipped';
             delivery.update();
             this._finishResult(result, 'processed', 'complete', this.SUCCESS_RETENTION_SECONDS);
             return mapped;

@@ -259,3 +259,52 @@ func (transport handlerTransport) RoundTrip(request *http.Request) (*http.Respon
 	response.Request = request
 	return response, nil
 }
+
+func TestHostInterfacesOnlyNeverCreatesShellOrCollectsBroaderInventory(t *testing.T) {
+	estate := makeWindowsEstate(t, lab.DefaultScenario(2, 100, 42))
+	handler := lab.NewWinRMServer(estate).Handler()
+	var operations []string
+	plugin := pluginForEstate(estate)
+	plugin.Config.HostInterfacesOnly = true
+	plugin.Config.Concurrency = 1
+	plugin.Config.HTTPClient = &http.Client{Transport: handlerTransport{handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request, err := winrm.ParseSOAPRequest(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if request.ResourceURI == winrm.ShellResourceURI {
+			t.Fatal("pilot created a shell")
+		}
+		if request.Action == winrm.ActionEnumerate {
+			operation, ok := winrm.MatchOperation(request.Action, request.ResourceURI, request.Query)
+			if !ok || (!operation.Required && operation.Name != winrm.OperationNetwork) {
+				t.Fatal("unreviewed pilot operation")
+			}
+			operations = append(operations, operation.Name)
+		}
+		r.Body = io.NopCloser(strings.NewReader(string(body)))
+		handler.ServeHTTP(w, r)
+	})}}
+	observation, err := plugin.Discover(t.Context(), discovery.Request{Targets: targetsForEstate(estate)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCompleteWindowsEstate(t, estate, observation)
+	if len(operations) != 10 {
+		t.Fatalf("operations = %v", operations)
+	}
+	for _, asset := range observation.Assets {
+		if asset.Type != model.AssetHost && asset.Type != model.AssetNetworkInterface {
+			t.Fatalf("unexpected asset type %v", asset.Type)
+		}
+		for _, key := range []string{"volumes", "services", "patches", "software"} {
+			if _, ok := asset.Attributes[key]; ok {
+				t.Fatalf("pilot emitted %s", key)
+			}
+		}
+	}
+}

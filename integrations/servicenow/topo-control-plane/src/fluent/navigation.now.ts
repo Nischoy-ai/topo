@@ -17,7 +17,7 @@ Record({
     $id: Now.ID['module-ssh-credentials'],
     table: 'sys_app_module',
     data: {
-        title: 'SSH Credentials',
+        title: 'Remote Credentials',
         application: topoMenu,
         name: 'x_664635_topo_ssh_credential',
         link_type: 'LIST',
