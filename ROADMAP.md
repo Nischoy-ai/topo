@@ -73,7 +73,9 @@ The next approved scope is a **validated ServiceNow-managed Linux and Windows
 inventory pilot with bounded IPv4 subnet discovery**. Development will add
 managed Windows computer/interface inventory, allowlisted CIDR selection with
 exclusions and bounded execution, and real mixed-estate/IRE acceptance. See the [candidate scope and gates](docs/mixed-inventory-pilot.md). These
-are pending gates; the published beta retains the Linux-only scope above.
+include completed candidate Linux subnet acceptance and separate remaining
+mixed/Windows and release gates; the published beta retains the Linux-only
+scope above.
 Windows target support will use Linux/macOS workers; Windows worker publication
 remains a separate planned capability.
 

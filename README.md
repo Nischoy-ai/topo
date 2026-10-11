@@ -11,7 +11,8 @@ This beta is a focused ServiceNow-managed Linux discovery pilot. It supports
 explicitly listed IPv4 Linux hosts over SSH port 22, with Password2 credentials.
 It does not scan subnets or discover Windows hosts through the managed workflow.
 Workers are distributed for Linux and macOS; macOS worker availability does not
-expand the managed target scope.
+expand the managed target scope. The unpublished candidate has passed bounded
+Linux subnet acceptance; see its [validation limits](docs/evidence/mixed-inventory.md).
 
 CMDB publication supports only `cmdb_ci_computer`, `cmdb_ci_network_adapter`,
 and `host_has_interface` mapped to `Owns::Owned by`. This beta does not provide

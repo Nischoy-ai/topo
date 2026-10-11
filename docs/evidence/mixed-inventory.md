@@ -187,7 +187,7 @@ The owner approved storing the existing nonadmin Linux scan credential and
 binding it to the prepared subnet profile/scope on the replacement instance.
 At submission, ServiceNow reported that the authenticated browser session had
 expired. The credential save was not confirmed and no binding or subnet scan
-was created. Reauthentication is the current external gate; the approval
+was created. Reauthentication was the external gate at this checkpoint; the approval
 persists and no new password or broader OAuth grant is required.
 
 `internal/worker/realsubnet_test.go` is an opt-in live observer around the
@@ -199,3 +199,60 @@ before credential resolution and network access. Normal CI skips real-instance
 execution. The observer compiled for Linux amd64; focused worker race checks
 and the full exact Go 1.26.9 security gate passed. It has not yet run live and
 therefore provides no new runtime or IRE acceptance claim.
+
+
+## Bounded subnet managed acceptance — 2026-10-11 UTC
+
+Acceptance passed on the owner-authorized replacement instance dev317694,
+using the installed native app 0.4.7, its existing indexes, the restricted
+seven-route worker OAuth grant, and the approved existing Linux nonadmin
+credential stored in Password2. The profile and binding authorize only the
+prepared scope and revision. No target permissions or Windows implementation
+were changed. These results supersede the pending subnet gates above.
+
+| Gate | Observed result |
+| --- | --- |
+| Exclusions and deduplication | Overlapping `/28` and `/32` inputs plus exclusions selected exactly three addresses; each executed once. No excluded address reached the broker or network. |
+| Local authorization | With only the healthy address locally allowed, two other tasks failed before credential resolution or dialing; the allowed host still published 3 assets/2 relationships. |
+| Target ceiling | Native inactive planning accepted 1,024 `/32` partitions; 1,025 targets across two segments produced an invalid-insert error and no persisted scope. No large subnet was scanned. |
+| Rate and concurrency | Production executor starts were at least 3 seconds apart. Two independent worker boots concurrently claimed distinct tasks; a third claim returned no task at the pool's two-lease ceiling. The three-host collection run reached one active execution; it does not demonstrate two simultaneous SSH connections. |
+| Cancellation | Native Cancel run reached Cancelled with 1 complete/2 cancelled tasks. Two heartbeat-or-renew signals were observed; only the first host began execution or dialed. Both remaining completions reached ServiceNow and active execution returned to zero. |
+| Unreachable isolation | Healthy host published 3 assets/2 relationships while two unreachable hosts completed with collection errors and empty arrays. Their validated no-data deliveries did not call IRE. |
+| Repeat IRE identity | The repeat healthy receipt applied 3 UPDATE items and 2 NO_CHANGE relationships. Native source mappings retained the same three CIs; the relationship list contained exactly the original two ownership rows. |
+
+Native run IDs are `86bdc5bec33bc710b49fbefdd4013150` (local denial),
+`b0edc1bec33bc710b49fbefdd40131da` (collection/repeat),
+`32bf85b2c37bc710b49fbefdd401314d` (cancellation), and
+`6affc9f2c37bc710b49fbefdd40131a7` (pool capacity). The capacity probe intentionally
+reported two `acceptance_probe` failures without resolving credentials or
+connecting; cancellation settled its remaining task. Its terminal Failed state
+is expected cleanup, not a collection failure. The subnet pool subsequently
+had no leased/running/results-received/IRE-processing tasks, and no acceptance
+process remained in the lab.
+
+Collection and local-denial observations used Go 1.26.9 Linux amd64 test source
+`6e9119e`, executable SHA-256
+`3958cb6855a3621fa7bf62f5c74f7abedf989af6a831d1675b9046c0df033dee`.
+Final cancellation and capacity observations used source `1af3cec`, SHA-256
+`69da9c7f43c68fbed5064aa74e7b9b4f967067a37a357aed06140bcfa91af435`.
+Both wrap the production worker loop/executor; production runtime derives from
+PR #78 `3684e9a` plus SSH no-data fix `a8e86aa` and the Windows chat's preserved
+`78ec6e1` correction. An initial cancellation observer watched renewal only,
+missed the production heartbeat signal and stopped before all completions.
+The observer was corrected; native cancellation itself succeeded in that run.
+Final acceptance above comes from the corrected observer, not that failed check.
+
+Exact Go 1.26.9 final security checks passed: vet, full race suite, trimpath
+build, Windows amd64 vet/build and pinned govulncheck v1.7.0 (zero reachable
+vulnerabilities). All application JavaScript tests and 38 ServiceNow Python
+checks passed. Sanitized native forms, receipts, source mappings, relationship
+rows and production observer logs are retained separately in the private
+maintainer handoff with exact run and binary attribution.
+
+This closes bounded Linux subnet acceptance for the unpublished candidate.
+Wrong-credential/trust tests, remaining Windows/mixed-estate gates, address
+changes, restart recovery, clean installation, populated-data upgrade and
+release-channel acceptance remain separate. Physical coverage is established
+for all 32 indexes; the live pool test establishes this lease ceiling, not
+independent enforcement evidence for every unique index. The public 0.4.6 beta
+scope and assets remain unchanged; no release was published or promoted.
