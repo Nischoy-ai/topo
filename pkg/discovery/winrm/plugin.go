@@ -139,6 +139,7 @@ func (p Plugin) Discover(ctx context.Context, request discovery.Request) (model.
 		Plugin:        "winrm-windows",
 		JobID:         request.JobID,
 		ObservedAt:    now,
+		Assets:        []model.Asset{},
 	}
 	concurrency := p.Config.Concurrency
 	if concurrency < 1 {
