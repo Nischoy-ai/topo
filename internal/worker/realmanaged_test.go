@@ -17,6 +17,9 @@ import (
 	"time"
 
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
+	"github.com/Nischoy-ai/topo/pkg/discovery"
+	"github.com/Nischoy-ai/topo/pkg/discovery/winrm"
+	"github.com/Nischoy-ai/topo/pkg/model"
 )
 
 // Explicit live acceptance consumes one operator-dispatched Windows task in a
@@ -48,7 +51,7 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal("acceptance client invalid")
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
 	defer cancel()
 	// The same worker token must not have generic user or credential-table access.
 	// Only status is inspected; arbitrary response bodies never enter diagnostics.
@@ -141,8 +144,47 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 	if err != nil || credential.Username == "" || credential.Password == "" {
 		t.Fatal("live attempt-bound Password2 resolution failed")
 	}
+	if os.Getenv("TOPO_REAL_MANAGED_LEASE_FAULT") == "native_binding" {
+		// Operator-only fault injection into this disposable leased task. The
+		// worker request and stored Password2 credential remain unchanged.
+		for _, field := range []string{"protocol", "profile", "revision", "scope"} {
+			t.Logf("task %s run %s: inject native %s mismatch", task.TaskID, task.RunID, field)
+			for _, wantDenied := range []bool{true, false} {
+				for {
+					value, callErr := client.Credential(ctx, task.TaskID, request)
+					var status *HTTPError
+					denied := errors.As(callErr, &status) && status.StatusCode == 409
+					valid := callErr == nil && value.Username == credential.Username && value.Password == credential.Password
+					if callErr != nil && !denied {
+						t.Fatal("unexpected native binding broker status")
+					}
+					if (wantDenied && denied) || (!wantDenied && valid) {
+						break
+					}
+					if _, renewErr := client.Renew(ctx, task.TaskID, RenewRequest(request)); renewErr != nil {
+						t.Fatal("native binding probe renewal failed")
+					}
+					select {
+					case <-ctx.Done():
+						t.Fatal("native binding injection wait expired")
+					case <-time.After(2 * time.Second):
+					}
+				}
+				if wantDenied {
+					t.Logf("native %s mismatch denied with 409; restore original task field", field)
+				}
+			}
+			t.Logf("native %s restored; matching broker resolution succeeded", field)
+		}
+		if _, completeErr := client.Complete(ctx, task.TaskID, completion); completeErr != nil {
+			t.Fatal("native binding probe cleanup failed")
+		}
+		completed = true
+		t.Log("four isolated live binding mismatches denied; restored task completed without target collection or IRE")
+		return
+	}
 	leaseFault := os.Getenv("TOPO_REAL_MANAGED_LEASE_FAULT")
-	if leaseFault == "cancel" || leaseFault == "expire" {
+	if leaseFault == "cancel" || leaseFault == "expire" || leaseFault == "cancel_expire" {
 		t.Logf("task %s run %s: valid credential resolved; waiting for %s", task.TaskID, task.RunID, leaseFault)
 		if leaseFault == "expire" {
 			timer := time.NewTimer(time.Until(task.LeaseExpiresAt) + time.Second)
@@ -169,6 +211,15 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 				}
 			}
 		}
+		if leaseFault == "cancel_expire" {
+			timer := time.NewTimer(time.Until(task.LeaseExpiresAt) + time.Second)
+			defer timer.Stop()
+			select {
+			case <-ctx.Done():
+				t.Fatal("cancelled lease expiry wait expired")
+			case <-timer.C:
+			}
+		}
 		_, deniedErr := client.Credential(ctx, task.TaskID, request)
 		var deniedStatus *HTTPError
 		if !errors.As(deniedErr, &deniedStatus) || deniedStatus.StatusCode != 409 {
@@ -192,6 +243,13 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 			}
 			completed = true // Expiry revoked the old completion authority.
 			claim, claimErr := client.Claim(ctx, ClaimRequest{SchemaVersion: ContractVersion, WorkerID: reg.WorkerID, BootID: boot, Capabilities: policy.Capabilities()})
+			if leaseFault == "cancel_expire" {
+				if claimErr != nil || claim.Task != nil {
+					t.Fatal("expired cancelled task retained or regained dispatch authority")
+				}
+				t.Log("cancelled lease expired; maintenance returned no cancelled task; inspect cleared native lease fields")
+				return
+			}
 			if claimErr != nil || claim.Task == nil || claim.Task.TaskID != task.TaskID || claim.Task.AttemptID == task.AttemptID {
 				t.Fatal("expired task did not recover with a new attempt")
 			}
@@ -233,7 +291,7 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		t.Fatal("acceptance origin is not approved")
 	}
 	mode := os.Getenv("TOPO_REAL_MANAGED_FAULT")
-	if mode != "wrong_password" && mode != "untrusted_certificate" && mode != "deadline" && mode != "wrong_identity" {
+	if mode != "wrong_password" && mode != "untrusted_certificate" && mode != "deadline" && mode != "wrong_identity" && mode != "permission_denied" && mode != "network_timeout" && mode != "response_bound" {
 		t.Fatal("reviewed live fault is required")
 	}
 	token, err := credentialref.Resolve(os.Getenv("TOPO_REAL_MANAGED_TOKEN_REF"))
@@ -314,6 +372,9 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 			t.Logf("task %s: wrong server identity rejected by real TLS handshake before NTLM; no result or IRE", task.TaskID)
 			continue
 		}
+		if mode == "permission_denied" && credential.Username != "topo-wmi-denied" {
+			t.Fatal("dedicated denial credential was not returned by broker")
+		}
 		realPassword := credential.Password
 		if mode == "wrong_password" {
 			credential.Password = "deliberately-invalid-acceptance-password"
@@ -329,7 +390,22 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 			collectCtx, stop = context.WithTimeout(ctx, time.Nanosecond)
 		}
 		started := time.Now()
-		observation, collectErr := (Executor{Policy: policy, WinRMRootCAs: roots}).ExecuteWithCredentials(collectCtx, *task, source)
+		var observation model.ObservationEnvelope
+		var collectErr error
+		if mode == "response_bound" {
+			// The real verified target response is read by the same production
+			// plugin with a deliberately smaller local test budget. No task may
+			// select this budget or supply an operation.
+			transport := http.DefaultTransport.(*http.Transport).Clone()
+			transport.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
+			transport.DialContext = (&net.Dialer{Timeout: 10 * time.Second}).DialContext
+			transport.TLSHandshakeTimeout = 10 * time.Second
+			plugin := winrm.Plugin{Config: winrm.Config{Username: credential.Username, Password: credential.Password, AuthMode: winrm.AuthModeNTLM, HostInterfacesOnly: true, Concurrency: 1, OperationTimeout: 10 * time.Second, MaxResponseBytes: 64, HTTPClient: &http.Client{Transport: transport}}}
+			observation, collectErr = plugin.Discover(collectCtx, discovery.Request{JobID: task.TaskID, SiteID: policy.SiteID, CollectorID: "worker-pool-" + policy.WorkerPool, Targets: []string{"https://" + net.JoinHostPort(prefix.Addr().String(), "5986") + "/wsman"}})
+			transport.CloseIdleConnections()
+		} else {
+			observation, collectErr = (Executor{Policy: policy, WinRMRootCAs: roots}).ExecuteWithCredentials(collectCtx, *task, source)
+		}
 		stop()
 		if mode == "deadline" {
 			if !errors.Is(collectErr, context.DeadlineExceeded) || time.Since(started) > time.Second {
@@ -351,6 +427,19 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 			_, _ = client.Complete(ctx, task.TaskID, complete)
 			t.Fatal("fault did not fail closed within bound")
 		}
+		if mode == "permission_denied" {
+			denied := false
+			for _, failure := range observation.Errors {
+				message := strings.ToLower(failure.Message)
+				if strings.Contains(message, "http 401") {
+					t.Fatal("permission test failed authentication")
+				}
+				denied = denied || strings.Contains(message, "access is denied") || strings.Contains(message, "access denied") || strings.Contains(message, "accessdenied") || strings.Contains(message, "0x80070005")
+			}
+			if !denied {
+				t.Fatal("real WMI permission denial not established")
+			}
+		}
 		payload, err := json.Marshal(observation)
 		if err != nil {
 			t.Fatal("observation encoding failed")
@@ -358,6 +447,21 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		for _, secret := range []string{string(token), task.LeaseToken, realPassword, credential.Password} {
 			if strings.Contains(string(payload), secret) {
 				t.Fatal("secret leaked into observation")
+			}
+		}
+		if mode == "network_timeout" || mode == "response_bound" {
+			expected := "timeout"
+			if mode == "response_bound" {
+				expected = "exceeded 64 bytes"
+			}
+			matched := false
+			for _, failure := range observation.Errors {
+				matched = matched || strings.Contains(strings.ToLower(failure.Message), expected) || (mode == "network_timeout" && strings.Contains(strings.ToLower(failure.Message), "deadline exceeded"))
+				t.Logf("sanitized bound error after %s: %s", time.Since(started).Round(time.Millisecond), failure.Message)
+			}
+			if !matched || (mode == "network_timeout" && time.Since(started) < 9*time.Second) {
+				_, _ = client.Complete(ctx, task.TaskID, complete)
+				t.Fatal("live bound failure not established")
 			}
 		}
 		sum := sha256.Sum256(payload)

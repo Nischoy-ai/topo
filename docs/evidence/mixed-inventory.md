@@ -294,3 +294,33 @@ preview/CICD status remains last authenticated evidence only.
 The integrated source passed the full exact Go 1.26.9 security gate, all
 application JavaScript tests including the lease regression, and 38 ServiceNow
 Python checks. Public 0.4.6 scope and release channels remain unchanged.
+
+
+## Combined-candidate package review — 2026-10-11 UTC
+
+The final Windows-owned opt-in acceptance probe is retained unchanged from
+PR #80 source `5a94445`; this adds its cancellation-expiry, WMI-denial,
+transport-bound and isolated native-binding checks to the subnet review branch.
+No new live execution is attributed to this copy. The entire installed
+TopoControlPlane script on dev317694 was read without modification and matches
+the integrated source byte-for-byte (60,895 characters), including the lease fix.
+
+Two SDK 4.9.0 builds and packs, normalized independently with the product
+package validator, produced identical bytes and metadata. Candidate SHA-256:
+`605e77ec30c501d0230494238941c0f140c2ba8f35a68f7aaf55041c2547fdbf`.
+The package contains 313 entries, twelve tables, five roles and seven worker
+routes. This is a developer SDK artifact, not a refreshed native XML export
+or customer release. Comparing its dictionary with the previously captured
+physical-index rows still covers all 32 required ordered combinations;
+uniqueness remains separately limited as stated above. SDK dependency audit
+reports build-tool vulnerabilities; the Go runtime security gate does not
+certify that dependency tree.
+
+Full exact Go 1.26.9 security checks, application JavaScript tests and all 38
+ServiceNow Python checks passed again. Native clean installation remains
+unproved because both available instances already contain Topo. The original
+instance's companion gate now requires sign-in before its current platform
+operation/preview state can be inspected. No uninstall, reset, reinstall,
+update-set commit, publication or promotion was attempted to bypass these gates.
+A separate empty disposable instance is required for clean-install acceptance;
+a populated data-preservation upgrade also remains a separate native gate.
