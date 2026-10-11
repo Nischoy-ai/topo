@@ -180,3 +180,22 @@ worker OAuth grant is available; no broader identity is needed. Subnet runtime
 exclusions, local denials, bounds, pacing/concurrency, cancellation, unreachable
 host isolation and repeat IRE gates remain pending. The published 0.4.6 beta
 scope and release channels are unchanged.
+
+## Approved Linux setup resume — 2026-10-11 UTC
+
+The owner approved storing the existing nonadmin Linux scan credential and
+binding it to the prepared subnet profile/scope on the replacement instance.
+At submission, ServiceNow reported that the authenticated browser session had
+expired. The credential save was not confirmed and no binding or subnet scan
+was created. Reauthentication is the current external gate; the approval
+persists and no new password or broader OAuth grant is required.
+
+`internal/worker/realsubnet_test.go` is an opt-in live observer around the
+production worker loop and SSH executor. It is restricted to the reviewed
+three-address lab scope and operator-dispatched tasks, with two concurrent
+executions, three seconds between starts and a 90-second total deadline. It
+checks exact target counts, pacing, concurrency, and that local denials occur
+before credential resolution and network access. Normal CI skips real-instance
+execution. The observer compiled for Linux amd64; focused worker race checks
+and the full exact Go 1.26.9 security gate passed. It has not yet run live and
+therefore provides no new runtime or IRE acceptance claim.
