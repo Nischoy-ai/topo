@@ -292,3 +292,27 @@ Final source `479d140` passed the full exact-Go security script, application
 JavaScript tests and all 38 offline ServiceNow tests. Published 0.4.6 scope and
 all separate native-install, live isolated-binding and address-change gates
 remain as stated above; no release/promotion was performed.
+
+
+An additional broker-only probe at source `e7a042c` (SHA-256
+`cf604b1bf11418f696ed3a4f9ec0d069679fff7439c530597e337c7d30d0d910`)
+closed the isolated live binding negatives. Operator fault injection changed
+only one disposable leased task's operation/protocol, profile ID, revision or
+scope reference at a time. The unchanged valid worker request received 409 for
+each mismatch; restoring each original field restored matching Password2
+resolution. Stored bindings, credentials and scope records were untouched.
+Native access audits recorded `binding_mismatch`. The probe then completed with
+an explicit broker-only failure, and the unused partition was cancelled; no
+target collection, result or IRE occurred. Production-script tests separately
+prove the denial precedes Password2 decryption; live observations do not
+instrument the platform's decryption calls. This closes the previously listed
+live isolated-binding gate without claiming an arbitrary-operation execution.
+
+The Windows computer/interface managed flow and listed protocol/credential
+negative gates are now exercised on both Server 2022 and 2025 through the Linux
+worker, with their source limits stated above. The original-instance CICD gate
+remains separate: the last authenticated check reported its companion Loaded
+and preview blocked; the final read-only recheck reached an expired login
+session, so no newer CICD completion is claimed. Native physical-index/install,
+address-change and combined mixed-estate upgrade gates remain broader pilot
+work, not release approval. Exact final source security checks passed again.

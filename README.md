@@ -17,7 +17,10 @@ CMDB publication supports only `cmdb_ci_computer`, `cmdb_ci_network_adapter`,
 and `host_has_interface` mapped to `Owns::Owned by`. This beta does not provide
 the broad estate coverage needed to replace Device42, particularly for Windows
 estates. Other discovery components in the source tree have separate validation
-limits; see the [roadmap](ROADMAP.md).
+limits; see the [roadmap](ROADMAP.md). The unpublished Windows computer/interface
+candidate has passed managed tests on Server 2022 and 2025; its
+[source-attributed evidence and remaining pilot gates](docs/evidence/mixed-inventory.md)
+do not expand this published beta.
 
 ## Start ServiceNow discovery in three steps
 

@@ -121,11 +121,12 @@ that separate installation gate is not closed by replacement-instance results.
 | --- | --- | --- |
 | Untrusted certificate, verified server identity, NTLM with no Basic fallback | WinRM transport/configuration tests | Both real targets: empty trust rejected collection; wrong TLS server identity rejected the handshake before NTLM; zero CIs from either negative |
 | Wrong credentials, permission denial, timeout, cancellation, bounded responses | Protocol fault-isolation fixtures and worker cancellation tests | Wrong passwords: managed no-data completion on both targets; bounded deadline failures and live ServiceNow cancellation passed. Dedicated non-admin account authenticated with NTLM on both targets but WMI returned AccessDenied; managed no-data completion passed. Lab network blackholes hit the production 10-second deadline; real responses exceeded a test-local 64-byte read budget (the production 1 MiB threshold remains fixture-tested) |
-| Protocol, profile/revision and scope binding | Production Password2 broker fixture rejects mismatches before decryption | Live matching binding succeeded; unique inactive mismatched profile insert rejected. Individual mismatch-before-decryption cases retain production-script fixture attribution |
+| Protocol, profile/revision and scope binding | Production Password2 broker fixture rejects mismatches before decryption | Live matching binding succeeded. Disposable native task protocol/profile/revision/scope mismatches each returned 409, then matching resolution succeeded after restoration. Native audit recorded binding_mismatch; no-decryption ordering remains production-script fixture attribution |
 | Worker identity, boot, task, attempt, token, expiry and renewed-attempt binding | Production broker plus production lease validator fixture; denials precede decryption | Wrong worker/boot/attempt/token returned 403; terminal, cancelled and expired authority denied; expired task recovered with a new attempt; cancelled-expiry slot cleanup has a platform-semantics regression |
 | Secret-free broker/provider errors | Decryption exception and credential-provider redaction tests | Live negative observations checked against bearer/lease/password values before submission; broker errors expose HTTP status only; audit inspection retained privately |
 | Repeat IRE reconciliation, stable identity after address change | Direct two-scan identities and offline mapping only | Repeated live IRE: UPDATE,UPDATE,NO_CHANGE per target, four unique source-to-CI mappings and two ownership relations. Address-change testing remains pending |
 
-Fixture-only negatives remain distinct from live evidence; full negative and
-installation acceptance is still open as described in the evidence record.
+Live and fixture evidence remain distinct. The Windows managed flow and listed
+negative gates passed on the replacement instance; native installation and
+broader pilot gates remain separate as described in the evidence record.
 The published 0.4.6 managed beta continues to support Linux targets only.
