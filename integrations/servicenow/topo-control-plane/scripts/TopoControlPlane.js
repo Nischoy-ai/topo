@@ -788,13 +788,15 @@ TopoControlPlane.prototype = {
             cas.addQuery('u_attempt_id', attemptID);
             cas.addQuery('u_lease_expires', '<=', now);
             cas.setValue('u_state', nextState);
-            cas.setValue('u_attempt_id', null);
-            cas.setValue('u_lease_worker', null);
-            cas.setValue('u_lease_boot_id', null);
-            cas.setValue('u_lease_token_digest', null);
-            cas.setValue('u_pool_lease_slot', null);
-            cas.setValue('u_worker_lease_slot', null);
-            cas.setValue('u_lease_expires', null);
+            // updateMultiple requires the documented 'NULL' sentinel to
+            // clear persisted fields; JavaScript null leaves string slots held.
+            cas.setValue('u_attempt_id', 'NULL');
+            cas.setValue('u_lease_worker', 'NULL');
+            cas.setValue('u_lease_boot_id', 'NULL');
+            cas.setValue('u_lease_token_digest', 'NULL');
+            cas.setValue('u_pool_lease_slot', 'NULL');
+            cas.setValue('u_worker_lease_slot', 'NULL');
+            cas.setValue('u_lease_expires', 'NULL');
             cas.setValue('u_chunk_count', 0);
             cas.setValue('u_cancel_requested', false);
             if (cancelled) {
