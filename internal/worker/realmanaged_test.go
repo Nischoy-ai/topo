@@ -145,7 +145,7 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 		t.Fatal("live attempt-bound Password2 resolution failed")
 	}
 	leaseFault := os.Getenv("TOPO_REAL_MANAGED_LEASE_FAULT")
-	if leaseFault == "cancel" || leaseFault == "expire" {
+	if leaseFault == "cancel" || leaseFault == "expire" || leaseFault == "cancel_expire" {
 		t.Logf("task %s run %s: valid credential resolved; waiting for %s", task.TaskID, task.RunID, leaseFault)
 		if leaseFault == "expire" {
 			timer := time.NewTimer(time.Until(task.LeaseExpiresAt) + time.Second)
@@ -172,6 +172,15 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 				}
 			}
 		}
+		if leaseFault == "cancel_expire" {
+			timer := time.NewTimer(time.Until(task.LeaseExpiresAt) + time.Second)
+			defer timer.Stop()
+			select {
+			case <-ctx.Done():
+				t.Fatal("cancelled lease expiry wait expired")
+			case <-timer.C:
+			}
+		}
 		_, deniedErr := client.Credential(ctx, task.TaskID, request)
 		var deniedStatus *HTTPError
 		if !errors.As(deniedErr, &deniedStatus) || deniedStatus.StatusCode != 409 {
@@ -195,6 +204,13 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 			}
 			completed = true // Expiry revoked the old completion authority.
 			claim, claimErr := client.Claim(ctx, ClaimRequest{SchemaVersion: ContractVersion, WorkerID: reg.WorkerID, BootID: boot, Capabilities: policy.Capabilities()})
+			if leaseFault == "cancel_expire" {
+				if claimErr != nil || claim.Task != nil {
+					t.Fatal("expired cancelled task retained or regained dispatch authority")
+				}
+				t.Log("cancelled lease expired; maintenance returned no cancelled task; inspect cleared native lease fields")
+				return
+			}
 			if claimErr != nil || claim.Task == nil || claim.Task.TaskID != task.TaskID || claim.Task.AttemptID == task.AttemptID {
 				t.Fatal("expired task did not recover with a new attempt")
 			}
