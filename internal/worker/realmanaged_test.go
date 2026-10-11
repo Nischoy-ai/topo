@@ -17,6 +17,9 @@ import (
 	"time"
 
 	"github.com/Nischoy-ai/topo/pkg/credentialref"
+	"github.com/Nischoy-ai/topo/pkg/discovery"
+	"github.com/Nischoy-ai/topo/pkg/discovery/winrm"
+	"github.com/Nischoy-ai/topo/pkg/model"
 )
 
 // Explicit live acceptance consumes one operator-dispatched Windows task in a
@@ -233,7 +236,7 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		t.Fatal("acceptance origin is not approved")
 	}
 	mode := os.Getenv("TOPO_REAL_MANAGED_FAULT")
-	if mode != "wrong_password" && mode != "untrusted_certificate" && mode != "deadline" && mode != "wrong_identity" && mode != "permission_denied" {
+	if mode != "wrong_password" && mode != "untrusted_certificate" && mode != "deadline" && mode != "wrong_identity" && mode != "permission_denied" && mode != "network_timeout" && mode != "response_bound" {
 		t.Fatal("reviewed live fault is required")
 	}
 	token, err := credentialref.Resolve(os.Getenv("TOPO_REAL_MANAGED_TOKEN_REF"))
@@ -332,7 +335,22 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 			collectCtx, stop = context.WithTimeout(ctx, time.Nanosecond)
 		}
 		started := time.Now()
-		observation, collectErr := (Executor{Policy: policy, WinRMRootCAs: roots}).ExecuteWithCredentials(collectCtx, *task, source)
+		var observation model.ObservationEnvelope
+		var collectErr error
+		if mode == "response_bound" {
+			// The real verified target response is read by the same production
+			// plugin with a deliberately smaller local test budget. No task may
+			// select this budget or supply an operation.
+			transport := http.DefaultTransport.(*http.Transport).Clone()
+			transport.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
+			transport.DialContext = (&net.Dialer{Timeout: 10 * time.Second}).DialContext
+			transport.TLSHandshakeTimeout = 10 * time.Second
+			plugin := winrm.Plugin{Config: winrm.Config{Username: credential.Username, Password: credential.Password, AuthMode: winrm.AuthModeNTLM, HostInterfacesOnly: true, Concurrency: 1, OperationTimeout: 10 * time.Second, MaxResponseBytes: 64, HTTPClient: &http.Client{Transport: transport}}}
+			observation, collectErr = plugin.Discover(collectCtx, discovery.Request{JobID: task.TaskID, SiteID: policy.SiteID, CollectorID: "worker-pool-" + policy.WorkerPool, Targets: []string{"https://" + net.JoinHostPort(prefix.Addr().String(), "5986") + "/wsman"}})
+			transport.CloseIdleConnections()
+		} else {
+			observation, collectErr = (Executor{Policy: policy, WinRMRootCAs: roots}).ExecuteWithCredentials(collectCtx, *task, source)
+		}
 		stop()
 		if mode == "deadline" {
 			if !errors.Is(collectErr, context.DeadlineExceeded) || time.Since(started) > time.Second {
@@ -353,6 +371,19 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		if len(observation.Assets) != 0 || len(observation.Relationships) != 0 || len(observation.Errors) == 0 || time.Since(started) > 15*time.Second {
 			_, _ = client.Complete(ctx, task.TaskID, complete)
 			t.Fatal("fault did not fail closed within bound")
+		}
+		if mode == "network_timeout" || mode == "response_bound" {
+			expected := "timeout"
+			if mode == "response_bound" {
+				expected = "exceeded 64 bytes"
+			}
+			matched := false
+			for _, failure := range observation.Errors {
+				matched = matched || strings.Contains(strings.ToLower(failure.Message), expected)
+			}
+			if !matched || (mode == "network_timeout" && time.Since(started) < 9*time.Second) {
+				t.Fatal("live bound failure not established")
+			}
 		}
 		if mode == "permission_denied" {
 			denied := false
