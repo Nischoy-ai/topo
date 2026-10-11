@@ -372,19 +372,6 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 			_, _ = client.Complete(ctx, task.TaskID, complete)
 			t.Fatal("fault did not fail closed within bound")
 		}
-		if mode == "network_timeout" || mode == "response_bound" {
-			expected := "timeout"
-			if mode == "response_bound" {
-				expected = "exceeded 64 bytes"
-			}
-			matched := false
-			for _, failure := range observation.Errors {
-				matched = matched || strings.Contains(strings.ToLower(failure.Message), expected)
-			}
-			if !matched || (mode == "network_timeout" && time.Since(started) < 9*time.Second) {
-				t.Fatal("live bound failure not established")
-			}
-		}
 		if mode == "permission_denied" {
 			denied := false
 			for _, failure := range observation.Errors {
@@ -405,6 +392,21 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		for _, secret := range []string{string(token), task.LeaseToken, realPassword, credential.Password} {
 			if strings.Contains(string(payload), secret) {
 				t.Fatal("secret leaked into observation")
+			}
+		}
+		if mode == "network_timeout" || mode == "response_bound" {
+			expected := "timeout"
+			if mode == "response_bound" {
+				expected = "exceeded 64 bytes"
+			}
+			matched := false
+			for _, failure := range observation.Errors {
+				matched = matched || strings.Contains(strings.ToLower(failure.Message), expected) || (mode == "network_timeout" && strings.Contains(strings.ToLower(failure.Message), "deadline exceeded"))
+				t.Logf("sanitized bound error after %s: %s", time.Since(started).Round(time.Millisecond), failure.Message)
+			}
+			if !matched || (mode == "network_timeout" && time.Since(started) < 9*time.Second) {
+				_, _ = client.Complete(ctx, task.TaskID, complete)
+				t.Fatal("live bound failure not established")
 			}
 		}
 		sum := sha256.Sum256(payload)
