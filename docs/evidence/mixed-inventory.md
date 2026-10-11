@@ -145,3 +145,93 @@ The new test compiled for the Linux lab worker. Focused worker/controlsim/WinRM
 race checks passed with the live origin explicitly unset. Production runtime
 source is unchanged. Existing installed Topo, lab power state, and both shared
 ServiceNow instances were left unchanged during this preparation.
+
+## Live Windows managed flow — 2026-10-11 UTC
+
+After the subnet acceptance chat handed over exclusive mutation ownership of the
+replacement instance with native app 0.4.7 installed, the owner approved bounded
+least-privilege setup. A dedicated machine integration user has only the explicit
+Topo worker role (plus the platform-inherited script-writer permission). Its
+client-credentials OAuth client is securely scoped to exactly the seven worker
+POST resources, with enforced token restrictions and 1,800-second token expiry.
+Real invalid requests reached each route (400); unrelated user and credential
+Table APIs returned 401. The worker used a local credential reference, never an
+SDK/admin identity. Existing non-admin Windows credentials were stored in
+Password2 behind the exact WinRM protocol/profile/revision/scope binding.
+
+Two /32 targets in a dedicated pool were dispatched through `winrm_windows.v1`,
+collected by a Linux worker with NTLM and independently trusted HTTPS/5986
+certificates, ingested through the worker result endpoint and published by IRE.
+Each full run completed two tasks, four assets and two relationships with zero
+collection errors. First insertion and independent repeats retained four unique
+source-to-CI mappings (two computers, two network adapters) and two ownership
+relations. Repeat receipts were `UPDATE,UPDATE,NO_CHANGE` for each target; no
+repeat INSERT occurred. Read-only native source/relation lists and IRE receipts
+are retained privately with exact run/task/CI IDs and timestamps.
+
+Final success and repeat used exact source
+`78ec6e1f57c89ad0c58b52960920a79ecce7a83c`, built with Go 1.26.9,
+Linux/amd64 and `-trimpath`; executable SHA-256
+`a827e44b0ed29ff40b97f3a12a41c7f4b18d1b48ce5e7345e64bb4f0765249b4`.
+They completed at 08:55:35 and 08:56:15 UTC. Earlier successful runs used
+`80df018`; their binary SHA-256 was
+`6275c6e61e10e4bf4561308081112af1c0dac9b50edae5a23387cbab2dc8bd4c`.
+The app's control-plane/broker/IRE source was the PR #78 candidate inspected at
+`3684e9a9d56f72b7cc89a0dd752c11b46b963ba1`, as verified in the native upgrade
+handoff. These are candidate results, not published 0.4.6 worker results.
+
+Live negative evidence is deliberately scoped:
+
+- Wrong worker, boot, attempt and lease token were denied with 403; local target
+  denial preceded credential resolution. Valid broker resolution was bounded
+  and no-store; terminal authority returned 409.
+- Wrong NTLM password and an empty trust-root pool each produced managed no-data
+  completion on both real targets, zero assets/relations and no IRE publication.
+  Test substitution happened only in probe memory after authorized resolution;
+  stored passwords and target configuration were unchanged.
+- Trusted TLS with an intentionally mismatched server name failed hostname
+  verification before NTLM on both real targets, with no result/IRE publication.
+- An already-expired collection context returned a bounded deadline failure on
+  both tasks. This proves deadline propagation, not a slow real-server timeout.
+- Native cancellation denied further credential access, reported cancellation on
+  renewal and ended the run without CIs. A separate unrenewed 120-second lease
+  expired, denied broker/renewal access, then recovered the same task under a
+  fresh attempt; the remaining partition was cancelled.
+- A unique inactive disposable profile using SSH with a WinRM binding was
+  rejected on insert. Individual protocol/profile/revision/scope mismatch and
+  no-decryption assertions retain production-JavaScript fixture attribution.
+- Probe errors/observations were checked against bearer, lease and password
+  values before submission. Native denied-access audit records contained
+  structured reason codes rather than secret values.
+
+The live wrong-password run found an actual defect: WinRM's empty asset slice
+serialized as `null`, which the strict managed mapper rejected. Commit
+`78ec6e1` initializes it as `[]` and tests the actual serialized envelope across
+protocol failures. The corrected live wrong-password run completed both no-data
+tasks. The strict mapper and credential authority were not weakened.
+
+The live broker/failure probes are opt-in tests in
+`internal/worker/realmanaged_test.go`. Failure-probe binaries were built from
+then-uncommitted changes subsequently committed in `78ec6e1`; they are not
+claimed as commit-embedded release builds. The last probe (including hostname
+failure) SHA-256 was
+`19321cd3192b6790e6bf0543bec85f2f3ad3fe778674fb358b6ac878fe41ceb7`;
+the preceding failure/expiry/cancellation probe SHA-256 was
+`5c69a7ac424971474cba949de61ea87edc57bd583ad5736aec338e7a12e90374`.
+Exact probe run IDs, screenshots and source attribution remain private.
+
+Final committed source passed `scripts/security-review-checks.sh`: exact
+Go 1.26.9, pinned govulncheck v1.7.0 with no reachable vulnerabilities, full vet
+and race suite, native trimpath build, Windows/amd64 vet/build. Application
+JavaScript authority/planner fixtures passed. No subnet planner or pacing code
+was changed, and the existing installed Topo binary was not replaced.
+
+Remaining gates: an account that authenticates over WinRM but lacks WMI inventory
+permission is needed for real Windows permission-denial evidence. Real slow
+server/response-bound tests and isolated live binding mismatch cases remain
+unproven beyond fixtures. Address-change identity, combined Linux/Windows runs,
+ordered physical index enforcement and native installation acceptance remain
+separate gates. The original instance was rechecked and still reports the CICD
+operation; its existing 32-index companion remains Loaded. No installation was
+repeated or downgraded, no platform lock bypassed, and no release was promoted.
+The published 0.4.6 managed beta continues to support Linux targets only.
