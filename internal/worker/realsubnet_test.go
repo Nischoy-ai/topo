@@ -76,7 +76,7 @@ func TestRealManagedSubnet(t *testing.T) {
 		if len(evidence.dials) > 1 || evidence.credentials["10.42.1.21/32"] != 0 || evidence.credentials["10.42.1.22/32"] != 0 {
 			t.Fatal("cancelled paced tasks reached credentials or network")
 		}
-		t.Logf("native cancellation: renew_cancelled=%d terminal_cancelled=%d starts=%d dials=%d active=%d", evidence.cancelResponses, evidence.cancelled, len(evidence.starts), len(evidence.dials), evidence.active)
+		t.Logf("native cancellation: heartbeat_or_renew_signals=%d terminal_cancelled=%d starts=%d dials=%d active=%d", evidence.cancelResponses, evidence.cancelled, len(evidence.starts), len(evidence.dials), evidence.active)
 		return
 	}
 	if evidence.completed != 3 || len(evidence.targets) != 3 {
@@ -139,7 +139,7 @@ func (c *subnetLiveControl) Complete(ctx context.Context, id string, r CompleteR
 		if result.TaskState == "cancelled" {
 			c.evidence.cancelled++
 		}
-		finished := c.evidence.completed == 3 || c.evidence.cancelled > 0
+		finished := c.evidence.completed == 3
 		c.evidence.mu.Unlock()
 		if finished {
 			c.stop()
@@ -291,4 +291,14 @@ func TestRealSubnetPoolCapacity(t *testing.T) {
 		t.Fatal("two-lease pool ceiling did not reject the third claim")
 	}
 	t.Logf("two distinct concurrent worker leases: tasks=%s,%s; third claim empty; no credential or target connection", tasks[0].TaskID, tasks[1].TaskID)
+}
+
+func (c *subnetLiveControl) Heartbeat(ctx context.Context, r HeartbeatRequest) (HeartbeatResponse, error) {
+	response, err := c.ControlPlane.Heartbeat(ctx, r)
+	if err == nil {
+		c.evidence.mu.Lock()
+		c.evidence.cancelResponses += len(response.CancelAttemptIDs)
+		c.evidence.mu.Unlock()
+	}
+	return response, err
 }
