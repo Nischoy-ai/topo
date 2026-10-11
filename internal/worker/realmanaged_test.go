@@ -51,7 +51,7 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal("acceptance client invalid")
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
 	defer cancel()
 	// The same worker token must not have generic user or credential-table access.
 	// Only status is inspected; arbitrary response bodies never enter diagnostics.
@@ -143,6 +143,45 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 	credential, err := client.Credential(ctx, task.TaskID, request)
 	if err != nil || credential.Username == "" || credential.Password == "" {
 		t.Fatal("live attempt-bound Password2 resolution failed")
+	}
+	if os.Getenv("TOPO_REAL_MANAGED_LEASE_FAULT") == "native_binding" {
+		// Operator-only fault injection into this disposable leased task. The
+		// worker request and stored Password2 credential remain unchanged.
+		for _, field := range []string{"protocol", "profile", "revision", "scope"} {
+			t.Logf("task %s run %s: inject native %s mismatch", task.TaskID, task.RunID, field)
+			for _, wantDenied := range []bool{true, false} {
+				for {
+					value, callErr := client.Credential(ctx, task.TaskID, request)
+					var status *HTTPError
+					denied := errors.As(callErr, &status) && status.StatusCode == 409
+					valid := callErr == nil && value.Username == credential.Username && value.Password == credential.Password
+					if callErr != nil && !denied {
+						t.Fatal("unexpected native binding broker status")
+					}
+					if (wantDenied && denied) || (!wantDenied && valid) {
+						break
+					}
+					if _, renewErr := client.Renew(ctx, task.TaskID, RenewRequest(request)); renewErr != nil {
+						t.Fatal("native binding probe renewal failed")
+					}
+					select {
+					case <-ctx.Done():
+						t.Fatal("native binding injection wait expired")
+					case <-time.After(2 * time.Second):
+					}
+				}
+				if wantDenied {
+					t.Logf("native %s mismatch denied with 409; restore original task field", field)
+				}
+			}
+			t.Logf("native %s restored; matching broker resolution succeeded", field)
+		}
+		if _, completeErr := client.Complete(ctx, task.TaskID, completion); completeErr != nil {
+			t.Fatal("native binding probe cleanup failed")
+		}
+		completed = true
+		t.Log("four isolated live binding mismatches denied; restored task completed without target collection or IRE")
+		return
 	}
 	leaseFault := os.Getenv("TOPO_REAL_MANAGED_LEASE_FAULT")
 	if leaseFault == "cancel" || leaseFault == "expire" || leaseFault == "cancel_expire" {
