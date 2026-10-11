@@ -98,3 +98,52 @@ for (const [field, value] of [['u_protocol', 'ssh_password'], ['u_profile_id', '
 credential.u_password.getDecryptedValue = () => { throw new Error('synthetic-password') }
 denied(renewed, 500)
 console.log('Windows broker lease/attempt authority and secret-free denial fixtures passed')
+
+// ServiceNow updateMultiple ignores JavaScript null for existing string values.
+// Its documented 'NULL' sentinel clears them. Model that distinction so a
+// cancelled expired task cannot retain the unique lease slots and block claims.
+const clearFields = ['u_attempt_id', 'u_lease_worker', 'u_lease_boot_id', 'u_lease_token_digest', 'u_pool_lease_slot', 'u_worker_lease_slot', 'u_lease_expires']
+const rows = [true, false].map((cancelled, i) => ({
+    sys_id: `expired-${i}`, u_state: 'leased', u_lease_expires: '999',
+    u_cancel_requested: String(cancelled), u_worker_pool: 'pool-record',
+    u_attempt_id: `old-attempt-${i}`, u_lease_worker: 'old-worker',
+    u_lease_boot_id: 'old-boot', u_lease_token_digest: 'old-digest',
+    u_pool_lease_slot: `pool-record:${i}`, u_worker_lease_slot: `old-worker:${i}`,
+    u_run: { getRefRecord: () => ({ id: `run-${i}` }) },
+}))
+rows.push({ ...rows[0], sys_id: 'future', u_lease_expires: '2000', u_pool_lease_slot: 'other-pool:0', u_worker_pool: 'other-pool' })
+context.GlideRecord = function (table) {
+    assert.equal(table, 'x_664635_topo_task')
+    const queries = [], changes = {}
+    let found = [], cursor = 0
+    this.addQuery = (field, op, value) => queries.push([field, value === undefined ? '=' : op, value === undefined ? op : value])
+    const matches = row => queries.every(([field, op, value]) => op === 'IN'
+        ? String(value).split(',').includes(String(row[field]))
+        : op === '<=' ? Number(row[field]) <= Number(value.value ?? value)
+        : String(row[field]) === String(value))
+    this.setLimit = () => {}
+    this.orderBy = () => {}
+    this.query = () => { found = rows.filter(matches); cursor = 0 }
+    this.next = () => { if (cursor >= found.length) return false; Object.assign(this, found[cursor++]); return true }
+    this.getUniqueValue = () => this.sys_id
+    this.get = id => { const row = rows.find(row => row.sys_id === id); if (!row) return false; Object.assign(this, row); return true }
+    this.setValue = (field, value) => { if (value !== null && value !== undefined) changes[field] = value === 'NULL' ? '' : value }
+    this.updateMultiple = () => { for (const row of rows.filter(matches)) Object.assign(row, changes) }
+}
+const marked = [], refreshed = []
+control._markAttemptResults = (...args) => marked.push(args)
+control._refreshRun = run => refreshed.push(run.id)
+control._expireLeases('pool-record')
+for (const [i, row] of rows.slice(0, 2).entries()) {
+    assert.equal(row.u_state, i === 0 ? 'cancelled' : 'ready')
+    for (const field of clearFields) assert.equal(row[field], '', `${field} must be physically cleared after expiry`)
+    assert.equal(row.u_cancel_requested, false)
+}
+assert.equal(rows[2].u_state, 'leased', 'unexpired unrelated lease must remain untouched')
+assert.equal(rows[2].u_attempt_id, 'old-attempt-0')
+assert.equal(marked.length, 2)
+assert.deepEqual(marked.map(args => args[2]), ['failed', 'superseded'])
+assert.deepEqual(refreshed, ['run-0', 'run-1'])
+const slots = control._availableLeaseSlots({ getUniqueValue: () => 'pool-record', u_max_leases: '1' }, { getUniqueValue: () => 'new-worker', u_max_concurrency: '1' })
+assert.equal(slots.pool, 'pool-record:0', 'next task must be able to reserve the released pool slot')
+console.log('Expired/cancelled lease physical-null clearing and next-task capacity regression passed')
