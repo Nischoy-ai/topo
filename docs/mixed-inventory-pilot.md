@@ -92,9 +92,9 @@ not exercise the ServiceNow credential broker or prove app installation.
 | Windows Server 2022 and 2025 computer/interface collection as non-admin | Two real scans per host passed with verified TLS, zero errors and stable identity; production executor and offline IRE preview exercised |
 | Ubuntu 24.04 computer/interface collection | Two candidate production-executor scans passed with verified host keys: 3 assets/2 relationships, zero errors, stable identities and offline IRE preview |
 | Windows WQL and HTTP/2 compatibility regressions | Source fixes plus real-host collection evidence; published worker unchanged |
-| Mixed managed runs, real Password2/ACL/OAuth enforcement and repeated IRE apply | Candidate app 0.4.7 installed on the authorized developer instance; Linux subnet broker/IRE acceptance passed; remaining mixed/Windows gates are separate |
+| Mixed managed runs, real Password2/ACL/OAuth enforcement and repeated IRE apply | Candidate app 0.4.7 installed on the authorized developer instance; Linux subnet and separate Windows broker/IRE acceptance passed; combined mixed-estate upgrade/address-change gates remain separate |
 | Real bounded Linux subnet, exclusions, local authorization, target ceiling, pacing, pool capacity, cancellation, unreachable isolation and repeat IRE | Passed on replacement instance with native 0.4.7; exact source/run attribution in the evidence record |
-| Wrong credentials/trust and remaining Windows/mixed managed acceptance | Separate gates remain pending |
+| Windows managed success/repeat, credentials/trust, permission denial and isolated binding negatives | Passed in Windows PR #80 within its recorded source and probe limits; combined mixed-estate acceptance remains separate |
 | Address-change identity and scheduling/lease recovery across the real mixed estate | Pending |
 | Clean candidate app installation and data-preserving upgrade | Pending |
 | Signed candidate worker, native XML and public-channel acceptance | Pending; preceding release assets remain intact |
@@ -115,3 +115,7 @@ published 0.4.6 combined package to work around that lock.
 The owner-authorized replacement instance subsequently passed bounded Linux
 subnet acceptance with its existing index companion. The original instance
 platform lock remains untouched. See the dated evidence for tested limits.
+
+The Windows-owned expired-lease cleanup fix is integrated into the subnet review
+branch. Live cancellation/expiry recovery is attributed to PR #80; the earlier
+subnet cancellation run alone did not prove expiry recovery.

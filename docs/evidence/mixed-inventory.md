@@ -256,3 +256,41 @@ release-channel acceptance remain separate. Physical coverage is established
 for all 32 indexes; the live pool test establishes this lease ceiling, not
 independent enforcement evidence for every unique index. The public 0.4.6 beta
 scope and assets remain unchanged; no release was published or promoted.
+
+
+## Coordinated lease-recovery integration — 2026-10-11 UTC
+
+After bounded subnet acceptance, the Windows acceptance chat found that native
+`GlideRecord.updateMultiple` ignored JavaScript null when clearing persisted
+lease fields. A cancelled, expired task could retain its unique pool/worker
+slots and prevent later claims. The Windows-owned fix
+`687b8f0728c7740c4b89a86fb17e6c98c1b55483` is preserved here by cherry-pick
+`dad51cd`; it clears all seven expiry authority/slot fields with the documented
+`'NULL'` sentinel. No planner, pacing, protocol or credential change is required.
+Its behavioral platform-semantics fixture is included in the standard
+application test command. The preceding broker fixture is copied unchanged
+from Windows source `7a7e46d`; ownership and original history are preserved.
+
+The separate [Windows acceptance PR #80](https://github.com/Nischoy-ai/topo/pull/80)
+at final evidence source `5a94445` records the live recovery proof: probe source
+`479d140`, SHA-256
+`261cbaf6637050ab9eb65238e08b22ff6a4b1cbca4d0314af366df108142b046`,
+observed cancellation, waited through a 120-second lease, verified broker and
+renewal denial, no cancelled redispatch and all seven fields empty. Subsequent
+production-worker runs succeeded and preserved IRE identities. That evidence
+comes from the Windows chat; it is not a rerun of the subnet observer or a
+claim of subnet restart recovery. The instance Script Include already contains
+the source-verified fix, so this integration performs no additional mutation.
+
+The same Windows evidence reports managed success/repeat and its requested
+negative gates on Server 2022/2025, including a separately authorized WMI-denied
+account and isolated protocol/profile/revision/scope broker mismatches. The
+64-byte response-budget probe proves a bounded read of real responses, not a
+real oversized 1 MiB response. These records close those Windows gates within
+that stated scope; they do not prove address-change, macOS managed runtime,
+combined mixed-estate native upgrade or production readiness. Original-instance
+preview/CICD status remains last authenticated evidence only.
+
+The integrated source passed the full exact Go 1.26.9 security gate, all
+application JavaScript tests including the lease regression, and 38 ServiceNow
+Python checks. Public 0.4.6 scope and release channels remain unchanged.
