@@ -30,7 +30,7 @@ func TestRealManagedSubnet(t *testing.T) {
 		t.Fatal("origin not approved")
 	}
 	mode := os.Getenv("TOPO_REAL_SUBNET_MODE")
-	if mode != "collect" && mode != "local_deny" {
+	if mode != "collect" && mode != "local_deny" && mode != "cancel" {
 		t.Fatal("reviewed acceptance mode required")
 	}
 	token, err := credentialref.Resolve(os.Getenv("TOPO_REAL_SUBNET_TOKEN_REF"))
@@ -42,6 +42,9 @@ func TestRealManagedSubnet(t *testing.T) {
 		t.Fatal("local SSH authority unavailable")
 	}
 	policy := Policy{WorkerPool: "subnet-managed-pilot", SiteID: "azure-subnet-lab", AllowSSHLinux: true, SSHAllowlist: startup.Allowlist, SSHHostKeyDigest: startup.KnownHostsDigest, MaxConcurrency: 2, MaxTaskDuration: 20 * time.Second, RemoteStartInterval: 3 * time.Second}
+	if mode == "cancel" {
+		policy.RemoteStartInterval = 30 * time.Second
+	}
 	if err := policy.Validate(); err != nil {
 		t.Fatal("policy invalid")
 	}
@@ -66,6 +69,16 @@ func TestRealManagedSubnet(t *testing.T) {
 	}
 	evidence.mu.Lock()
 	defer evidence.mu.Unlock()
+	if mode == "cancel" {
+		if evidence.cancelled == 0 || evidence.cancelResponses == 0 || evidence.active != 0 || evidence.maximum > 2 {
+			t.Fatal("native cancellation did not stop the production worker")
+		}
+		if len(evidence.dials) > 1 || evidence.credentials["10.42.1.21/32"] != 0 || evidence.credentials["10.42.1.22/32"] != 0 {
+			t.Fatal("cancelled paced tasks reached credentials or network")
+		}
+		t.Logf("native cancellation: renew_cancelled=%d terminal_cancelled=%d starts=%d dials=%d active=%d", evidence.cancelResponses, evidence.cancelled, len(evidence.starts), len(evidence.dials), evidence.active)
+		return
+	}
 	if evidence.completed != 3 || len(evidence.targets) != 3 {
 		t.Fatal("expected exactly three terminal lab partitions")
 	}
@@ -107,6 +120,7 @@ func TestRealManagedSubnet(t *testing.T) {
 type subnetLiveEvidence struct {
 	mu                         sync.Mutex
 	active, maximum, completed int
+	cancelled, cancelResponses int
 	starts                     []time.Time
 	dials                      []string
 	targets, credentials       map[string]int
@@ -122,7 +136,10 @@ func (c *subnetLiveControl) Complete(ctx context.Context, id string, r CompleteR
 	if err == nil {
 		c.evidence.mu.Lock()
 		c.evidence.completed++
-		finished := c.evidence.completed == 3
+		if result.TaskState == "cancelled" {
+			c.evidence.cancelled++
+		}
+		finished := c.evidence.completed == 3 || c.evidence.cancelled > 0
 		c.evidence.mu.Unlock()
 		if finished {
 			c.stop()
@@ -167,4 +184,14 @@ func (c subnetLiveCredential) Password(ctx context.Context) (SSHCredential, erro
 	c.evidence.credentials[c.target]++
 	c.evidence.mu.Unlock()
 	return c.CredentialSource.Password(ctx)
+}
+
+func (c *subnetLiveControl) Renew(ctx context.Context, id string, r RenewRequest) (RenewResponse, error) {
+	response, err := c.ControlPlane.Renew(ctx, id, r)
+	if err == nil && response.Cancelled {
+		c.evidence.mu.Lock()
+		c.evidence.cancelResponses++
+		c.evidence.mu.Unlock()
+	}
+	return response, err
 }
