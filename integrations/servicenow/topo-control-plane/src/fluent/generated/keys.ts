@@ -2525,6 +2525,17 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_choice'
+                        id: '8b002c6a88b44f1db12038c01a3110d1'
+                        key: {
+                            name: 'x_664635_topo_credential_binding'
+                            element: 'u_protocol'
+                            value: 'winrm_ntlm_password'
+                            language: 'en'
+                            dependent_value: 'NULL'
+                        }
+                    },
+                    {
                         table: 'sys_documentation'
                         id: '8b411bb6d01443b9862a4944059e9bba'
                         key: {
@@ -2769,6 +2780,17 @@ declare global {
                         key: {
                             logical_table_name: 'x_664635_topo_worker_pool'
                             col_name_string: 'u_service_user,u_pool_id'
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: 'a2aa0a0441e844e0aa8b56ee6d68f1fa'
+                        key: {
+                            name: 'x_664635_topo_profile'
+                            element: 'u_operation'
+                            value: 'winrm_windows.v1'
+                            language: 'en'
+                            dependent_value: 'NULL'
                         }
                     },
                     {
@@ -4064,6 +4086,17 @@ declare global {
                         id: 'e7efe44391f4457392ee832289d27716'
                         key: {
                             name: 'x_664635_topo.operator'
+                        }
+                    },
+                    {
+                        table: 'sys_choice'
+                        id: 'e82e5ebde07445fba886d980fac12151'
+                        key: {
+                            name: 'x_664635_topo_task'
+                            element: 'u_operation'
+                            value: 'winrm_windows.v1'
+                            language: 'en'
+                            dependent_value: 'NULL'
                         }
                     },
                     {

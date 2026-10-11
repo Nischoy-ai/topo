@@ -62,6 +62,16 @@ def complete_fixture():
 
 
 class UpdateSetTests(unittest.TestCase):
+    def test_candidate_version_requires_explicit_selection(self):
+        body = complete_fixture().replace(b'0.4.6', b'0.4.7')
+        with self.assertRaises(m.Rejected):
+            m.inspect(body)
+        self.assertEqual(m.inspect(body, '0.4.7')['app_version'], '0.4.7')
+        with self.assertRaises(m.Rejected):
+            m.inspect(complete_fixture(), '0.4.7')
+        with self.assertRaises(m.Rejected):
+            m.inspect(body, '9.9.9')
+
     def test_preserves_bytes_and_integrity(self):
         body = complete_fixture()
         report = m.inspect(body)

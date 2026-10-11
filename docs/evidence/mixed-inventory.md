@@ -61,6 +61,17 @@ resources. The normalized candidate ZIP SHA-256 is
 `0b1fbba4c571d5408b38bfc27df87fbef7410cb543fbf7e9db82d4b7838fa411`.
 This developer SDK artifact is not a native XML export or customer release.
 
+The candidate was subsequently installed on a disposable developer instance.
+Its native base update-set export contains 441 records (1,297,275 bytes), with
+SHA-256 `a517375ad29528453644dd0562fbbfc49fbe2ee3774b033ee9f6095ac01fcaa2`.
+Explicit 0.4.7 offline inspection passed; the inspector still defaults to 0.4.6.
+All 55 exported script fields match the rebuilt candidate source. Exact-table
+reads show all 32 required ordered index column definitions, but the index view
+does not prove uniqueness. The base export does not include the required index
+and discovery-source companion. These checks establish authoring/export scope;
+native XML clean installation, upgrade and managed broker/IRE acceptance remain
+open. All 38 ServiceNow Python checks and the application JavaScript tests passed.
+
 Managed acceptance and candidate publication remain open. The four lab VMs
 started for these checks were returned to their original deallocated state;
 no installed Topo, target privileges or provisioning was changed.

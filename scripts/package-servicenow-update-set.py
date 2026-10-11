@@ -100,7 +100,9 @@ def payload_records(root, table):
     return [record]
 
 
-def inspect(body):
+def inspect(body, expected_version='0.4.6'):
+    # Candidate validation is explicit; existing release callers stay pinned.
+    require(expected_version in {'0.4.6', '0.4.7'})
     root = parse(body)
     require(root.tag == 'unload')
     require(all(n.tag in {'sys_remote_update_set', 'sys_update_xml'} for n in root))
@@ -166,7 +168,7 @@ def inspect(body):
                 routes.append(field(record, 'http_method') + ' ' + field(record, 'relative_path'))
         records.append({'name': name, 'table': table,
                         'payload_sha256': hashlib.sha256(payload).hexdigest()})
-    require(app == '0.4.6')  # Advance only with a reviewed source/upgrade contract.
+    require(app == expected_version)
     require(sorted(tables) == sorted(SCOPE + '_' + name for name in (
         'credential_access', 'credential_binding', 'ire_delivery', 'profile',
         'result', 'run', 'schedule', 'ssh_credential', 'target_scope', 'task',
@@ -214,13 +216,15 @@ def package(body, report, digest, commit, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('xml', type=Path)
+    parser.add_argument('--expected-version', choices=['0.4.6', '0.4.7'], default='0.4.6',
+                        help='Exact reviewed app version; 0.4.7 remains an unpublished candidate')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--review-sha256')
     parser.add_argument('--source-commit')
     args = parser.parse_args()
     try:
         body = read_bounded(args.xml)
-        report = inspect(body)
+        report = inspect(body, args.expected_version)
         if args.output:
             require(args.review_sha256 is not None and args.source_commit is not None)
             package(body, report, args.review_sha256, args.source_commit, args.output)
