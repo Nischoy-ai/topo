@@ -138,3 +138,17 @@ Least-privilege worker setup is the next external gate, coordinated with the
 Windows acceptance chat under exclusive instance mutation ownership. Subnet
 scan, policy, cancellation and repeat IRE acceptance remain open. The Azure
 lab remains deallocated and the published 0.4.6 beta scope is unchanged.
+
+## SSH no-data serialization correction — 2026-10-11
+
+The parallel Windows managed negative test exposed a zero-asset envelope that
+encoded `assets` as JSON `null`, rejected by the strict managed mapper before
+its no-data path. Inspection found the same defect in SSH discovery. The SSH
+plugin now initializes its asset slice so authentication, parsing and connection
+failures emit `assets: []` together with collection errors. Existing real-SSH
+fixture tests now inspect the serialized envelope for authentication and
+malformed-response failures. Exact Go 1.26.9 SSH/worker race tests and the full
+security-review gate passed: vet, pinned govulncheck v1.7.0 (no reachable
+vulnerabilities), all race tests, native trimpath build and Windows amd64 vet/build.
+This source correction is separate from real SSH managed-negative acceptance,
+which remains pending the shared instance handoff.

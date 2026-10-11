@@ -73,7 +73,7 @@ func (p Plugin) Discover(ctx context.Context, r discovery.Request) (model.Observ
 		return model.ObservationEnvelope{}, err
 	}
 	now := time.Now().UTC()
-	obs := model.ObservationEnvelope{SchemaVersion: model.SchemaVersion, ObservationID: sshObservationID(), SiteID: defaultValue(r.SiteID, "default"), CollectorID: defaultValue(r.CollectorID, "ssh-relay"), Plugin: "ssh-linux", JobID: r.JobID, ObservedAt: now}
+	obs := model.ObservationEnvelope{SchemaVersion: model.SchemaVersion, ObservationID: sshObservationID(), SiteID: defaultValue(r.SiteID, "default"), CollectorID: defaultValue(r.CollectorID, "ssh-relay"), Plugin: "ssh-linux", JobID: r.JobID, ObservedAt: now, Assets: []model.Asset{}}
 	concurrency := p.Config.Concurrency
 	if concurrency < 1 {
 		concurrency = 32

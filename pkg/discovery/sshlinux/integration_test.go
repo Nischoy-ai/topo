@@ -3,6 +3,7 @@ package sshlinux_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -90,6 +91,17 @@ func TestSSHMalformedAndAuthenticationFailuresAreIsolated(t *testing.T) {
 			observation := discoverOne(t, estate, test.password)
 			if len(observation.Assets) != 0 || len(observation.Errors) != 1 || observation.Errors[0].Code != test.code {
 				t.Fatalf("unexpected observation: %#v", observation)
+			}
+			encoded, err := json.Marshal(observation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var envelope map[string]json.RawMessage
+			if err := json.Unmarshal(encoded, &envelope); err != nil {
+				t.Fatal(err)
+			}
+			if string(envelope["assets"]) != "[]" {
+				t.Fatalf("no-data assets must serialize as an array for the strict managed mapper, got %s", envelope["assets"])
 			}
 		})
 	}
