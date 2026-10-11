@@ -75,3 +75,39 @@ open. All 38 ServiceNow Python checks and the application JavaScript tests passe
 Managed acceptance and candidate publication remain open. The four lab VMs
 started for these checks were returned to their original deallocated state;
 no installed Topo, target privileges or provisioning was changed.
+
+## Subnet acceptance prerequisite — 2026-10-11
+
+The subnet work inspected draft PR #78 at exact source
+`3684e9a9d56f72b7cc89a0dd752c11b46b963ba1` and continued in an isolated
+branch. Its existing planner and worker execution policy were retained.
+Additional planner checks compare 128 deterministic generated selections with
+an independent address-set oracle, including overlapping/reordered CIDRs,
+fragmented exclusions and repeat plan keys. They also check the post-exclusion
+1,024-address limit, a 1,025-address selection across separate segments,
+unchanged scope metadata on rejected planning and both IPv4 boundary addresses.
+All application JavaScript checks and 38 ServiceNow Python checks passed.
+Exact Go 1.26.9 worker and control-plane simulator race suites passed. These
+are local/source checks; no real managed scan was performed in this attempt.
+The added test and this evidence are follow-on changes to the pinned candidate,
+not part of that candidate commit's previously recorded execution.
+
+Read-only inspection of the authorized developer instance confirmed that the
+unchanged 32-update index companion remains **Loaded**. Its native form reports
+“Update set preview and commit are unavailable because another operation is
+running: CICD Operation.” The active execution-tracker list contains seven
+pending/running platform operations, including a batch install and App Engine
+Studio/workspace loading at 99%; percentage alone does not establish completion.
+No operation was cancelled, installation retried, update set committed,
+instance reset, security policy changed or Azure VM started for this attempt.
+This preserves the shared instance and the separate Windows work.
+
+The exact next gate is native preview/problem review and commit of the already
+loaded index companion, followed by verification of all 32 definitions and
+17 unique constraints while retaining app 0.4.7. Managed subnet acceptance
+then still requires authorized profiles and an attempt-bound worker using real
+Password2/OAuth, observed exclusions and local denials before credentials or
+connections, target bounds, measured start spacing/concurrency, cancellation,
+unreachable-host isolation and two scans reconciling the same source identities
+through real IRE. Neither the platform lock nor fixture success closes those
+gates. Published 0.4.6 behavior and release scope remain unchanged.
