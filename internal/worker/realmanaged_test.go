@@ -233,7 +233,7 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		t.Fatal("acceptance origin is not approved")
 	}
 	mode := os.Getenv("TOPO_REAL_MANAGED_FAULT")
-	if mode != "wrong_password" && mode != "untrusted_certificate" && mode != "deadline" && mode != "wrong_identity" {
+	if mode != "wrong_password" && mode != "untrusted_certificate" && mode != "deadline" && mode != "wrong_identity" && mode != "permission_denied" {
 		t.Fatal("reviewed live fault is required")
 	}
 	token, err := credentialref.Resolve(os.Getenv("TOPO_REAL_MANAGED_TOKEN_REF"))
@@ -314,6 +314,9 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 			t.Logf("task %s: wrong server identity rejected by real TLS handshake before NTLM; no result or IRE", task.TaskID)
 			continue
 		}
+		if mode == "permission_denied" && credential.Username != "topo-wmi-denied" {
+			t.Fatal("dedicated denial credential was not returned by broker")
+		}
 		realPassword := credential.Password
 		if mode == "wrong_password" {
 			credential.Password = "deliberately-invalid-acceptance-password"
@@ -350,6 +353,19 @@ func TestRealWindowsManagedCollectionFailures(t *testing.T) {
 		if len(observation.Assets) != 0 || len(observation.Relationships) != 0 || len(observation.Errors) == 0 || time.Since(started) > 15*time.Second {
 			_, _ = client.Complete(ctx, task.TaskID, complete)
 			t.Fatal("fault did not fail closed within bound")
+		}
+		if mode == "permission_denied" {
+			denied := false
+			for _, failure := range observation.Errors {
+				message := strings.ToLower(failure.Message)
+				if strings.Contains(message, "http 401") {
+					t.Fatal("permission test failed authentication")
+				}
+				denied = denied || strings.Contains(message, "access is denied") || strings.Contains(message, "access denied") || strings.Contains(message, "accessdenied") || strings.Contains(message, "0x80070005")
+			}
+			if !denied {
+				t.Fatal("real WMI permission denial not established")
+			}
 		}
 		payload, err := json.Marshal(observation)
 		if err != nil {
