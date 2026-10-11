@@ -41,6 +41,10 @@ Remote Management Users membership and read/remote access to WMI `root/cimv2`.
 Use the [Windows compatibility guidance](winrm-discovery.md) to check the
 required fixed queries. Enable an HTTPS/5986 listener and firewall access only
 from approved workers. Keep Basic and unencrypted authentication disabled.
+Use `SERVERNAME\username` for a local Windows account; domain account
+compatibility is not established. Environments that disable NTLM are unsupported
+by this candidate; preserve domain policy and wait for a supported authentication
+mode rather than weakening it. Kerberos remains deferred.
 NTLMv2 requires verified TLS for server identity; provision a valid server
 certificate whose IP SAN includes each selected target IP. Establish CA trust
 independently and install the trusted PEM bundle on the worker. DNS-only SANs
@@ -195,6 +199,7 @@ recovery is tested, while broader mixed restart acceptance remains open.
 | Ubuntu 24.04 SSH | Real direct repeats and managed subnet/broker/IRE repeats | Three-address bounded lab scope; no broad estate guarantee |
 | Windows Server 2022/2025 | Real non-admin HTTPS/NTLM managed repeats, negatives and cancelled-expiry recovery | Restricted computer/interfaces; no domain/Kerberos or address-change proof |
 | Subnet bounds | Real exclusions, local denial, 1,024 planning ceiling, pacing, pool capacity, cancellation, unreachable isolation | No 1,024-host live scan; collection did not demonstrate two simultaneous SSH connections |
+| Response bounds | Real Windows responses rejected under a 64-byte local budget | Production 1 MiB oversize remains fixture-tested |
 | Source/simulation | Reviewed operations, mapper, broker, planner and worker fixtures; 17 CI checks green on each pinned PR | Public-channel jobs test unchanged shipped release; fixtures are not live acceptance |
 | Native installation | Existing-instance 0.4.7 upgrade and 32 ordered physical index combinations | Matching final export, empty-instance clean install, populated-data upgrade and every unique constraint remain open |
 | Release/compatibility expansion | Candidate source exists | Signed candidate/channel publication, macOS managed runtime, combined mixed/address-change/restart acceptance remain open |
