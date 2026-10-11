@@ -111,3 +111,30 @@ connections, target bounds, measured start spacing/concurrency, cancellation,
 unreachable-host isolation and two scans reconciling the same source identities
 through real IRE. Neither the platform lock nor fixture success closes those
 gates. Published 0.4.6 behavior and release scope remain unchanged.
+
+## Replacement-instance native upgrade — 2026-10-11
+
+The owner authorized a replacement developer instance after the platform lock
+above. Its existing 0.4.6 app was upgraded using the same native 441-record
+0.4.7 base export and SHA-256 recorded above. Preview reported 30 newer-local
+collisions. Individual comparisons retained five instance-specific federated
+role identities and eleven unchanged navigation modules; fourteen candidate
+updates were accepted. The control-plane, profile validator, IRE processor and
+observation mapper script fields matched the exact PR #78 source
+`3684e9a9d56f72b7cc89a0dd752c11b46b963ba1`. No script was edited on the instance.
+
+The native **Update Set Commit** dialog reported **Succeeded 100%**, in
+57 seconds. The installed application form then reported version **0.4.7**,
+scope `x_664635_topo`, and 447 application files. Existing companion metadata
+contains 32 native index records, including the pool/worker lease-slot unique
+definitions; full ordered physical coverage and uniqueness enforcement still
+need verification. The companion was not reinstalled. This is evidence of an
+existing-installation upgrade; it does not establish a clean installation or
+data-preservation acceptance with populated fixture records.
+
+No managed scan ran. Read-only readiness inspection found no existing Topo
+worker service user, pool or OAuth application on the replacement instance.
+Least-privilege worker setup is the next external gate, coordinated with the
+Windows acceptance chat under exclusive instance mutation ownership. Subnet
+scan, policy, cancellation and repeat IRE acceptance remain open. The Azure
+lab remains deallocated and the published 0.4.6 beta scope is unchanged.
