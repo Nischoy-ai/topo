@@ -51,7 +51,7 @@ it does not establish real-system compatibility or production readiness.
 | Component | Implemented scope | Validation limit | Guide |
 | --- | --- | --- | --- |
 | Standalone host discovery | Local discovery and reviewed SSH operations | Separate from the managed target policy; real IRE evidence covers only the documented classes and runs. | [SSH](docs/ssh-discovery.md) |
-| Windows discovery and agent service | Fixed WinRM inventory operations and Windows service wrapper | Broader WinRM inventory remains fixture-tested. The unpublished computer/interface candidate passed direct collection on Windows Server 2022/2025; managed acceptance is pending. Service registration checked by cross-compilation and code review only; real Windows Service Control Manager unverified. | [WinRM](docs/winrm-discovery.md) · [Agent](docs/topo-agent.md) |
+| Windows discovery and agent service | Fixed WinRM inventory operations and Windows service wrapper | Broader WinRM inventory remains fixture-tested. The unpublished computer/interface candidate passed direct collection on Windows Server 2022/2025; scoped managed repeats and negative gates passed in [candidate PR #80](https://github.com/Nischoy-ai/topo/pull/80); broader acceptance remains open. Service registration checked by cross-compilation and code review only; real Windows Service Control Manager unverified. | [WinRM](docs/winrm-discovery.md) · [Agent](docs/topo-agent.md) |
 | SNMP | SNMPv3 MIB-II device/interface inventory | Lab wire-protocol fixture uses `noAuthNoPriv`; production `authPriv` has no real-equipment validation. | [SNMP](docs/snmp.md) |
 | VMware | Read-only host/VM inventory | HTTPS/authenticated `vcsim` tests; real vCenter/ESXi unverified. | [VMware](docs/vmware.md) |
 | Kubernetes | Node/Pod inventory | Topo Lab API fixture; live cluster unverified. | [Kubernetes](docs/kubernetes.md) |
@@ -70,13 +70,15 @@ M3 — hybrid discovery and managed ServiceNow deployment — remains the curren
 milestone. Combined-package installation and focused upgrade acceptance are
 complete, with customer installation documentation for the Linux workflow.
 The next approved scope is a **validated ServiceNow-managed Linux and Windows
-inventory pilot with bounded IPv4 subnet discovery**. Development will add
-managed Windows computer/interface inventory, allowlisted CIDR selection with
-exclusions and bounded execution, and real mixed-estate/IRE acceptance. See the [candidate scope and gates](docs/mixed-inventory-pilot.md). These
+inventory pilot with bounded IPv4 subnet discovery**. The unpublished candidate implements
+managed Windows computer/interface inventory and allowlisted CIDR selection
+with exclusions and bounded execution. Real mixed-estate/IRE acceptance remains
+scoped to the dated results. See the [candidate scope and gates](docs/mixed-inventory-pilot.md). These
 include completed candidate Linux subnet acceptance and separate remaining
 mixed/Windows and release gates; the published beta retains the Linux-only
 scope above.
-Windows target support will use Linux/macOS workers; Windows worker publication
+The [candidate setup guide](docs/mixed-inventory-setup.md) provides the proposed
+onboarding path and exact review boundary. Windows target support uses Linux/macOS workers; Windows worker publication
 remains a separate planned capability.
 
 ## Planned capabilities

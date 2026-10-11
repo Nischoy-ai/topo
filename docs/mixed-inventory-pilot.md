@@ -11,6 +11,12 @@ Linux and Windows, using bounded, explicitly authorized IPv4 subnet selection.
 It does not claim broad Device42 replacement coverage. Windows targets can be
 collected by Linux/macOS workers; Windows worker packaging is a separate scope.
 
+Follow the [candidate setup path](mixed-inventory-setup.md) for identities,
+protocol profiles, worker preflight, operation and troubleshooting. The dated
+[evidence history](evidence/mixed-inventory.md) contains later scoped acceptance
+results that supersede earlier pending checkpoints below; remaining native and
+release gates are summarized in the setup guide.
+
 ## Candidate contract
 
 - `ssh_linux.v1`: reviewed SSH Linux operations on port 22 with verified

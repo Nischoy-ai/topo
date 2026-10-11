@@ -85,6 +85,10 @@ SSH port 22. It is not a subnet scanner. Use non-privileged test credentials
 and begin with a disposable target. The complete setup, validation, upgrade,
 and cleanup procedure is in the [ServiceNow setup guide](docs/pilot-quickstart.md).
 
+For the unpublished 0.4.7 development candidate only, see the
+[managed Linux/Windows review setup](docs/mixed-inventory-setup.md). The public
+downloads and setup above remain Linux-only 0.4.6 Beta.
+
 ## Documentation and verification
 
 | Need | Guide |
