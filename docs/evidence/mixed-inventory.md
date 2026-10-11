@@ -226,12 +226,69 @@ and race suite, native trimpath build, Windows/amd64 vet/build. Application
 JavaScript authority/planner fixtures passed. No subnet planner or pacing code
 was changed, and the existing installed Topo binary was not replaced.
 
-Remaining gates: an account that authenticates over WinRM but lacks WMI inventory
-permission is needed for real Windows permission-denial evidence. Real slow
-server/response-bound tests and isolated live binding mismatch cases remain
-unproven beyond fixtures. Address-change identity, combined Linux/Windows runs,
+Remaining gates at that checkpoint: real Windows permission denial and network/response bounds were still pending. The follow-up below closes those scoped gates. Isolated live binding mismatch cases remain unproven beyond production-script fixtures. Address-change identity, combined Linux/Windows runs,
 ordered physical index enforcement and native installation acceptance remain
 separate gates. The original instance was rechecked and still reports the CICD
 operation; its existing 32-index companion remains Loaded. No installation was
 repeated or downgraded, no platform lock bypassed, and no release was promoted.
 The published 0.4.6 managed beta continues to support Linux targets only.
+
+
+## Dedicated permission denial and bounded transport follow-up — 2026-10-11 UTC
+
+The owner authorized a separate disposable lab account and autonomous password
+storage. Administrative Azure lab setup created it on both Windows releases,
+with Remote Management Users membership and a WMI `root/cimv2` deny ACE limited
+to that new account. Existing scan accounts and their read ACEs were preserved.
+Its separate Password2 credential, binding and profile used the same two exact
+/32 targets; no working credential or profile was changed. Both server Security
+logs confirmed NTLM network logon from the Linux worker; the fixed inventory
+operation then returned WMI AccessDenied, rather than authentication failure.
+The managed run completed two no-data tasks with two collection errors and no
+assets, relations or IRE publication. Secret values were checked against errors
+before submission. This used probe source `5908b0c`, Go 1.26.9/Linux amd64/trimpath,
+SHA-256 `28c00e56b5bb06c8083b6935ebc1534409571f7bc2bd502d5739dd6899e9d551`.
+
+A temporary Linux-worker firewall dropped only responses from the two approved
+Windows targets on TCP source port 5986. EXIT/signal cleanup and an independent
+90-second systemd cleanup timer bounded the fault. Both unchanged production
+collector attempts ended at 10.007 seconds with deadline errors and managed
+no-data completion. The rules were removed before the next test. A separate
+probe read actual verified-TLS/NTLM server responses with a deliberately small,
+local 64-byte read budget: both failed within 74 milliseconds with bounded,
+secret-free errors and no inventory. This proves the reader bound against real
+responses; it does not claim a real 1 MiB oversized response or a slow-server
+fixture. Probe source was `f49cf21`, SHA-256
+`077003514521725a046f136aec6d4edfea31fe214185093a683e03a20431df85`.
+
+The first timeout observer rejected the wording `context deadline exceeded`,
+leaving an expired cancelled attempt. This exposed an actual ServiceNow defect:
+`updateMultiple` ignored JavaScript null values for existing lease authority and
+slot fields, preventing later claims. Commit `687b8f0` uses the documented string
+`'NULL'` to clear all seven fields, with a behavioral fixture that reproduces the
+platform's ignored-null semantics. See the primary
+[ServiceNow GlideRecord updateMultiple documentation](https://www.servicenow.com/docs/r/api-reference/server-api-reference/c_GlideRecordScopedAPI.html).
+Only the reviewed TopoControlPlane Script Include was updated after verifying
+its complete pre-change source against PR #78; native readback matched the fix.
+No application installation, update-set commit or planner/pacing change occurred.
+The one already-terminal corrupted test record needed a bounded native repair
+of its two reserved slots; historical attempt correlation was retained. Earlier
+failed/interrupted observer logs are retained as failures, not passing evidence.
+The corrected observer accepts deadline wording, closes failed tasks and checks
+secrets before diagnostics. Exact native records, setup scripts without passwords,
+server authentication events, source readbacks and screenshots remain private.
+
+
+The live cancellation-expiry regression at source `479d140` (probe SHA-256
+`261cbaf6637050ab9eb65238e08b22ff6a4b1cbca4d0314af366df108142b046`)
+resolved a valid credential, observed native cancellation, waited through the
+120-second lease, confirmed broker/renewal denial and no cancelled redispatch,
+and verified all seven fields empty in the native task record. Two subsequent
+full production-worker runs using the preserved scan accounts each completed
+four assets/two relations with zero errors. The final repeat returned
+`UPDATE,UPDATE,NO_CHANGE` per target, preserving the existing CIs. Collection
+runtime remained source `78ec6e1`; the installed lease authority was `687b8f0`.
+Final source `479d140` passed the full exact-Go security script, application
+JavaScript tests and all 38 offline ServiceNow tests. Published 0.4.6 scope and
+all separate native-install, live isolated-binding and address-change gates
+remain as stated above; no release/promotion was performed.
