@@ -97,3 +97,32 @@ per scan, zero errors and stable identities across two scans, with verified TLS.
 See [candidate evidence](evidence/mixed-inventory.md). This focused result does
 not validate broader standalone inventory, the Windows service wrapper or the
 managed ServiceNow installation. The published worker is unchanged.
+
+## Windows target compatibility matrix
+
+This matrix applies to remote computer/interface collection by Linux/macOS
+workers. It does not cover Windows worker distribution or agent service
+registration. Direct collection is distinct from managed ServiceNow acceptance.
+
+| Target | Verified transport and privilege | Direct candidate collection | Complete managed flow |
+| --- | --- | --- | --- |
+| Windows Server 2022, Azure lab | HTTPS/5986, independently trusted IP SAN certificate, NTLMv2; non-admin scan account with Remote Management Users and WMI read access | Two scans, 2 assets/1 relationship, zero errors, stable identity; offline IRE preview | Pending: dispatch, live Password2/ACL authority, worker result ingestion, IRE apply and duplicate-free repeat |
+| Windows Server 2025, Azure lab | Same restricted transport and privilege contract | Two scans, 2 assets/1 relationship, zero errors, stable identity; offline IRE preview | Pending: same managed gates |
+
+Direct evidence is attributed to the unchanged collection implementation at
+`997b796a11b9636c04030ede08b4984866b00539`; executable attribution and limits are
+in [candidate evidence](evidence/mixed-inventory.md). No new real-host scan is
+claimed by the 2026-10-11 acceptance precheck. The candidate's native companion
+preview/commit is currently blocked by an unrelated ServiceNow CICD operation.
+
+| Failure/authority gate | Deterministic coverage | Real managed evidence |
+| --- | --- | --- |
+| Untrusted certificate, verified server identity, NTLM with no Basic fallback | WinRM transport/configuration tests | Pending negative tests on the two real targets; direct successful TLS scans are separate |
+| Wrong credentials, permission denial, timeout, cancellation, bounded responses | Protocol fault-isolation fixtures and worker cancellation tests | Pending |
+| Protocol, profile/revision and scope binding | Production Password2 broker fixture rejects mismatches before decryption | Pending live broker/ACL tests |
+| Worker identity, boot, task, attempt, token, expiry and renewed-attempt binding | Production broker plus production lease validator fixture; denials precede decryption | Pending live lease tests |
+| Secret-free broker/provider errors | Decryption exception and credential-provider redaction tests | Pending live sanitized errors/audit inspection |
+| Repeat IRE reconciliation, stable identity after address change | Direct two-scan identities and offline mapping only | Pending live IRE and address-change tests |
+
+These fixtures do not verify ServiceNow's live ACL or transaction semantics.
+The published 0.4.6 managed beta continues to support Linux targets only.

@@ -75,3 +75,50 @@ open. All 38 ServiceNow Python checks and the application JavaScript tests passe
 Managed acceptance and candidate publication remain open. The four lab VMs
 started for these checks were returned to their original deallocated state;
 no installed Topo, target privileges or provisioning was changed.
+
+## Windows managed acceptance precheck — 2026-10-11 UTC
+
+PR #78 was inspected at exact head
+`3684e9a9d56f72b7cc89a0dd752c11b46b963ba1`, still draft. All 17 checks passed:
+CI run `38119200778` and public beta install run `38119200777`. These checks
+verify their documented fixture/channel scopes, not managed Windows acceptance.
+Windows follow-up is isolated on `feature/windows-managed-acceptance`; subnet
+planner and pacing source are unchanged.
+
+Read-only native checks on the authorized developer instance confirmed the
+32-update index companion remains **Loaded**. ServiceNow displayed: “Update
+set preview and commit are unavailable because another operation is running:
+CICD Operation.” The filtered pending/running execution-tracker list contained
+seven platform records, including App Engine Studio and workspace installation
+work. No platform operation was cancelled, lock bypassed, update set committed,
+app reinstalled/reset or candidate downgraded. This blocks the native companion
+acceptance gate; it does not establish a Windows runtime defect.
+
+Azure control-plane reads confirmed all four lab VMs deallocated. No new real
+Windows collection, managed credentials, dispatch or IRE publication was
+performed in this precheck. The [Windows matrix](../winrm-discovery.md#windows-target-compatibility-matrix)
+keeps direct collection, deterministic security coverage and real managed
+acceptance separate.
+
+The added `windows_lease_authority.test.js` fixture executes the production
+broker and `_ownedLease` implementation together against a bounded fake
+GlideRecord and controlled clock. It verifies wrong worker/boot/task/attempt/
+token, inactive state, exact expiry boundary, cancellation, renewed-attempt
+rejection, protocol/profile/revision/scope mismatch and a redacted Password2
+decryption exception. Every authority denial asserts no decryption. It does
+not simulate a successful platform ACL check or prove live Password2 storage.
+
+Resume gate: after the platform operation actually finishes, coordinate sole
+ownership of shared-instance changes, preview the existing companion, inspect
+problems before commit, verify required physical indexes and source setup while
+retaining app 0.4.7. Then run the live Windows dispatch/broker/worker/IRE chain,
+repeat reconciliation and each matrix failure case on Server 2022 and 2025 with
+least-privilege identities and verified HTTPS. Native clean-install/upgrade
+acceptance also remains open. No release is published or promoted by this work.
+
+The Windows follow-up passed the complete `security-review-checks.sh` gate with
+exact Go 1.26.9 and pinned govulncheck v1.7.0: module verification, full vet,
+no reachable vulnerabilities, full race suite, native trimpath build and Windows
+amd64 vet/build. All application JavaScript fixtures (including the new combined
+lease/broker test), 38 offline ServiceNow Python tests and diff checks passed.
+No production Go or ServiceNow script was changed by this follow-up.
