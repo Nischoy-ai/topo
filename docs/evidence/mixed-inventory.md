@@ -122,3 +122,26 @@ no reachable vulnerabilities, full race suite, native trimpath build and Windows
 amd64 vet/build. All application JavaScript fixtures (including the new combined
 lease/broker test), 38 offline ServiceNow Python tests and diff checks passed.
 No production Go or ServiceNow script was changed by this follow-up.
+
+## Replacement-instance Windows preparation
+
+The owner authorized Windows acceptance on the replacement developer instance,
+with the subnet acceptance chat retaining exclusive instance mutation ownership
+until its native 0.4.7 upgrade is complete and verified. No live Windows gate is
+closed by that authorization or by local preparation.
+
+`TestRealWindowsManagedBrokerAuthority` is an explicit opt-in live probe for a
+dedicated acceptance pool. It uses the production client and lease/broker API,
+checks generic Table API denial, local target authority, wrong worker/boot/
+attempt/token denials, a valid bounded no-store Password2 response and terminal
+lease denial. It finishes the test task as a deliberate `acceptance_probe`
+failure without target collection, result upload or IRE. It is not the successful
+managed discovery test and does not prove protocol/profile/scope or expiry
+negatives by itself. Normal CI skips before credential resolution; a skip is
+not live acceptance evidence. Live execution remains pending verified upgrade,
+exclusive instance handoff and least-privilege worker setup.
+
+The new test compiled for the Linux lab worker. Focused worker/controlsim/WinRM
+race checks passed with the live origin explicitly unset. Production runtime
+source is unchanged. Existing installed Topo, lab power state, and both shared
+ServiceNow instances were left unchanged during this preparation.
