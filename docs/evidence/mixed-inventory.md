@@ -152,3 +152,31 @@ security-review gate passed: vet, pinned govulncheck v1.7.0 (no reachable
 vulnerabilities), all race tests, native trimpath build and Windows amd64 vet/build.
 This source correction is separate from real SSH managed-negative acceptance,
 which remains pending the shared instance handoff.
+
+## Replacement-instance subnet readiness — 2026-10-11 UTC
+
+After the Windows acceptance chat returned exclusive instance mutation
+ownership, native table forms on dev317694 exposed 54 physical index rows
+across all twelve installed Topo tables. The offline index-coverage checker
+compared their complete ordered columns against the candidate SDK dictionary:
+all 32 required combinations are present, including the 17 definitions marked
+unique in source. The native physical view does not expose uniqueness, so this
+check does not prove database uniqueness enforcement. Virtual index-row IDs
+change between page loads and cannot be used as persistent record identities.
+
+The native target-scope validator normalized overlapping inputs
+`10.42.1.16/28` and `10.42.1.20/32`, with exclusions `10.42.1.16/30`,
+`10.42.1.23/32`, and `10.42.1.24/29`, into three `/32` partitions selecting
+only `10.42.1.20`, `.21`, and `.22`. This is live planning evidence, not
+execution evidence. A dedicated pool is limited to two leases, 30-second leases
+and 180-second tasks. No subnet profile, credential binding or scan has been
+activated; storing the existing Linux nonadmin credential awaits specific
+browser credential-access approval.
+
+The Windows runtime correction at `78ec6e1f57c89ad0c58b52960920a79ecce7a83c`
+is preserved by cherry-pick in the subnet review branch. Windows protocol and
+broker ownership remain with the parallel Windows chat. The existing restricted
+worker OAuth grant is available; no broader identity is needed. Subnet runtime
+exclusions, local denials, bounds, pacing/concurrency, cancellation, unreachable
+host isolation and repeat IRE gates remain pending. The published 0.4.6 beta
+scope and release channels are unchanged.
