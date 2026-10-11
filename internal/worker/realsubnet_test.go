@@ -195,3 +195,100 @@ func (c *subnetLiveControl) Renew(ctx context.Context, id string, r RenewRequest
 	}
 	return response, err
 }
+
+// Two independent worker boots claim concurrently from an operator-dispatched
+// three-target run. The third claim must be empty at the configured two-lease
+// pool ceiling. This probe never asks for credentials or connects to a target.
+func TestRealSubnetPoolCapacity(t *testing.T) {
+	instance := os.Getenv("TOPO_REAL_SUBNET_INSTANCE")
+	if instance == "" {
+		t.Skip("real subnet acceptance not configured")
+	}
+	origin := sha256.Sum256([]byte(instance))
+	if hex.EncodeToString(origin[:]) != os.Getenv("TOPO_REAL_SUBNET_ORIGIN_SHA256") {
+		t.Fatal("origin not approved")
+	}
+	token, err := credentialref.Resolve(os.Getenv("TOPO_REAL_SUBNET_TOKEN_REF"))
+	if err != nil {
+		t.Fatal("worker token reference unavailable")
+	}
+	startup, err := LoadSSHStartupConfig(os.Getenv("TOPO_REAL_SUBNET_ALLOWLIST"), os.Getenv("TOPO_REAL_SUBNET_KNOWN_HOSTS"))
+	if err != nil {
+		t.Fatal("local SSH authority unavailable")
+	}
+	policy := Policy{WorkerPool: "subnet-managed-pilot", SiteID: "azure-subnet-lab", AllowSSHLinux: true, SSHAllowlist: startup.Allowlist, SSHHostKeyDigest: startup.KnownHostsDigest, MaxConcurrency: 2}
+	digest, err := policy.Digest()
+	if err != nil {
+		t.Fatal("policy invalid")
+	}
+	client, err := NewClient(instance, string(token), nil)
+	if err != nil {
+		t.Fatal("client invalid")
+	}
+	ctx, stop := context.WithTimeout(t.Context(), 90*time.Second)
+	defer stop()
+	var registrations [2]RegisterResponse
+	var boots [2]string
+	for i := range 2 {
+		boots[i], err = randomID()
+		if err != nil {
+			t.Fatal("boot unavailable")
+		}
+		registrations[i], err = client.Register(ctx, RegisterRequest{SchemaVersion: ContractVersion, BootID: boots[i], WorkerPool: policy.WorkerPool, SiteID: policy.SiteID, Version: "subnet-pool-capacity-acceptance", Capabilities: policy.Capabilities(), PolicyDigest: digest, MaxConcurrency: 2, StartedAt: time.Now().UTC()})
+		if err != nil {
+			t.Fatal("registration failed")
+		}
+	}
+	requests := [2]ClaimRequest{}
+	for i := range 2 {
+		requests[i] = ClaimRequest{SchemaVersion: ContractVersion, WorkerID: registrations[i].WorkerID, BootID: boots[i], Capabilities: policy.Capabilities()}
+	}
+	var tasks [2]*Task
+	var claimErrors [2]error
+	for tasks[0] == nil && tasks[1] == nil {
+		var waiting sync.WaitGroup
+		for i := range 2 {
+			waiting.Go(func() {
+				response, err := client.Claim(ctx, requests[i])
+				tasks[i] = response.Task
+				claimErrors[i] = err
+			})
+		}
+		waiting.Wait()
+		if claimErrors[0] != nil || claimErrors[1] != nil {
+			t.Fatal("concurrent live claim failed")
+		}
+		if tasks[0] == nil && tasks[1] == nil {
+			select {
+			case <-ctx.Done():
+				t.Fatal("operator dispatch wait expired")
+			case <-time.After(time.Second):
+			}
+		}
+	}
+	defer func() {
+		for i, task := range tasks {
+			if task != nil {
+				cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				_, err := client.Complete(cleanup, task.TaskID, CompleteRequest{SchemaVersion: ContractVersion, WorkerID: registrations[i].WorkerID, BootID: boots[i], AttemptID: task.AttemptID, LeaseToken: task.LeaseToken, Failure: &Failure{Code: "acceptance_probe", Message: "pool capacity probe; no credential or connection"}})
+				cancel()
+				if err != nil {
+					t.Error("pool probe cleanup failed; inspect lease expiry")
+				}
+			}
+		}
+	}()
+	if tasks[0] == nil || tasks[1] == nil || tasks[0].TaskID == tasks[1].TaskID {
+		t.Fatal("two concurrent boots did not receive distinct bounded leases")
+	}
+	for _, task := range tasks {
+		if task.Operation != OperationSSHLinuxV1 || task.TargetPartition == nil || len(task.TargetPartition.CIDRs) != 1 {
+			t.Fatal("unexpected probe task")
+		}
+	}
+	third, err := client.Claim(ctx, requests[0])
+	if err != nil || third.Task != nil {
+		t.Fatal("two-lease pool ceiling did not reject the third claim")
+	}
+	t.Logf("two distinct concurrent worker leases: tasks=%s,%s; third claim empty; no credential or target connection", tasks[0].TaskID, tasks[1].TaskID)
+}
