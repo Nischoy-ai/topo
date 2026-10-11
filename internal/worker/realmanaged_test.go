@@ -2,6 +2,8 @@ package worker
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"net/netip"
@@ -21,7 +23,8 @@ func TestRealWindowsManagedBrokerAuthority(t *testing.T) {
 	if instance == "" {
 		t.Skip("real managed instance not explicitly configured")
 	}
-	if instance != "https://dev317694.service-now.com" {
+	originHash := sha256.Sum256([]byte(instance))
+	if hex.EncodeToString(originHash[:]) != os.Getenv("TOPO_REAL_MANAGED_ORIGIN_SHA256") {
 		t.Fatal("acceptance origin is not approved")
 	}
 	token, err := credentialref.Resolve(os.Getenv("TOPO_REAL_MANAGED_TOKEN_REF"))
