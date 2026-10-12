@@ -31,6 +31,13 @@ Validation records distinguish real-system runs, simulation, source review and
 independent retest. Checksums, signatures and attestations have different trust
 properties; follow the instructions for the artifact you are installing.
 
+## Unpublished candidate
+
+For reviewers of the 0.4.7 mixed-inventory candidate, use the
+[Linux/Windows candidate setup](mixed-inventory-setup.md) and
+[scope and acceptance gates](mixed-inventory-pilot.md). Public installation
+above remains the Linux-only 0.4.6 workflow.
+
 ## Components and development
 
 - [Developer quickstart](development.md), [architecture](architecture.md),
