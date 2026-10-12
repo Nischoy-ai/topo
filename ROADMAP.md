@@ -74,9 +74,11 @@ inventory pilot with bounded IPv4 subnet discovery**. The unpublished candidate 
 managed Windows computer/interface inventory and allowlisted CIDR selection
 with exclusions and bounded execution. Real mixed-estate/IRE acceptance remains
 scoped to the dated results. See the [candidate scope and gates](docs/mixed-inventory-pilot.md). These
-include completed candidate Linux subnet acceptance and separate remaining
-mixed/Windows and release gates; the published beta retains the Linux-only
-scope above.
+include completed scoped Linux subnet, Windows managed and bounded reliability
+acceptance; candidate packaging/publication remains separate. Populated upgrade
+is deferred/not passed, and additional unique-enforcement probes are owner-excluded,
+not independently exercised. Neither blocks this undeployed candidate. The published
+beta retains the Linux-only scope above.
 The [candidate setup guide](docs/mixed-inventory-setup.md) provides the proposed
 onboarding path and exact review boundary. Windows target support uses Linux/macOS workers; Windows worker publication
 remains a separate planned capability.
