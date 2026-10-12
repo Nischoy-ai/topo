@@ -195,14 +195,13 @@ func (c *Client) postResponse(ctx context.Context, path string, input, output an
 	var envelope serviceNowResultEnvelope
 	decoder := json.NewDecoder(bytes.NewReader(responseBody))
 	decoder.DisallowUnknownFields()
+	// Decoder diagnostics can include untrusted field names or values, including
+	// reflected lease tokens. Keep rejection errors independent of response content.
 	if err := decoder.Decode(&envelope); err != nil {
-		return nil, fmt.Errorf("decode ServiceNow worker response: %w", err)
+		return nil, errors.New("ServiceNow worker API returned an invalid response envelope")
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			err = errors.New("multiple JSON values")
-		}
-		return nil, fmt.Errorf("decode ServiceNow worker response: %w", err)
+		return nil, errors.New("ServiceNow worker API returned an invalid response envelope")
 	}
 	if len(bytes.TrimSpace(envelope.Result)) == 0 || bytes.Equal(bytes.TrimSpace(envelope.Result), []byte("null")) {
 		return nil, errors.New("ServiceNow worker API returned an empty result")
@@ -210,13 +209,10 @@ func (c *Client) postResponse(ctx context.Context, path string, input, output an
 	decoder = json.NewDecoder(bytes.NewReader(envelope.Result))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(output); err != nil {
-		return nil, fmt.Errorf("decode ServiceNow worker result: %w", err)
+		return nil, errors.New("ServiceNow worker API returned an invalid result")
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			err = errors.New("multiple JSON values")
-		}
-		return nil, fmt.Errorf("decode ServiceNow worker result: %w", err)
+		return nil, errors.New("ServiceNow worker API returned an invalid result")
 	}
 	return response.Header.Clone(), nil
 }

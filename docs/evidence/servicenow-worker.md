@@ -441,6 +441,37 @@ retention-volume gates.
 
 ## Validation coverage
 
+### Unpublished 0.4.7 native restoration (2026-10-12)
+
+The integrated candidate at `06e6ecafbb555efeb87233b6dc841a549cbbc733`
+was restored through native update sets after owner-approved removal of the
+application on a reused developer instance. The 441-record application XML
+has SHA-256 `eb42d7212e79fad4e8e5f2425504aa7082a2908dce99759741473cdd608d734a`.
+Its preview encountered 437 newer-local collisions from retained removal
+history; each was matched to the reviewed input and accepted before commit.
+This was not a pristine-instance or zero-collision installation.
+
+The installed application showed version 0.4.7 and all 12 expected table
+definitions. Its installed control-plane script was byte-identical to the
+reviewed source, SHA-256
+`4c697199558ad9106063716b0d8aac2e1ea6a5883d2e0ab5bd35a03eaf9b43f4`.
+Independent installed equivalence for all 55 script fields is not claimed.
+
+Fresh physical-index reads initially found all 32 required indexes missing.
+Owner-approved native back out, preview, and reapplication of the unchanged
+companion (SHA-256
+`83de78f055477320c136138ce05782c9dff4d4e79c8501b701ffab74ba260b82`)
+then succeeded. Repreview reported 32 inserts and zero updates, deletes, or
+collisions. Fresh reads across all 12 tables, including full forms for two
+list-truncated composite definitions, showed 54 physical indexes and all 32
+required ordered column sequences. The source-pinned index coverage checker
+passed with zero missing definitions. This view does not independently prove
+the 17 physical uniqueness constraints.
+
+This evidence covers candidate application restoration plus companion repair.
+A populated 0.4.6-to-0.4.7 upgrade remains unproven. It does not expand the
+published 0.4.6 beta scope or authorize candidate publication.
+
 Real-system checks cover application roles/ACLs, worker OAuth route restrictions,
 generic API denial, atomic claims, lease expiry/retry, cancellation,
 Password2/broker denials, manual and scheduled execution, IRE

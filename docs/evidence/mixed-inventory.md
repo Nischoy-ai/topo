@@ -324,3 +324,35 @@ operation/preview state can be inspected. No uninstall, reset, reinstall,
 update-set commit, publication or promotion was attempted to bypass these gates.
 A separate empty disposable instance is required for clean-install acceptance;
 a populated data-preservation upgrade also remains a separate native gate.
+
+## Native companion and recovery follow-up — 2026-10-11
+
+After renewed sign-in, the original developer instance showed no pending/running
+platform execution tracker operations. Native preview of the unchanged 32-index
+companion succeeded: 32 inserts, zero updates/deletes and zero collisions. The
+owner separately approved its commit; ServiceNow reported Committed, with the
+same counts. This closes the formerly blocked companion commit gate, not clean
+installation or independent unique-index enforcement.
+
+Before owner-authorized clean-install preparation, a metadata-only native 0.4.7
+recovery export completed with 441 records, 1,297,604 bytes and SHA-256
+`c663ddfd957548088b93cfb338d650048fa7f1e12e53926eca0318fd505d6e9a`.
+Its nonempty script fields match the prior native export. The original installed
+TopoControlPlane matched PR #78 source `3684e9a` exactly; a reviewed lease
+correction is included in a refreshed native export. Its 441 records total
+1,297,882 bytes, SHA-256
+`eb42d7212e79fad4e8e5f2425504aa7082a2908dce99759741473cdd608d734a`.
+All 55 script fields were compared: only TopoControlPlane changed, and it
+matches integrated source `b011c13` exactly. No removal has yet
+been performed. The populated managed-acceptance instance remains preserved.
+Clean installation and populated-data upgrade remain open gates; the owner has
+authorized reusing the original environment rather than supplying a third one.
+
+Independent candidate review at `1c6ddb6` reproduced malformed response field
+names reflected into worker decoder errors. The narrow correction from review
+commit `eb39ca210c61ddade167bb7934b906a9380f3acf` is integrated with original
+attribution as `b011c13f4671b294e828e0c830a1340b97e46e4e`. Synthetic regression
+evidence fails before and passes after the correction; integrated worker race
+tests pass. This changes worker response diagnostics only, not native app bytes
+or the source attribution of earlier live scans. Exact-head CI remains in
+progress at this checkpoint. No release, promotion or merge was performed.
