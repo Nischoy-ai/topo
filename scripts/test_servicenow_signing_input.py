@@ -13,9 +13,9 @@ spec.loader.exec_module(m)
 
 
 class SigningInputTests(unittest.TestCase):
-    def fixture(self, directory):
+    def fixture(self, directory, files=None):
         lines = []
-        for name in sorted(m.FILES):
+        for name in sorted(m.FILES if files is None else files):
             body = ('synthetic: ' + name).encode()
             (directory / name).write_bytes(body)
             lines.append(hashlib.sha256(body).hexdigest() + '  ' + name + '\n')
@@ -70,6 +70,19 @@ class SigningInputTests(unittest.TestCase):
             expected = self.fixture(directory)
             with patch.object(m, 'MAX_BYTES', 10), self.assertRaises(ValueError):
                 m.verify(expected, directory)
+
+    def test_release_specific_filenames_cannot_be_mixed(self):
+        files = {name.replace('0.4.6', '0.4.7') for name in m.FILES}
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            expected = self.fixture(directory, files)
+            m.verify(expected, directory, files)
+            with self.assertRaises(ValueError):
+                m.verify(expected, directory)
+            mixed = expected.replace(b'nischoy-topo-0.4.7-combined.xml',
+                                     b'nischoy-topo-0.4.6-combined.xml')
+            with self.assertRaises(ValueError):
+                m.parse_manifest(mixed, files)
 
     def test_only_reviewed_release_tags_select_manifests(self):
         with tempfile.TemporaryDirectory() as tmp:

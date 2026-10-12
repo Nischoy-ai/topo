@@ -356,3 +356,49 @@ evidence fails before and passes after the correction; integrated worker race
 tests pass. This changes worker response diagnostics only, not native app bytes
 or the source attribution of earlier live scans. Exact-head CI remains in
 progress at this checkpoint. No release, promotion or merge was performed.
+
+## Native restoration and final scoped reliability — 2026-10-12
+
+This section supersedes the earlier pending native checkpoints. Owner-approved
+application removal completed on the original developer instance, with app
+scope and all 12 table definitions absent before restoration. The reviewed
+441-record native XML with SHA-256 `eb42d7212e79fad4e8e5f2425504aa7082a2908dce99759741473cdd608d734a`
+was committed after 437 newer-local removal-history collisions were individually
+matched to its input and accepted. The installed app showed 0.4.7, all 12 source
+table IDs matched, and the installed control-plane script matched reviewed
+source SHA-256 `4c697199558ad9106063716b0d8aac2e1ea6a5883d2e0ab5bd35a03eaf9b43f4`.
+This is restoration on a used PDI, not pristine-instance or zero-collision proof;
+independent installed equivalence for all 55 script fields is not asserted.
+
+The first fresh physical audit found all 32 required index definitions missing.
+Supported owner-approved native back out, preview and reapplication of the
+unchanged companion succeeded. Fresh reads across 12 tables, with full forms
+for two list-truncated composites, found 54 physical indexes and all 32 required
+ordered column definitions; the compiled-source coverage checker reported zero
+missing. Enforcement of the 17 unique definitions was not independently
+exercised: the owner excluded duplicate-insert probes and relies on the platform
+contract and reviewed configuration. Populated 0.4.6-to-0.4.7 upgrade is
+owner-deferred, not passed. Neither excluded test blocks this undeployed
+candidate. The populated managed-acceptance instance remains intact.
+
+The reliability observer at `a2115e6b16f4e60ee54701592028bc5d237f43ee`,
+SHA-256 `a8fd4d3514f75a826c6aad31d0af1a2dc90ca182c3dbbb5aac996066839bfe0d`,
+used runtime base `06e6ecafbb555efeb87233b6dc841a549cbbc733`. Its sanitized
+final records contain 14 runs (12 Complete, two Cancelled), 21 tasks
+(18 Complete, three Cancelled), and 18 Applied receipts: exactly one per
+completed task, none for cancelled tasks. Seven CI identities and four
+relationship identities remained unchanged. Both protocol pools passed manual,
+repeat and scheduled scans, a 45-second process-local client fault/recovery,
+a precredential worker kill/restart, and precancel followed by a healthy claim.
+All ten fixtures and 17 observer registrations were left inactive, with no
+observer process and no occupied reserved lease slots. Empty reserved slots
+do not independently establish all seven historical lease fields were cleared.
+This does not prove a real network outage, address change, midcollection or
+ambiguous-IRE restart recovery.
+
+Documentation head `faa4f6a808e46a4f656436ca28100527e379dd50` passed all 17
+checks: candidate CI run `38307802007` and unchanged published 0.4.6 channel
+run `38307801980`. Later documentation or packaging changes need their own
+exact-head results. The observations above retain their earlier runtime/source
+pins. Customer packaging, signing and channel cutover are separate from these
+native inputs and live acceptance observations; publication is not claimed here.
