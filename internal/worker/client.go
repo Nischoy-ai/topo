@@ -120,8 +120,8 @@ func (c *Client) Credential(ctx context.Context, taskID string, request Credenti
 	if !headerHasNoStore(headers) {
 		return SSHCredential{}, errors.New("ServiceNow credential response is missing Cache-Control: no-store")
 	}
-	if !safeSSHUsername(response.Username) || response.Password == "" || len(response.Password) > 4096 {
-		return SSHCredential{}, errors.New("ServiceNow returned an invalid SSH credential")
+	if !safePasswordUsername(response.Username) || response.Password == "" || len(response.Password) > 4096 {
+		return SSHCredential{}, errors.New("ServiceNow returned an invalid task credential")
 	}
 	return response, nil
 }
@@ -233,7 +233,7 @@ func validateTask(task Task) error {
 			return fmt.Errorf("ServiceNow task %s is invalid", label)
 		}
 	}
-	if task.Operation != OperationLocalV1 && task.Operation != OperationSSHLinuxV1 {
+	if task.Operation != OperationLocalV1 && task.Operation != OperationSSHLinuxV1 && task.Operation != OperationWinRMWindowsV1 {
 		return fmt.Errorf("ServiceNow task %q has unsupported operation %q", task.TaskID, task.Operation)
 	}
 	if task.ProfileRevision < 1 {
@@ -253,16 +253,16 @@ func validateTask(task Task) error {
 		if task.CredentialBindingID != "" {
 			return fmt.Errorf("ServiceNow local task %q contains credential authority", task.TaskID)
 		}
-	case OperationSSHLinuxV1:
+	case OperationSSHLinuxV1, OperationWinRMWindowsV1:
 		if !safeID.MatchString(task.CredentialBindingID) {
-			return fmt.Errorf("ServiceNow SSH task %q credential binding is invalid", task.TaskID)
+			return fmt.Errorf("ServiceNow remote task %q credential binding is invalid", task.TaskID)
 		}
 		if task.TargetPartition == nil || task.TargetPartition.Count > maxSSHTargets || len(task.TargetPartition.CIDRs) != 1 {
-			return fmt.Errorf("ServiceNow SSH task %q must contain one bounded target", task.TaskID)
+			return fmt.Errorf("ServiceNow remote task %q must contain one bounded target", task.TaskID)
 		}
 		prefix, err := netip.ParsePrefix(task.TargetPartition.CIDRs[0])
 		if err != nil || !prefix.Addr().Is4() || prefix.Bits() != 32 {
-			return fmt.Errorf("ServiceNow SSH task %q target must be an IPv4 /32", task.TaskID)
+			return fmt.Errorf("ServiceNow remote task %q target must be an IPv4 /32", task.TaskID)
 		}
 	}
 	return nil

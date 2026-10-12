@@ -3,6 +3,7 @@ TopoControlPlane.prototype = {
     CONTRACT: 'v1alpha1',
     OPERATION_LOCAL: 'local.v1',
     OPERATION_SSH_LINUX: 'ssh_linux.v1',
+    OPERATION_WINRM_WINDOWS: 'winrm_windows.v1',
     MAX_SSH_TARGETS: 1024,
     MAX_RESULT_BYTES: 1048576,
     SUCCESS_RETENTION_SECONDS: 86400,
@@ -202,7 +203,7 @@ TopoControlPlane.prototype = {
                 profile_revision: parseInt(claimed.u_profile_revision, 10),
                 deadline: this._iso(deadline)
             };
-            if (claimedOperation === this.OPERATION_SSH_LINUX) {
+            if (claimedOperation === this.OPERATION_SSH_LINUX || claimedOperation === this.OPERATION_WINRM_WINDOWS) {
                 claimedTask.credential_binding_id = String(claimed.u_credential_binding.u_binding_id);
                 claimedTask.target_partition = {
                     key: String(claimed.u_partition_key),
@@ -260,14 +261,15 @@ TopoControlPlane.prototype = {
             this._recordCredentialAccess(lease.task, null, body, 'denied', 'task_cancelled');
             return this._result(409, {error: 'task is cancelled'});
         }
-        if (String(lease.task.u_operation) !== this.OPERATION_SSH_LINUX ||
+        var taskOperation = String(lease.task.u_operation);
+        if ([this.OPERATION_SSH_LINUX, this.OPERATION_WINRM_WINDOWS].indexOf(taskOperation) < 0 ||
                 !String(lease.task.u_credential_binding) || !String(lease.task.u_target_scope)) {
-            this._recordCredentialAccess(lease.task, null, body, 'denied', 'task_not_credentialed_ssh');
-            return this._result(409, {error: 'task has no reviewed SSH credential authority'});
+            this._recordCredentialAccess(lease.task, null, body, 'denied', 'task_not_credentialed_remote');
+            return this._result(409, {error: 'task has no reviewed remote credential authority'});
         }
         var binding = lease.task.u_credential_binding.getRefRecord();
         if (!binding.isValidRecord() || !this._isTrue(binding.u_active) ||
-                String(binding.u_protocol) !== 'ssh_password' ||
+                String(binding.u_protocol) !== this._credentialProtocol(taskOperation) ||
                 String(binding.u_profile_id) !== String(lease.task.u_profile_id) ||
                 parseInt(binding.u_profile_revision, 10) !== parseInt(lease.task.u_profile_revision, 10) ||
                 String(binding.u_target_scope) !== String(lease.task.u_target_scope)) {
@@ -276,7 +278,7 @@ TopoControlPlane.prototype = {
         }
         var credential = binding.u_credential.getRefRecord();
         if (!credential.isValidRecord() || !this._isTrue(credential.u_active) ||
-                !this._sshUsername(String(credential.u_username))) {
+                !this._credentialUsername(taskOperation, String(credential.u_username))) {
             this._recordCredentialAccess(lease.task, binding, body, 'denied', 'credential_inactive');
             return this._result(409, {error: 'task credential is inactive or invalid'});
         }
@@ -471,7 +473,7 @@ TopoControlPlane.prototype = {
         }
         var profile = new GlideRecord('x_664635_topo_profile');
         if (!profile.get(String(profileSysID)) || !this._isTrue(profile.u_active) ||
-                [this.OPERATION_LOCAL, this.OPERATION_SSH_LINUX].indexOf(String(profile.u_operation)) < 0 ||
+                [this.OPERATION_LOCAL, this.OPERATION_SSH_LINUX, this.OPERATION_WINRM_WINDOWS].indexOf(String(profile.u_operation)) < 0 ||
                 String(profile.u_schema_version) !== this.CONTRACT || !this._safeID(String(profile.u_profile_id)) ||
                 !this._integer(parseInt(profile.u_revision, 10), 1, 1000000)) {
             throw new Error('profile is not an active reviewed revision');
@@ -494,27 +496,28 @@ TopoControlPlane.prototype = {
             if (!targetScope.isValidRecord() || !this._isTrue(targetScope.u_active) ||
                     String(targetScope.u_worker_pool) !== pool.getUniqueValue() ||
                     parseInt(targetScope.u_ipv4_partition_prefix, 10) !== 32) {
-                throw new Error('ssh_linux.v1 requires an active /32 target scope in the profile worker pool');
+                throw new Error('remote operation requires an active /32 target scope in the profile worker pool');
             }
             if (!credentialBinding.isValidRecord() || !this._isTrue(credentialBinding.u_active) ||
-                    String(credentialBinding.u_protocol) !== 'ssh_password' ||
+                    String(credentialBinding.u_protocol) !== this._credentialProtocol(operation) ||
                     String(credentialBinding.u_profile_id) !== String(profile.u_profile_id) ||
                     parseInt(credentialBinding.u_profile_revision, 10) !== parseInt(profile.u_revision, 10) ||
                     String(credentialBinding.u_target_scope) !== targetScope.getUniqueValue()) {
-                throw new Error('ssh_linux.v1 profile credential binding is inactive or mismatched');
+                throw new Error('remote profile credential binding is inactive or mismatched');
             }
             var boundCredential = credentialBinding.u_credential.getRefRecord();
-            if (!boundCredential.isValidRecord() || !this._isTrue(boundCredential.u_active)) {
-                throw new Error('ssh_linux.v1 profile credential is inactive');
+            if (!boundCredential.isValidRecord() || !this._isTrue(boundCredential.u_active) ||
+                    !this._credentialUsername(operation, String(boundCredential.u_username))) {
+                throw new Error('remote profile credential is inactive');
             }
             var compiled = this.compileTargetScope(targetScope);
             if (compiled.cidrs.length < 1 || compiled.cidrs.length > this.MAX_SSH_TARGETS) {
-                throw new Error('ssh_linux.v1 target scope must compile to between 1 and ' + this.MAX_SSH_TARGETS + ' addresses');
+                throw new Error('remote target scope must compile to between 1 and ' + this.MAX_SSH_TARGETS + ' addresses');
             }
             partitions = [];
             for (var partitionIndex = 0; partitionIndex < compiled.cidrs.length; partitionIndex++) {
                 if (!/^(?:\d{1,3}\.){3}\d{1,3}\/32$/.test(compiled.cidrs[partitionIndex])) {
-                    throw new Error('ssh_linux.v1 target scope produced a non-/32 partition');
+                    throw new Error('remote target scope produced a non-/32 partition');
                 }
                 partitions.push({key: compiled.keys[partitionIndex], cidr: compiled.cidrs[partitionIndex]});
             }
@@ -1045,12 +1048,13 @@ TopoControlPlane.prototype = {
             allowed = next;
         }
 
+        var maximum = partitionPrefix === 32 ? this.MAX_SSH_TARGETS : 100000;
         var cidrs = [];
         for (var allowedIndex = 0; allowedIndex < allowed.length; allowedIndex++) {
-            var planned = this._partitionIPv4Range(allowed[allowedIndex], partitionPrefix, 100000 - cidrs.length);
+            var planned = this._partitionIPv4Range(allowed[allowedIndex], partitionPrefix, maximum - cidrs.length);
             cidrs = cidrs.concat(planned);
-            if (cidrs.length > 100000) {
-                throw new Error('target scope exceeds 100000 deterministic partitions');
+            if (cidrs.length > maximum) {
+                throw new Error('target scope exceeds ' + maximum + ' deterministic partitions');
             }
         }
         if (cidrs.length === 0) {
@@ -1141,7 +1145,7 @@ TopoControlPlane.prototype = {
         var current = range.start;
         while (current <= range.end) {
             if (budget - result.length <= 0) {
-                throw new Error('target scope exceeds 100000 deterministic partitions');
+                throw new Error('target scope exceeds the deterministic partition budget');
             }
             var block = 1;
             while (block < 4294967296 && current % (block * 2) === 0) {
@@ -1186,12 +1190,12 @@ TopoControlPlane.prototype = {
     },
 
     _capabilities: function (capabilities) {
-        if (!Array.isArray(capabilities) || capabilities.length < 1 || capabilities.length > 2) {
+        if (!Array.isArray(capabilities) || capabilities.length < 1 || capabilities.length > 3) {
             return false;
         }
         var present = {};
         for (var index = 0; index < capabilities.length; index++) {
-            if ([this.OPERATION_LOCAL, this.OPERATION_SSH_LINUX].indexOf(capabilities[index]) < 0 || present[capabilities[index]]) {
+            if ([this.OPERATION_LOCAL, this.OPERATION_SSH_LINUX, this.OPERATION_WINRM_WINDOWS].indexOf(capabilities[index]) < 0 || present[capabilities[index]]) {
                 return false;
             }
             present[capabilities[index]] = true;
@@ -1203,7 +1207,20 @@ TopoControlPlane.prototype = {
         if (present[this.OPERATION_SSH_LINUX]) {
             result.push(this.OPERATION_SSH_LINUX);
         }
+        if (present[this.OPERATION_WINRM_WINDOWS]) {
+            result.push(this.OPERATION_WINRM_WINDOWS);
+        }
         return result;
+    },
+
+    _credentialProtocol: function (operation) {
+        return operation === this.OPERATION_SSH_LINUX ? 'ssh_password' :
+            (operation === this.OPERATION_WINRM_WINDOWS ? 'winrm_ntlm_password' : '');
+    },
+
+    _credentialUsername: function (operation, value) {
+        return operation === this.OPERATION_SSH_LINUX ? this._sshUsername(value) :
+            (operation === this.OPERATION_WINRM_WINDOWS && typeof value === 'string' && /^[A-Za-z0-9._@\\-]{1,256}$/.test(value));
     },
 
     _sshUsername: function (value) {

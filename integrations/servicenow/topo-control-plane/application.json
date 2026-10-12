@@ -1,7 +1,7 @@
 {
   "name": "Nischoy Topo",
   "scope": "x_664635_topo",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "ServiceNow-owned control plane for stateless Nischoy Topo workers",
   "source": {
     "format": "servicenow_fluent",
@@ -118,12 +118,12 @@
     },
     {
       "name": "x_664635_topo_ssh_credential",
-      "label": "Topo SSH Credential",
+      "label": "Topo Remote Credential",
       "audited": true,
       "fields": [
         ["u_credential_id", "String", 128, true],
         ["u_name", "String", 255, true],
-        ["u_username", "String", 64, true],
+        ["u_username", "String", 256, true],
         ["u_password", "Password2", 255, true],
         ["u_active", "True/False", 0, true]
       ],
@@ -137,7 +137,7 @@
         ["u_binding_id", "String", 128, true],
         ["u_revision", "Integer", 0, true],
         ["u_name", "String", 255, true],
-        ["u_protocol", "Choice:ssh_password", 40, true],
+        ["u_protocol", "Choice:ssh_password,winrm_ntlm_password", 40, true],
         ["u_profile_id", "String", 128, true],
         ["u_profile_revision", "Integer", 0, true],
         ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, true],
@@ -172,7 +172,7 @@
         ["u_profile_id", "String", 128, true],
         ["u_revision", "Integer", 0, true],
         ["u_name", "String", 255, true],
-        ["u_operation", "Choice:local.v1,ssh_linux.v1", 40, true],
+        ["u_operation", "Choice:local.v1,ssh_linux.v1,winrm_windows.v1", 40, true],
         ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
         ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, false],
         ["u_credential_binding", "Reference:x_664635_topo_credential_binding", 32, false],
@@ -230,7 +230,7 @@
         ["u_task_id", "String", 128, true],
         ["u_run", "Reference:x_664635_topo_run", 32, true],
         ["u_worker_pool", "Reference:x_664635_topo_worker_pool", 32, true],
-        ["u_operation", "Choice:local.v1,ssh_linux.v1", 40, true],
+        ["u_operation", "Choice:local.v1,ssh_linux.v1,winrm_windows.v1", 40, true],
         ["u_profile_id", "String", 128, true],
         ["u_profile_revision", "Integer", 0, true],
         ["u_target_scope", "Reference:x_664635_topo_target_scope", 32, false],

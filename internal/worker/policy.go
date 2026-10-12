@@ -24,14 +24,18 @@ var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 // Policy is read-only deployment configuration. The worker never rewrites it
 // or treats ServiceNow configuration as authority to expand it.
 type Policy struct {
-	WorkerPool       string
-	SiteID           string
-	AllowLocal       bool
-	AllowSSHLinux    bool
-	SSHAllowlist     []netip.Prefix
-	SSHHostKeyDigest string
-	MaxTaskDuration  time.Duration
-	MaxConcurrency   int
+	WorkerPool          string
+	SiteID              string
+	AllowLocal          bool
+	AllowSSHLinux       bool
+	AllowWinRMWindows   bool
+	WinRMAllowlist      []netip.Prefix
+	WinRMTrustDigest    string
+	SSHAllowlist        []netip.Prefix
+	SSHHostKeyDigest    string
+	MaxTaskDuration     time.Duration
+	MaxConcurrency      int
+	RemoteStartInterval time.Duration
 }
 
 func (p Policy) Validate() error {
@@ -41,7 +45,7 @@ func (p Policy) Validate() error {
 	if !safeID.MatchString(p.SiteID) {
 		return errors.New("site ID must use 1-128 letters, digits, dots, underscores, or hyphens")
 	}
-	if !p.AllowLocal && !p.AllowSSHLinux {
+	if !p.AllowLocal && !p.AllowSSHLinux && !p.AllowWinRMWindows {
 		return errors.New("worker policy must explicitly allow at least one compiled-in operation")
 	}
 	if p.AllowSSHLinux {
@@ -61,6 +65,27 @@ func (p Policy) Validate() error {
 		}
 	} else if len(p.SSHAllowlist) != 0 || p.SSHHostKeyDigest != "" {
 		return errors.New("SSH policy data requires explicit ssh_linux.v1 enablement")
+	}
+	if p.AllowWinRMWindows {
+		if len(p.WinRMAllowlist) == 0 || len(p.WinRMAllowlist) > maxSSHAllowlistCIDRs {
+			return errors.New("WinRM allowlist must contain 1-256 canonical IPv4 CIDRs")
+		}
+		for _, prefix := range p.WinRMAllowlist {
+			if !prefix.Addr().Is4() || prefix != prefix.Masked() {
+				return errors.New("WinRM allowlist contains a noncanonical IPv4 CIDR")
+			}
+		}
+		if len(p.WinRMTrustDigest) != sha256HexLength {
+			return errors.New("WinRM trust digest is invalid")
+		}
+		if _, err := hex.DecodeString(p.WinRMTrustDigest); err != nil {
+			return errors.New("WinRM trust digest is invalid")
+		}
+	} else if len(p.WinRMAllowlist) != 0 || p.WinRMTrustDigest != "" {
+		return errors.New("WinRM policy data requires explicit winrm_windows.v1 enablement")
+	}
+	if p.remoteStartInterval() < 100*time.Millisecond || p.remoteStartInterval() > time.Minute {
+		return errors.New("remote target start interval must be between 100ms and 1m")
 	}
 	if p.MaxTaskDuration == 0 {
 		p.MaxTaskDuration = DefaultMaxTaskDuration
@@ -96,6 +121,9 @@ func (p Policy) Capabilities() []string {
 	if p.AllowSSHLinux {
 		capabilities = append(capabilities, OperationSSHLinuxV1)
 	}
+	if p.AllowWinRMWindows {
+		capabilities = append(capabilities, OperationWinRMWindowsV1)
+	}
 	return capabilities
 }
 
@@ -104,23 +132,29 @@ func (p Policy) Digest() (string, error) {
 		return "", err
 	}
 	encoded, err := json.Marshal(struct {
-		SchemaVersion    string   `json:"schema_version"`
-		WorkerPool       string   `json:"worker_pool"`
-		SiteID           string   `json:"site_id"`
-		Operations       []string `json:"operations"`
-		MaxTaskSeconds   int64    `json:"max_task_seconds"`
-		MaxConcurrency   int      `json:"max_concurrency"`
-		SSHAllowlist     []string `json:"ssh_allowlist,omitempty"`
-		SSHHostKeyDigest string   `json:"ssh_host_key_digest,omitempty"`
+		RemoteStartMilliseconds int64    `json:"remote_start_milliseconds"`
+		SchemaVersion           string   `json:"schema_version"`
+		WorkerPool              string   `json:"worker_pool"`
+		SiteID                  string   `json:"site_id"`
+		Operations              []string `json:"operations"`
+		MaxTaskSeconds          int64    `json:"max_task_seconds"`
+		MaxConcurrency          int      `json:"max_concurrency"`
+		SSHAllowlist            []string `json:"ssh_allowlist,omitempty"`
+		SSHHostKeyDigest        string   `json:"ssh_host_key_digest,omitempty"`
+		WinRMAllowlist          []string `json:"winrm_allowlist,omitempty"`
+		WinRMTrustDigest        string   `json:"winrm_trust_digest,omitempty"`
 	}{
-		SchemaVersion:    ContractVersion,
-		WorkerPool:       p.WorkerPool,
-		SiteID:           p.SiteID,
-		Operations:       p.Capabilities(),
-		MaxTaskSeconds:   int64(p.taskDuration() / time.Second),
-		MaxConcurrency:   p.concurrency(),
-		SSHAllowlist:     canonicalPrefixStrings(p.SSHAllowlist),
-		SSHHostKeyDigest: p.SSHHostKeyDigest,
+		RemoteStartMilliseconds: p.remoteStartInterval().Milliseconds(),
+		SchemaVersion:           ContractVersion,
+		WorkerPool:              p.WorkerPool,
+		SiteID:                  p.SiteID,
+		Operations:              p.Capabilities(),
+		MaxTaskSeconds:          int64(p.taskDuration() / time.Second),
+		MaxConcurrency:          p.concurrency(),
+		SSHAllowlist:            canonicalPrefixStrings(p.SSHAllowlist),
+		SSHHostKeyDigest:        p.SSHHostKeyDigest,
+		WinRMAllowlist:          canonicalPrefixStrings(p.WinRMAllowlist),
+		WinRMTrustDigest:        p.WinRMTrustDigest,
 	})
 	if err != nil {
 		return "", fmt.Errorf("encode worker policy: %w", err)
@@ -136,4 +170,11 @@ func canonicalPrefixStrings(prefixes []netip.Prefix) []string {
 	}
 	sort.Strings(values)
 	return values
+}
+
+func (p Policy) remoteStartInterval() time.Duration {
+	if p.RemoteStartInterval == 0 {
+		return time.Second
+	}
+	return p.RemoteStartInterval
 }

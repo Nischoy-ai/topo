@@ -2,15 +2,19 @@ package worker
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/netip"
 	"time"
 
 	"github.com/Nischoy-ai/topo/pkg/discovery"
 	localdiscovery "github.com/Nischoy-ai/topo/pkg/discovery/local"
 	"github.com/Nischoy-ai/topo/pkg/discovery/sshlinux"
+	"github.com/Nischoy-ai/topo/pkg/discovery/winrm"
 	"github.com/Nischoy-ai/topo/pkg/model"
 	"golang.org/x/crypto/ssh"
 )
@@ -18,7 +22,7 @@ import (
 var ErrCredentialResolution = errors.New("credential resolution failed")
 
 type CredentialSource interface {
-	SSH(context.Context) (SSHCredential, error)
+	Password(context.Context) (SSHCredential, error)
 }
 
 type Executor struct {
@@ -26,6 +30,7 @@ type Executor struct {
 	Now                func() time.Time
 	SSHHostKeyCallback ssh.HostKeyCallback
 	SSHDialContext     sshlinux.DialContextFunc
+	WinRMRootCAs       *x509.CertPool
 }
 
 func (e Executor) Execute(ctx context.Context, task Task) (model.ObservationEnvelope, error) {
@@ -63,6 +68,8 @@ func (e Executor) execute(ctx context.Context, task Task, credentials Credential
 	switch task.Operation {
 	case OperationLocalV1:
 		return e.executeLocal(discoverCtx, task, deadline)
+	case OperationWinRMWindowsV1:
+		return e.executeWinRM(discoverCtx, task, deadline, credentials)
 	case OperationSSHLinuxV1:
 		return e.executeSSH(discoverCtx, task, deadline, credentials)
 	default:
@@ -112,7 +119,7 @@ func (e Executor) executeSSH(ctx context.Context, task Task, deadline time.Time,
 	if credentials == nil {
 		return model.ObservationEnvelope{}, errors.New("ssh_linux.v1 requires an attempt-bound credential source")
 	}
-	credential, err := credentials.SSH(ctx)
+	credential, err := credentials.Password(ctx)
 	if err != nil {
 		return model.ObservationEnvelope{}, fmt.Errorf("%w", ErrCredentialResolution)
 	}
@@ -144,4 +151,36 @@ func (e Executor) executeSSH(ctx context.Context, task Task, deadline time.Time,
 		return model.ObservationEnvelope{}, fmt.Errorf("execute ssh_linux.v1: %w", err)
 	}
 	return observation, nil
+}
+
+func (e Executor) executeWinRM(ctx context.Context, task Task, deadline time.Time, credentials CredentialSource) (model.ObservationEnvelope, error) {
+	if !e.Policy.AllowWinRMWindows || e.WinRMRootCAs == nil {
+		return model.ObservationEnvelope{}, errors.New("winrm_windows.v1 is not allowed by local worker policy")
+	}
+	prefix, err := netip.ParsePrefix(task.TargetPartition.CIDRs[0])
+	if err != nil || !targetAllowed(prefix.Addr(), e.Policy.WinRMAllowlist) {
+		return model.ObservationEnvelope{}, errors.New("winrm_windows.v1 target is outside the local allowlist")
+	}
+	if credentials == nil {
+		return model.ObservationEnvelope{}, ErrCredentialResolution
+	}
+	credential, err := credentials.Password(ctx)
+	if err != nil || !safePasswordUsername(credential.Username) || credential.Password == "" || len(credential.Password) > 4096 {
+		return model.ObservationEnvelope{}, ErrCredentialResolution
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{RootCAs: e.WinRMRootCAs, MinVersion: tls.VersionTLS12}
+	transport.DialContext = (&net.Dialer{Timeout: 10 * time.Second}).DialContext
+	transport.TLSHandshakeTimeout = 10 * time.Second
+	defer transport.CloseIdleConnections()
+	plugin := winrm.Plugin{Config: winrm.Config{
+		Username: credential.Username, Password: credential.Password, AuthMode: winrm.AuthModeNTLM,
+		HostInterfacesOnly: true, Concurrency: 1, ConnectTimeout: 10 * time.Second,
+		OperationTimeout: 10 * time.Second, MaxResponseBytes: 1 << 20,
+		HTTPClient: &http.Client{Transport: transport},
+	}}
+	return plugin.Discover(ctx, discovery.Request{
+		JobID: task.TaskID, SiteID: e.Policy.SiteID, CollectorID: "worker-pool-" + e.Policy.WorkerPool,
+		Targets: []string{"https://" + net.JoinHostPort(prefix.Addr().String(), "5986") + "/wsman"}, Deadline: deadline,
+	})
 }

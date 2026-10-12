@@ -313,3 +313,17 @@ func TestDefaultClientVerifiesTLSServerIdentity(t *testing.T) {
 		t.Fatalf("default client did not reject an untrusted TLS identity: %v", err)
 	}
 }
+
+func TestWQLUsesWildcardResourceButOnlyExactReviewedQueries(t *testing.T) {
+	for _, operation := range AuditedOperations() {
+		if operation.Query == "" {
+			continue
+		}
+		if operation.ResourceURI != "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/*" {
+			t.Fatalf("WQL URI = %q", operation.ResourceURI)
+		}
+		if _, ok := MatchOperation(ActionEnumerate, operation.ResourceURI, "SELECT * FROM Win32_Process"); ok {
+			t.Fatal("accepted arbitrary WQL")
+		}
+	}
+}

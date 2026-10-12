@@ -1,14 +1,15 @@
 (function validateTopoCredentialBinding() {
     'use strict';
     var invalid = !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(String(current.u_binding_id)) ||
-        parseInt(current.u_revision, 10) < 1 || String(current.u_protocol) !== 'ssh_password' ||
+        parseInt(current.u_revision, 10) < 1 || ['ssh_password', 'winrm_ntlm_password'].indexOf(String(current.u_protocol)) < 0 ||
         !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(String(current.u_profile_id)) ||
         parseInt(current.u_profile_revision, 10) < 1 || !String(current.u_target_scope) || !String(current.u_credential);
     var scope = current.u_target_scope.getRefRecord();
     var credential = current.u_credential.getRefRecord();
     if (invalid || !scope.isValidRecord() || !credential.isValidRecord() ||
-            !new TopoControlPlane()._isTrue(scope.u_active) || !new TopoControlPlane()._isTrue(credential.u_active)) {
-        gs.addErrorMessage('Topo credential binding must reference an active target scope and Password2 SSH credential.');
+            !new TopoControlPlane()._isTrue(scope.u_active) || !new TopoControlPlane()._isTrue(credential.u_active) ||
+            !new TopoControlPlane()._credentialUsername(String(current.u_protocol) === 'ssh_password' ? 'ssh_linux.v1' : 'winrm_windows.v1', String(credential.u_username))) {
+        gs.addErrorMessage('Topo credential binding must reference an active target scope and protocol-compatible Password2 credential.');
         current.setAbortAction(true);
         return;
     }

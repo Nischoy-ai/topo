@@ -6,6 +6,7 @@ Use the [installation guides](../README.md#install-and-operate) for setup.
 | Area | Record |
 | --- | --- |
 | XML installation, indexes and configuration upgrade | [ServiceNow package validation](../servicenow-validation.md) |
+| Unpublished mixed Linux/Windows candidate | [Mixed inventory evidence](mixed-inventory.md) |
 | Worker runtime and authorization | [Managed worker evidence](servicenow-worker.md) |
 | Signed package channels and installation | [Distribution evidence](distribution.md) |
 | CI reconciliation and repeat scans | [IRE evidence](servicenow-ire.md) |

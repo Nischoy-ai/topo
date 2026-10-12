@@ -283,3 +283,35 @@ func testNTLMChallenge() []byte {
 	copy(challenge[24:32], []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef})
 	return challenge
 }
+
+func TestNTLMTransportCannotNegotiateHTTP2FromInheritedALPN(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor != 1 {
+			t.Errorf("NTLM request used %s", r.Proto)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	client := server.Client()
+	original := client.Transport.(*http.Transport)
+	original.TLSClientConfig.NextProtos = []string{"h2", "http/1.1"}
+	client.Transport = ntlmRoundTripper{base: ntlmBaseTransport(original), username: "user", password: "secret"}
+	defer client.CloseIdleConnections()
+	request, err := http.NewRequest(http.MethodPost, server.URL, strings.NewReader("soap"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.ProtoMajor != 1 {
+		t.Fatalf("protocol=%s", response.Proto)
+	}
+	if original.TLSClientConfig.NextProtos[0] != "h2" {
+		t.Fatal("modified caller TLS configuration")
+	}
+}

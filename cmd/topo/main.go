@@ -918,6 +918,7 @@ type workerStartup struct {
 	tokenRef    string
 	policy      topoworker.Policy
 	ssh         topoworker.SSHStartupConfig
+	winrm       topoworker.WinRMStartupConfig
 	poll        time.Duration
 }
 
@@ -928,9 +929,13 @@ func parseWorkerStartup(args []string, command string, includePoll bool) (worker
 	workerPool := fs.String("worker-pool", "", "ServiceNow Topo worker pool ID")
 	siteID := fs.String("site", "", "deployment-controlled site label")
 	allowLocal := fs.Bool("allow-local", false, "allow the compiled-in local.v1 operation on this host")
+	allowWinRM := fs.Bool("allow-winrm-windows", false, "allow fixed Windows computer/interface inventory over verified HTTPS/5986")
+	winrmAllowlist := fs.String("winrm-target-allowlist", "", "absolute deployment-approved IPv4 CIDR file")
+	winrmCA := fs.String("winrm-ca-certs", "", "absolute PEM file of independently verified WinRM CA certificates")
 	allowSSHLinux := fs.Bool("allow-ssh-linux", false, "allow the compiled-in ssh_linux.v1 operation within the local target allowlist")
 	sshTargetAllowlist := fs.String("ssh-target-allowlist", "", "absolute file containing deployment-approved IPv4 CIDRs")
 	sshKnownHosts := fs.String("ssh-known-hosts", "", "absolute OpenSSH known_hosts file for ssh_linux.v1 server identity verification")
+	remoteStartInterval := fs.Duration("remote-start-interval", time.Second, "minimum time between remote target attempts in this worker (100ms-1m)")
 	maxTaskDuration := fs.Duration("max-task-duration", topoworker.DefaultMaxTaskDuration, "local ceiling for one reviewed task attempt")
 	maxConcurrency := fs.Int("max-concurrency", topoworker.DefaultMaxConcurrency, "local ceiling for concurrent leased tasks")
 	var pollInterval *time.Duration
@@ -962,20 +967,34 @@ func parseWorkerStartup(args []string, command string, includePoll bool) (worker
 	} else if *sshTargetAllowlist != "" || *sshKnownHosts != "" {
 		return workerStartup{}, errors.New("SSH startup files require -allow-ssh-linux")
 	}
+	var winrmStartup topoworker.WinRMStartupConfig
+	if *allowWinRM {
+		var err error
+		winrmStartup, err = topoworker.LoadWinRMStartupConfig(*winrmAllowlist, *winrmCA)
+		if err != nil {
+			return workerStartup{}, err
+		}
+	} else if *winrmAllowlist != "" || *winrmCA != "" {
+		return workerStartup{}, errors.New("WinRM startup files require -allow-winrm-windows")
+	}
 	policy := topoworker.Policy{
-		WorkerPool:       *workerPool,
-		SiteID:           *siteID,
-		AllowLocal:       *allowLocal,
-		AllowSSHLinux:    *allowSSHLinux,
-		SSHAllowlist:     sshStartup.Allowlist,
-		SSHHostKeyDigest: sshStartup.KnownHostsDigest,
-		MaxTaskDuration:  *maxTaskDuration,
-		MaxConcurrency:   *maxConcurrency,
+		RemoteStartInterval: *remoteStartInterval,
+		WorkerPool:          *workerPool,
+		SiteID:              *siteID,
+		AllowLocal:          *allowLocal,
+		AllowSSHLinux:       *allowSSHLinux,
+		AllowWinRMWindows:   *allowWinRM,
+		WinRMAllowlist:      winrmStartup.Allowlist,
+		WinRMTrustDigest:    winrmStartup.TrustDigest,
+		SSHAllowlist:        sshStartup.Allowlist,
+		SSHHostKeyDigest:    sshStartup.KnownHostsDigest,
+		MaxTaskDuration:     *maxTaskDuration,
+		MaxConcurrency:      *maxConcurrency,
 	}
 	if err := policy.Validate(); err != nil {
 		return workerStartup{}, err
 	}
-	startup := workerStartup{instanceURL: *instanceURL, tokenRef: *tokenRef, policy: policy, ssh: sshStartup}
+	startup := workerStartup{instanceURL: *instanceURL, tokenRef: *tokenRef, policy: policy, ssh: sshStartup, winrm: winrmStartup}
 	if pollInterval != nil {
 		startup.poll = *pollInterval
 	}
@@ -1036,7 +1055,7 @@ func workerRun(args []string) error {
 		Version:      version,
 		PollInterval: startup.poll,
 		Control:      client,
-		Executor:     topoworker.Executor{Policy: startup.policy, SSHHostKeyCallback: startup.ssh.HostKeyCallback},
+		Executor:     topoworker.Executor{Policy: startup.policy, SSHHostKeyCallback: startup.ssh.HostKeyCallback, WinRMRootCAs: startup.winrm.RootCAs},
 		Logger:       logger,
 	})
 }
@@ -1431,6 +1450,7 @@ func discoverWinRM(args []string) error {
 	passwordRef := fs.String("password-ref", "", "credential reference for the WinRM password (env: or file:)")
 	passwordEnv := fs.String("password-env", "", "deprecated: environment variable containing the WinRM password")
 	authMode := fs.String("auth", "", "production authentication mode (ntlm)")
+	hostInterfacesOnly := fs.Bool("host-interfaces-only", false, "collect only computer identity and network interfaces; no WinRS shell")
 	labBasic := fs.Bool("lab-basic", false, "enable Basic authentication to loopback Topo Lab endpoints")
 	concurrency := fs.Int("concurrency", 32, "maximum concurrent WinRM targets")
 	connectTimeout := fs.Duration("connect-timeout", 10*time.Second, "WinRM connection timeout")
@@ -1469,14 +1489,15 @@ func discoverWinRM(args []string) error {
 		return fmt.Errorf("resolve WinRM password: %w", err)
 	}
 	plugin := winrm.Plugin{Config: winrm.Config{
-		Username:         selectedUsername,
-		Password:         string(password),
-		AuthMode:         *authMode,
-		LabMode:          *labBasic,
-		Concurrency:      *concurrency,
-		ConnectTimeout:   *connectTimeout,
-		OperationTimeout: *operationTimeout,
-		MaxResponseBytes: *maxResponseBytes,
+		HostInterfacesOnly: *hostInterfacesOnly,
+		Username:           selectedUsername,
+		Password:           string(password),
+		AuthMode:           *authMode,
+		LabMode:            *labBasic,
+		Concurrency:        *concurrency,
+		ConnectTimeout:     *connectTimeout,
+		OperationTimeout:   *operationTimeout,
+		MaxResponseBytes:   *maxResponseBytes,
 	}}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

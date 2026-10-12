@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	ContractVersion     = "v1alpha1"
-	OperationLocalV1    = "local.v1"
-	OperationSSHLinuxV1 = "ssh_linux.v1"
-	sha256HexLength     = 64
+	ContractVersion         = "v1alpha1"
+	OperationLocalV1        = "local.v1"
+	OperationSSHLinuxV1     = "ssh_linux.v1"
+	OperationWinRMWindowsV1 = "winrm_windows.v1"
+	sha256HexLength         = 64
 )
 
 type RegisterRequest struct {
@@ -182,10 +183,10 @@ type CredentialRequest struct {
 	LeaseToken    string `json:"lease_token"`
 }
 
-// SSHCredential is returned only by the fixed, attempt-bound credential
+// PasswordCredential is returned only by the fixed, attempt-bound credential
 // broker. It is retained in memory for one execution and must never be logged,
 // persisted, copied into an observation, or included in an error.
-type SSHCredential struct {
+type PasswordCredential struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -228,3 +229,6 @@ type CompleteResponse struct {
 	TaskState string `json:"task_state"`
 	RunState  string `json:"run_state"`
 }
+
+// SSHCredential retains the existing client contract; task operation determines protocol authority.
+type SSHCredential = PasswordCredential
