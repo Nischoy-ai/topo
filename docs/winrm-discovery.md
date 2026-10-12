@@ -97,3 +97,37 @@ per scan, zero errors and stable identities across two scans, with verified TLS.
 See [candidate evidence](evidence/mixed-inventory.md). This focused result does
 not validate broader standalone inventory, the Windows service wrapper or the
 managed ServiceNow installation. The published worker is unchanged.
+
+## Windows target compatibility matrix
+
+This matrix applies to remote computer/interface collection by Linux/macOS
+workers. It does not cover Windows worker distribution or agent service
+registration. Direct collection is distinct from managed ServiceNow acceptance.
+
+| Target | Verified transport and privilege | Direct candidate collection | Complete managed flow |
+| --- | --- | --- | --- |
+| Windows Server 2022, Azure lab | HTTPS/5986, independently trusted IP SAN certificate, NTLMv2; non-admin scan account with Remote Management Users and WMI read access | Two scans, 2 assets/1 relationship, zero errors, stable identity; offline IRE preview | Passed on the replacement developer instance: restricted OAuth, attempt-bound Password2, Linux worker collection/result ingestion, IRE apply and repeated reconciliation; 2 assets/1 relation per task |
+| Windows Server 2025, Azure lab | Same restricted transport and privilege contract | Two scans, 2 assets/1 relationship, zero errors, stable identity; offline IRE preview | Passed through the same managed flow; 2 assets/1 relation per task |
+
+Direct evidence is attributed to the unchanged collection implementation at
+`997b796a11b9636c04030ede08b4984866b00539`; executable attribution and limits are
+in [candidate evidence](evidence/mixed-inventory.md). The 2026-10-11 managed runs used worker source
+`78ec6e1f57c89ad0c58b52960920a79ecce7a83c` after fixing empty-asset serialization.
+The replacement instance had native app 0.4.7 installed before Windows ownership
+was handed over. The original-instance CICD blocker was subsequently cleared; native restoration
+and companion-index acceptance are recorded separately in the candidate evidence.
+Replacement-instance Windows results do not establish those installation results.
+
+| Failure/authority gate | Deterministic coverage | Real managed evidence |
+| --- | --- | --- |
+| Untrusted certificate, verified server identity, NTLM with no Basic fallback | WinRM transport/configuration tests | Both real targets: empty trust rejected collection; wrong TLS server identity rejected the handshake before NTLM; zero CIs from either negative |
+| Wrong credentials, permission denial, timeout, cancellation, bounded responses | Protocol fault-isolation fixtures and worker cancellation tests | Wrong passwords: managed no-data completion on both targets; bounded deadline failures and live ServiceNow cancellation passed. Dedicated non-admin account authenticated with NTLM on both targets but WMI returned AccessDenied; managed no-data completion passed. Lab network blackholes hit the production 10-second deadline; real responses exceeded a test-local 64-byte read budget (the production 1 MiB threshold remains fixture-tested) |
+| Protocol, profile/revision and scope binding | Production Password2 broker fixture rejects mismatches before decryption | Live matching binding succeeded. Disposable native task protocol/profile/revision/scope mismatches each returned 409, then matching resolution succeeded after restoration. Native audit recorded binding_mismatch; no-decryption ordering remains production-script fixture attribution |
+| Worker identity, boot, task, attempt, token, expiry and renewed-attempt binding | Production broker plus production lease validator fixture; denials precede decryption | Wrong worker/boot/attempt/token returned 403; terminal, cancelled and expired authority denied; expired task recovered with a new attempt; cancelled-expiry slot cleanup has a platform-semantics regression |
+| Secret-free broker/provider errors | Decryption exception and credential-provider redaction tests | Live negative observations checked against bearer/lease/password values before submission; broker errors expose HTTP status only; audit inspection retained privately |
+| Repeat IRE reconciliation, stable identity after address change | Direct two-scan identities and offline mapping only | Repeated live IRE: UPDATE,UPDATE,NO_CHANGE per target, four unique source-to-CI mappings and two ownership relations. Address-change testing remains pending |
+
+Live and fixture evidence remain distinct. The Windows managed flow and listed
+negative gates passed on the replacement instance; native installation and
+broader pilot gates remain separate as described in the evidence record.
+The published 0.4.6 managed beta continues to support Linux targets only.

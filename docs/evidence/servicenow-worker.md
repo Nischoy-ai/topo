@@ -465,11 +465,13 @@ then succeeded. Repreview reported 32 inserts and zero updates, deletes, or
 collisions. Fresh reads across all 12 tables, including full forms for two
 list-truncated composite definitions, showed 54 physical indexes and all 32
 required ordered column sequences. The source-pinned index coverage checker
-passed with zero missing definitions. This view does not independently prove
-the 17 physical uniqueness constraints.
+passed with zero missing definitions. Enforcement of the 17 physical uniqueness
+constraints was not independently exercised; the owner excluded duplicate-insert
+probes and relies on the platform's documented behavior and reviewed configuration.
 
 This evidence covers candidate application restoration plus companion repair.
-A populated 0.4.6-to-0.4.7 upgrade remains unproven. It does not expand the
+A populated 0.4.6-to-0.4.7 upgrade is owner-deferred and was not passed; it is
+outside the current candidate acceptance scope. This evidence does not expand the
 published 0.4.6 beta scope or authorize candidate publication.
 
 Real-system checks cover application roles/ACLs, worker OAuth route restrictions,

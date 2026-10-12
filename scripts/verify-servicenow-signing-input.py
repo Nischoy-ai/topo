@@ -15,6 +15,7 @@ MAX_BYTES = 32 * 1024 * 1024
 FILES = {'INDEXES.md', 'INSTALLATION.md', 'START-HERE.txt', 'manifest.json',
          'nischoy-topo-0.4.6-combined.xml', 'nischoy-topo-0.4.6-beta.zip'}
 REVIEWED_RELEASES = {'servicenow-0.4.6-beta', 'servicenow-0.4.6-beta.2'}
+FILES_BY_RELEASE = {tag: FILES for tag in REVIEWED_RELEASES}
 
 
 def read_regular(path, maximum):
@@ -30,26 +31,26 @@ def read_regular(path, maximum):
     return body
 
 
-def parse_manifest(expected):
+def parse_manifest(expected, files=FILES):
     if len(expected) > 4096:
         raise ValueError('manifest exceeds limit')
     entries = {}
     for line in expected.decode('ascii').splitlines():
         match = re.fullmatch(r'([0-9a-f]{64})  ([A-Za-z0-9_.-]+)', line)
-        if not match or match[2] not in FILES or match[2] in entries:
+        if not match or match[2] not in files or match[2] in entries:
             raise ValueError('invalid manifest entry')
         entries[match[2]] = match[1]
-    if set(entries) != FILES:
+    if set(entries) != files:
         raise ValueError('missing signing input')
     return entries
 
 
-def verify(expected, directory):
+def verify(expected, directory, files=FILES):
     # Compare exact manifest bytes before accepting any downloaded pathname.
     if read_regular(directory / 'SHA256SUMS', 4096) != expected:
         raise ValueError('downloaded manifest differs from reviewed manifest')
-    entries = parse_manifest(expected)
-    if {entry.name for entry in directory.iterdir()} != FILES | {'SHA256SUMS'}:
+    entries = parse_manifest(expected, files)
+    if {entry.name for entry in directory.iterdir()} != files | {'SHA256SUMS'}:
         raise ValueError('unexpected signing input')
     total = 0
     for name, digest in entries.items():
@@ -75,9 +76,9 @@ def main():
         if manifest_only:
             if {entry.name for entry in directory.iterdir()} != {'SHA256SUMS'} or read_regular(directory / 'SHA256SUMS', 4096) != expected:
                 raise ValueError('staged manifest differs from reviewed manifest')
-            parse_manifest(expected)
+            parse_manifest(expected, FILES_BY_RELEASE[release_tag])
         else:
-            verify(expected, directory)
+            verify(expected, directory, FILES_BY_RELEASE[release_tag])
     except Exception:
         print('ServiceNow signing inputs rejected.', file=sys.stderr)
         return 1
