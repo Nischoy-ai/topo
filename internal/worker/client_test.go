@@ -80,7 +80,7 @@ func TestClientRejectsInjectedTaskAuthority(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := client.Claim(context.Background(), ClaimRequest{}); err == nil || !strings.Contains(err.Error(), "unknown field") {
+			if _, err := client.Claim(context.Background(), ClaimRequest{}); err == nil || err.Error() != "ServiceNow worker API returned an invalid result" {
 				t.Fatalf("error = %v", err)
 			}
 		})
@@ -122,7 +122,7 @@ func TestClientRejectsFractionalServiceNowGlideNumber(t *testing.T) {
 	}))
 	defer server.Close()
 	client, _ := NewClient(server.URL, "worker-token", server.Client())
-	if _, err := client.Claim(context.Background(), ClaimRequest{}); err == nil || !strings.Contains(err.Error(), "target_partition.ordinal must be an integer") {
+	if _, err := client.Claim(context.Background(), ClaimRequest{}); err == nil || err.Error() != "ServiceNow worker API returned an invalid result" {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -186,7 +186,7 @@ func TestClientRejectsUnknownServiceNowEnvelopeField(t *testing.T) {
 	}))
 	defer server.Close()
 	client, _ := NewClient(server.URL, "worker-token", server.Client())
-	if _, err := client.Register(context.Background(), RegisterRequest{}); err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if _, err := client.Register(context.Background(), RegisterRequest{}); err == nil || err.Error() != "ServiceNow worker API returned an invalid response envelope" {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -255,4 +255,30 @@ func writeServiceNowResult(w http.ResponseWriter, value any) {
 	_ = json.NewEncoder(w).Encode(struct {
 		Result any `json:"result"`
 	}{Result: value})
+}
+
+func TestClientRedactsMalformedResponseDiagnostics(t *testing.T) {
+	const marker = "synthetic-lease-must-not-be-logged"
+	for name, body := range map[string]string{
+		"envelope unknown field":   `{"result":{},"` + marker + `":true}`,
+		"result unknown field":     `{"result":{"` + marker + `":true}}`,
+		"envelope trailing value":  `{"result":{}} {"` + marker + `":true}`,
+		"result trailing value":    `{"result":{} {"` + marker + `":true}}`,
+		"result invalid timestamp": `{"result":{"lease_expires_at":"` + marker + `"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(body))
+			}))
+			defer server.Close()
+			client, err := NewClient(server.URL, "worker-token", server.Client())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = client.Renew(context.Background(), "task-1", RenewRequest{LeaseToken: marker})
+			if err == nil || strings.Contains(err.Error(), marker) {
+				t.Fatalf("malformed response must be rejected without reflected lease material: %v", err)
+			}
+		})
+	}
 }

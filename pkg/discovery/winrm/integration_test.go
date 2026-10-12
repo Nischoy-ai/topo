@@ -2,6 +2,7 @@ package winrm_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -91,6 +92,10 @@ func TestWinRMMalformedAuthenticationTimeoutAndBoundsAreIsolated(t *testing.T) {
 			observation := discoverOne(t, makeWindowsEstate(t, scenario), test.password, test.timeout, test.maximumBytes)
 			if len(observation.Assets) != 0 || len(observation.Errors) != 1 || observation.Errors[0].Code != "winrm_operation" {
 				t.Fatalf("unexpected observation: %#v", observation)
+			}
+			body, err := json.Marshal(observation)
+			if err != nil || !strings.Contains(string(body), `"assets":[]`) {
+				t.Fatal("no-data observation must serialize an empty asset array for strict managed mapping")
 			}
 		})
 	}
