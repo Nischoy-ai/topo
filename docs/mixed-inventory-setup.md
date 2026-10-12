@@ -6,7 +6,8 @@
 currently obtains that Linux-only managed release, not this candidate.
 
 This guide is pinned to integrated [PR #79](https://github.com/Nischoy-ai/topo/pull/79)
-source `1c6ddb6b7f684db749fe0180c34de0d2e81af2d9`, including the Windows
+source `faa4f6a808e46a4f656436ca28100527e379dd50` (runtime
+`06e6ecafbb555efeb87233b6dc841a549cbbc733`), including the Windows
 runtime from [PR #80](https://github.com/Nischoy-ai/topo/pull/80) source
 `5a94445e5765b8176a5eec8566c930eb4a6a9743`. Candidate app and worker must
 come from the reviewed matching source. A version label alone does not identify
@@ -20,9 +21,18 @@ candidate app and all 32 required ordered indexes. The
 [XML installation procedure](servicenow-update-set.md) describes the native
 workflow, but its download is the published 0.4.6 package. The older candidate
 base export lacks the final lease correction: do not treat it as this pinned
-candidate. A matching native export, empty-instance clean installation and
-populated-data upgrade remain acceptance gates. Do not reset an existing
-installation to manufacture clean-install evidence. Register the `Nischoy Topo`
+candidate. The source-verified native 0.4.7 base export has SHA-256
+`eb42d7212e79fad4e8e5f2425504aa7082a2908dce99759741473cdd608d734a`.
+It was restored after authorized deletion on a used developer instance, with
+437 source-matched deletion-history collisions reviewed through native preview.
+This was not a pristine-instance or zero-collision base preview. Supported
+companion reapplication restored all 32 ordered physical index definitions;
+verify physical coverage against current table IDs after table recreation.
+An old Committed receipt alone does not prove the indexes are present.
+Independent enforcement of the 17 unique definitions was not exercised; the
+owner excluded additional duplicate-insert tests and relies on the platform
+contract/configuration. Populated 0.4.6-to-0.4.7 upgrade is deferred, not passed,
+and neither excluded test blocks the current undeployed candidate. Register the `Nischoy Topo`
 discovery source through the reviewed Fix Script before publishing.
 
 Use a Linux worker for the exercised managed path. Linux/macOS workers can
@@ -174,7 +184,11 @@ to target count, pacing and task deadlines. Use **Cancel run** to stop a run;
 inspect terminal tasks and lease expiry rather than assuming immediate remote
 shutdown. Waiting tasks retain renewable leases and stop on cancellation or
 deadline. Restart uses a new worker boot; real Windows cancelled-expiry slot
-recovery is tested, while broader mixed restart acceptance remains open.
+recovery is tested. Later bounded Linux/Windows scenarios exercised native
+scheduled dispatch, cancellation and healthy follow-up scans, plus actual
+process kill/restart before credentials. A 45-second process-local HTTP-client
+fault recovered; this was not an actual network outage. Restart during collection
+or IRE, address changes and service/reboot recovery were not exercised.
 
 ## Troubleshooting
 
@@ -201,14 +215,21 @@ recovery is tested, while broader mixed restart acceptance remains open.
 | Subnet bounds | Real exclusions, local denial, 1,024 planning ceiling, pacing, pool capacity, cancellation, unreachable isolation | No 1,024-host live scan; collection did not demonstrate two simultaneous SSH connections |
 | Response bounds | Real Windows responses rejected under a 64-byte local budget | Production 1 MiB oversize remains fixture-tested |
 | Source/simulation | Reviewed operations, mapper, broker, planner and worker fixtures; 17 CI checks green on each pinned PR | Public-channel jobs test unchanged shipped release; fixtures are not live acceptance |
-| Native installation | Existing-instance 0.4.7 upgrade and 32 ordered physical index combinations | Matching final export, empty-instance clean install, populated-data upgrade and every unique constraint remain open |
-| Release/compatibility expansion | Candidate source exists | Signed candidate/channel publication, macOS managed runtime, combined mixed/address-change/restart acceptance remain open |
+| Native installation | Source-matched used-instance app restoration, critical script/twelve table IDs and all 32 required ordered physical index definitions verified after companion repair | Base retained 437 reviewed history collisions; not pristine-instance proof. Populated upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded |
+| Bounded reliability | Separate Linux/Windows manual/repeat, native schedules, pre-credential process restart, process-local 45-second client interruption, cancellation and healthy follow-up; 18 Applied receipts retained seven CI/four relationship identities | Actual network outage, address change and midcollection/midIRE restart unexercised; no general outage/reboot guarantee |
+| Release/compatibility expansion | Candidate source exists | Signed candidate/channel publication and macOS managed mixed-runtime evidence remain unestablished |
 
 Exact dated sources, executable checksums, run IDs and limitations are in
 [mixed evidence](evidence/mixed-inventory.md) and the Windows-owned
 [PR #80 evidence](https://github.com/Nischoy-ai/topo/pull/80). Earlier pending
 checkpoints in the evidence history must be read with their later scoped results.
-This guide adds no new runtime or installation evidence. Release cutover must
+The later reliability observer used runtime `06e6eca`, test-only source
+`a2115e6b16f4e60ee54701592028bc5d237f43ee` and Linux binary SHA-256
+`a8fd4d3514f75a826c6aad31d0af1a2dc90ca182c3dbbb5aac996066839bfe0d`.
+Fourteen native runs yielded eighteen complete/three cancelled tasks, with
+eighteen Applied IRE receipts and identical baseline/final source identities.
+The local-only observer is not a published worker. This guide summarizes
+existing evidence; it generates no new runtime or installation proof. Release cutover must
 update downloads, source pins, verification, service configuration and supported
 scope together after the remaining gates and publication; until then use the
 published Linux guide for customer installations.

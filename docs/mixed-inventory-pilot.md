@@ -101,26 +101,16 @@ not exercise the ServiceNow credential broker or prove app installation.
 | Mixed managed runs, real Password2/ACL/OAuth enforcement and repeated IRE apply | Candidate app 0.4.7 installed on the authorized developer instance; Linux subnet and separate Windows broker/IRE acceptance passed; combined mixed-estate upgrade/address-change gates remain separate |
 | Real bounded Linux subnet, exclusions, local authorization, target ceiling, pacing, pool capacity, cancellation, unreachable isolation and repeat IRE | Passed on replacement instance with native 0.4.7; exact source/run attribution in the evidence record |
 | Windows managed success/repeat, credentials/trust, permission denial and isolated binding negatives | Passed in Windows PR #80 within its recorded source and probe limits; combined mixed-estate acceptance remains separate |
-| Address-change identity and scheduling/lease recovery across the real mixed estate | Pending |
-| Clean candidate app installation and data-preserving upgrade | Pending |
-| Signed candidate worker, native XML and public-channel acceptance | Pending; preceding release assets remain intact |
+| Native schedules and bounded recovery | Passed for separate Linux/Windows profiles: native schedule, pre-credential process restart, process-local 45-second client fault and cancellation/healthy repeat; actual network outage and address change unexercised |
+| Native candidate restoration and indexes | Used-instance restoration with 437 source-matched history collisions; supported companion repair and all 32 ordered definitions verified; not pristine-instance proof |
+| Populated upgrade and independent unique enforcement | Upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded. Neither blocks this undeployed candidate |
+| Signed candidate worker, customer package and public-channel cutover | Not yet published; preceding release assets remain intact |
 
-Completion requires the real managed gates above and immutable version/source
-attribution in the [evidence record](evidence/mixed-inventory.md). Fixture tests
-and direct collector runs do not close those gates. The public beta scope will
-change only after acceptance and publication.
-
-The initial 2026-10-11 subnet acceptance attempt found the required 32-index companion
-Loaded, with native preview and commit unavailable because a platform CICD
-operation was running. This is an external prerequisite blocker, not a failed
-subnet scan or proof of index uniqueness. Resume from the loaded companion;
-retain app 0.4.7 and complete preview/problem review, commit and physical-index
-verification before managed acceptance. Do not reinstall the app or import the
-published 0.4.6 combined package to work around that lock.
-
-The owner-authorized replacement instance subsequently passed bounded Linux
-subnet acceptance with its existing index companion. The original instance
-platform lock remains untouched. See the dated evidence for tested limits.
+Use the [current setup and evidence matrix](mixed-inventory-setup.md) for exact
+source references and the owner-approved scope. Earlier evidence checkpoints
+retain historical blockers; the later verified native restoration and companion
+repair supersede the original platform-lock checkpoint for their tested scope.
+Public beta support changes only when the matching app and worker are published.
 
 The Windows-owned expired-lease cleanup fix is integrated into the subnet review
 branch. Live cancellation/expiry recovery is attributed to PR #80; the earlier
