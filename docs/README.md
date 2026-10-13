@@ -1,6 +1,6 @@
 # Topo documentation
 
-Start with [installation in three steps](../README.md#start-servicenow-discovery-in-three-steps)
+Start with [your first ServiceNow discovery run](first-success.md)
 for ServiceNow-managed discovery. Use the guides below for configuration,
 verification and component details.
 

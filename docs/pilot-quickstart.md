@@ -1,5 +1,8 @@
 # ServiceNow-managed Linux discovery setup
 
+New setup? Start with [your first discovery run](first-success.md) for the
+short Linux path, then return here for detailed configuration.
+
 Install Topo 0.4.7 Beta, configure identities and approved Linux targets, then
 start manual or scheduled discovery from ServiceNow. Follow your organization’s
 change process and verify configuration before enabling schedules.
@@ -80,7 +83,7 @@ IDs become immutable once referenced.
    pool/site, one approved canonical IPv4 target per line (for example
    `192.0.2.10/32`), IPv4 partition prefix `32`, active. The compiled partition
    count must be between 1 and 1,024.
-3. **SSH Credentials** — credential ID `pilot-linux-password`, the SSH
+3. **Remote Credentials** — credential ID `pilot-linux-password`, the SSH
    username and Password2 value, active. Enter this while acting as the
    credential administrator; do not test with a production privileged account.
 4. **Credential Bindings** — binding ID `pilot-linux-binding`, revision `1`,

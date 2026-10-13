@@ -1,5 +1,8 @@
 # Managed Linux and Windows discovery setup
 
+New setup? Start with [your first discovery run](first-success.md) for the
+short Linux path, then return here for detailed configuration.
+
 The signed worker [v0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 is public from source `c70c5813895fcae20c54ee1fac54e0e44e9e531f`, alongside the
 [Topo 0.4.7 native package](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
