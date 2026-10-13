@@ -1,23 +1,22 @@
-# Managed Linux and Windows inventory pilot
+# Managed Linux and Windows inventory beta
 
-This is the acceptance plan for the **unpublished 0.4.7 source candidate**.
-The published 0.4.6 app and `v0.4.6-beta.1` worker still support only the
-managed Linux path described in the [setup guide](pilot-quickstart.md).
-Do not use these candidate flags with that published worker or install the
-candidate over an existing development installation to bypass acceptance.
+The native app **0.4.7 Beta** and signed worker **v0.4.7-beta.1** are published.
+Use the [Linux/Windows setup](mixed-inventory-setup.md) or [SSH-only setup](pilot-quickstart.md)
+with matching versions. The dated history below distinguishes source fixtures,
+live acceptance and published artifact verification; publication does not add
+new pristine-instance or combined-byte installation evidence.
 
 The target is ServiceNow-managed computer and network-adapter inventory on
 Linux and Windows, using bounded, explicitly authorized IPv4 subnet selection.
 It does not claim broad Device42 replacement coverage. Windows targets can be
 collected by Linux/macOS workers; Windows worker packaging is a separate scope.
 
-Follow the [candidate setup path](mixed-inventory-setup.md) for identities,
+Follow the [setup path](mixed-inventory-setup.md) for identities,
 protocol profiles, worker preflight, operation and troubleshooting. The dated
 [evidence history](evidence/mixed-inventory.md) contains later scoped acceptance
-results that supersede earlier pending checkpoints below; remaining native and
-release gates are summarized in the setup guide.
+results that supersede earlier pending checkpoints below; current tested limits are summarized in the setup guide.
 
-## Candidate contract
+## Beta contract
 
 - `ssh_linux.v1`: reviewed SSH Linux operations on port 22 with verified
   `known_hosts`, and an immutable `ssh_password` binding.
@@ -67,7 +66,7 @@ bypasses this remote limiter. `-max-concurrency` and ServiceNow pool capacity
 remain independent limits. Multiple workers each have their own rate limit;
 size a pool's worker count and concurrency to bound aggregate traffic.
 
-## Candidate worker configuration
+## Worker configuration
 
 The existing SSH flags remain. Add these flags when Windows collection is
 explicitly authorized:
@@ -86,7 +85,7 @@ are bound into the registered policy digest. Startup files are read once;
 restart after changing local policy or trust. There is no TLS bypass or Basic
 fallback in the managed Windows operation. Use `topo worker check` before `run`.
 
-The candidate standalone `topo discover winrm -host-interfaces-only` uses the
+The standalone `topo discover winrm -host-interfaces-only` uses the
 same restricted inventory selection for focused compatibility tests. It does
 not exercise the ServiceNow credential broker or prove app installation.
 
@@ -97,20 +96,21 @@ not exercise the ServiceNow credential broker or prove app installation.
 | Fixed operations, local authorization, protocol-bound broker, no-data mapping, bounded CIDR expansion and cancellation | Source tests; separate from real ServiceNow enforcement |
 | Windows Server 2022 and 2025 computer/interface collection as non-admin | Two real scans per host passed with verified TLS, zero errors and stable identity; production executor and offline IRE preview exercised |
 | Ubuntu 24.04 computer/interface collection | Two candidate production-executor scans passed with verified host keys: 3 assets/2 relationships, zero errors, stable identities and offline IRE preview |
-| Windows WQL and HTTP/2 compatibility regressions | Source fixes plus real-host collection evidence; published worker unchanged |
+| Windows WQL and HTTP/2 compatibility regressions | Source fixes plus real-host collection evidence; original 0.4.6 worker bytes unchanged |
 | Mixed managed runs, real Password2/ACL/OAuth enforcement and repeated IRE apply | Candidate app 0.4.7 installed on the authorized developer instance; Linux subnet and separate Windows broker/IRE acceptance passed; later scoped reliability results are summarized below; address-change remains unexercised and populated upgrade is deferred |
 | Real bounded Linux subnet, exclusions, local authorization, target ceiling, pacing, pool capacity, cancellation, unreachable isolation and repeat IRE | Passed on replacement instance with native 0.4.7; exact source/run attribution in the evidence record |
 | Windows managed success/repeat, credentials/trust, permission denial and isolated binding negatives | Passed in Windows PR #80 within its recorded source and probe limits; combined mixed-estate acceptance remains separate |
 | Native schedules and bounded recovery | Passed for separate Linux/Windows profiles: native schedule, pre-credential process restart, process-local 45-second client fault and cancellation/healthy repeat; actual network outage and address change unexercised |
 | Native candidate restoration and indexes | Used-instance restoration with 437 source-matched history collisions; supported companion repair and all 32 ordered definitions verified; not pristine-instance proof |
-| Populated upgrade and independent unique enforcement | Upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded. Neither blocks this undeployed candidate |
-| Signed candidate worker, customer package and public-channel cutover | Not yet published; preceding release assets remain intact |
+| Populated upgrade and independent unique enforcement | Upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded. Neither was required for this beta |
+| Signed beta worker, customer package and public channels | Published 0.4.7 app/worker; prior release assets remain intact |
 
 Use the [current setup and evidence matrix](mixed-inventory-setup.md) for exact
 source references and the owner-approved scope. Earlier evidence checkpoints
 retain historical blockers; the later verified native restoration and companion
 repair supersede the original platform-lock checkpoint for their tested scope.
-Public beta support changes only when the matching app and worker are published.
+The matching published app/worker define the beta scope; earlier unexercised paths
+remain unexercised after publication.
 
 The Windows-owned expired-lease cleanup fix is integrated into the subnet review
 branch. Live cancellation/expiry recovery is attributed to PR #80; the earlier
