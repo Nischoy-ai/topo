@@ -16,6 +16,11 @@ FILES = {'INDEXES.md', 'INSTALLATION.md', 'START-HERE.txt', 'manifest.json',
          'nischoy-topo-0.4.6-combined.xml', 'nischoy-topo-0.4.6-beta.zip'}
 REVIEWED_RELEASES = {'servicenow-0.4.6-beta', 'servicenow-0.4.6-beta.2'}
 FILES_BY_RELEASE = {tag: FILES for tag in REVIEWED_RELEASES}
+FILES_BY_RELEASE['servicenow-0.4.7-beta.1'] = {
+    name.replace('0.4.6', '0.4.7') for name in FILES
+}
+REVIEWED_RELEASES = set(FILES_BY_RELEASE)
+MANIFEST_ONLY_RELEASES = {'servicenow-0.4.6-beta.2', 'servicenow-0.4.7-beta.1'}
 
 
 def read_regular(path, maximum):
@@ -68,7 +73,7 @@ def main():
         if release_tag not in REVIEWED_RELEASES:
             raise ValueError('release tag has no reviewed signing manifest')
         manifest_only = len(sys.argv) == 4
-        if manifest_only and (sys.argv[3] != '--manifest-only' or release_tag != 'servicenow-0.4.6-beta.2'):
+        if manifest_only and (sys.argv[3] != '--manifest-only' or release_tag not in MANIFEST_ONLY_RELEASES):
             raise ValueError('unsupported signing-input mode')
         root = Path(__file__).resolve().parent.parent
         expected = read_regular(root / 'release' / (release_tag + '.SHA256SUMS'), 4096)

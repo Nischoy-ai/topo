@@ -9,8 +9,9 @@ on:
         description: Reviewed manual ServiceNow release to authenticate
         required: true
         type: choice
-        default: servicenow-0.4.6-beta.2
+        default: servicenow-0.4.7-beta.1
         options:
+          - servicenow-0.4.7-beta.1
           - servicenow-0.4.6-beta.2
           - servicenow-0.4.6-beta
 
@@ -85,6 +86,13 @@ jobs:
           mkdir "$RUNNER_TEMP/topo-xml-signing"
           cp release/servicenow-0.4.6-beta.2.SHA256SUMS "$RUNNER_TEMP/topo-xml-signing/SHA256SUMS"
           python3 scripts/verify-servicenow-signing-input.py "$RUNNER_TEMP/topo-xml-signing" servicenow-0.4.6-beta.2 --manifest-only
+      - name: Stage the reviewed 0.4.7 manifest before manual publication
+        if: inputs.package_release == 'servicenow-0.4.7-beta.1'
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/topo-xml-signing"
+          cp release/servicenow-0.4.7-beta.1.SHA256SUMS "$RUNNER_TEMP/topo-xml-signing/SHA256SUMS"
+          python3 scripts/verify-servicenow-signing-input.py "$RUNNER_TEMP/topo-xml-signing" servicenow-0.4.7-beta.1 --manifest-only
       - name: Install the pinned Cosign client
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Sign and verify the unchanged checksum manifest

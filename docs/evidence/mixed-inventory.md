@@ -402,3 +402,34 @@ run `38307801980`. Later documentation or packaging changes need their own
 exact-head results. The observations above retain their earlier runtime/source
 pins. Customer packaging, signing and channel cutover are separate from these
 native inputs and live acceptance observations; publication is not claimed here.
+
+## Native customer batch comparison — 2026-10-13 UTC
+
+The owner downloaded the native batch from the assembled 0.4.7 application
+update set. The unchanged exported XML is 1,418,336 bytes with SHA-256
+`45a13e48c675b77d11e2ff1610ff04b0e63cd396daad22f2c529d2be9b05b721`.
+It contains 474 metadata updates: 441 application definitions, 32 unchanged
+index definitions and one Global discovery-source registration Fix Script.
+There are three distinct update sets; the platform serialized the parent
+record twice identically. No XML was assembled or edited offline.
+
+All 32 index payloads match the reviewed companion byte for byte. The Global
+script matches the reviewed repository script (`fa0f0bcb6b2f23a8df78765e9cdd5f1a6c2b8027b5b54c0dd54ff31309951a20`)
+with Unloadable false. Every application payload field was compared to the
+previous source-verified integrated export. The only differences are native
+restoration of 143 dictionary record IDs and their package/scope display
+attributes, 20 reference display attributes, and capitalization of 12 table-level
+`NULL` update names. Dictionary field definitions, references, scope IDs and
+all remaining application payload fields match. Original bytes and the exact
+comparison record are retained privately.
+
+The instruction files were independently reviewed against configuration guide
+`c70c5813895fcae20c54ee1fac54e0e44e9e531f`. The ZIP contains the same XML,
+manifest and three instruction files; every extracted member equals its
+reviewed original. The tracked signing manifest pins all six payloads. This
+is export/source comparison and package integrity evidence. Native restoration
+and physical index acceptance remain attributed to the component exports above;
+this combined digest was not independently committed on a pristine instance.
+Populated upgrade remains deferred and unique enforcement unexercised.
+Signing and publication require the separately protected workflows and public
+verification; this record does not claim a published 0.4.7 release.
