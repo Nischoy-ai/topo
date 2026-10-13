@@ -85,7 +85,7 @@ defines these scoped records:
 | `x_664635_topo_worker` | Ephemeral boot identity, version, fixed capability, policy digest, advertised capacity, authoritative current load, and heartbeat. |
 | `x_664635_topo_target_scope` | Immutable revision of bounded canonical IPv4 selection/exclusion policy and its deterministic partition-plan digest. It is not used by production `local.v1`. |
 | `x_664635_topo_ssh_credential` | Legacy-named credential-admin-only target username plus non-audited, non-replicated Password2 secret; protocol authority comes from the immutable binding. Generic web-service access is disabled. |
-| `x_664635_topo_credential_binding` | Immutable revision binding one `ssh_password` credential to one profile revision and target scope. Contains no plaintext secret. |
+| `x_664635_topo_credential_binding` | Immutable revision binding one `ssh_password` or `winrm_ntlm_password` credential to one profile revision and target scope. Contains no plaintext secret. |
 | `x_664635_topo_credential_access` | Secret-free allowed/denied attempt-bound broker events. |
 | `x_664635_topo_profile` | Immutable versioned `local.v1`, `ssh_linux.v1` or `winrm_windows.v1` profile bound to one pool. |
 | `x_664635_topo_schedule` | Recurrence and next-run time for a profile revision. |
