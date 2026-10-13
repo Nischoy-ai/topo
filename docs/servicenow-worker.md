@@ -1,22 +1,28 @@
 # ServiceNow-managed stateless Topo worker
 
-The unpublished 0.4.7 source candidate adds managed Windows computer/interface
-inventory and bounded IPv4 subnet selection. Its implementation and direct
-real-host evidence are separate from the published workflow below; see
-[candidate scope and acceptance](mixed-inventory-pilot.md).
+The published 0.4.7 beta includes managed Windows computer/interface inventory
+and bounded IPv4 subnet selection. Follow [mixed setup](mixed-inventory-setup.md)
+for protocol-specific trust, credential bindings, exclusions and execution policy.
+Dated [mixed evidence](evidence/mixed-inventory.md) retains exact live sources
+and limits separately from published artifact authentication.
 
 ## Supported published workflow
 
-The stateless worker supports two reviewed operations: `local.v1` discovers
-its own machine and `ssh_linux.v1` discovers explicitly approved IPv4 Linux
-targets over port 22. Workers connect outbound and check a deployment-owned
-target allowlist and SSH `known_hosts`. ServiceNow validates normalized
-observations and publishes supported CI mappings through IRE.
+The stateless worker supports three reviewed operations: `local.v1` discovers
+its own machine, `ssh_linux.v1` discovers approved Linux targets over SSH/22,
+and `winrm_windows.v1` discovers Windows computers and IP-enabled interfaces
+over verified HTTPS/5986 with NTLMv2. Remote profiles expand approved IPv4 CIDRs
+with exclusions into at most 1,024 canonical `/32` tasks. Workers connect outbound;
+separate local allowlists and independently verified SSH host keys or WinRM CA
+trust constrain access. ServiceNow validates normalized observations and publishes
+only the supported computer/interface mappings through IRE.
 
-Topo 0.4.6 Beta is installed from one combined XML containing the
-app and its 32 required indexes. Install the worker through the Beta package
-channel. Follow the [installation guide](servicenow-update-set.md) and
-[setup guide](pilot-quickstart.md) for configuration.
+Topo 0.4.7 Beta is installed from the combined native XML containing the
+application, 32 required index definitions and Global source setup. Install the
+matching signed worker through its beta channel. Follow the
+[XML guide](servicenow-update-set.md) and [mixed setup](mixed-inventory-setup.md).
+The local/SSH examples below remain supported subsets. The shipped Linux service
+enables SSH only; the mixed guide provides explicit reviewed foreground flags.
 
 Implemented controls include deterministic partitions, bounded concurrency,
 renewable leases, cancellation, raw-result retention, Password2 credential
@@ -70,7 +76,7 @@ IRE behavior.
 
 ## Scoped data model
 
-The Nischoy application is the sole durable operational store. Fluent `0.4.6`
+The Nischoy application is the sole durable operational store. Fluent `0.4.7`
 defines these scoped records:
 
 | Table | Purpose |
@@ -78,10 +84,10 @@ defines these scoped records:
 | `x_664635_topo_worker_pool` | Site, authenticated deployment user, concurrency, lease, and task-duration policy. |
 | `x_664635_topo_worker` | Ephemeral boot identity, version, fixed capability, policy digest, advertised capacity, authoritative current load, and heartbeat. |
 | `x_664635_topo_target_scope` | Immutable revision of bounded canonical IPv4 selection/exclusion policy and its deterministic partition-plan digest. It is not used by production `local.v1`. |
-| `x_664635_topo_ssh_credential` | Credential-admin-only SSH username plus non-audited, non-replicated Password2 secret. Generic web-service access is disabled. |
-| `x_664635_topo_credential_binding` | Immutable revision binding one `ssh_password` credential to one profile revision and target scope. Contains no plaintext secret. |
+| `x_664635_topo_ssh_credential` | Legacy-named credential-admin-only target username plus non-audited, non-replicated Password2 secret; protocol authority comes from the immutable binding. Generic web-service access is disabled. |
+| `x_664635_topo_credential_binding` | Immutable revision binding one `ssh_password` or `winrm_ntlm_password` credential to one profile revision and target scope. Contains no plaintext secret. |
 | `x_664635_topo_credential_access` | Secret-free allowed/denied attempt-bound broker events. |
-| `x_664635_topo_profile` | Immutable versioned `local.v1` or `ssh_linux.v1` profile bound to one pool. |
+| `x_664635_topo_profile` | Immutable versioned `local.v1`, `ssh_linux.v1` or `winrm_windows.v1` profile bound to one pool. |
 | `x_664635_topo_schedule` | Recurrence and next-run time for a profile revision. |
 | `x_664635_topo_run` | Manual/scheduled execution, cancellation state, and bounded terminal counts/error. |
 | `x_664635_topo_task` | One immutable partition descriptor, attempt, digest-only lease, unique pool/worker capacity slots, deadline, cancellation state, and bounded error. |
@@ -113,7 +119,7 @@ OAuth client. Use a distinct worker identity; the worker itself never calls IRE.
 ## Run, claim, and recovery behavior
 
 **Run now** and the minute schedule evaluator both create one durable run. A
-`local.v1` run has one targetless task. An `ssh_linux.v1` run has one task per
+`local.v1` run has one targetless task. A remote SSH or Windows run has one task per
 compiled `/32`, with a 1,024-task ceiling and the profile's immutable
 credential binding copied onto every task. The app suppresses another active run for the same
 profile revision. A task deadline is fixed when it is created.

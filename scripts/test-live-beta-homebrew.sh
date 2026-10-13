@@ -25,12 +25,12 @@ brew tap "$tap" https://github.com/Nischoy-ai/homebrew-tap
 created_tap=true
 tap_path=$(brew --repository "$tap")
 # Pin reviewed live formula bytes, including every archive checksum, before execution.
-printf '%s  %s\n' 400c179507ceba775c107fb2e2b05b249e4fc8011455a22bdabf6a82332ec5bd \
+printf '%s  %s\n' 400a28b2fd5fb47ac25a72ccf765779560a129474e1f05ac839e793a949002d8 \
   "$tap_path/Formula/topo-beta.rb" | shasum -a 256 --check -
 brew audit --strict --online "$formula"
 brew install --formula "$formula"
 brew test "$formula"
-test "$(topo version)" = v0.4.6-beta.1
+test "$(topo version)" = v0.4.7-beta.1
 if [[ "$(uname -m)" == arm64 ]]; then
   codesign --verify --strict --verbose=2 "$(command -v topo)"
 fi

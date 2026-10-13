@@ -1,9 +1,11 @@
-# ServiceNow index checklist for Topo 0.4.6
+# ServiceNow index checklist for Topo 0.4.7
 
-Topo 0.4.6 Beta includes all **32 indexes**, including **17 unique indexes**, in the
-combined application XML. Upload once, then preview and commit the batch from
-its Nischoy Topo base. Confirm the application and index child are Committed.
-Follow the [installation guide](servicenow-update-set.md#customer-installation).
+This checklist contains all 32 required ordered index definitions, including
+17 configured unique. The definitions match the compiled candidate source and
+the unchanged native companion exactly. Physical coverage was audited after
+companion restoration; uniqueness enforcement was not independently exercised.
+Follow the [installation guide](servicenow-update-set.md) and verify signed package
+checksums before importing the combined XML.
 
 Keep workers stopped and schedules inactive until installation checks finish.
 Do not drop existing indexes or create additional copies during normal setup.
@@ -17,8 +19,9 @@ column lists in the full form. **Is Droppable** is not a uniqueness indicator.
 
 Every table name below has the prefix `x_664635_topo_`. The definition name is
 from the source; ServiceNow may assign a different physical index name.
-The checklist was derived from a clean SDK 4.9.0 build of the unchanged 0.4.6
-`tables.now.ts` declarations. Keep it synchronized with the build's
+The checklist was derived from a clean SDK 4.9.0 build of the unchanged index
+declarations originally exported for 0.4.6; candidate 0.4.7 field additions
+do not change these 32 index definitions. Keep it synchronized with the build's
 `servicenow-index-requirements` artifact when the schema changes.
 
 | Table suffix | Source definition | Columns in order | Unique |
@@ -58,5 +61,10 @@ The checklist was derived from a clean SDK 4.9.0 build of the unchanged 0.4.6
 
 ## Validation reference
 
-[Maintainer validation evidence](servicenow-validation.md) records installation,
-repeat-import and key-enforcement tests, plus administrator recovery procedures.
+[Historical 0.4.6 validation evidence](https://github.com/Nischoy-ai/topo/blob/533267125420f064c45562607772b3aeba512423/docs/servicenow-validation.md) records the earlier package’s installation,
+repeat-import and key-enforcement tests plus administrator recovery procedures.
+Those tests do not establish enforcement for this restored 0.4.7 installation.
+
+[Current candidate evidence](https://github.com/Nischoy-ai/topo/blob/c70c5813895fcae20c54ee1fac54e0e44e9e531f/docs/evidence/mixed-inventory.md)
+records all 32 ordered physical definitions present after companion restoration.
+The 17 unique flags match configuration; enforcement was not independently exercised.
