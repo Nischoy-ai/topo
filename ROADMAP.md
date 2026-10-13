@@ -2,17 +2,17 @@
 
 Topo discovers infrastructure through locally approved operations and publishes
 normalized observations to destination systems. ServiceNow controls the current
-managed Linux discovery workflow and reconciles supported CIs through IRE.
+managed Linux/Windows discovery workflow and reconciles supported CIs through IRE.
 
 ## Current release
 
-**Topo 0.4.6 Beta** provides the published combined ServiceNow application/index
-XML and the signed worker `v0.4.6-beta.1` through Linux APT/RPM and macOS
+**Topo 0.4.7 Beta** provides the published combined ServiceNow application/index
+XML and the signed worker `v0.4.7-beta.1` through Linux APT/RPM and macOS
 Homebrew. See
 [XML installation](docs/servicenow-update-set.md) and
 [worker availability](docs/distribution.md#release-availability) for the actual
 download and channel status. Dated build and installation results are in the
-[distribution evidence](docs/evidence/distribution.md#046-beta-worker).
+[distribution evidence](docs/evidence/distribution.md#047-beta-worker).
 
 Windows package publication and stable channels are planned. The macOS CLI
 formula does not use Apple Developer ID signing or notarization.
@@ -32,14 +32,13 @@ M3 capability priorities.
 
 | Area | Beta scope | Evidence and guide |
 | --- | --- | --- |
-| Managed discovery | Explicitly listed IPv4 Linux hosts over SSH port 22; Password2 broker, outbound stateless workers, leases, manual runs and schedules. No subnet scanning or Windows targets. | [Linux setup](docs/pilot-quickstart.md) · [Managed worker evidence](docs/evidence/servicenow-worker.md) |
+| Managed discovery | Linux SSH/22 and Windows HTTPS/5986 NTLM computer/interfaces; separate protocol profiles, bounded IPv4 CIDRs/exclusions, local trust/allowlists, Password2 broker, leases and schedules. | [Linux/Windows setup](docs/mixed-inventory-setup.md) · [Managed worker evidence](docs/evidence/servicenow-worker.md) |
 | CMDB publication | Only computers (`cmdb_ci_computer`), network adapters (`cmdb_ci_network_adapter`), and one relationship: `host_has_interface` → `Owns::Owned by`. | [Mapping boundary](docs/servicenow.md#reviewed-mapping-boundary) · [Real IRE evidence](docs/evidence/servicenow-ire.md) |
-| Installation | Combined ServiceNow XML plus signed Linux APT/RPM and macOS Homebrew workers; dated install and upgrade checks. | [XML validation](docs/servicenow-validation.md) · [Distribution evidence](docs/evidence/distribution.md) |
+| Installation | Combined ServiceNow XML plus signed Linux APT/RPM and macOS Homebrew workers; dated restoration and channel checks. Upgrade evidence is historical; populated 0.4.7 upgrade remains deferred/not passed. | [XML validation](docs/servicenow-validation.md) · [Distribution evidence](docs/evidence/distribution.md) |
 
-This is a focused Linux pilot, not a replacement for Device42's broad estate
-coverage. Linux and macOS worker packages do not imply discovery coverage for
-those operating systems beyond the target scope above. Windows discovery is
-not available in the managed beta, and Windows packages are not published.
+This is a focused computer/interface beta, not broad estate replacement coverage.
+Real mixed managed evidence uses Linux workers. Windows installers are not published,
+and macOS managed mixed runtime is not independently exercised.
 
 ## Other source components and validation limits
 
@@ -51,7 +50,7 @@ it does not establish real-system compatibility or production readiness.
 | Component | Implemented scope | Validation limit | Guide |
 | --- | --- | --- | --- |
 | Standalone host discovery | Local discovery and reviewed SSH operations | Separate from the managed target policy; real IRE evidence covers only the documented classes and runs. | [SSH](docs/ssh-discovery.md) |
-| Windows discovery and agent service | Fixed WinRM inventory operations and Windows service wrapper | Broader WinRM inventory remains fixture-tested. The unpublished computer/interface candidate passed direct collection on Windows Server 2022/2025; scoped managed repeats and negative gates passed in [candidate PR #80](https://github.com/Nischoy-ai/topo/pull/80); broader acceptance remains open. Service registration checked by cross-compilation and code review only; real Windows Service Control Manager unverified. | [WinRM](docs/winrm-discovery.md) · [Agent](docs/topo-agent.md) |
+| Windows discovery and agent service | Fixed WinRM inventory operations and Windows service wrapper | Broader WinRM inventory remains fixture-tested. The computer/interface beta passed direct collection on Windows Server 2022/2025; scoped managed repeats and negative gates passed in [candidate PR #80](https://github.com/Nischoy-ai/topo/pull/80); broader acceptance remains open. Service registration checked by cross-compilation and code review only; real Windows Service Control Manager unverified. | [WinRM](docs/winrm-discovery.md) · [Agent](docs/topo-agent.md) |
 | SNMP | SNMPv3 MIB-II device/interface inventory | Lab wire-protocol fixture uses `noAuthNoPriv`; production `authPriv` has no real-equipment validation. | [SNMP](docs/snmp.md) |
 | VMware | Read-only host/VM inventory | HTTPS/authenticated `vcsim` tests; real vCenter/ESXi unverified. | [VMware](docs/vmware.md) |
 | Kubernetes | Node/Pod inventory | Topo Lab API fixture; live cluster unverified. | [Kubernetes](docs/kubernetes.md) |
@@ -67,21 +66,20 @@ Simulator scale gates do not prove sustained customer-estate capacity.
 ## Current development focus
 
 M3 — hybrid discovery and managed ServiceNow deployment — remains the current
-milestone. Combined-package installation and focused upgrade acceptance are
-complete, with customer installation documentation for the Linux workflow.
-The next approved scope is a **validated ServiceNow-managed Linux and Windows
-inventory pilot with bounded IPv4 subnet discovery**. The unpublished candidate implements
-managed Windows computer/interface inventory and allowlisted CIDR selection
-with exclusions and bounded execution. Real mixed-estate/IRE acceptance remains
-scoped to the dated results. See the [candidate scope and gates](docs/mixed-inventory-pilot.md). These
-include completed scoped Linux subnet, Windows managed and bounded reliability
-acceptance; candidate packaging/publication remains separate. Populated upgrade
-is deferred/not passed, and additional unique-enforcement probes are owner-excluded,
-not independently exercised. Neither blocks this undeployed candidate. The published
-beta retains the Linux-only scope above.
-The [candidate setup guide](docs/mixed-inventory-setup.md) provides the proposed
-onboarding path and exact review boundary. Windows target support uses Linux/macOS workers; Windows worker publication
-remains a separate planned capability.
+milestone. Historical 0.4.6 combined-package installation and focused upgrade
+evidence remain recorded; populated 0.4.7 upgrade is deferred/not passed.
+Customer documentation now covers the bounded Linux/Windows workflow.
+The published **ServiceNow-managed Linux and Windows computer/interface beta**
+includes allowlisted IPv4 CIDRs, explicit exclusions and bounded execution.
+Linux subnet, Windows managed and reliability acceptance retain their dated
+scope; actual network-outage, address-change and midcollection/IRE interruption
+behavior remain unexercised. Native restoration on a used PDI and all 32 ordered
+physical index definitions were verified. The sealed combined export was compared
+offline, not newly committed as the final combined digest on a pristine instance.
+Populated upgrade is deferred/not passed; additional unique-enforcement probes
+were owner-excluded/not independently exercised. Neither was required for this beta.
+Follow the [setup guide](docs/mixed-inventory-setup.md) and [acceptance record](docs/mixed-inventory-pilot.md).
+Windows worker publication remains separate.
 
 ## Planned capabilities
 

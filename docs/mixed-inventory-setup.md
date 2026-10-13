@@ -1,39 +1,48 @@
-# Managed Linux and Windows candidate setup
+# Managed Linux and Windows discovery setup
 
-**Review guide for the unpublished 0.4.7 candidate.** The public app is still
-0.4.6 Beta and the public worker is `v0.4.6-beta.1`: follow the
-[Linux setup](pilot-quickstart.md) for those releases. Package-manager installation
-currently obtains that Linux-only managed release, not this candidate.
+The signed worker [v0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
+is public from source `c70c5813895fcae20c54ee1fac54e0e44e9e531f`, alongside the
+[Topo 0.4.7 native package](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
+Install the matching worker through the [signed beta channels](distribution.md)
+and confirm `topo version` reports `v0.4.7-beta.1` before configuring it.
 
-This guide is pinned to integrated [PR #79](https://github.com/Nischoy-ai/topo/pull/79)
-source `faa4f6a808e46a4f656436ca28100527e379dd50` (runtime
-`06e6ecafbb555efeb87233b6dc841a549cbbc733`), including the Windows
-runtime from [PR #80](https://github.com/Nischoy-ai/topo/pull/80) source
-`5a94445e5765b8176a5eec8566c930eb4a6a9743`. Candidate app and worker must
-come from the reviewed matching source. A version label alone does not identify
-that source. Record the binary checksum and build source alongside `topo version`.
-There is no candidate public download or signed channel cutover instruction here.
+The 0.4.7 workflow discovers computers and IP-enabled interfaces on Linux over
+verified SSH/22 and Windows over verified HTTPS/5986 with NTLMv2. Linux and macOS
+worker packages do not imply Windows installer publication or broader target
+inventory. Real managed mixed-path evidence uses Linux workers; macOS managed
+mixed runtime remains unexercised. Record the exact worker version, build source
+and binary checksum. Earlier evidence retains its original [integrated source](evidence/mixed-inventory.md)
+and Windows attribution; a version label alone is not that source identity.
 
 ## 1. Establish the installation and target prerequisites
 
-Use an authorized disposable ServiceNow environment with a source-verified
-candidate app and all 32 required ordered indexes. The
-[XML installation procedure](servicenow-update-set.md) describes the native
-workflow, but its download is the published 0.4.6 package. The older candidate
-base export lacks the final lease correction: do not treat it as this pinned
-candidate. The source-verified native 0.4.7 base export has SHA-256
-`eb42d7212e79fad4e8e5f2425504aa7082a2908dce99759741473cdd608d734a`.
-It was restored after authorized deletion on a used developer instance, with
-437 source-matched deletion-history collisions reviewed through native preview.
-This was not a pristine-instance or zero-collision base preview. Supported
-companion reapplication restored all 32 ordered physical index definitions;
-verify physical coverage against current table IDs after table recreation.
-An old Committed receipt alone does not prove the indexes are present.
-Independent enforcement of the 17 unique definitions was not exercised; the
-owner excluded additional duplicate-insert tests and relies on the platform
-contract/configuration. Populated 0.4.6-to-0.4.7 upgrade is deferred, not passed,
-and neither excluded test blocks the current undeployed candidate. Register the `Nischoy Topo`
-discovery source through the reviewed Fix Script before publishing.
+Use an authorized development ServiceNow environment and follow your change
+process. The prepared native 0.4.7 customer package contains one unchanged
+combined XML, 474 metadata updates and three distinct update sets: app, 32 index
+definitions and the Global discovery-source Fix Script. Its XML SHA-256 is
+`45a13e48c675b77d11e2ff1610ff04b0e63cd396daad22f2c529d2be9b05b721`
+(1,418,336 bytes). The native export repeats an identical parent record; this
+is still three distinct sets. Download it from the [native package release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
+
+Verify its signed checksum manifest using the exact protected
+workflow commit in the release notes before importing. Then import through
+**Retrieved Update Sets → Import Update Set from XML**, preview and review all
+problems, commit the complete batch, and run **Nischoy Topo — Register Discovery
+Source** with **Unloadable** cleared. Use the package's INSTALLATION.md and
+INDEXES.md as the version-matched installation and ordered-index checklists.
+A historical Committed receipt alone does not prove physical index presence
+after table recreation. Keep workers stopped and schedules inactive until these
+checks complete; do not bypass active platform operations or preview problems.
+
+The exact combined export was compared offline with reviewed inputs. Earlier
+native evidence restored its source-matched app on a used instance with 437
+reviewed deletion-history collisions, followed by supported companion repair
+and fresh verification of all 32 ordered physical definitions. That is separate
+component evidence, not a new combined-digest or pristine-instance install.
+Independent enforcement of the 17 unique definitions was not exercised;
+additional duplicate-insert tests are owner-excluded, relying on reviewed platform
+configuration. Populated upgrade testing is deferred/not passed. These omissions remain
+explicit validation limits; neither was required by the approved beta scope. See the [dated evidence](evidence/mixed-inventory.md).
 
 Use a Linux worker for the exercised managed path. Linux/macOS workers can
 implement these operations; macOS managed mixed-runtime acceptance remains
@@ -53,7 +62,7 @@ required fixed queries. Enable an HTTPS/5986 listener and firewall access only
 from approved workers. Keep Basic and unencrypted authentication disabled.
 Use `SERVERNAME\username` for a local Windows account; domain account
 compatibility is not established. Environments that disable NTLM are unsupported
-by this candidate; preserve domain policy and wait for a supported authentication
+by this beta; preserve domain policy and wait for a supported authentication
 mode rather than weakening it. Kerberos remains deferred.
 NTLMv2 requires verified TLS for server identity; provision a valid server
 certificate whose IP SAN includes each selected target IP. Establish CA trust
@@ -78,7 +87,7 @@ rights or credential-table access.
 
 The custodian enters target usernames/passwords in **Remote Credentials** using
 protected Password2 fields. The underlying legacy SSH-named table is unchanged;
-its label does not imply SSH-only candidate support. Use a separate credential
+its label does not imply SSH-only support. Use a separate credential
 and binding for each protocol. Never put target passwords or OAuth tokens in
 CLI values, labels, scope records, observation attributes or logs. Transfer the
 OAuth token directly into a restricted file through the normal secure workflow.
@@ -117,7 +126,7 @@ For example `192.0.2.0/29`, excluding `.0/32`, `.4/31`, `.7/32`, selects
 sweep, not OS detection: only place the intended protocol's targets in its scope.
 See the [selection contract](mixed-inventory-pilot.md#subnet-selection-and-bounds).
 
-## 4. Check and start the matching candidate worker
+## 4. Check and start the matching worker
 
 Keep the token and all startup files under absolute, restricted paths, readable
 by the worker account. On Linux use root-owned policy files with worker-group
@@ -127,11 +136,12 @@ canonical IPv4 CIDRs, one per line, and should grant only approved targets.
 Prepare separate SSH/Windows allowlists, verified `known_hosts`, and trusted
 WinRM CA PEM. A ServiceNow scope cannot widen these local grants.
 
-The following uses a reviewer-provided candidate binary at a disposable path;
-replace the instance, pool/site and paths. It leaves the installed release alone.
+Install and verify the matching `v0.4.7-beta.1` worker through its signed release
+or the beta package-manager channels. Confirm `topo version`, then
+replace the instance, pool/site and paths in this installed-binary example.
 
 ```sh
-/absolute/candidate/topo worker check \
+topo worker check \
   -servicenow-instance https://your-instance.service-now.com \
   -token-ref file:/absolute/private/worker-token \
   -worker-pool pilot-mixed -site pilot-site \
@@ -150,10 +160,11 @@ credential release or IRE. Check claims no tasks. Repeat the exact command with
 For a single protocol omit the other protocol's enable flag and both files.
 
 The shipped Linux service enables SSH only. Adding Windows files or variables
-to its environment file does not enable Windows. A future candidate service
+to its environment file does not enable Windows. A matching mixed service
 configuration must use the same approved flags in **both** its preflight and
 run commands; service packaging/cutover is not established by this foreground
-example. Do not replace the current installed service for this review.
+example. Use the explicit foreground command for mixed targets until a matching reviewed
+service configuration is provided.
 
 Startup files are read once. Stop, revise policy/trust, rerun check with identical
 intended flags and restart to load changes. Policy registration binds allowlists,
@@ -209,15 +220,15 @@ or IRE, address changes and service/reboot recovery were not exercised.
 
 | Area | Evidence at this source boundary | Limit |
 | --- | --- | --- |
-| Public release | Signed 0.4.6 worker channels and native 0.4.6 XML | Managed Linux explicit `/32` only; no candidate support shipped |
+| Public release | Signed v0.4.7-beta.1 worker channels and native 0.4.7 XML | Focused Linux/Windows computer/interfaces; Windows installers and Apple identity/notarization excluded |
 | Ubuntu 24.04 SSH | Real direct repeats and managed subnet/broker/IRE repeats | Three-address bounded lab scope; no broad estate guarantee |
 | Windows Server 2022/2025 | Real non-admin HTTPS/NTLM managed repeats, negatives and cancelled-expiry recovery | Restricted computer/interfaces; no domain/Kerberos or address-change proof |
 | Subnet bounds | Real exclusions, local denial, 1,024 planning ceiling, pacing, pool capacity, cancellation, unreachable isolation | No 1,024-host live scan; collection did not demonstrate two simultaneous SSH connections |
 | Response bounds | Real Windows responses rejected under a 64-byte local budget | Production 1 MiB oversize remains fixture-tested |
-| Source/simulation | Reviewed operations, mapper, broker, planner and worker fixtures; 17 CI checks green on each pinned PR | Public-channel jobs test unchanged shipped release; fixtures are not live acceptance |
+| Source/simulation | Reviewed operations, mapper, broker, planner and worker fixtures; 17 CI checks green on each pinned PR | Earlier pinned PR channel jobs exercised historical 0.4.6; new 0.4.7 channel results are recorded separately in distribution evidence. Source fixtures are not live acceptance |
 | Native installation | Source-matched used-instance app restoration, critical script/twelve table IDs and all 32 required ordered physical index definitions verified after companion repair | Base retained 437 reviewed history collisions; not pristine-instance proof. Populated upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded |
 | Bounded reliability | Separate Linux/Windows manual/repeat, native schedules, pre-credential process restart, process-local 45-second client interruption, cancellation and healthy follow-up; 18 Applied receipts retained seven CI/four relationship identities | Actual network outage, address change and midcollection/midIRE restart unexercised; no general outage/reboot guarantee |
-| Release/compatibility expansion | Candidate source exists | Signed candidate/channel publication and macOS managed mixed-runtime evidence remain unestablished |
+| Compatibility expansion | Signed 0.4.7 beta is published | macOS managed mixed runtime and broader inventory/compatibility remain unexercised |
 
 Exact dated sources, executable checksums, run IDs and limitations are in
 [mixed evidence](evidence/mixed-inventory.md) and the Windows-owned
@@ -229,7 +240,7 @@ The later reliability observer used runtime `06e6eca`, test-only source
 Fourteen native runs yielded eighteen complete/three cancelled tasks, with
 eighteen Applied IRE receipts and identical baseline/final source identities.
 The local-only observer is not a published worker. This guide summarizes
-existing evidence; it generates no new runtime or installation proof. Release cutover must
-update downloads, source pins, verification, service configuration and supported
-scope together after the remaining gates and publication; until then use the
-published Linux guide for customer installations.
+existing evidence; it generates no new runtime or installation proof. Published worker signatures/provenance and native package checksums authenticate
+released bytes; they do not expand the dated live acceptance scope. Original
+0.4.6 release assets remain preserved. Use the [Linux setup](pilot-quickstart.md)
+for an SSH-only deployment, or this guide for separate Linux/Windows profiles.

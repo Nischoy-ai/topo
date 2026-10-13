@@ -9,7 +9,7 @@ verification and component details.
 | Task | Guide |
 | --- | --- |
 | Install the ServiceNow application and indexes | [XML installation and recovery](servicenow-update-set.md) · [Index checklist](servicenow-index-setup.md) |
-| Configure identities, SSH credentials, targets and scans | [ServiceNow setup](pilot-quickstart.md) |
+| Configure identities, protocol credentials, targets and scans | [Linux/Windows setup](mixed-inventory-setup.md) · [SSH-only setup](pilot-quickstart.md) |
 | Install the Linux or macOS worker | [Package-manager installation](distribution.md) |
 | Understand leases, retry, cancellation and retention | [Managed worker](servicenow-worker.md) |
 | Publish observations directly through IRE | [ServiceNow IRE publisher](servicenow.md) |
@@ -31,12 +31,11 @@ Validation records distinguish real-system runs, simulation, source review and
 independent retest. Checksums, signatures and attestations have different trust
 properties; follow the instructions for the artifact you are installing.
 
-## Unpublished candidate
+## Managed beta scope
 
-For reviewers of the 0.4.7 mixed-inventory candidate, use the
-[Linux/Windows candidate setup](mixed-inventory-setup.md) and
-[scope and acceptance gates](mixed-inventory-pilot.md). Public installation
-above remains the Linux-only 0.4.6 workflow.
+The published 0.4.7 beta covers bounded Linux/Windows computer and interface
+inventory. Review the [scope and acceptance record](mixed-inventory-pilot.md)
+and [dated evidence](evidence/mixed-inventory.md) before expanding targets.
 
 ## Components and development
 
