@@ -26,7 +26,7 @@ not enable the reviewed Windows operation.
 Install application **Topo 0.4.7 Beta** using the [XML installation guide](servicenow-update-set.md):
 download and verify the package, upload the single combined XML through
 Retrieved Update Sets, then preview and commit the batch. The package includes
-all 32 required indexes. Confirm both app and index child are Committed before
+all 32 required indexes. Confirm all three application, index and source-setup sets are Committed before
 configuring discovery. No SDK or source checkout is needed.
 
 Complete the installation guide's **Run Fix Script** step to register

@@ -208,6 +208,6 @@ by Gatekeeper; this beta promises the tested Homebrew CLI path, not a GUI/cask
 or direct-download launch experience. Do not disable Gatekeeper or strip
 quarantine to install it. Release evidence does not replace signed APT/RPM repository
 metadata or repository-key rotation; protected package promotion adds those
-controls. The current beta promotion evidence is recorded in [distribution](evidence/distribution.md#046-beta-worker);
+controls. The current beta promotion evidence is recorded in [distribution](evidence/distribution.md#047-beta-worker);
 stable/N-1 promotion and independent security retest have their own acceptance
 requirements in [the roadmap](../ROADMAP.md) and [review record](security-review.md).

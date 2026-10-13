@@ -131,8 +131,8 @@ signature verification. A partially completed promotion
 can leave channels at different states, so verify each public channel result.
 
 The APT `Version` field comes from the authenticated DEB control archive, not its
-filename or Git tag. For `v0.4.7-beta.1` it is `0.4.6~beta.1-1`; a future stable
-`v0.4.6` package is `0.4.6-1`. The tilde makes the beta sort earlier. Both Linux
+filename or Git tag. For `v0.4.7-beta.1` it is `0.4.7~beta.1-1`; a future stable
+`v0.4.7` package is `0.4.7-1`. The tilde makes the beta sort earlier. Both Linux
 architectures must agree with their package metadata before promotion proceeds.
 CI also exercises signed repositories with synthetic beta-to-beta and
 beta-to-stable transitions; this is separate from a published stable release.

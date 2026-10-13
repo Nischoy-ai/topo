@@ -432,8 +432,9 @@ is export/source comparison and package integrity evidence. Native restoration
 and physical index acceptance remain attributed to the component exports above;
 this combined digest was not independently committed on a pristine instance.
 Populated upgrade remains deferred and unique enforcement unexercised.
-Signing and publication require the separately protected workflows and public
-verification; this record does not claim a published 0.4.7 release.
+At this comparison checkpoint, protected signing and public verification were
+still pending. Their subsequently completed results are recorded below; the
+comparison itself adds no fresh combined-byte installation claim.
 
 ## Signed beta publication — 2026-10-13 UTC
 

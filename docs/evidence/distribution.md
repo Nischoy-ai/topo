@@ -40,8 +40,14 @@ The [live channel acceptance workflow](../../.github/workflows/live-beta.yml)
 uses source-pinned public bytes for ten fresh installations: manual/helper
 APT and RPM on both architectures, plus Intel/ARM64 Homebrew. This gate is
 separate from generated prepublication inputs and the public-release formula
-rendering fixture. Consult the exact PR check records for job conclusions;
-installation checks do not expand managed runtime or native XML acceptance.
+rendering fixture. [Public-channel run 38351199176](https://github.com/Nischoy-ai/topo/actions/runs/38351199176)
+passed all ten jobs at source `1f197e9c091368c36e6c8f326716d345b9a6c8ef`.
+Linux checks require native trust verification, exact version and signed-release
+binary equality, local discovery, dormant services and operator-file preservation;
+Macs require exact formula bytes, audit, version, discovery and removal.
+Installation checks do not expand managed runtime or native XML acceptance.
+
+<a id="046-beta-worker"></a>
 
 ## Historical 0.4.6 Beta worker
 
