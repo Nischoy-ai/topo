@@ -1,19 +1,19 @@
 # Install Topo with a package manager
 
-Install the Topo 0.4.6 Beta worker from signed Linux APT/RPM repositories or
+Install the Topo 0.4.7 Beta worker from signed Linux APT/RPM repositories or
 the official macOS Homebrew tap on amd64 and arm64.
 
 ## Release availability
 
-The [Topo 0.4.6 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2)
+The [Topo 0.4.7 Beta application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1)
 is published with all 32 indexes. Its matching signed worker,
-**`v0.4.6-beta.1`**, is available through the Beta APT/RPM repositories and
-official Homebrew tap. The [worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+**`v0.4.7-beta.1`**, is available through the Beta APT/RPM repositories and
+official Homebrew tap. The [worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 also provides archives and verification files for offline installation.
 
 Use the setup commands below, or download and
 [verify the published worker](releases.md#verify-a-downloaded-release).
-Confirm `topo version` is **`v0.4.6-beta.1`** before configuring credentials or
+Confirm `topo version` is **`v0.4.7-beta.1`** before configuring credentials or
 starting discovery. Source fixes do not update an installed worker.
 
 ## User installation
@@ -131,7 +131,7 @@ signature verification. A partially completed promotion
 can leave channels at different states, so verify each public channel result.
 
 The APT `Version` field comes from the authenticated DEB control archive, not its
-filename or Git tag. For `v0.4.6-beta.1` it is `0.4.6~beta.1-1`; a future stable
+filename or Git tag. For `v0.4.7-beta.1` it is `0.4.6~beta.1-1`; a future stable
 `v0.4.6` package is `0.4.6-1`. The tilde makes the beta sort earlier. Both Linux
 architectures must agree with their package metadata before promotion proceeds.
 CI also exercises signed repositories with synthetic beta-to-beta and
@@ -154,7 +154,7 @@ sudo dnf upgrade topo
 brew update && brew upgrade nischoy-ai/tap/topo-beta
 ```
 
-Confirm `topo version` prints `v0.4.6-beta.1`, run `topo worker check` with
+Confirm `topo version` prints `v0.4.7-beta.1`, run `topo worker check` with
 the existing configuration, then restart the worker. See the
 [worker setup guide](pilot-quickstart.md#4-install-and-configure-the-worker)
 for service commands. Users of a separate development tap must remove its
@@ -173,7 +173,7 @@ Never silently replace immutable worker release assets or reuse a release tag.
 
 ## ServiceNow application XML
 
-[Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2)
+[Topo 0.4.7 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1)
 is published as one native batch containing the application, 32 indexes and
 discovery-source setup. Follow [XML installation](servicenow-update-set.md).
 Verify its [signed checksum manifest](releases.md#verify-the-servicenow-package)

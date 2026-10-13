@@ -1,6 +1,6 @@
 # ServiceNow-managed Linux discovery setup
 
-Install Topo 0.4.6 Beta, configure identities and approved Linux targets, then
+Install Topo 0.4.7 Beta, configure identities and approved Linux targets, then
 start manual or scheduled discovery from ServiceNow. Follow your organization’s
 change process and verify configuration before enabling schedules.
 
@@ -16,9 +16,14 @@ fields and released only for an authorized task attempt. Review [password
 storage and rotation](deployment-security.md#where-ssh-passwords-live) with the
 credential custodian before entering credentials.
 
+This walkthrough configures SSH/Linux targets. For bounded IPv4 CIDRs and
+remote Windows targets, follow [mixed inventory setup](mixed-inventory-setup.md).
+The shipped Linux service enables SSH only; adding Windows files alone does
+not enable the reviewed Windows operation.
+
 ## 1. Install the scoped application
 
-Install application **Topo 0.4.6 Beta** using the [XML installation guide](servicenow-update-set.md):
+Install application **Topo 0.4.7 Beta** using the [XML installation guide](servicenow-update-set.md):
 download and verify the package, upload the single combined XML through
 Retrieved Update Sets, then preview and commit the batch. The package includes
 all 32 required indexes. Confirm both app and index child are Committed before
@@ -91,9 +96,9 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-The matching worker build is `v0.4.6-beta.1`. Configure the signed [APT or RPM Beta
+The matching worker build is `v0.4.7-beta.1`. Configure the signed [APT or RPM Beta
 repository](distribution.md#user-installation), install the worker, and confirm
-`topo version` prints `v0.4.6-beta.1`. For offline installation, download matching release files and
+`topo version` prints `v0.4.7-beta.1`. For offline installation, download matching release files and
 verify `SHA256SUMS`, its Sigstore bundle and GitHub attestation as described in
 [release verification](releases.md). DEB and RPM packages install a hardened
 but dormant `topo-worker.service`; installation never creates config or secret

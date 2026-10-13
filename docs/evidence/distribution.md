@@ -4,7 +4,46 @@ Versions, dates and test scopes below identify the tested artifacts; they are
 not installation steps. Use the [installation guide](../distribution.md) for
 current package commands.
 
-## 0.4.6 Beta worker
+## 0.4.7 Beta worker
+
+The signed [v0.4.7-beta.1 worker](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
+was published on 2026-10-13 UTC from
+`c70c5813895fcae20c54ee1fac54e0e44e9e531f`.
+[Release 38339142171](https://github.com/Nischoy-ai/topo/actions/runs/38339142171)
+passed reproducible archives/packages, independently approved native RPM
+signing, Linux lifecycle and Intel/ARM64 Homebrew execution. The approved
+`linux-homebrew-beta` profile excludes Windows publication and Apple identity/
+notarization. Those skipped jobs are not compatibility evidence.
+
+Independent public downloads matched all 25 API asset digests and all 17
+payloads in the signed manifest. Cosign verified the exact tagged workflow
+identity, GitHub OIDC issuer and source commit. Provenance and SPDX attestations
+verified against the exact workflow/source, GitHub-hosted runner policy and
+release invocation. All 17 attested subject digests match the manifest; the
+signed SBOM predicate equals the public SPDX bytes. The downloaded Darwin ARM64
+binary reports `v0.4.7-beta.1`, Go 1.26.9, x/crypto 0.57.0 and x/net 0.60.0.
+
+[Promotion 38342628056](https://github.com/Nischoy-ai/topo/actions/runs/38342628056)
+passed independently approved preparation and publication, RPM signature and
+repository install/removal checks, and both Homebrew architectures. Package
+commit `9a9bf4a5416e74b474b5210c7f3971fd50bc0813` and tap commit
+`005ea21a4505f6986b9b9413b9dc4a9fe4f6cbc0` published the beta channels.
+[Pages 38350590797](https://github.com/Nischoy-ai/topo-packages/actions/runs/38350590797)
+succeeded from that package commit. Anonymous HTTPS APT metadata for both
+architectures and RPM metadata/signatures for x86_64/aarch64 match the signed
+promotion transaction exactly. The actual published formula SHA-256 is
+`400a28b2fd5fb47ac25a72ccf765779560a129474e1f05ac839e793a949002d8`;
+all four archive URLs/checksums and its version assertion match the verified
+release. Existing 0.4.6 tags, assets and historical evidence are retained.
+
+The [live channel acceptance workflow](../../.github/workflows/live-beta.yml)
+uses source-pinned public bytes for ten fresh installations: manual/helper
+APT and RPM on both architectures, plus Intel/ARM64 Homebrew. This gate is
+separate from generated prepublication inputs and the public-release formula
+rendering fixture. Consult the exact PR check records for job conclusions;
+installation checks do not expand managed runtime or native XML acceptance.
+
+## Historical 0.4.6 Beta worker
 
 The signed [v0.4.6-beta.1 worker](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
 was published on 2026-10-09 UTC from

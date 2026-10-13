@@ -1,8 +1,9 @@
-# Mixed inventory candidate evidence
+# Mixed inventory validation evidence
 
-These results concern the unpublished managed mixed-inventory source candidate,
-not the published 0.4.6 app or `v0.4.6-beta.1` worker. The full acceptance plan is
-[managed mixed inventory](../mixed-inventory-pilot.md).
+These dated results retain their exact candidate source/binary attribution.
+They preceded the matching 0.4.7 beta publication recorded below; historical
+0.4.6 release statements describe each checkpoint's state, not the current
+release. The acceptance plan is [managed mixed inventory](../mixed-inventory-pilot.md).
 
 ## Real collection — 2026-10-10
 
@@ -433,3 +434,25 @@ this combined digest was not independently committed on a pristine instance.
 Populated upgrade remains deferred and unique enforcement unexercised.
 Signing and publication require the separately protected workflows and public
 verification; this record does not claim a published 0.4.7 release.
+
+## Signed beta publication — 2026-10-13 UTC
+
+The matching worker [v0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
+was released from `c70c5813895fcae20c54ee1fac54e0e44e9e531f` through
+protected release run `38339142171`. Independent verification matched every
+signed-manifest payload, exact workflow identity/source, provenance and SPDX
+attestation. Promotion `38342628056`, package/tap commits and public repository
+comparison are recorded in [distribution evidence](distribution.md#047-beta-worker).
+This authenticates released bytes; earlier live observations remain pinned to
+their actual observer/runtime sources above.
+
+The [native package](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1)
+was signed by protected run `38340367009` from
+`b146d654f7a6a98b8438e52f2cdf20ec7a0db1c8`, after independent approval.
+Independent anonymous downloads of all eight public assets matched the sealed
+originals and published digests. The six payload checksum entries, ZIP CRC and
+every extracted member matched; Cosign verified exact main-workflow identity,
+GitHub issuer and signing source. Native XML remains unchanged at `45a13e48...`
+as fully identified above. This publication does not turn component restoration
+into pristine combined-byte installation, deferred upgrade into a passed test,
+or configured unique flags into independently exercised enforcement.

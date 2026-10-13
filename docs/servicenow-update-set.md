@@ -1,6 +1,6 @@
 # Install the Topo application from XML
 
-[Download Topo 0.4.6 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2).
+[Download Topo 0.4.7 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
 The package contains one native XML batch with the application and all 32
 required indexes (17 unique) and discovery-source setup. Check [worker availability](distribution.md#release-availability)
 before installing a worker; the XML release does not publish a worker binary.
@@ -16,13 +16,14 @@ Install the combined package:
    Check component compatibility in the release manifest.
 2. As administrator on a development instance, open **System Update Sets →
    Retrieved Update Sets → Import Update Set from XML**. Upload
-   `nischoy-topo-0.4.6-combined.xml`.
-3. Open the imported **Nischoy Topo** base set and select **Preview Update Set
+   `nischoy-topo-0.4.7-combined.xml`.
+3. Open the imported **Nischoy Topo 0.4.7 — Application** base set and select **Preview Update Set
    Batch**. It must show **474 Customer Updates in Batch**: 441 app updates
-   and the **Nischoy Topo — Database Indexes** child with 32 indexes and one
-   discovery-source setup script. Review any preview problems individually.
-4. Select **Commit Update Set Batch**. Wait for completion, confirm both sets
-   are committed, check application version **0.4.6**, and verify the
+   and two Global children: **Nischoy Topo 0.4.6 Index Repair** with 32 unchanged
+   indexes, and **Nischoy Topo 0.4.7 — Discovery Source Setup** with one script.
+   The index child retains its historical name. Review preview problems individually.
+4. Select **Commit Update Set Batch**. Wait for completion, confirm all three sets
+   are committed, check application version **0.4.7**, and verify the
    [32-index checklist](servicenow-index-setup.md). Do not drop indexes or
    separately import the companion as part of this installation.
 5. Open **System Definition → Fix Scripts → Nischoy Topo — Register Discovery
@@ -30,7 +31,10 @@ Install the combined package:
    Proceed**. It creates the source when absent or preserves an existing active
    choice. Review inactive or duplicate matching choices before discovery.
 6. Configure [identities, credentials and targets](pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities),
-   install the worker and run `topo worker check` before starting discovery.
+   install the matching worker and run `topo worker check` before discovery.
+   For bounded CIDRs or Windows targets, use the
+   [mixed inventory setup](mixed-inventory-setup.md); the shipped Linux service
+   enables SSH only.
 
 Confirm custom-table/application entitlement and CMDB/IRE availability with
 the instance administrator. Stop if the existing `x_664635_topo` app has an
@@ -91,3 +95,9 @@ No automated removal or lossless backout is currently validated.
 
 Dated installation, repeat-import and upgrade results are kept in the
 [package validation record](servicenow-validation.md).
+
+The 0.4.7 combined XML has offline native export/source comparison. Component
+restoration and physical-index acceptance are recorded separately. Populated
+0.4.6-to-0.4.7 upgrade is deferred, and the 17 unique flags were not independently
+exercised on the restored installation. Historical 0.4.6 acceptance remains
+scoped to its original bytes in the validation record.

@@ -251,8 +251,8 @@ func TestPublicHomebrewFormulaAuditInCI(t *testing.T) {
 	}
 	script := string(data)
 	for _, required := range []string{
-		"version=v0.4.6-beta.1",
-		"manifest_sha256=2b3d8ccd79e13503b15be185ee890fd1698f537e6e4a319ac657debec78f87cd",
+		"version=v0.4.7-beta.1",
+		"manifest_sha256=0287bb010e6e965dc8106f10ea824bbf10358cc27fb64ffb823e5707603418e3",
 		`"${RUNNER_ENVIRONMENT:-}" != github-hosted`,
 		`brew audit --strict --online "$formula"`, `brew install --formula "$formula"`,
 		`brew test "$formula"`, `test "$(topo version)" = "$version"`, `brew uninstall --formula "$formula"`,
@@ -288,7 +288,7 @@ func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
 		},
 		"scripts/test-live-beta-homebrew.sh": {
 			"github-hosted", "refusing to overwrite", `brew tap "$tap" https://github.com/Nischoy-ai/homebrew-tap`,
-			"400c179507ceba775c107fb2e2b05b249e4fc8011455a22bdabf6a82332ec5bd",
+			"400a28b2fd5fb47ac25a72ccf765779560a129474e1f05ac839e793a949002d8",
 			"shasum -a 256 --check", `brew audit --strict --online "$formula"`,
 			`brew install --formula "$formula"`, `brew test "$formula"`, `brew uninstall --formula "$formula"`,
 		},

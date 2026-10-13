@@ -2,8 +2,8 @@
 
 ## Versions receiving fixes
 
-The current application release is **Topo 0.4.6 Beta**. The patched worker
-`v0.4.6-beta.1` is available through signed Linux APT/RPM repositories and
+The current application release is **Topo 0.4.7 Beta**. The patched worker
+`v0.4.7-beta.1` is available through signed Linux APT/RPM repositories and
 the official Homebrew Beta tap. Upgrade earlier workers using the
 [package installation guide](docs/distribution.md#upgrade-an-existing-worker).
 
@@ -93,7 +93,7 @@ Release builds produce reproducible worker archives with exact Go 1.26.9. Releas
 use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
 provenance attestations. Linux package/repository metadata is signed; protected
 signing and promotion environments require review. The
-[distribution record](docs/evidence/distribution.md#046-beta-worker) identifies
+[distribution record](docs/evidence/distribution.md#047-beta-worker) identifies
 the published build and public-channel installation checks. A source scan does
 not patch binaries already installed on customer hosts.
 
