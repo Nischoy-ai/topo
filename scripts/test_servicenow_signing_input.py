@@ -87,10 +87,12 @@ class SigningInputTests(unittest.TestCase):
     def test_only_reviewed_release_tags_select_manifests(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
-            expected = self.fixture(directory)
             read_regular = m.read_regular
             root = Path(m.__file__).resolve().parent.parent
             for tag in sorted(m.REVIEWED_RELEASES):
+                directory = Path(tmp) / tag
+                directory.mkdir()
+                expected = self.fixture(directory, m.FILES_BY_RELEASE[tag])
                 manifest = root / 'release' / (tag + '.SHA256SUMS')
                 def read(path, maximum):
                     return expected if path == manifest else read_regular(path, maximum)
@@ -101,6 +103,25 @@ class SigningInputTests(unittest.TestCase):
                 with self.subTest(tag=tag), patch.object(m.sys, 'argv', ['verify', str(directory), tag]), patch.object(m, 'read_regular') as read:
                     self.assertEqual(m.main(), 1)
                     read.assert_not_called()
+
+    def test_each_manifest_only_release_uses_its_own_filenames(self):
+        for tag in sorted(m.MANIFEST_ONLY_RELEASES):
+            with self.subTest(tag=tag), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                full = directory / 'full'
+                full.mkdir()
+                expected = self.fixture(full, m.FILES_BY_RELEASE[tag])
+                staged = directory / 'staged'
+                staged.mkdir()
+                (staged / 'SHA256SUMS').write_bytes(expected)
+                manifest = Path(m.__file__).resolve().parent.parent / 'release' / (tag + '.SHA256SUMS')
+                read_regular = m.read_regular
+                def read(path, maximum):
+                    return expected if path == manifest else read_regular(path, maximum)
+                with patch.object(m.sys, 'argv', ['verify', str(staged), tag, '--manifest-only']), patch.object(m, 'read_regular', side_effect=read):
+                    self.assertEqual(m.main(), 0)
+                    (staged / 'SHA256SUMS').write_bytes(expected.replace(b'-combined.xml', b'-other.xml'))
+                    self.assertEqual(m.main(), 1)
 
     def test_manifest_only_mode_is_explicit_and_pins_exact_reviewed_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
