@@ -1,7 +1,7 @@
 # Release artifacts and verification
 
 Check [worker availability](distribution.md#release-availability) before downloading.
-The signed [worker `v0.4.6-beta.1`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
+The signed [worker `v0.4.7-beta.1`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 is published with its binary archives, signed checksum manifest and provenance.
 It is also available through the Beta Homebrew/APT/RPM channels.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
@@ -11,7 +11,7 @@ Worker provenance is separate from XML-package authentication.
 ## Verify the ServiceNow package
 
 Download the ZIP, `SHA256SUMS` and `SHA256SUMS.sigstore.json` from the
-[ServiceNow release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2).
+[ServiceNow release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
 The exact signing source commit is also recorded in the release notes:
 
 ```sh
@@ -19,7 +19,7 @@ cosign verify-blob \
   --bundle SHA256SUMS.sigstore.json \
   --certificate-identity https://github.com/Nischoy-ai/topo/.github/workflows/sign-servicenow-xml.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-github-workflow-sha 773b9d510760db4dcde56a0b8189eb8882ccf18d \
+  --certificate-github-workflow-sha b146d654f7a6a98b8438e52f2cdf20ec7a0db1c8 \
   SHA256SUMS
 ```
 
@@ -97,13 +97,13 @@ rewrite application tables, ACLs, routes, scripts, navigation, or other
 functional metadata.
 
 To reproduce a published release locally, use its tag and the compiler recorded
-in its authenticated `release-metadata.json`. The following reproduces raw archives from the published 0.4.6 worker tag.
+in its authenticated `release-metadata.json`. The following reproduces raw archives from the published 0.4.7 worker tag.
 It does not produce release signatures or signed native packages:
 
 ```sh
-git checkout v0.4.6-beta.1
+git checkout v0.4.7-beta.1
 GOTOOLCHAIN=go1.26.9 scripts/build-release.sh \
-  v0.4.6-beta.1 "$(git rev-parse HEAD)" dist-local linux-homebrew-beta
+  v0.4.7-beta.1 "$(git rev-parse HEAD)" dist-local linux-homebrew-beta
 ```
 
 For a published release, compare reproduced raw-archive digests with its signed
@@ -123,13 +123,13 @@ are rejected.
 Choose a **published worker release** with complete binary and verification
 assets. Do not substitute a source-only tag or a ServiceNow XML release. With
 GitHub CLI, `jq`, Cosign, and `sha256sum` installed, download the Linux amd64
-archive and matching verification files into a new directory. The example uses the published `v0.4.6-beta.1` worker; when checking another
+archive and matching verification files into a new directory. The example uses the published `v0.4.7-beta.1` worker; when checking another
 version, substitute its exact tag and stop if its assets are absent.
 
 ```sh
 (
   set -eu
-  tag=v0.4.6-beta.1
+  tag=v0.4.7-beta.1
   repo=Nischoy-ai/topo
   version=${tag#v}
   archive="topo_${version}_linux_amd64.tar.gz"
@@ -208,6 +208,6 @@ by Gatekeeper; this beta promises the tested Homebrew CLI path, not a GUI/cask
 or direct-download launch experience. Do not disable Gatekeeper or strip
 quarantine to install it. Release evidence does not replace signed APT/RPM repository
 metadata or repository-key rotation; protected package promotion adds those
-controls. The current beta promotion evidence is recorded in [distribution](evidence/distribution.md#046-beta-worker);
+controls. The current beta promotion evidence is recorded in [distribution](evidence/distribution.md#047-beta-worker);
 stable/N-1 promotion and independent security retest have their own acceptance
 requirements in [the roadmap](../ROADMAP.md) and [review record](security-review.md).

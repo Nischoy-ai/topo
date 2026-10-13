@@ -5,15 +5,32 @@ steps are in [Install from XML](servicenow-update-set.md#customer-installation).
 
 ## Current package
 
-The current package contains 474 updates and has XML SHA-256
-`d85b21f883bf5f2b599eaf570547c4d02a682f59dc5a1eaff8b4a6fa4d1374e9`.
-It passed existing-install and exact-byte repeat acceptance, discovery-source
-creation and preservation, and scoped IRE preflight. Details are in
-[revised installation metadata](#revised-installation-metadata-2026-10-09).
-Its checksum manifest has a protected, keyless signature; authentication does
-not expand native installation or XML-export provenance evidence.
+The current 0.4.7 Beta package contains 474 updates in three distinct update
+sets and has XML SHA-256
+`45a13e48c675b77d11e2ff1610ff04b0e63cd396daad22f2c529d2be9b05b721`
+(1,418,336 bytes). Its unchanged native bytes were compared against all 441
+reviewed application definitions, 32 exact index payloads and the exact Global
+setup script. The only application differences are native-restored dictionary
+record IDs, display attributes and table-level update-name capitalization.
+The platform serialized the identical parent record twice.
 
-## Package authentication (2026-10-10)
+[Current mixed inventory evidence](evidence/mixed-inventory.md) attributes the
+real managed workflow, component restoration and index coverage separately.
+This combined digest does not establish a pristine-instance combined-byte
+commit. Populated upgrade is deferred; uniqueness enforcement on the restored
+0.4.7 installation was not independently exercised. The historical acceptance
+results below remain scoped to their original 0.4.6 digests.
+
+Protected [signing run 38340367009](https://github.com/Nischoy-ai/topo/actions/runs/38340367009)
+succeeded from `b146d654f7a6a98b8438e52f2cdf20ec7a0db1c8` after independent
+review. Full package-byte and ZIP-member comparison and exact-source Cosign
+verification passed before publication and again for all eight anonymous public
+asset downloads after publication. The public package is
+[servicenow-0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
+Authentication proves bytes, not native
+export provenance or broader compatibility.
+
+## Historical 0.4.6 package authentication (2026-10-10)
 
 [Package revision 2](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.6-beta.2)
 was published manually after protected

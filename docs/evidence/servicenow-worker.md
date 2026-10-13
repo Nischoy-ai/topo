@@ -8,10 +8,13 @@ scopes below identify the tested artifacts; they are not installation steps.
 
 For the current published XML and worker package, see
 [package validation](../servicenow-validation.md) and
-[distribution evidence](distribution.md#first-beta-operational-evidence).
+[distribution evidence](distribution.md#047-beta-worker).
 The dated records below describe their specific source versions, fixtures and
 security checks; they are evidence records rather than customer installation
-steps. Use the [setup guide](../pilot-quickstart.md) to install and configure a worker.
+steps. Use [mixed setup](../mixed-inventory-setup.md) or the
+[SSH-only guide](../pilot-quickstart.md) to configure the matching worker.
+Current 0.4.7 mixed runtime and publication evidence is recorded
+[separately](mixed-inventory.md); these dated observations keep their original sources.
 
 Focused local gates are:
 
