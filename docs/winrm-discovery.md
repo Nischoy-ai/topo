@@ -130,7 +130,7 @@ Replacement-instance Windows results do not establish those installation results
 Live and fixture evidence remain distinct. The Windows managed flow and listed
 negative gates passed on the replacement instance; native installation and
 broader pilot gates remain separate as described in the evidence record.
-At that checkpoint the published 0.4.6 managed beta supported Linux targets only.
+At that checkpoint the published 0.4.6 managed release supported Linux targets only.
 The matching 0.4.7 worker and native package are now published; follow
 [mixed setup](mixed-inventory-setup.md) and [publication evidence](evidence/mixed-inventory.md).
 Publication does not broaden the dated compatibility matrix above.

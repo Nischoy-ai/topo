@@ -1,6 +1,6 @@
 # Install the Topo application from XML
 
-[Download Topo 0.4.7 Beta](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
+[Download Topo 0.4.7](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
 The package contains one native XML batch with the application and all 32
 required indexes (17 unique) and discovery-source setup. Check [worker availability](distribution.md#release-availability)
 before installing a worker; the XML release does not publish a worker binary.

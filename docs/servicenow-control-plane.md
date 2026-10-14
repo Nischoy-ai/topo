@@ -5,8 +5,8 @@
 The Nischoy Topo scoped application controls discovery and stores operational
 state in ServiceNow. Stateless workers poll outbound, execute locally approved
 operations, and return destination-neutral observations for IRE reconciliation.
-Topo 0.4.6 Beta installs the application and indexes as one native XML batch.
-Install the worker from the Beta channel and follow the
+Topo 0.4.6 installs the application and indexes as one native XML batch.
+Install the worker from the signed package channel and follow the
 [installation and setup guide](pilot-quickstart.md).
 
 Implemented operations are `local.v1` and `ssh_linux.v1`. Worker pools provide
@@ -527,7 +527,7 @@ The managed worker and scoped application provide:
 - Password2-backed Linux SSH bindings with credential-custodian controls and
   an attempt-bound, no-store broker response after target authorization; and
 - registration/heartbeat-only `topo worker check`, dormant Linux service
-  installation, signed beta worker packages and a combined native app/index XML.
+  installation, signed worker packages and a combined native app/index XML.
 
 `local.v1` runs as one targetless local partition. The SSH operation creates
 single-address IPv4 partitions. Multi-partition scale fixtures inject a

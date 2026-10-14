@@ -2,9 +2,9 @@
 
 ## Versions receiving fixes
 
-The current application release is **Topo 0.4.7 Beta**. The patched worker
+The current application release is **Topo 0.4.7**. The patched worker
 `v0.4.7-beta.1` is available through signed Linux APT/RPM repositories and
-the official Homebrew Beta tap. Upgrade earlier workers using the
+the official Homebrew tap. Upgrade earlier workers using the
 [package installation guide](docs/distribution.md#upgrade-an-existing-worker).
 
 Security fixes are maintained on `main`. Record `topo version` when reporting
@@ -97,7 +97,7 @@ signing and promotion environments require review. The
 the published build and public-channel installation checks. A source scan does
 not patch binaries already installed on customer hosts.
 
-The macOS beta is a Homebrew CLI formula without Apple Developer ID signing
+The macOS CLI release is a Homebrew CLI formula without Apple Developer ID signing
 or notarization. Windows and stable publication are planned. The manually
 published ServiceNow XML package includes a keyless Sigstore signature for
 its checksum manifest. Verify that signature and all package checksums using

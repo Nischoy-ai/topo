@@ -475,7 +475,7 @@ probes and relies on the platform's documented behavior and reviewed configurati
 This evidence covers candidate application restoration plus companion repair.
 A populated 0.4.6-to-0.4.7 upgrade is owner-deferred and was not passed; it is
 outside the current candidate acceptance scope. This evidence does not expand the
-published 0.4.6 beta scope or authorize candidate publication.
+published 0.4.6 release scope or authorize candidate publication.
 
 Real-system checks cover application roles/ACLs, worker OAuth route restrictions,
 generic API denial, atomic claims, lease expiry/retry, cancellation,
@@ -485,7 +485,7 @@ installation, repeat import and a 0.4.5 → 0.4.6 upgrade preserving three teste
 configuration records have passed; protected credentials and operational history
 were outside that upgrade comparison. See [package validation](../servicenow-validation.md).
 
-Signed beta APT/RPM promotion and fresh Linux/macOS public-channel installs
+Signed APT/RPM promotion and fresh Linux/macOS public-channel installs
 have passed. Stable/N-1 channel promotion and independent security remediation
 retest are separate evidence in [distribution](distribution.md) and
 [security review](../security-review.md).

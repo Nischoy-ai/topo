@@ -1,9 +1,12 @@
 # Managed Linux and Windows discovery setup
 
+New setup? Start with [your first discovery run](first-success.md) for the
+short Linux path, then return here for detailed configuration.
+
 The signed worker [v0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 is public from source `c70c5813895fcae20c54ee1fac54e0e44e9e531f`, alongside the
 [Topo 0.4.7 native package](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
-Install the matching worker through the [signed beta channels](distribution.md)
+Install the matching worker through the [signed channels](distribution.md)
 and confirm `topo version` reports `v0.4.7-beta.1` before configuring it.
 
 The 0.4.7 workflow discovers computers and IP-enabled interfaces on Linux over
@@ -42,7 +45,7 @@ component evidence, not a new combined-digest or pristine-instance install.
 Independent enforcement of the 17 unique definitions was not exercised;
 additional duplicate-insert tests are owner-excluded, relying on reviewed platform
 configuration. Populated upgrade testing is deferred/not passed. These omissions remain
-explicit validation limits; neither was required by the approved beta scope. See the [dated evidence](evidence/mixed-inventory.md).
+explicit validation limits; neither was required by the approved release scope. See the [dated evidence](evidence/mixed-inventory.md).
 
 Use a Linux worker for the exercised managed path. Linux/macOS workers can
 implement these operations; macOS managed mixed-runtime acceptance remains
@@ -62,7 +65,7 @@ required fixed queries. Enable an HTTPS/5986 listener and firewall access only
 from approved workers. Keep Basic and unencrypted authentication disabled.
 Use `SERVERNAME\username` for a local Windows account; domain account
 compatibility is not established. Environments that disable NTLM are unsupported
-by this beta; preserve domain policy and wait for a supported authentication
+by this release; preserve domain policy and wait for a supported authentication
 mode rather than weakening it. Kerberos remains deferred.
 NTLMv2 requires verified TLS for server identity; provision a valid server
 certificate whose IP SAN includes each selected target IP. Establish CA trust
@@ -137,7 +140,7 @@ Prepare separate SSH/Windows allowlists, verified `known_hosts`, and trusted
 WinRM CA PEM. A ServiceNow scope cannot widen these local grants.
 
 Install and verify the matching `v0.4.7-beta.1` worker through its signed release
-or the beta package-manager channels. Confirm `topo version`, then
+or the release package-manager channels. Confirm `topo version`, then
 replace the instance, pool/site and paths in this installed-binary example.
 
 ```sh
@@ -228,7 +231,7 @@ or IRE, address changes and service/reboot recovery were not exercised.
 | Source/simulation | Reviewed operations, mapper, broker, planner and worker fixtures; 17 CI checks green on each pinned PR | Earlier pinned PR channel jobs exercised historical 0.4.6; new 0.4.7 channel results are recorded separately in distribution evidence. Source fixtures are not live acceptance |
 | Native installation | Source-matched used-instance app restoration, critical script/twelve table IDs and all 32 required ordered physical index definitions verified after companion repair | Base retained 437 reviewed history collisions; not pristine-instance proof. Populated upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded |
 | Bounded reliability | Separate Linux/Windows manual/repeat, native schedules, pre-credential process restart, process-local 45-second client interruption, cancellation and healthy follow-up; 18 Applied receipts retained seven CI/four relationship identities | Actual network outage, address change and midcollection/midIRE restart unexercised; no general outage/reboot guarantee |
-| Compatibility expansion | Signed 0.4.7 beta is published | macOS managed mixed runtime and broader inventory/compatibility remain unexercised |
+| Compatibility expansion | Signed 0.4.7 is published | macOS managed mixed runtime and broader inventory/compatibility remain unexercised |
 
 Exact dated sources, executable checksums, run IDs and limitations are in
 [mixed evidence](evidence/mixed-inventory.md) and the Windows-owned

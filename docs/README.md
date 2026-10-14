@@ -1,6 +1,6 @@
 # Topo documentation
 
-Start with [installation in three steps](../README.md#start-servicenow-discovery-in-three-steps)
+Start with [your first ServiceNow discovery run](first-success.md)
 for ServiceNow-managed discovery. Use the guides below for configuration,
 verification and component details.
 
@@ -31,9 +31,11 @@ Validation records distinguish real-system runs, simulation, source review and
 independent retest. Checksums, signatures and attestations have different trust
 properties; follow the instructions for the artifact you are installing.
 
-## Managed beta scope
+<a id="managed-beta-scope"></a>
 
-The published 0.4.7 beta covers bounded Linux/Windows computer and interface
+## Managed discovery scope
+
+The published 0.4.7 release covers bounded Linux/Windows computer and interface
 inventory. Review the [scope and acceptance record](mixed-inventory-pilot.md)
 and [dated evidence](evidence/mixed-inventory.md) before expanding targets.
 

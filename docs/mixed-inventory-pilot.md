@@ -1,6 +1,8 @@
-# Managed Linux and Windows inventory beta
+<a id="managed-linux-and-windows-inventory-beta"></a>
 
-The native app **0.4.7 Beta** and signed worker **v0.4.7-beta.1** are published.
+# Managed Linux and Windows inventory release
+
+The native app **0.4.7** and signed worker **v0.4.7-beta.1** are published.
 Use the [Linux/Windows setup](mixed-inventory-setup.md) or [SSH-only setup](pilot-quickstart.md)
 with matching versions. The dated history below distinguishes source fixtures,
 live acceptance and published artifact verification; publication does not add
@@ -16,7 +18,9 @@ protocol profiles, worker preflight, operation and troubleshooting. The dated
 [evidence history](evidence/mixed-inventory.md) contains later scoped acceptance
 results that supersede earlier pending checkpoints below; current tested limits are summarized in the setup guide.
 
-## Beta contract
+<a id="beta-contract"></a>
+
+## Discovery contract
 
 - `ssh_linux.v1`: reviewed SSH Linux operations on port 22 with verified
   `known_hosts`, and an immutable `ssh_password` binding.
@@ -102,14 +106,14 @@ not exercise the ServiceNow credential broker or prove app installation.
 | Windows managed success/repeat, credentials/trust, permission denial and isolated binding negatives | Passed in Windows PR #80 within its recorded source and probe limits; combined mixed-estate acceptance remains separate |
 | Native schedules and bounded recovery | Passed for separate Linux/Windows profiles: native schedule, pre-credential process restart, process-local 45-second client fault and cancellation/healthy repeat; actual network outage and address change unexercised |
 | Native candidate restoration and indexes | Used-instance restoration with 437 source-matched history collisions; supported companion repair and all 32 ordered definitions verified; not pristine-instance proof |
-| Populated upgrade and independent unique enforcement | Upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded. Neither was required for this beta |
-| Signed beta worker, customer package and public channels | Published 0.4.7 app/worker; prior release assets remain intact |
+| Populated upgrade and independent unique enforcement | Upgrade deferred/not passed; 17 unique enforcement not independently exercised, owner-excluded. Neither was required for this release |
+| Signed worker, customer package and public channels | Published 0.4.7 app/worker; prior release assets remain intact |
 
 Use the [current setup and evidence matrix](mixed-inventory-setup.md) for exact
 source references and the owner-approved scope. Earlier evidence checkpoints
 retain historical blockers; the later verified native restoration and companion
 repair supersede the original platform-lock checkpoint for their tested scope.
-The matching published app/worker define the beta scope; earlier unexercised paths
+The matching published app/worker define the release scope; earlier unexercised paths
 remain unexercised after publication.
 
 The Windows-owned expired-lease cleanup fix is integrated into the subnet review

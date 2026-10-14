@@ -1,7 +1,7 @@
 # Mixed inventory validation evidence
 
 These dated results retain their exact candidate source/binary attribution.
-They preceded the matching 0.4.7 beta publication recorded below; historical
+They preceded the matching 0.4.7 publication recorded below; historical
 0.4.6 release statements describe each checkpoint's state, not the current
 release. The acceptance plan is [managed mixed inventory](../mixed-inventory-pilot.md).
 
@@ -138,7 +138,7 @@ worker service user, pool or OAuth application on the replacement instance.
 Least-privilege worker setup is the next external gate, coordinated with the
 Windows acceptance chat under exclusive instance mutation ownership. Subnet
 scan, policy, cancellation and repeat IRE acceptance remain open. The Azure
-lab remains deallocated and the published 0.4.6 beta scope is unchanged.
+lab remains deallocated and the published 0.4.6 release scope is unchanged.
 
 ## SSH no-data serialization correction — 2026-10-11
 
@@ -179,7 +179,7 @@ is preserved by cherry-pick in the subnet review branch. Windows protocol and
 broker ownership remain with the parallel Windows chat. The existing restricted
 worker OAuth grant is available; no broader identity is needed. Subnet runtime
 exclusions, local denials, bounds, pacing/concurrency, cancellation, unreachable
-host isolation and repeat IRE gates remain pending. The published 0.4.6 beta
+host isolation and repeat IRE gates remain pending. The published 0.4.6 release
 scope and release channels are unchanged.
 
 ## Approved Linux setup resume — 2026-10-11 UTC
@@ -255,7 +255,7 @@ Wrong-credential/trust tests, remaining Windows/mixed-estate gates, address
 changes, restart recovery, clean installation, populated-data upgrade and
 release-channel acceptance remain separate. Physical coverage is established
 for all 32 indexes; the live pool test establishes this lease ceiling, not
-independent enforcement evidence for every unique index. The public 0.4.6 beta
+independent enforcement evidence for every unique index. The public 0.4.6 release
 scope and assets remain unchanged; no release was published or promoted.
 
 
@@ -436,7 +436,9 @@ At this comparison checkpoint, protected signing and public verification were
 still pending. Their subsequently completed results are recorded below; the
 comparison itself adds no fresh combined-byte installation claim.
 
-## Signed beta publication — 2026-10-13 UTC
+<a id="signed-beta-publication--2026-10-13-utc"></a>
+
+## Signed publication — 2026-10-13 UTC
 
 The matching worker [v0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 was released from `c70c5813895fcae20c54ee1fac54e0e44e9e531f` through
