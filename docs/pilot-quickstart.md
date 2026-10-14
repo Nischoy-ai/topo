@@ -3,7 +3,7 @@
 New setup? Start with [your first discovery run](first-success.md) for the
 short Linux path, then return here for detailed configuration.
 
-Install Topo 0.4.7 Beta, configure identities and approved Linux targets, then
+Install Topo 0.4.7, configure identities and approved Linux targets, then
 start manual or scheduled discovery from ServiceNow. Follow your organization’s
 change process and verify configuration before enabling schedules.
 
@@ -26,7 +26,7 @@ not enable the reviewed Windows operation.
 
 ## 1. Install the scoped application
 
-Install application **Topo 0.4.7 Beta** using the [XML installation guide](servicenow-update-set.md):
+Install application **Topo 0.4.7** using the [XML installation guide](servicenow-update-set.md):
 download and verify the package, upload the single combined XML through
 Retrieved Update Sets, then preview and commit the batch. The package includes
 all 32 required indexes. Confirm all three application, index and source-setup sets are Committed before
@@ -99,7 +99,7 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-The matching worker build is `v0.4.7-beta.1`. Configure the signed [APT or RPM Beta
+The matching worker build is `v0.4.7-beta.1`. Configure the signed [APT or RPM
 repository](distribution.md#user-installation), install the worker, and confirm
 `topo version` prints `v0.4.7-beta.1`. For offline installation, download matching release files and
 verify `SHA256SUMS`, its Sigstore bundle and GitHub attestation as described in
@@ -117,7 +117,7 @@ sudo rpm -Uvh topo-<version>-1.x86_64.rpm
 
 macOS installs with
 `brew install nischoy-ai/tap/topo-beta`. Confirm the exact version before supplying
-credentials. This beta is not
+credentials. This release is not
 Apple-notarized; do not bypass Gatekeeper. The older development tap is separate
 and must be removed explicitly if its `topo` executable conflicts. No automatic
 migration or background Mac service is provided.

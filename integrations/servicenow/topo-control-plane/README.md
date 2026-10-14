@@ -13,8 +13,8 @@ This directory defines candidate application **0.4.7** in ServiceNow Fluent unde
 tests; it must remain consistent with the sources and is not an installer.
 
 For customer installation, use the published [combined XML package](../../../docs/servicenow-update-set.md).
-Topo 0.4.6 Beta includes the application and all 32 required indexes.
-Install the worker through the Beta package channel and record its build
+Topo 0.4.6 includes the application and all 32 required indexes.
+Install the worker through the package channel and record its build
 using `topo version`.
 Dated installation and upgrade results are kept in
 [package validation](../../../docs/servicenow-validation.md).

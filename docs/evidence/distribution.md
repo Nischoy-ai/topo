@@ -4,7 +4,9 @@ Versions, dates and test scopes below identify the tested artifacts; they are
 not installation steps. Use the [installation guide](../distribution.md) for
 current package commands.
 
-## 0.4.7 Beta worker
+<a id="047-beta-worker"></a>
+
+## 0.4.7 worker
 
 The signed [v0.4.7-beta.1 worker](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 was published on 2026-10-13 UTC from
@@ -27,7 +29,7 @@ binary reports `v0.4.7-beta.1`, Go 1.26.9, x/crypto 0.57.0 and x/net 0.60.0.
 passed independently approved preparation and publication, RPM signature and
 repository install/removal checks, and both Homebrew architectures. Package
 commit `9a9bf4a5416e74b474b5210c7f3971fd50bc0813` and tap commit
-`005ea21a4505f6986b9b9413b9dc4a9fe4f6cbc0` published the beta channels.
+`005ea21a4505f6986b9b9413b9dc4a9fe4f6cbc0` published the release channels.
 [Pages 38350590797](https://github.com/Nischoy-ai/topo-packages/actions/runs/38350590797)
 succeeded from that package commit. Anonymous HTTPS APT metadata for both
 architectures and RPM metadata/signatures for x86_64/aarch64 match the signed
@@ -49,7 +51,9 @@ Installation checks do not expand managed runtime or native XML acceptance.
 
 <a id="046-beta-worker"></a>
 
-## Historical 0.4.6 Beta worker
+<a id="historical-046-beta-worker"></a>
+
+## Historical 0.4.6 worker
 
 The signed [v0.4.6-beta.1 worker](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.6-beta.1)
 was published on 2026-10-09 UTC from
@@ -90,7 +94,9 @@ and removal. Consult the linked run for job conclusions. The first attempt
 rejected the old channels before promotion; those failures are retained.
 These are installation checks, separate from ServiceNow runtime acceptance.
 
-## First beta operational evidence
+<a id="first-beta-operational-evidence"></a>
+
+## 0.1.0 distribution evidence
 
 The historical [v0.1.0-beta.1 source](https://github.com/Nischoy-ai/topo/tree/v0.1.0-beta.1)
 was built from `57671b5407daabddd7ae08d14dd25395e0b9431f`.
@@ -106,7 +112,7 @@ history remain. These results do not validate the newer worker.
 [Promotion 35485290078](https://github.com/Nischoy-ai/topo/actions/runs/35485290078)
 passed protected signing and publication reviews on 2026-09-20. Package commit
 `3d0a4fe15c9f7bd5dd40450f16ae0efafa4ba341` and tap commit
-`3ffdb92732fc6ebdcd6c2bd3f4a96fd3f417d5d7` published the signed beta channels.
+`3ffdb92732fc6ebdcd6c2bd3f4a96fd3f417d5d7` published the signed channels.
 HTTPS Pages served the signed APT/RPM metadata. Authenticated OCI chart
 pull/byte comparison passed; anonymous OCI access has not been established.
 
@@ -136,7 +142,7 @@ published `v0.0.0-dev.3` from `c2332fcbeec734b7d19ba07b1ef193881a2545fd`.
 Its reproducible archives, checksums and Apple Silicon upgrade/formula tests
 were development evidence. That mutable prerelease had no Sigstore signature,
 GitHub provenance, SBOM, Apple Developer ID identity or notarization ticket.
-Use the official beta channel above for new installations. An earlier withdrawn
+Use the official channel above for new installations. An earlier withdrawn
 build used `x/crypto` v0.54.0 and was rejected by the security gate for reachable
 `GO-2026-6303`; the development successor used v0.55.0. Those historical checks
 do not establish current vulnerability status.

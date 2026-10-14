@@ -1,6 +1,6 @@
 # ServiceNow-managed stateless Topo worker
 
-The published 0.4.7 beta includes managed Windows computer/interface inventory
+The published 0.4.7 release includes managed Windows computer/interface inventory
 and bounded IPv4 subnet selection. Follow [mixed setup](mixed-inventory-setup.md)
 for protocol-specific trust, credential bindings, exclusions and execution policy.
 Dated [mixed evidence](evidence/mixed-inventory.md) retains exact live sources
@@ -17,9 +17,9 @@ separate local allowlists and independently verified SSH host keys or WinRM CA
 trust constrain access. ServiceNow validates normalized observations and publishes
 only the supported computer/interface mappings through IRE.
 
-Topo 0.4.7 Beta is installed from the combined native XML containing the
+Topo 0.4.7 is installed from the combined native XML containing the
 application, 32 required index definitions and Global source setup. Install the
-matching signed worker through its beta channel. Follow the
+matching signed worker through its signed package channel. Follow the
 [XML guide](servicenow-update-set.md) and [mixed setup](mixed-inventory-setup.md).
 The local/SSH examples below remain supported subsets. The shipped Linux service
 enables SSH only; the mixed guide provides explicit reviewed foreground flags.

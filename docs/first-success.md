@@ -1,7 +1,7 @@
 # Your first ServiceNow discovery run
 
 Start with **one Linux target and a Linux worker**, then add Windows or a subnet.
-This is the exercised path for Topo **0.4.7 Beta**: computer and network-interface
+This is the exercised path for Topo **0.4.7**: computer and network-interface
 inventory reconciled into CMDB through IRE. Read this overview in about five
 minutes; administrator, OAuth and target preparation take additional time.
 
@@ -64,7 +64,7 @@ revisions and matching bindings; see [scope and binding rules](mixed-inventory-s
 
 ## 3. Install, check and start the worker
 
-Set up the [signed APT or RPM beta repository](distribution.md#user-installation),
+Set up the [signed APT or RPM repository](distribution.md#user-installation),
 then install using **one** matching command:
 
 ```sh
@@ -130,7 +130,7 @@ For failures, use the [troubleshooting table](mixed-inventory-setup.md#troublesh
   unexercised; use Linux for the exercised path.
 
 Review [credential storage/rotation](deployment-security.md),
-[beta evidence and limits](evidence/mixed-inventory.md) and
+[evidence and limits](evidence/mixed-inventory.md) and
 [upgrades/removal](pilot-quickstart.md#6-upgrade-and-remove) before wider use.
 This guide adds no new installation, novice-usability or production-readiness
 proof. Published combined XML comparison and prior component-install evidence

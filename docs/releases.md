@@ -3,7 +3,7 @@
 Check [worker availability](distribution.md#release-availability) before downloading.
 The signed [worker `v0.4.7-beta.1`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
 is published with its binary archives, signed checksum manifest and provenance.
-It is also available through the Beta Homebrew/APT/RPM channels.
+It is also available through the Homebrew/APT/RPM channels.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
 artifact with its own signed checksum manifest and [validation record](servicenow-validation.md).
 Worker provenance is separate from XML-package authentication.
@@ -112,7 +112,7 @@ are not final signed-package checksums.
 The build needs network access only when the pinned Go modules are not already
 in the local module cache.
 
-For the Homebrew beta, pass `linux-homebrew-beta` as the fourth argument and use
+For the Homebrew CLI release, pass `linux-homebrew-beta` as the fourth argument and use
 the exact prerelease tag. Use `linux-macos-beta` only for the Apple-signed
 variant. Omitting the profile builds all six historical targets. Both restricted
 profiles reject stable tags and unexpected Windows artifacts; unknown profiles
@@ -201,13 +201,13 @@ or tag-protection rules should restrict who may create release tags.
 
 The Sigstore checksum signature and GitHub attestations authenticate the full
 final artifact set across platforms. Native signing additionally covers RPM,
-MSI, and (for Apple-signed profiles) macOS trust. The Homebrew beta has no Apple
+MSI, and (for Apple-signed profiles) macOS trust. The Homebrew CLI release has no Apple
 publisher identity or notarization ticket; Go's ARM64 ad-hoc signature is not
 publisher authentication. Browser-downloaded raw macOS binaries can be blocked
-by Gatekeeper; this beta promises the tested Homebrew CLI path, not a GUI/cask
+by Gatekeeper; this release promises the tested Homebrew CLI path, not a GUI/cask
 or direct-download launch experience. Do not disable Gatekeeper or strip
 quarantine to install it. Release evidence does not replace signed APT/RPM repository
 metadata or repository-key rotation; protected package promotion adds those
-controls. The current beta promotion evidence is recorded in [distribution](evidence/distribution.md#047-beta-worker);
+controls. The current promotion evidence is recorded in [distribution](evidence/distribution.md#047-beta-worker);
 stable/N-1 promotion and independent security retest have their own acceptance
 requirements in [the roadmap](../ROADMAP.md) and [review record](security-review.md).

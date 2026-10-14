@@ -34,7 +34,7 @@ GOTOOLCHAIN=go1.26.9 scripts/build-packages.sh \
 ```
 
 This is a local source-build example, not a published release download. Its
-unsigned packages must not be promoted or presented as the signed Beta worker.
+unsigned packages must not be promoted or presented as the signed worker.
 For actual publication status see [worker availability](distribution.md#release-availability).
 
 The second command copies and verifies the raw input twice, assembles from two
@@ -51,7 +51,7 @@ Debian package versions use `~` for prereleases and a package revision: the
 `topo_0.4.6-beta.1_amd64.deb` filename contains `Version: 0.4.6~beta.1-1`.
 The worker still reports the semantic release tag, `v0.4.6-beta.1`. APT indexes
 must advertise the version inside the package. A future stable `0.4.6-1` sorts
-after this beta without a downgrade option or epoch. See
+after this prerelease without a downgrade option or epoch. See
 [Debian's version comparison rules](https://www.debian.org/doc/debian-policy/ch-controlfields.html#version).
 
 Both DEB and RPM install:
@@ -162,9 +162,9 @@ database in place. See [backup, restore, and upgrade procedures](storage.md#back
 
 Package-manager promotion distributes these exact bytes through signed APT/RPM
 repositories, the Nischoy Homebrew tap, Microsoft's WinGet catalog, and a GHCR
-OCI Helm registry. It adds native signing, stable/beta policy, key rotation,
+OCI Helm registry. It adds native signing, stable/prerelease policy, key rotation,
 and clean-machine gates without rebuilding Topo. See
-[package-manager distribution](distribution.md). Linux and Homebrew Beta
+[package-manager distribution](distribution.md). Linux and Homebrew
 channels publish the signed `v0.4.7-beta.1` worker. See the
 [distribution evidence](evidence/distribution.md#047-beta-worker) for the
 published source and channel validation. Stable/N-1 and Windows publication

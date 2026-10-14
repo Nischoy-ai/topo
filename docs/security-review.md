@@ -50,7 +50,7 @@ scan applies to its tested commit and dependency versions; rerun it after change
 
 ## Release and compatibility evidence
 
-Published beta distribution has been exercised through signed APT/RPM channels
+Published distribution has been exercised through signed APT/RPM channels
 and Homebrew on amd64/arm64. See [distribution evidence](evidence/distribution.md).
 Stable/N-1 promotion, Windows publication and Apple notarization remain separate
 release work. Protocol guides state their real-host versus simulator coverage.

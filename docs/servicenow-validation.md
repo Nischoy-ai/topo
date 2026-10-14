@@ -5,7 +5,7 @@ steps are in [Install from XML](servicenow-update-set.md#customer-installation).
 
 ## Current package
 
-The current 0.4.7 Beta package contains 474 updates in three distinct update
+The current 0.4.7 package contains 474 updates in three distinct update
 sets and has XML SHA-256
 `45a13e48c675b77d11e2ff1610ff04b0e63cd396daad22f2c529d2be9b05b721`
 (1,418,336 bytes). Its unchanged native bytes were compared against all 441
