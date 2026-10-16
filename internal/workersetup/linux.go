@@ -67,18 +67,11 @@ func (b *linuxBackend) ready(ctx context.Context) error {
 	if _, err := os.Stat("/run/systemd/system"); err != nil {
 		return errors.New("worker setup requires a running systemd system")
 	}
-	u, err := user.Lookup("topo-worker")
+	uid, gid, err := serviceIdentity(user.Lookup, user.LookupGroup)
 	if err != nil {
-		return errors.New("packaged topo-worker service account is missing")
+		return err
 	}
-	b.uid, err = strconv.Atoi(u.Uid)
-	if err != nil || b.uid == 0 {
-		return errors.New("invalid packaged service account")
-	}
-	b.gid, err = strconv.Atoi(u.Gid)
-	if err != nil || b.gid == 0 {
-		return errors.New("invalid packaged service group")
-	}
+	b.uid, b.gid = uid, gid
 	if id := os.Getenv("SUDO_UID"); id != "" {
 		b.sourceUID, err = strconv.Atoi(id)
 		if err != nil || b.sourceUID < 0 {
