@@ -1,0 +1,58 @@
+{
+  "status": "source_preparation_only_not_submitted",
+  "source_commit": "6a431a13b31fa10844cbf82d0cb0f12497974f7b",
+  "source_date_epoch": 1792122229,
+  "source_archive_sha256": "76666af2f33212ffa82dfc8f0909c503e586df0fc077f2d62816add41821f72a",
+  "vendor_archive_sha256": "2f051828904f6a96bd806f0515ee1c14b4c235f4163bb541429f9bed03ba6994",
+  "vendor_archive_bytes": 36148240,
+  "vendor_archive_members": 5383,
+  "two_source_path_archive_reproduction": "PASS",
+  "repeat_network": "disabled",
+  "go_mod_unchanged": true,
+  "go_sum_unchanged": true,
+  "vendor_module_count": 66,
+  "tools": {
+    "go": "go1.26.9",
+    "go_host": "darwin/arm64",
+    "go_vendor_tools": "0.13.0",
+    "go_vendor_tools_wheel_sha256": "c300be8bd66bb14d3362ae3dbbbdc1b9242f6ce42762060f6fdccf924d93d132",
+    "askalono": "0.5.0",
+    "askalono_macos_release_zip_sha256": "3e3d66025a3350f73324efcc7f06754741ed426cfbffea6226be626556f2f076"
+  },
+  "license_review": {
+    "scanner_exit": 1,
+    "initial_undetected_count": 6,
+    "reviewed_manual_entries": 3,
+    "detected_license_files": 80,
+    "remaining_undetected": [
+      "vendor/modernc.org/libc/COPYRIGHT-MUSL",
+      "vendor/modernc.org/memory/LICENSE-LOGO",
+      "vendor/modernc.org/sqlite/SQLITE-LICENSE"
+    ],
+    "config_sha256": "9f40f444c5c12592ef2b02605649498b6339f7d38ec63deee65ee594ee39c6ff",
+    "final_rpm_license_expression": null,
+    "license_exclusions": []
+  },
+  "offline_vendored_linux_cross_builds": [
+    {
+      "arch": "amd64",
+      "exit": 0,
+      "runtime_executed": false,
+      "bytes": 57757296,
+      "sha256": "8fa70c9d1c8bffd629ded2eee0665de825010e3f6389fe5289df7e65495735a8"
+    },
+    {
+      "arch": "arm64",
+      "exit": 0,
+      "runtime_executed": false,
+      "bytes": 54066635,
+      "sha256": "e15d38b2d92a5c93125ba1c7acc5877dbfe29f91bdd418b9c0925a0ae6bb53cf"
+    }
+  ],
+  "fedora_native_build": "NOT RUN",
+  "mock_rpmlint_lifecycle": "NOT RUN",
+  "target_toolchain_qualification": "PENDING",
+  "service_package_parity": "PENDING",
+  "submission_ready": false,
+  "external_submissions": "NONE"
+}

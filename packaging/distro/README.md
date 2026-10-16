@@ -181,6 +181,16 @@ Complete on a disposable Fedora packaging builder:
    verify the current procedure before filing. Review, dist-git import, Koji
    builds and publication are not completed by a local spec or Copr build.
 
+## Source preparation follow-up
+
+The full-CLI candidate now has a reproducible 66-module vendor archive and
+network-disabled Linux amd64/arm64 cross-build evidence. No module pins changed.
+See [source preparation](fedora-source-preparation.md) and its exact receipts.
+The license report still fails on three files after three checksum-pinned
+composite-license classifications; [license review](fedora-license-review.md)
+records each one. These are not Fedora source-RPM builds or acceptance.
+The spec placeholders and service-package parity gates remain open.
+
 ## Remaining gates
 
 | Gate | Current owner/input |
