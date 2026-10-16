@@ -1,0 +1,65 @@
+# Preparation draft, NOT an uploadable spec or an accepted Fedora package.
+# Replace the cumulative license token only after reviewing the vendor sources.
+# Derived from the Fedora Go SIG go2rpm vendor template; see README.md.
+%bcond check 1
+%global goipath github.com/Nischoy-ai/topo
+%global tag @UPSTREAM_TAG@
+%global commit @UPSTREAM_COMMIT@
+Version: @RPM_VERSION@
+%gometa -f
+
+Name: topo
+Release: 1%{?dist}
+Summary: Destination-neutral infrastructure discovery worker and CLI
+License: @CUMULATIVE_SPDX_AFTER_VENDOR_REVIEW@
+URL: https://github.com/Nischoy-ai/topo
+Source0: %{gosource}
+Source1: @VENDOR_ARCHIVE@
+Source2: go-vendor-tools.toml
+
+BuildRequires: go-vendor-tools
+BuildRequires: golang = 1.26.9
+Requires: ca-certificates
+
+%description
+Topo discovers infrastructure through locally approved operations and emits
+destination-neutral observations. Its outbound worker supports ServiceNow-managed
+Linux SSH and restricted Windows HTTPS inventory with explicit target policy.
+Credentials, trust files and application setup are required before discovery.
+
+%prep
+%goprep -p1
+tar -xf %{S:1}
+
+%generate_buildrequires
+%go_vendor_license_buildrequires -c %{S:2}
+
+%build
+export GOTOOLCHAIN=local
+export GOPROXY=off
+export GOSUMDB=off
+export GOFLAGS=-mod=vendor
+test "$(go env GOVERSION)" = go1.26.9
+%global gomodulesmode GO111MODULE=on
+%gobuild -ldflags '-X main.version=@UPSTREAM_TAG@' -o %{gobuilddir}/bin/topo %{goipath}/cmd/topo
+
+%install
+%go_vendor_license_install -c %{S:2}
+install -Dpm0755 %{gobuilddir}/bin/topo %{buildroot}%{_bindir}/topo
+
+%check
+export GOTOOLCHAIN=local
+export GOPROXY=off
+export GOSUMDB=off
+export GOFLAGS=-mod=vendor
+%go_vendor_license_check -c %{S:2}
+%if %{with check}
+%gotest ./...
+%endif
+
+%files -f %{go_vendor_license_filelist}
+%doc README.md
+%{_bindir}/topo
+
+%changelog
+@MAINTAINER_CHANGELOG@

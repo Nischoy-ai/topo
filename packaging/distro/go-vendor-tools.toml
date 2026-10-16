@@ -1,0 +1,5 @@
+# Preparation input only. No dependency overrides or license exclusions.
+# Review generated archive and licensing report before completing topo.spec.in.
+[archive]
+use_module_proxy = true
+tidy = true

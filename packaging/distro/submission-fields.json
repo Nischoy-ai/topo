@@ -1,0 +1,36 @@
+{
+  "status": "preparation_only_not_submitted",
+  "upstream": {
+    "name": "Nischoy Topo",
+    "homepage": "https://github.com/Nischoy-ai/topo",
+    "module": "github.com/Nischoy-ai/topo",
+    "license": "Apache-2.0",
+    "published_worker_tag": "v0.4.7-beta.1",
+    "published_worker_source": "c70c5813895fcae20c54ee1fac54e0e44e9e531f",
+    "readiness_source": "d55f3e1abd8768f4442b008507999c25e72df1fb",
+    "description": "Destination-neutral infrastructure discovery worker and CLI"
+  },
+  "public_maintainer_name": null,
+  "public_maintainer_email": null,
+  "debian_sponsor": null,
+  "debian_itp_bug": null,
+  "debian_source_package_url": null,
+  "fedora_account": null,
+  "fedora_sponsor": null,
+  "fedora_review_ticket": null,
+  "fedora_spec_url": null,
+  "fedora_srpm_url": null,
+  "proposed_submission": {
+    "upstream_tag": null,
+    "upstream_commit": null,
+    "rpm_version": null,
+    "vendor_archive": null,
+    "cumulative_spdx_after_vendor_review": null,
+    "maintainer_changelog": null
+  },
+  "limits": [
+    "Existing nFPM contact is not authorization to name a distro maintainer",
+    "No identity, account, signing key or package acceptance is inferred",
+    "Apache-2.0 identifies Topo source, not the cumulative vendored RPM license"
+  ]
+}
