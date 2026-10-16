@@ -35,6 +35,10 @@ for attempt in {1..60}; do
   sleep 1
 done
 docker exec -i "$container_name" bash -seuo pipefail <<'TOPO_FEDORA_FIXTURE' | tee "$fixture_dir/lifecycle.log"
+  if test -f /usr/lib/systemd/system/service.d/10-timeout-abort.conf; then
+    cat /usr/lib/systemd/system/service.d/10-timeout-abort.conf
+    sha256sum /usr/lib/systemd/system/service.d/10-timeout-abort.conf
+  fi
   arch=$(rpm --eval "%{_arch}")
   baseline=(/artifacts/mock/topo-0.4.7-0.1.*."$arch".rpm)
   upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*."$arch".rpm)
@@ -44,18 +48,18 @@ docker exec -i "$container_name" bash -seuo pipefail <<'TOPO_FEDORA_FIXTURE' | t
   mkdir -m 0700 /var/tmp/topo-ci-packages
   cp "${baseline[0]}" /var/tmp/topo-ci-packages/baseline.rpm
   cp "${upgrade[0]}" /var/tmp/topo-ci-packages/upgrade.rpm
-  baseline_digest=$(rpm -qp --qf "%{PAYLOADDIGEST}" "${baseline[0]}")
-  upgrade_digest=$(rpm -qp --qf "%{PAYLOADDIGEST}" "${upgrade[0]}")
+  baseline_digest=$(rpm2cpio "${baseline[0]}" | sha256sum | cut -d" " -f1)
+  upgrade_digest=$(rpm2cpio "${upgrade[0]}" | sha256sum | cut -d" " -f1)
   export GNUPGHOME=$(mktemp -d /var/tmp/topo-ci-key.XXXXXX)
   gpg --batch --pinentry-mode loopback --passphrase "" --quick-generate-key "Topo disposable Fedora CI <ci@nischoy.invalid>" rsa2048 sign 1d
   fingerprint=$(gpg --batch --with-colons --fingerprint | awk -F: '$1 == "fpr" { print $10; exit }')
   bash scripts/sign-rpms.sh /var/tmp/topo-ci-packages "$fingerprint"
-  gpg --batch --export "$fingerprint" > /var/tmp/topo-ci-public.gpg
-  rpm --import /var/tmp/topo-ci-public.gpg
+  gpg --batch --armor --export "$fingerprint" > /var/tmp/topo-ci-public.asc
+  rpm --import /var/tmp/topo-ci-public.asc
   rm -rf "$GNUPGHOME"
   unset GNUPGHOME
-  test "$(rpm -qp --qf "%{PAYLOADDIGEST}" /var/tmp/topo-ci-packages/baseline.rpm)" = "$baseline_digest"
-  test "$(rpm -qp --qf "%{PAYLOADDIGEST}" /var/tmp/topo-ci-packages/upgrade.rpm)" = "$upgrade_digest"
+  test "$(rpm2cpio /var/tmp/topo-ci-packages/baseline.rpm | sha256sum | cut -d" " -f1)" = "$baseline_digest"
+  test "$(rpm2cpio /var/tmp/topo-ci-packages/upgrade.rpm | sha256sum | cut -d" " -f1)" = "$upgrade_digest"
   rpm --checksig /var/tmp/topo-ci-packages/*.rpm
   echo "One-day CI signatures verified; original review RPMs and binary payloads unchanged"
   install -m 0755 /artifacts/topo-setup-controlsim /usr/local/bin/topo-setup-controlsim
