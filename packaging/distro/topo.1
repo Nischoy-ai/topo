@@ -1,0 +1,50 @@
+.TH TOPO 1 "October 2026" "Topo review snapshot" "User Commands"
+.SH NAME
+topo \- destination-neutral infrastructure discovery
+.SH SYNOPSIS
+.B topo
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+Topo collects infrastructure observations using locally approved, compiled-in
+operations and publishes supported inventory to configured destinations.
+The outbound ServiceNow worker requires separate administrator preparation,
+restricted credential references, approved targets and independently verified
+host identities. Installing Topo does not start discovery.
+.SH COMMANDS
+.TP
+.B version
+Print the build version.
+.TP
+.B worker setup
+Interactively configure the packaged Linux SSH worker, check registration,
+and ask before enabling and starting the service. Requires root and a terminal.
+.TP
+.B worker check
+Check the configured connection without collecting target inventory.
+.TP
+.B worker run
+Run the outbound worker using explicitly supplied policy and credential references.
+.TP
+.B discover
+Perform standalone discovery using the selected reviewed operation.
+.TP
+.B publish
+Preview or explicitly apply supported destination publication.
+.TP
+.B serve
+Run the separate standalone controller.
+.SH CONFIGURATION
+The packaged workers use independently prepared credential and policy files
+under /etc/topo-worker or /etc/topo-agent. These directories are not populated
+or overwritten by package installation or removal.
+Use the installed documentation under /usr/share/doc/topo for complete commands,
+identity, authorization, trust and supported-scope details.
+.SH SECURITY
+Never supply token or password values as command arguments. Use protected
+credential references. Do not bypass SSH host-key or HTTPS certificate checks.
+.SH SEE ALSO
+.BR systemctl (1),
+.BR sysusers.d (5)
+.PP
+https://github.com/Nischoy-ai/topo

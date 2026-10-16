@@ -19,27 +19,61 @@ jobs:
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
     container:
+      options: --privileged
       image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
     steps:
       - name: Install Fedora-native packaging tools
         run: >-
           dnf --refresh -y install git golang go-vendor-tools rpm-build rpmdevtools
-          rpmlint systemd-rpm-macros python3 python3-pip mock
+          rpmlint systemd-rpm-macros python3 python3-pip mock gcc
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Record signed-repository toolchain and packaging macros
         run: |
           mkdir -p /tmp/topo-fedora-results
           rpm -q golang golang-bin go-vendor-tools rpm-build rpmlint systemd-rpm-macros mock | tee /tmp/topo-fedora-results/environment.txt
           go version | tee -a /tmp/topo-fedora-results/environment.txt
-          test "$(go env GOVERSION)" = go1.26.9
+          case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5) ;; *) exit 1 ;; esac
           rpm --eval '%{_unitdir} %{_sysusersdir}' | tee -a /tmp/topo-fedora-results/environment.txt
+      - name: Prepare source-pinned review inputs and complete licensing
+        run: >-
+          python3 packaging/distro/prepare-fedora.py
+          --commit "$(git rev-parse HEAD)"
+          --output /tmp/topo-fedora-results/review
+      - name: Produce unsigned source RPM
+        run: >-
+          rpmbuild -bs /tmp/topo-fedora-results/review/SPECS/topo.spec
+          --define '_topdir /tmp/topo-fedora-results/review'
+      - name: Clean Fedora mock build with offline build phase
+        run: |
+          mock --no-bootstrap-chroot --isolation=simple \
+            --root "fedora-44-$(rpm --eval '%{_arch}')" \
+            --resultdir /tmp/topo-fedora-results/mock \
+            --rebuild /tmp/topo-fedora-results/review/SRPMS/*.src.rpm
+      - name: Lint native spec, source and binary RPMs
+        run: |
+          rpmlint /tmp/topo-fedora-results/review/SPECS/topo.spec \
+            /tmp/topo-fedora-results/review/SRPMS/*.src.rpm \
+            /tmp/topo-fedora-results/mock/*.rpm \
+            | tee /tmp/topo-fedora-results/rpmlint.txt
       - name: Retain Fedora environment evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: fedora-environment-${{ matrix.runner }}
-          path: /tmp/topo-fedora-results/
+          name: fedora-review-${{ matrix.runner }}
+          path: |
+            /tmp/topo-fedora-results/environment.txt
+            /tmp/topo-fedora-results/rpmlint.txt
+            /tmp/topo-fedora-results/review/reports/
+            /tmp/topo-fedora-results/review/SOURCES/
+            /tmp/topo-fedora-results/review/SPECS/
+            /tmp/topo-fedora-results/review/SRPMS/
+            /tmp/topo-fedora-results/mock/
           if-no-files-found: warn
           retention-days: 7

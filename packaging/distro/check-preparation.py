@@ -26,8 +26,8 @@ def main():
             raise ValueError("invalid snapshot digest")
     spec = (root / "topo.spec.in").read_text()
     tokens = sorted(set(re.findall(r"@[A-Z_]+@", spec)))
-    if len(tokens) != 6:
-        raise ValueError("review expected source/version/license/maintainer tokens")
+    if len(tokens) != 4:
+        raise ValueError("review expected source snapshot/changelog tokens")
     for guard in ("golang = 1.26.9", "GOTOOLCHAIN=local", "GOPROXY=off",
                   "GOSUMDB=off", "GOFLAGS=-mod=vendor"):
         if guard not in spec:

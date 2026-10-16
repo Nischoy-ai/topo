@@ -9,12 +9,10 @@
     "gopkg.in/yaml.v3"
   ],
   "unresolved_spec_tokens": [
-    "@CUMULATIVE_SPDX_AFTER_VENDOR_REVIEW@",
-    "@MAINTAINER_CHANGELOG@",
-    "@RPM_VERSION@",
-    "@UPSTREAM_COMMIT@",
-    "@UPSTREAM_TAG@",
-    "@VENDOR_ARCHIVE@"
+    "@CHANGELOG_DATE@",
+    "@SHORT_COMMIT@",
+    "@SNAPSHOT_DATE@",
+    "@UPSTREAM_COMMIT@"
   ],
   "public_maintainer_identity_complete": true,
   "submission_ready": false,

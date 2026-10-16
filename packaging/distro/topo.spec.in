@@ -1,31 +1,34 @@
-# Preparation draft, NOT an uploadable spec or an accepted Fedora package.
-# Replace the cumulative license token only after reviewing the vendor sources.
-# Derived from the Fedora Go SIG go2rpm vendor template; see README.md.
+# Unreleased, source-pinned Fedora review snapshot. Not an accepted package.
 %bcond check 1
 %global goipath github.com/Nischoy-ai/topo
-%global tag @UPSTREAM_TAG@
 %global commit @UPSTREAM_COMMIT@
-Version: @RPM_VERSION@
+Version: 0.4.7
 %gometa -f
 
 Name: topo
-Release: 1%{?dist}
+Release: 0.1.@SNAPSHOT_DATE@git%{shortcommit}%{?dist}
 Summary: Destination-neutral infrastructure discovery worker and CLI
-License: @CUMULATIVE_SPDX_AFTER_VENDOR_REVIEW@
+License: Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CC-BY-2.5 AND CC0-1.0 AND ISC AND LicenseRef-Fedora-Public-Domain AND Linux-man-pages-copyleft AND MIT AND SunPro AND bcrypt-Solar-Designer
 URL: https://github.com/Nischoy-ai/topo
-Source0: %{gosource}
-Source1: @VENDOR_ARCHIVE@
+Source0: https://codeload.github.com/Nischoy-ai/topo/tar.gz/%{commit}#/%{name}-%{commit}.tar.gz
+Source1: %{name}-%{commit}-vendor.tar.bz2
 Source2: go-vendor-tools.toml
+Source3: topo.sysusers
 
 BuildRequires: go-vendor-tools
 BuildRequires: golang = 1.26.9
+BuildRequires: gcc
+BuildRequires: systemd-rpm-macros
 Requires: ca-certificates
+%{?systemd_requires}
 
 %description
 Topo discovers infrastructure through locally approved operations and emits
 destination-neutral observations. Its outbound worker supports ServiceNow-managed
-Linux SSH and restricted Windows HTTPS inventory with explicit target policy.
-Credentials, trust files and application setup are required before discovery.
+Linux SSH and restricted Windows HTTPS computer/interface inventory.
+Credentials, verified trust files and separate administrator preparation are
+required before discovery. Installing the package does not start discovery.
+This package is an unreleased source snapshot for Fedora review.
 
 %prep
 %goprep -p1
@@ -39,27 +42,51 @@ export GOTOOLCHAIN=local
 export GOPROXY=off
 export GOSUMDB=off
 export GOFLAGS=-mod=vendor
-test "$(go env GOVERSION)" = go1.26.9
+export GOMAXPROCS=2
+case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5) ;; *) exit 1 ;; esac
 %global gomodulesmode GO111MODULE=on
-%gobuild -ldflags '-X main.version=@UPSTREAM_TAG@' -o %{gobuilddir}/bin/topo %{goipath}/cmd/topo
+%gobuild -ldflags '-X main.version=0.4.7-fedorasnapshot.%{shortcommit}' -o %{gobuilddir}/bin/topo %{goipath}/cmd/topo
 
 %install
 %go_vendor_license_install -c %{S:2}
+install -Dpm0644 packaging/distro/topo.1 %{buildroot}%{_mandir}/man1/topo.1
 install -Dpm0755 %{gobuilddir}/bin/topo %{buildroot}%{_bindir}/topo
+install -Dpm0644 packaging/systemd/topo-worker.package.service %{buildroot}%{_unitdir}/topo-worker.service
+install -Dpm0644 packaging/systemd/topo-agent.package.service %{buildroot}%{_unitdir}/topo-agent.service
+install -Dpm0644 %{SOURCE3} %{buildroot}%{_sysusersdir}/topo.conf
+install -Dpm0644 packaging/systemd/topo-worker.env.example %{buildroot}%{_docdir}/topo/topo-worker.env.example
+install -Dpm0644 packaging/systemd/topo-agent.env.example %{buildroot}%{_docdir}/topo/topo-agent.env.example
 
 %check
 export GOTOOLCHAIN=local
 export GOPROXY=off
 export GOSUMDB=off
 export GOFLAGS=-mod=vendor
+export GOMAXPROCS=2
 %go_vendor_license_check -c %{S:2}
 %if %{with check}
 %gotest ./...
 %endif
 
+%post
+%systemd_post topo-worker.service topo-agent.service
+
+%preun
+%systemd_preun topo-worker.service topo-agent.service
+
+%postun
+%systemd_postun_with_restart topo-worker.service topo-agent.service
+
 %files -f %{go_vendor_license_filelist}
-%doc README.md
+%doc README.md docs
 %{_bindir}/topo
+%{_mandir}/man1/topo.1*
+%{_unitdir}/topo-worker.service
+%{_unitdir}/topo-agent.service
+%{_sysusersdir}/topo.conf
+%{_docdir}/topo/topo-worker.env.example
+%{_docdir}/topo/topo-agent.env.example
 
 %changelog
-@MAINTAINER_CHANGELOG@
+* @CHANGELOG_DATE@ Soumik Sarkar <soumiks@gmail.com> - 0.4.7-0.1.@SNAPSHOT_DATE@git@SHORT_COMMIT@
+- Initial Fedora review snapshot; services require explicit configuration

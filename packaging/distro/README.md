@@ -26,8 +26,8 @@ does not configure ServiceNow, target authorization, credentials or trust.
   checksum matches the downloaded `repomd.xml` entry.
 - `topo.spec.in` is a **Fedora source-build draft**, based on the Go SIG vendor
   template. It intentionally cannot be submitted until its cumulative license,
-  source/vendor archives, changelog and checks are complete. It installs the CLI
-  only; parity with the existing worker/agent service packages remains a gate.
+  source/vendor archives, changelog and checks are complete. It now includes the CLI, matching worker/agent units, dynamic sysusers and
+  Fedora lifecycle macros; native build/lint/lifecycle validation remains a gate.
 - `go-vendor-tools.toml` supplies explicit vendor-generation input with no
   dependency overrides or license exclusions.
 - `submission-fields.json` records known upstream facts and the owner-confirmed
@@ -186,7 +186,7 @@ Complete on a disposable Fedora packaging builder:
 The full-CLI candidate now has a reproducible 66-module vendor archive and
 network-disabled Linux amd64/arm64 cross-build evidence. No module pins changed.
 See [source preparation](fedora-source-preparation.md) and its exact receipts.
-The license report still fails on three files after three checksum-pinned
+The initial license report failed on three files after three checksum-pinned
 composite-license classifications; [license review](fedora-license-review.md)
 records each one. These are not Fedora source-RPM builds or acceptance.
 The spec placeholders and service-package parity gates remain open.
@@ -203,3 +203,9 @@ The spec placeholders and service-package parity gates remain open.
 
 This preparation does not change runtime code, the current install path,
 signed releases, repositories, signing policy or supported discovery scope.
+
+The October 16 follow-up completes those classifications and retains full musl,
+artwork and copied-documentation notices; its local report passes without
+exclusions. Native source-RPM/mock/lint/lifecycle validation is in progress.
+Earlier dated receipts remain historical. The source snapshot spec now owns
+matching units, sysusers and a man page; the complete expression is populated.

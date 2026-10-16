@@ -1,0 +1,20 @@
+Memory infrastructure logo attribution
+
+Original title: Memory infra logo
+Original creator: The Chromium Project
+Original source: https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/memory
+Commons description and licensing: https://commons.wikimedia.org/w/index.php?title=File:Memory_infra_logo.png&oldid=829804081
+Original artwork: Creative Commons Attribution 2.5 Generic (CC-BY-2.5).
+Chrome-icon removal: Rezonansowy, dedicated under CC0-1.0.
+
+The modernc.org/memory v1.11.0 module distributes a 200x93 PNG derivative
+with GIMP/sRGB metadata; the linked Commons original is 323x150. These files
+are not byte-identical. Topo does not change the vendored image. The upstream
+LICENSE-LOGO identifies the source above. This notice credits the original
+and retouching authors and records the subsequent size/profile differences.
+
+Vendored image SHA256: 17bb2fd3442aeb1f4a17554ac930ff9d6060cca69dde043dd621327ac76e0880
+Commons downloaded original SHA256: 6153a84cd90f3090898f9a5801d2b2592a628cbef5fbc6fa8befa5a6b2033d05
+
+Full CC-BY-2.5 and CC0-1.0 texts accompany this notice. No endorsement is
+implied. The embedded GIMP color profile labels itself Public Domain.

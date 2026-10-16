@@ -1,8 +1,39 @@
 # Fedora vendor license review
 
-This is a source-preparation review, not Fedora legal approval or a completed
-cumulative RPM license expression. The spec's cumulative-license placeholder
-remains unresolved.
+The maintainer classification and notice-retention review is complete for the
+pinned module sources. The local Go Vendor Tools report passes: 95 license
+files, no unknown/undetected/unmatched entries, and no exclusions. This is
+not independent Fedora approval. Native RPM license installation and lint
+must validate the result before filing.
+
+## Completed follow-up — 2026-10-16
+
+- Musl generator revision 7ada6dde6f9dc6a2836c3d92c2f762d35fd229e0 has a COPYRIGHT
+  exactly matching the vendored file. All 54 distinct source-header attribution
+  and license blocks are retained, covering BSD-2-Clause, BSD-3-Clause, ISC, MIT,
+  SunPro, bcrypt-Solar-Designer and public-domain portions.
+- The memory logo retains CC-BY-2.5 original-artwork and CC0-1.0 retouching
+  attribution and full terms. The vendored 200x93 derivative differs from the
+  linked 323x150 Commons original; no byte-equality claim is made.
+- SQLite's exact dedication maps to LicenseRef-Fedora-Public-Domain.
+- libc_musl.go also copies API documentation under Linux-man-pages-copyleft;
+  its full notice is retained.
+
+The licenses/ directory and archive post-commands preserve these notices in
+the source and vendor trees. Manual classifications pin exact hashes.
+
+Complete expression:
+
+    Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CC-BY-2.5 AND CC0-1.0 AND ISC AND LicenseRef-Fedora-Public-Domain AND Linux-man-pages-copyleft AND MIT AND SunPro AND bcrypt-Solar-Designer
+
+[Fedora license data](https://forge.fedoraproject.org/legal/fedora-license-data)
+was inspected at cbd8b74cd481a598668f05d1878fcd53a8ef78e4. Software identifiers
+are allowed; CC-BY-2.5, CC0-1.0 and Linux-man-pages-copyleft are confined to
+permitted content/documentation. Canonical texts are from
+[SPDX v3.27.0](https://github.com/spdx/license-list-data/tree/v3.27.0/text).
+See licenses/NOTICE-MEMORY-LOGO for creator/editor credits and source hashes.
+
+## Initial inspection — historical
 
 ## Inputs and detection
 
@@ -33,7 +64,7 @@ and [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html) texts and
 [Go Vendor Tools' manual-detection procedure](https://fedora.gitlab.io/sigs/go/go-vendor-tools/scenarios/#manually-detecting-licenses).
 A changed text invalidates its explicit entry and requires inspection again.
 
-## Remaining review
+## Historical remaining review — 2026-10-15
 
 | File | Concrete work remaining |
 | --- | --- |

@@ -80,8 +80,10 @@ go_vendor_license -d askalono \
   --no-prompt --autofill off --write-json "$TOPO_PREP_DIR/licenses.json"
 ```
 
-This report currently **fails**, as it should: three files still require
-review. See [the exact license findings](fedora-license-review.md). The
+The initial candidate report **failed** on three files. The October 16
+follow-up now passes locally with retained additional notices and classifications.
+Use prepare-fedora.py with that complete follow-up source; the original candidate
+lacks its newly retained attribution files. See [the exact license findings](fedora-license-review.md). The
 partial expression printed on failure must not populate the spec. Do not use
 the ignore/exclusion options to hide the remaining work.
 
