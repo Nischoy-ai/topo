@@ -30,8 +30,9 @@ does not configure ServiceNow, target authorization, credentials or trust.
   only; parity with the existing worker/agent service packages remains a gate.
 - `go-vendor-tools.toml` supplies explicit vendor-generation input with no
   dependency overrides or license exclusions.
-- `submission-fields.json` records known upstream facts and leaves maintainer,
-  sponsor, account, ticket and artifact URLs unset. No identity is invented.
+- `submission-fields.json` records known upstream facts and the owner-confirmed
+  public maintainer, Soumik Sarkar <soumiks@gmail.com>. Sponsor, account, ticket
+  and artifact URLs remain unset; no downstream status is inferred.
 
 The spec retains unresolved source/tag/version/maintainer tokens deliberately.
 The separate new `topo worker setup` work is unpublished and cannot be attributed
@@ -108,9 +109,9 @@ The exact `topo` binary name was absent from this main index. This is not
 clearance across all suites, components, binary file ownership or existing
 requests. Before filing, check WNPP and existing packages for duplicate effort.
 [WNPP](https://www.debian.org/devel/wnpp/) describes the ITP fields: package,
-version, upstream author/contact, source URL, license and description. Obtain
-the real public maintainer identity first. Do not infer it from the existing
-nFPM security contact or claim Debian Go team maintenance without agreement.
+version, upstream author/contact, source URL, license and description. The owner
+confirmed Soumik Sarkar <soumiks@gmail.com> as the public maintainer contact.
+This does not establish sponsorship or Debian Go team maintenance.
 
 After dependency closure, generate packaging with `dh-make-golang`, retain
 UNRELEASED while preparing it, complete copyright/source metadata, build with
@@ -184,7 +185,7 @@ Complete on a disposable Fedora packaging builder:
 
 | Gate | Current owner/input |
 | --- | --- |
-| Public maintainer name/email and sustained downstream maintenance | Owner confirmation pending; no guessed identity. |
+| Public maintainer name/email and sustained downstream maintenance | Soumik Sarkar <soumiks@gmail.com> confirmed; downstream maintenance/sponsor arrangements remain open. |
 | Debian dependency updates, aliases and complete source package | Packaging work plus downstream library maintainers/sponsor. |
 | Fedora compiler policy, vendor/license archive, service parity and clean builds | Packaging work plus approved target/toolchain decision. |
 | Distro reviewer/sponsor and archive acceptance | External distribution decisions, not promised dates. |

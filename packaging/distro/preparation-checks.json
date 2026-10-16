@@ -16,7 +16,7 @@
     "@UPSTREAM_TAG@",
     "@VENDOR_ARCHIVE@"
   ],
-  "public_maintainer_identity_complete": false,
+  "public_maintainer_identity_complete": true,
   "submission_ready": false,
   "distro_builds": "NOT RUN",
   "external_submissions": "NONE",

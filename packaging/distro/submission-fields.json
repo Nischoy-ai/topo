@@ -10,8 +10,8 @@
     "readiness_source": "d55f3e1abd8768f4442b008507999c25e72df1fb",
     "description": "Destination-neutral infrastructure discovery worker and CLI"
   },
-  "public_maintainer_name": null,
-  "public_maintainer_email": null,
+  "public_maintainer_name": "Soumik Sarkar",
+  "public_maintainer_email": "soumiks@gmail.com",
   "debian_sponsor": null,
   "debian_itp_bug": null,
   "debian_source_package_url": null,
@@ -29,8 +29,8 @@
     "maintainer_changelog": null
   },
   "limits": [
-    "Existing nFPM contact is not authorization to name a distro maintainer",
-    "No identity, account, signing key or package acceptance is inferred",
+    "Public maintainer name/email were supplied directly by the owner for distro submission preparation",
+    "No distro account, sponsorship, signing key or package acceptance is inferred",
     "Apache-2.0 identifies Topo source, not the cumulative vendored RPM license"
   ]
 }
