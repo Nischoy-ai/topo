@@ -17,15 +17,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        include:
+          - runner: ubuntu-24.04
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04-arm
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+          - runner: ubuntu-24.04-arm
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     defaults:
       run:
         shell: bash
+    env:
+      TOPO_FEDORA_RELEASE: ${{ matrix.release }}
     container:
       options: --privileged
-      image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+      image: ${{ matrix.image }}
     steps:
       - name: Install Fedora-native packaging tools
         run: >-
@@ -36,16 +50,26 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Record signed-repository toolchain and packaging macros
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir -p /tmp/topo-fedora-results
           rpm -q golang golang-bin go-vendor-tools rpm-build rpmlint systemd-rpm-macros mock | tee /tmp/topo-fedora-results/environment.txt
           go version | tee -a /tmp/topo-fedora-results/environment.txt
-          case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5) ;; *) exit 1 ;; esac
+          case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5|go1.27.2|go1.27.2-X:nodwarf5) ;; *) exit 1 ;; esac
           rpm --eval '%{_unitdir} %{_sysusersdir}' | tee -a /tmp/topo-fedora-results/environment.txt
       - name: Prepare source-pinned review inputs and complete licensing
         run: >-
           python3 packaging/distro/prepare-fedora.py
           --commit "$(git rev-parse HEAD)"
           --output /tmp/topo-fedora-results/review
+      - name: Qualify native compiler security, vet and race tests
+        run: |
+          cd "/tmp/topo-fedora-results/review/source/topo-$(git rev-parse HEAD)"
+          export GOTOOLCHAIN=local
+          export GOFLAGS=-mod=vendor
+          export GOMAXPROCS=2
+          go vet ./...
+          go test -race ./...
+          go run -mod=mod golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
       - name: Produce unsigned source RPM
         run: >-
           rpmbuild -bs /tmp/topo-fedora-results/review/SPECS/topo.spec
@@ -53,7 +77,7 @@ jobs:
       - name: Clean Fedora mock build with offline build phase
         run: |
           mock --no-bootstrap-chroot --isolation=simple \
-            --root "fedora-44-$(rpm --eval '%{_arch}')" \
+            --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
             --resultdir /tmp/topo-fedora-results/mock \
             --rebuild /tmp/topo-fedora-results/review/SRPMS/*.src.rpm
       - name: Lint native spec, source and binary RPMs
@@ -66,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: fedora-review-${{ matrix.runner }}
+          name: fedora-review-${{ matrix.release }}-${{ matrix.runner }}
           path: |
             /tmp/topo-fedora-results/environment.txt
             /tmp/topo-fedora-results/rpmlint.txt

@@ -28,6 +28,12 @@ The 2026-10-08 vulnerability scan required this patch and `golang.org/x/net`
 retains the affected scan and verification scope. This patch update preserves
 M3 capability priorities.
 
+Fedora source packaging separately qualifies the distro-provided Go 1.26.9
+(Fedora 44) and Go 1.27.2 (Rawhide), including Fedora’s nodwarf5 variant where
+applicable, and requires native security, race and source-package tests. This
+downstream compiler matrix does not change the upstream signed-release baseline.
+An unexpected compiler version fails the packaging gate until reviewed.
+
 <a id="supported-customer-beta-path"></a>
 
 ## Supported customer path

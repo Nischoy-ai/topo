@@ -43,8 +43,8 @@ def main():
     if output.exists():
         parser.error("--output must not exist; existing artifacts are preserved")
     version = run(["go", "env", "GOVERSION"])
-    if version not in ("go1.26.9", "go1.26.9-X:nodwarf5"):
-        raise ValueError("exact Go 1.26.9 or its qualified Fedora nodwarf5 build required")
+    if version not in ("go1.26.9", "go1.26.9-X:nodwarf5", "go1.27.2", "go1.27.2-X:nodwarf5"):
+        raise ValueError("qualified Fedora Go 1.26.9 or 1.27.2 build required")
     output.mkdir(parents=True)
     sources = output / "SOURCES"
     specs = output / "SPECS"
