@@ -151,6 +151,13 @@ def main():
         command('systemd-analyze', 'verify', str(unit))
         require(command('systemctl', 'is-enabled', 'topo-worker.service', ok=False).stdout.strip() == b'disabled',
                 'package must begin disabled')
+        if args.rpm:
+            print('Packaged service policy:', command('systemctl', 'show', 'topo-worker.service', '-p', 'FragmentPath', '-p', 'DropInPaths', '-p', 'ActiveState', '-p', 'UnitFileState').stdout.decode())
+            policy = Path('/usr/lib/systemd/system/service.d/10-timeout-abort.conf')
+            if policy.is_file():
+                data = policy.read_bytes()
+                require(len(data) <= 8192, 'unexpected vendor policy size')
+                print('Fedora timeout policy SHA256:', hashlib.sha256(data).hexdigest(), 'text:', repr(data))
         fixtures = root / 'inputs'; fixtures.mkdir(mode=0o700)
         server = subprocess.Popen([str(Path(args.simulator).resolve()), '-dir', str(fixtures)],
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

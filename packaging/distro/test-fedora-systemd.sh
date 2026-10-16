@@ -18,7 +18,7 @@ trap cleanup EXIT
 cat > "$fixture_dir/Dockerfile" <<'EOF'
 ARG FEDORA_IMAGE
 FROM ${FEDORA_IMAGE}
-RUN dnf -y --setopt=install_weak_deps=False install systemd python3 ca-certificates shadow-utils util-linux && dnf clean all
+RUN dnf -y --setopt=install_weak_deps=False install systemd python3 ca-certificates shadow-utils util-linux gnupg2 rpm-sign && dnf clean all
 STOPSIGNAL SIGRTMIN+3
 CMD ["/usr/sbin/init"]
 EOF
@@ -40,7 +40,25 @@ docker exec "$container_name" bash -euo pipefail -c '
   upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*."$arch".rpm)
   test "${#baseline[@]}" = 1
   test "${#upgrade[@]}" = 1
+  # Rawhide enforces signatures. Sign only disposable copies with a one-day CI key.
+  mkdir -m 0700 /var/tmp/topo-ci-packages
+  cp "${baseline[0]}" /var/tmp/topo-ci-packages/baseline.rpm
+  cp "${upgrade[0]}" /var/tmp/topo-ci-packages/upgrade.rpm
+  baseline_digest=$(rpm -qp --qf "%{PAYLOADDIGEST}" "${baseline[0]}")
+  upgrade_digest=$(rpm -qp --qf "%{PAYLOADDIGEST}" "${upgrade[0]}")
+  export GNUPGHOME=$(mktemp -d /var/tmp/topo-ci-key.XXXXXX)
+  gpg --batch --pinentry-mode loopback --passphrase "" --quick-generate-key "Topo disposable Fedora CI <ci@nischoy.invalid>" rsa2048 sign 1d
+  fingerprint=$(gpg --batch --with-colons --fingerprint | awk -F: '''$1 == "fpr" { print $10; exit }''')
+  bash scripts/sign-rpms.sh /var/tmp/topo-ci-packages "$fingerprint"
+  gpg --batch --export "$fingerprint" > /var/tmp/topo-ci-public.gpg
+  rpm --import /var/tmp/topo-ci-public.gpg
+  rm -rf "$GNUPGHOME"
+  unset GNUPGHOME
+  test "$(rpm -qp --qf "%{PAYLOADDIGEST}" /var/tmp/topo-ci-packages/baseline.rpm)" = "$baseline_digest"
+  test "$(rpm -qp --qf "%{PAYLOADDIGEST}" /var/tmp/topo-ci-packages/upgrade.rpm)" = "$upgrade_digest"
+  rpm --checksig /var/tmp/topo-ci-packages/*.rpm
+  echo "One-day CI signatures verified; original review RPMs and binary payloads unchanged"
   install -m 0755 /artifacts/topo-setup-controlsim /usr/local/bin/topo-setup-controlsim
-  python3 scripts/test-worker-setup-systemd.py --rpm "${baseline[0]}" \
-    --upgrade-rpm "${upgrade[0]}" --simulator /usr/local/bin/topo-setup-controlsim
+  python3 scripts/test-worker-setup-systemd.py --rpm /var/tmp/topo-ci-packages/baseline.rpm \
+    --upgrade-rpm /var/tmp/topo-ci-packages/upgrade.rpm --simulator /usr/local/bin/topo-setup-controlsim
 ' | tee "$fixture_dir/lifecycle.log"
