@@ -34,7 +34,7 @@ for attempt in {1..60}; do
   if docker exec "$container_name" systemctl show --property=Version --value >/dev/null 2>&1; then break; fi
   sleep 1
 done
-docker exec "$container_name" bash -euo pipefail -c '
+docker exec -i "$container_name" bash -seuo pipefail <<'TOPO_FEDORA_FIXTURETOPO_FEDORA_FIXTURE
   arch=$(rpm --eval "%{_arch}")
   baseline=(/artifacts/mock/topo-0.4.7-0.1.*."$arch".rpm)
   upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*."$arch".rpm)
@@ -48,7 +48,7 @@ docker exec "$container_name" bash -euo pipefail -c '
   upgrade_digest=$(rpm -qp --qf "%{PAYLOADDIGEST}" "${upgrade[0]}")
   export GNUPGHOME=$(mktemp -d /var/tmp/topo-ci-key.XXXXXX)
   gpg --batch --pinentry-mode loopback --passphrase "" --quick-generate-key "Topo disposable Fedora CI <ci@nischoy.invalid>" rsa2048 sign 1d
-  fingerprint=$(gpg --batch --with-colons --fingerprint | awk -F: '''$1 == "fpr" { print $10; exit }''')
+  fingerprint=$(gpg --batch --with-colons --fingerprint | awk -F: '$1 == "fpr" { print $10; exit }')
   bash scripts/sign-rpms.sh /var/tmp/topo-ci-packages "$fingerprint"
   gpg --batch --export "$fingerprint" > /var/tmp/topo-ci-public.gpg
   rpm --import /var/tmp/topo-ci-public.gpg
@@ -61,4 +61,4 @@ docker exec "$container_name" bash -euo pipefail -c '
   install -m 0755 /artifacts/topo-setup-controlsim /usr/local/bin/topo-setup-controlsim
   python3 scripts/test-worker-setup-systemd.py --rpm /var/tmp/topo-ci-packages/baseline.rpm \
     --upgrade-rpm /var/tmp/topo-ci-packages/upgrade.rpm --simulator /usr/local/bin/topo-setup-controlsim
-' | tee "$fixture_dir/lifecycle.log"
+TOPO_FEDORA_FIXTURE
