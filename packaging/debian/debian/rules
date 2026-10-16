@@ -1,15 +1,16 @@
 #!/usr/bin/make -f
 export PATH := /usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$(PATH)
+export GO111MODULE := on
 export GOTOOLCHAIN := local
 export GOPROXY := off
 export GOSUMDB := off
 export GOMAXPROCS := 2
 export DH_GOLANG_BUILDPKG := github.com/Nischoy-ai/topo/cmd/topo
 # Tests read reviewed units, workflow fixtures and ServiceNow application files.
-export DH_GOLANG_INSTALL_EXTRA := packaging scripts .github integrations docs README.md ROADMAP.md SECURITY.md
+export DH_GOLANG_INSTALL_EXTRA := packaging scripts .github integrations docs examples README.md ROADMAP.md SECURITY.md
 
 %:
-	dh $@ --builddirectory=_build --buildsystem=golang
+	dh $@ --with=golang --builddirectory=_build --buildsystem=golang
 
 override_dh_auto_configure:
 	test ! -d vendor

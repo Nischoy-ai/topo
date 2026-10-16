@@ -48,7 +48,7 @@ def main():
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     if not args.installed:
         names = {r["candidate_package"] for r in rows if r["apt_candidate"]}
-        for name in ("golang-1.26-go", "golang-1.27-go"):
+        for name in ("golang-1.26-go", "golang-1.27-go", "dh-go"):
             compiler = report["toolchains"][name]["output"]
             if "Candidate:" in compiler and "Candidate: (none)" not in compiler:
                 names.add(name)

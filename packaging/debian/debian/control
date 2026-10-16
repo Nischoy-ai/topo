@@ -4,7 +4,8 @@ Priority: optional
 Maintainer: Soumik Sarkar <soumiks@gmail.com>
 Build-Depends:
  debhelper-compat (= 13),
- dh-sequence-golang,
+ dh-go (>= 1.69),
+ gh,
  golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2),
  python3,
  golang-github-aws-aws-sdk-go-v2-dev (>= 1.43.7),
