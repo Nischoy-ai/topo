@@ -10,6 +10,7 @@ on:
       - 'cmd/**'
       - 'internal/**'
       - 'pkg/**'
+      - 'scripts/test-worker-setup-systemd.py'
 permissions:
   contents: read
 jobs:
@@ -43,7 +44,7 @@ jobs:
     steps:
       - name: Install Fedora-native packaging tools
         run: >-
-          dnf --refresh -y install git golang go-vendor-tools rpm-build rpmdevtools
+          dnf --refresh -y --setopt=install_weak_deps=False install gh askalono-cli git golang go-vendor-tools rpm-build rpmdevtools
           rpmlint systemd-rpm-macros python3 python3-pip mock gcc
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -70,16 +71,28 @@ jobs:
           go vet ./...
           go test -race ./...
           go run -mod=mod golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+      - name: Build native synthetic lifecycle simulator
+        run: |
+          cd "/tmp/topo-fedora-results/review/source/topo-$(git rev-parse HEAD)"
+          CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=vendor go build -trimpath -o /tmp/topo-fedora-results/topo-setup-controlsim ./internal/setupcontrolsim
       - name: Produce unsigned source RPM
         run: >-
           rpmbuild -bs /tmp/topo-fedora-results/review/SPECS/topo.spec
           --define '_topdir /tmp/topo-fedora-results/review'
       - name: Clean Fedora mock build with offline build phase
         run: |
-          mock --no-bootstrap-chroot --isolation=simple \
+          mock --no-cleanup-after --no-bootstrap-chroot --isolation=simple \
             --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
             --resultdir /tmp/topo-fedora-results/mock \
             --rebuild /tmp/topo-fedora-results/review/SRPMS/*.src.rpm
+      - name: Build higher-release RPM for real transaction testing
+        run: |
+          sed 's/0\.1\./0.2./g' /tmp/topo-fedora-results/review/SPECS/topo.spec > /tmp/topo-fedora-results/review/SPECS/topo-upgrade.spec
+          rpmbuild -bs /tmp/topo-fedora-results/review/SPECS/topo-upgrade.spec --define '_topdir /tmp/topo-fedora-results/review'
+          mock --no-clean --no-cleanup-after --no-bootstrap-chroot --isolation=simple \
+            --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
+            --resultdir /tmp/topo-fedora-results/upgrade \
+            --rebuild /tmp/topo-fedora-results/review/SRPMS/topo-0.4.7-0.2.*.src.rpm
       - name: Lint native spec, source and binary RPMs
         run: |
           rpmlint /tmp/topo-fedora-results/review/SPECS/topo.spec \
@@ -99,5 +112,49 @@ jobs:
             /tmp/topo-fedora-results/review/SPECS/
             /tmp/topo-fedora-results/review/SRPMS/
             /tmp/topo-fedora-results/mock/
+            /tmp/topo-fedora-results/upgrade/
+            /tmp/topo-fedora-results/topo-setup-controlsim
+          if-no-files-found: warn
+          retention-days: 7
+
+  fedora-systemd:
+    needs: fedora-package
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04-arm
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+          - runner: ubuntu-24.04-arm
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      TOPO_FEDORA_IMAGE: ${{ matrix.image }}
+      TOPO_SETUP_DISPOSABLE_CI: 'yes'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: fedora-review-${{ matrix.release }}-${{ matrix.runner }}
+          path: ${{ runner.temp }}/fedora-review
+      - name: Actual Fedora RPM install, setup, upgrade and removal
+        run: bash packaging/distro/test-fedora-systemd.sh "$RUNNER_TEMP/fedora-review"
+      - name: Retain lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: fedora-lifecycle-${{ matrix.release }}-${{ matrix.runner }}
+          path: ${{ runner.temp }}/topo-fedora-systemd.*/*.log
           if-no-files-found: warn
           retention-days: 7

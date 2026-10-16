@@ -29,7 +29,7 @@ import (
 func main() {
 	dir := flag.String("dir", "", "private CI fixture directory")
 	flag.Parse()
-	if os.Getenv("GITHUB_ACTIONS") != "true" || os.Getenv("RUNNER_ENVIRONMENT") != "github-hosted" || os.Getenv("RUNNER_OS") != "Linux" || os.Getenv("GITHUB_JOB") != "worker-setup-systemd" || *dir == "" {
+	if os.Getenv("GITHUB_ACTIONS") != "true" || os.Getenv("RUNNER_ENVIRONMENT") != "github-hosted" || os.Getenv("RUNNER_OS") != "Linux" || (os.Getenv("GITHUB_JOB") != "worker-setup-systemd" && os.Getenv("GITHUB_JOB") != "fedora-systemd") || *dir == "" {
 		panic("disposable CI only")
 	}
 	must := func(err error) {

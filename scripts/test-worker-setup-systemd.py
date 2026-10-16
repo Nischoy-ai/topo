@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Destructive ONLY on a fresh GitHub-hosted Ubuntu VM; synthetic loopback only.
+"""Destructive ONLY on fresh hosted Ubuntu or offline Fedora CI; synthetic loopback only.
 
 Uses the built DEB's actual binary and unit, not mocks. No ServiceNow, discovery,
 IRE, reboot, production credentials, or workstation execution is permitted.
@@ -35,18 +35,22 @@ def command(*args, ok=True):
     return result
 
 
-def guard():
+def guard(package_kind):
     require(platform.system() == 'Linux' and os.geteuid() == 0, 'requires root Linux CI')
     require(os.environ.get('GITHUB_ACTIONS') == 'true'
             and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
             and os.environ.get('RUNNER_OS') == 'Linux'
-            and os.environ.get('GITHUB_JOB') == 'worker-setup-systemd', 'wrong CI host/job')
-    require(Path('/etc/os-release').read_text().split('\n').count('ID=ubuntu') == 1,
-            'requires disposable Ubuntu')
+            and os.environ.get('GITHUB_JOB') == ('fedora-systemd' if package_kind == 'rpm' else 'worker-setup-systemd'), 'wrong CI host/job')
+    distro = Path('/etc/os-release').read_text().split('\n')
+    require(('ID=fedora' if package_kind == 'rpm' else 'ID=ubuntu') in distro,
+            'requires matching disposable distribution')
+    if package_kind == 'rpm':
+        require(Path('/.dockerenv').exists() and {p.name for p in Path('/sys/class/net').iterdir()} == {'lo'},
+                'Fedora fixture requires an offline disposable container')
     require(Path('/proc/1/comm').read_text().strip() == 'systemd'
             and Path('/run/systemd/system').is_dir(), 'real systemd required')
     require(os.environ.get('TOPO_SETUP_DISPOSABLE_CI') == 'yes', 'explicit fixture opt-in required')
-    for path in ['/usr/bin/topo', '/usr/local/bin/topo', '/etc/topo-worker',
+    for path in (['/usr/bin/topo', '/usr/local/bin/topo', '/etc/topo-worker',
                  '/usr/lib/systemd/system/topo-worker.service',
                  '/lib/systemd/system/topo-worker.service',
                  '/etc/systemd/system/topo-worker.service',
@@ -57,7 +61,10 @@ def guard():
                  '/run/systemd/system/topo-worker.service',
                  '/run/topo-worker-setup.lock',
                  '/usr/local/share/ca-certificates/topo-setup-ci.crt',
-                 '/etc/systemd/system/multi-user.target.wants/topo-worker.service']:
+                 '/etc/systemd/system/multi-user.target.wants/topo-worker.service',
+                 '/etc/pki/ca-trust/source/anchors/topo-setup-ci.crt'] +
+                (['/usr/lib/systemd/system/topo-agent.service', '/etc/topo-agent',
+                  '/var/lib/topo-agent'] if package_kind == 'rpm' else [])):
         require(not os.path.lexists(path), 'existing Topo path must not be overwritten')
     require(not list(Path('/etc').glob('.topo-worker-setup-*')), 'existing setup stage preserved')
     try:
@@ -66,12 +73,13 @@ def guard():
         pass
     else:
         raise RuntimeError('existing mismatch-test group preserved')
-    for lookup in [pwd.getpwnam, grp.getgrnam]:
-        try:
-            lookup('topo-worker')
-        except KeyError:
-            continue
-        raise RuntimeError('existing Topo account/group preserved')
+    for name in ['topo-worker'] + (['topo-agent'] if package_kind == 'rpm' else []):
+        for lookup in [pwd.getpwnam, grp.getgrnam]:
+            try:
+                lookup(name)
+            except KeyError:
+                continue
+            raise RuntimeError('existing Topo account/group preserved')
     require(command('systemctl', 'show', 'topo-worker.service', '-p', 'LoadState', ok=False)
             .stdout.strip() == b'LoadState=not-found', 'existing loaded unit preserved')
 
@@ -84,10 +92,15 @@ def snapshot():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--deb', required=True)
+    packages = parser.add_mutually_exclusive_group(required=True)
+    packages.add_argument('--deb')
+    packages.add_argument('--rpm')
+    parser.add_argument('--upgrade-rpm')
     parser.add_argument('--simulator', required=True)
     args = parser.parse_args()
-    guard()  # Before any mutation, process start, token creation or certificate trust.
+    package_kind = 'rpm' if args.rpm else 'deb'
+    require(bool(args.upgrade_rpm) == bool(args.rpm), 'RPM fixture requires upgrade candidate')
+    guard(package_kind)  # Before any mutation, process start, token creation or certificate trust.
     root = Path(tempfile.mkdtemp(prefix='topo-setup-ci-', dir='/var/tmp'))
     os.chmod(root, 0o700)
     made = set()
@@ -96,32 +109,42 @@ def main():
     checks = []
     config = Path('/etc/topo-worker')
     unit = Path('/usr/lib/systemd/system/topo-worker.service')
-    cert = Path('/usr/local/share/ca-certificates/topo-setup-ci.crt')
+    cert = Path('/etc/pki/ca-trust/source/anchors/topo-setup-ci.crt' if args.rpm
+                else '/usr/local/share/ca-certificates/topo-setup-ci.crt')
+    trust_command = ('update-ca-trust', 'extract') if args.rpm else ('update-ca-certificates',)
     try:
-        extracted = root / 'deb'
-        command('dpkg-deb', '--extract', str(Path(args.deb).resolve()), str(extracted))
-        binary = extracted / 'usr/bin/topo'
-        packaged_unit = extracted / 'usr/lib/systemd/system/topo-worker.service'
-        require(binary.is_file() and packaged_unit.is_file(), 'missing package contract')
-        require(packaged_unit.read_bytes() == Path('packaging/systemd/topo-worker.package.service').read_bytes(),
-                'packaged unit differs from source')
-        command('groupadd', '--system', 'topo-worker'); made.add('group')
-        command('useradd', '--system', '--gid', 'topo-worker', '--home-dir', '/nonexistent',
-                '--shell', '/usr/sbin/nologin', '--comment', 'Topo ServiceNow Worker', 'topo-worker')
-        made.add('user')
-        # Exact same worker identity as packaging/linux/preinstall.sh; no agent account.
+        if args.rpm:
+            for candidate in [args.rpm, args.upgrade_rpm]:
+                require(command('rpm', '-qp', '--qf', '%{NAME}', str(Path(candidate).resolve())).stdout == b'topo',
+                        'unexpected candidate package')
+            command('rpm', '-Uvh', str(Path(args.rpm).resolve()))
+            made.update({'rpm', 'binary', 'unit', 'user', 'group', 'agent-user', 'agent-group'})
+            require(unit.read_bytes() == Path('packaging/systemd/topo-worker.package.service').read_bytes(),
+                    'RPM unit differs from reviewed source')
+        else:
+            extracted = root / 'deb'
+            command('dpkg-deb', '--extract', str(Path(args.deb).resolve()), str(extracted))
+            binary = extracted / 'usr/bin/topo'
+            packaged_unit = extracted / 'usr/lib/systemd/system/topo-worker.service'
+            require(binary.is_file() and packaged_unit.is_file(), 'missing package contract')
+            require(packaged_unit.read_bytes() == Path('packaging/systemd/topo-worker.package.service').read_bytes(),
+                    'packaged unit differs from source')
+            command('groupadd', '--system', 'topo-worker'); made.add('group')
+            command('useradd', '--system', '--gid', 'topo-worker', '--home-dir', '/nonexistent',
+                    '--shell', '/usr/sbin/nologin', '--comment', 'Topo ServiceNow Worker', 'topo-worker')
+            made.add('user')
+            command('install', '-o', 'root', '-g', 'root', '-m', '0755', str(binary), '/usr/bin/topo')
+            made.add('binary')
+            command('install', '-o', 'root', '-g', 'root', '-m', '0644', str(packaged_unit), str(unit))
+            made.add('unit')
         identity = pwd.getpwnam('topo-worker')
         service_gid = grp.getgrnam('topo-worker').gr_gid
         require(identity.pw_uid != 0 and identity.pw_dir == '/nonexistent'
-                and identity.pw_shell == '/usr/sbin/nologin', 'incorrect package identity')
+                and Path(identity.pw_shell).resolve() == Path('/usr/sbin/nologin').resolve(), 'incorrect package identity')
         # Only this fixture's account is altered. The unit's explicit group must win.
         command('groupadd', '--system', 'topo-setup-ci-other'); made.add('other-group')
         command('usermod', '--gid', 'topo-setup-ci-other', 'topo-worker')
         require(pwd.getpwnam('topo-worker').pw_gid != service_gid, 'mismatch fixture not established')
-        command('install', '-o', 'root', '-g', 'root', '-m', '0755', str(binary), '/usr/bin/topo')
-        made.add('binary')
-        command('install', '-o', 'root', '-g', 'root', '-m', '0644', str(packaged_unit), str(unit))
-        made.add('unit')
         command('systemctl', 'daemon-reload')
         command('systemd-analyze', 'verify', str(unit))
         require(command('systemctl', 'is-enabled', 'topo-worker.service', ok=False).stdout.strip() == b'disabled',
@@ -137,7 +160,7 @@ def main():
         origin = (fixtures / 'origin').read_text()
         require(origin.startswith('https://127.0.0.1:'), 'non-loopback simulator forbidden')
         command('install', '-m', '0644', str(fixtures / 'ca.crt'), str(cert)); made.add('cert')
-        command('update-ca-certificates')
+        command(*trust_command)
 
         def inspect_argv():
             for process in Path('/proc').iterdir():
@@ -250,6 +273,20 @@ def main():
         interact([], 1, 'existing service preserved')
         require(snapshot() == before and command('systemctl', 'is-active', 'topo-worker.service').stdout.strip() == b'active',
                 'active deployment changed by retry')
+        if args.rpm:
+            initial_release = command('rpm', '-q', '--qf', '%{RELEASE}', 'topo').stdout
+            command('rpm', '-Uvh', str(Path(args.upgrade_rpm).resolve()))
+            require(command('rpm', '-q', '--qf', '%{RELEASE}', 'topo').stdout != initial_release,
+                    'real RPM version upgrade did not occur')
+            require(snapshot() == before and pwd.getpwnam('topo-worker').pw_uid == identity.pw_uid
+                    and grp.getgrnam('topo-worker').gr_gid == service_gid, 'upgrade changed protected deployment')
+            deadline = time.monotonic() + 35
+            while command('systemctl', 'is-active', 'topo-worker.service', ok=False).stdout.strip() != b'active':
+                require(time.monotonic() < deadline, 'upgrade did not preserve running service')
+                time.sleep(0.1)
+            require(command('systemctl', 'is-enabled', 'topo-worker.service').stdout.strip() == b'enabled',
+                    'upgrade changed enabled state')
+            checks.append('real Fedora RPM upgrade preserved configuration, identity and enabled/running state')
         inspect_argv()
         journal = command('journalctl', '-u', 'topo-worker.service', '--no-pager', '-o', 'cat').stdout
         require(token not in journal, 'token leaked to service journal')
@@ -261,7 +298,15 @@ def main():
         checks.append('saved explicit yes enabled/started exact packaged unit as topo-worker; active retry refused')
         checks.append('no token in PTY output, live process arguments or service journal; no simulator tasks/IRE')
         print(json.dumps({'status': 'passed', 'checks': checks, 'simulator': audit,
-                          'scope': 'disposable Ubuntu systemd + synthetic loopback; no ServiceNow/target/reboot proof'}))
+                          'scope': 'disposable ' + ('Fedora' if args.rpm else 'Ubuntu') + ' systemd + synthetic loopback; no ServiceNow/target/reboot proof'}))
+        if args.rpm:
+            command('rpm', '-e', 'topo')
+            made.discard('rpm')
+            require(snapshot() == before and not unit.exists() and not Path('/usr/bin/topo').exists(),
+                    'RPM removal changed private configuration or retained payload')
+            require(pwd.getpwnam('topo-worker').pw_uid == identity.pw_uid,
+                    'RPM removal deleted preserved service identity')
+            print('Fedora RPM install/upgrade/remove lifecycle passed; private configuration and identities preserved')
     finally:
         # Only paths/accounts absent at entry and created by this fixture are removed.
         if 'unit' in made:
@@ -272,17 +317,23 @@ def main():
                 server.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 server.kill(); server.wait(timeout=5)
+        if 'rpm' in made:
+            command('rpm', '-e', 'topo', ok=False)
         if 'binary' in made:
             shutil.rmtree(config, ignore_errors=True)
             for stage in Path('/etc').glob('.topo-worker-setup-*'):
                 shutil.rmtree(stage)
             Path('/run/topo-worker-setup.lock').unlink(missing_ok=True)
-            Path('/usr/bin/topo').unlink()
+            Path('/usr/bin/topo').unlink(missing_ok=True)
         if 'unit' in made:
-            unit.unlink(); command('systemctl', 'daemon-reload')
+            unit.unlink(missing_ok=True); command('systemctl', 'daemon-reload')
             command('systemctl', 'reset-failed', 'topo-worker.service', ok=False)
         if 'cert' in made:
-            cert.unlink(); command('update-ca-certificates')
+            cert.unlink(); command(*trust_command)
+        if 'agent-user' in made:
+            command('userdel', 'topo-agent')
+        if 'agent-group' in made:
+            command('groupdel', 'topo-agent', ok=False)
         if 'user' in made:
             command('userdel', 'topo-worker')
         if 'other-group' in made:
@@ -295,7 +346,7 @@ def main():
         require(not unit.exists() and not cert.exists() and not Path('/usr/bin/topo').exists(),
                 'task binary/unit/certificate cleanup incomplete')
         for lookup, name in [(pwd.getpwnam, 'topo-worker'), (grp.getgrnam, 'topo-worker'),
-                             (grp.getgrnam, 'topo-setup-ci-other')]:
+                             (grp.getgrnam, 'topo-setup-ci-other')] + ([(pwd.getpwnam, 'topo-agent'), (grp.getgrnam, 'topo-agent')] if args.rpm else []):
             try:
                 lookup(name)
             except KeyError:

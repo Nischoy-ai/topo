@@ -16,8 +16,11 @@ Source2: go-vendor-tools.toml
 Source3: topo.sysusers
 
 BuildRequires: go-vendor-tools
+BuildRequires: go-rpm-macros
 BuildRequires: (golang = 1.26.9 or golang = 1.27.2)
 BuildRequires: gcc
+BuildRequires: git-core
+BuildRequires: gh
 BuildRequires: systemd-rpm-macros
 Requires: ca-certificates
 %{?systemd_requires}
@@ -45,7 +48,8 @@ export GOFLAGS=-mod=vendor
 export GOMAXPROCS=2
 case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5|go1.27.2|go1.27.2-X:nodwarf5) ;; *) exit 1 ;; esac
 %global gomodulesmode GO111MODULE=on
-%gobuild -ldflags '-X main.version=0.4.7-fedorasnapshot.%{shortcommit}' -o %{gobuilddir}/bin/topo %{goipath}/cmd/topo
+export GO_LDFLAGS="-X main.version=0.4.7-fedorasnapshot.%{shortcommit}"
+%gobuild -o %{gobuilddir}/bin/topo %{goipath}/cmd/topo
 
 %install
 %go_vendor_license_install -c %{S:2}
