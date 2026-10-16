@@ -6,11 +6,12 @@ Version: 0.4.7
 %gometa -f
 
 Name: topo
-Release: 0.1.@SNAPSHOT_DATE@git%{shortcommit}%{?dist}
+Release: 0.1%{?dist}
 Summary: Destination-neutral infrastructure discovery worker and CLI
 License: Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CC-BY-2.5 AND CC0-1.0 AND ISC AND LicenseRef-Fedora-Public-Domain AND Linux-man-pages-copyleft AND MIT AND SunPro AND bcrypt-Solar-Designer
 URL: https://github.com/Nischoy-ai/topo
 Source0: https://codeload.github.com/Nischoy-ai/topo/tar.gz/%{commit}#/%{name}-%{commit}.tar.gz
+# Generated with go_vendor_archive; reproduced offline and included in this SRPM.
 Source1: %{name}-%{commit}-vendor.tar.bz2
 Source2: go-vendor-tools.toml
 Source3: topo.sysusers
@@ -26,12 +27,13 @@ Requires: ca-certificates
 %{?systemd_requires}
 
 %description
-Topo discovers infrastructure through locally approved operations and emits
-destination-neutral observations. Its outbound worker supports ServiceNow-managed
-Linux SSH and restricted Windows HTTPS computer/interface inventory.
-Credentials, verified trust files and separate administrator preparation are
-required before discovery. Installing the package does not start discovery.
-This package is an unreleased source snapshot for Fedora review.
+Topo discovers infrastructure through locally approved operations and
+emits destination-neutral observations. Its outbound worker supports
+ServiceNow-managed Linux SSH and restricted Windows HTTPS
+computer/interface inventory. Credentials, verified trust files and
+separate administrator preparation are required before discovery.
+Installing the package does not start discovery. This package is an
+unreleased source snapshot for Fedora review.
 
 %prep
 %goprep -p1
@@ -48,7 +50,7 @@ export GOFLAGS=-mod=vendor
 export GOMAXPROCS=2
 case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5|go1.27.2|go1.27.2-X:nodwarf5) ;; *) exit 1 ;; esac
 %global gomodulesmode GO111MODULE=on
-export GO_LDFLAGS="-X main.version=0.4.7-fedorasnapshot.%{shortcommit}"
+export GO_LDFLAGS="-X main.version=0.4.7-fedorasnapshot.@SHORT_COMMIT@"
 %gobuild -o %{gobuilddir}/bin/topo %{goipath}/cmd/topo
 
 %install

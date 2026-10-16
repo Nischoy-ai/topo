@@ -89,12 +89,15 @@ jobs:
             --rebuild /tmp/topo-fedora-results/review/SRPMS/*.src.rpm
       - name: Build higher-release RPM for real transaction testing
         run: |
-          sed 's/0\.1\./0.2./g' /tmp/topo-fedora-results/review/SPECS/topo.spec > /tmp/topo-fedora-results/review/SPECS/topo-upgrade.spec
-          rpmbuild -bs /tmp/topo-fedora-results/review/SPECS/topo-upgrade.spec --define '_topdir /tmp/topo-fedora-results/review'
+          mkdir -p /tmp/topo-fedora-results/upgrade-source/SPECS
+          ln -s /tmp/topo-fedora-results/review/SOURCES /tmp/topo-fedora-results/upgrade-source/SOURCES
+          sed -e 's/^Release: 0\.1/Release: 0.2/' -e 's/0\.4\.7-0\.1\./0.4.7-0.2./' \
+            /tmp/topo-fedora-results/review/SPECS/topo.spec > /tmp/topo-fedora-results/upgrade-source/SPECS/topo.spec
+          rpmbuild -bs /tmp/topo-fedora-results/upgrade-source/SPECS/topo.spec --define '_topdir /tmp/topo-fedora-results/upgrade-source'
           mock --no-clean --no-cleanup-after --no-bootstrap-chroot --isolation=simple \
             --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
             --resultdir /tmp/topo-fedora-results/upgrade \
-            --rebuild /tmp/topo-fedora-results/review/SRPMS/topo-0.4.7-0.2.*.src.rpm
+            --rebuild /tmp/topo-fedora-results/upgrade-source/SRPMS/*.src.rpm
       - name: Inspect actual RPM license, bundled Provides and service payload
         run: |
           candidates=(/tmp/topo-fedora-results/mock/topo-0.4.7-0.1.*.rpm)
@@ -130,6 +133,8 @@ jobs:
             /tmp/topo-fedora-results/review/SRPMS/
             /tmp/topo-fedora-results/mock/
             /tmp/topo-fedora-results/upgrade/
+            /tmp/topo-fedora-results/upgrade-source/SPECS/
+            /tmp/topo-fedora-results/upgrade-source/SRPMS/
             /tmp/topo-fedora-results/topo-setup-controlsim
           if-no-files-found: warn
           retention-days: 7
