@@ -31,7 +31,7 @@ docker run --detach --name "$container_name" --privileged --cgroupns=private --n
   --env GITHUB_JOB=fedora-systemd --env TOPO_SETUP_DISPOSABLE_CI=yes \
   --workdir /workspace "$image_name"
 for attempt in {1..60}; do
-  if docker exec "$container_name" test -d /run/systemd/system; then break; fi
+  if docker exec "$container_name" systemctl show --property=Version --value >/dev/null 2>&1; then break; fi
   sleep 1
 done
 docker exec "$container_name" bash -euo pipefail -c '
