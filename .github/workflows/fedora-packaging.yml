@@ -98,9 +98,16 @@ jobs:
             --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
             --resultdir /tmp/topo-fedora-results/upgrade \
             --rebuild /tmp/topo-fedora-results/upgrade-source/SRPMS/*.src.rpm
+      - name: Lint native spec, source and binary RPMs
+        run: |
+          rpmlint /tmp/topo-fedora-results/review/SPECS/topo.spec \
+            /tmp/topo-fedora-results/review/SRPMS/*.src.rpm \
+            /tmp/topo-fedora-results/mock/*.rpm \
+            | tee /tmp/topo-fedora-results/rpmlint.txt
       - name: Inspect actual RPM license, bundled Provides and service payload
         run: |
-          candidates=(/tmp/topo-fedora-results/mock/topo-0.4.7-0.1.*.rpm)
+          arch=$(rpm --eval '%{_arch}')
+          candidates=(/tmp/topo-fedora-results/mock/topo-0.4.7-0.1.*."$arch".rpm)
           test "${#candidates[@]}" = 1
           rpm -qp --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n%{LICENSE}\n' "${candidates[0]}" > /tmp/topo-fedora-results/rpm-metadata.txt
           rpm -qp --provides "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
@@ -110,12 +117,6 @@ jobs:
           grep -Fx /usr/lib/sysusers.d/topo.conf /tmp/topo-fedora-results/rpm-files.txt
           grep -Fx /usr/lib/systemd/system/topo-worker.service /tmp/topo-fedora-results/rpm-files.txt
           grep -F 'bundled(golang(modernc.org/libc))' /tmp/topo-fedora-results/rpm-metadata.txt
-      - name: Lint native spec, source and binary RPMs
-        run: |
-          rpmlint /tmp/topo-fedora-results/review/SPECS/topo.spec \
-            /tmp/topo-fedora-results/review/SRPMS/*.src.rpm \
-            /tmp/topo-fedora-results/mock/*.rpm \
-            | tee /tmp/topo-fedora-results/rpmlint.txt
       - name: Retain Fedora environment evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -141,6 +142,9 @@ jobs:
 
   fedora-systemd:
     needs: fedora-package
+    # Preserve lifecycle diagnostics when a separate lint/metadata gate fails.
+    # The workflow still fails if any required packaging check fails.
+    if: ${{ !cancelled() }}
     strategy:
       fail-fast: false
       matrix:

@@ -2,6 +2,7 @@
 %bcond check 1
 %global goipath github.com/Nischoy-ai/topo
 %global commit @UPSTREAM_COMMIT@
+%global date @SNAPSHOT_DATE@
 Version: 0.4.7
 %gometa -f
 

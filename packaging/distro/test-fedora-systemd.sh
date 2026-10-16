@@ -35,8 +35,9 @@ for attempt in {1..60}; do
   sleep 1
 done
 docker exec "$container_name" bash -euo pipefail -c '
-  baseline=(/artifacts/mock/topo-0.4.7-0.1.*.rpm)
-  upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*.rpm)
+  arch=$(rpm --eval "%{_arch}")
+  baseline=(/artifacts/mock/topo-0.4.7-0.1.*."$arch".rpm)
+  upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*."$arch".rpm)
   test "${#baseline[@]}" = 1
   test "${#upgrade[@]}" = 1
   install -m 0755 /artifacts/topo-setup-controlsim /usr/local/bin/topo-setup-controlsim
