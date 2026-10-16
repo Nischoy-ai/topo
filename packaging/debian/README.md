@@ -19,7 +19,10 @@ this does not change the upstream signed-release compiler baseline. Ubuntu
 The candidate requires module-aware `dh-go >= 1.69` and explicitly enables
 modules; legacy `dh-golang`/GOPATH mode changes Go runtime defaults, including
 the HTTP mux behavior Topo’s controllers and simulators require. No runtime
-compatibility knob is used to hide that mismatch.
+compatibility knob is used to hide that mismatch. The source Lintian override
+is limited to its obsolete addon-provider check: `dh-go` supplies that addon,
+but current Lintian still insists on legacy `dh-golang`. Other lint results
+and all dependency/build gates remain visible.
 
 The `debian/` directory contains a `3.0 (quilt)` full-CLI source package, native
 Go/debhelper dependencies, a manpage, unchanged reviewed systemd units, separate

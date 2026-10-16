@@ -15,7 +15,8 @@ export DH_GOLANG_INSTALL_EXTRA := packaging scripts .github integrations docs ex
 override_dh_auto_configure:
 	test ! -d vendor
 	case "$$(go env GOVERSION)" in go1.26.9|go1.27.2) ;; *) echo "Unqualified downstream Go compiler" >&2; exit 1 ;; esac
-	dh_auto_configure
+	# dh-go constructs the workspace from module roots, then builds only the CLI.
+	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_configure
 
 override_dh_auto_build:
 	dh_auto_build -- -trimpath -ldflags="-X main.version=0.4.7-debiansnapshot.3adbdb3"
