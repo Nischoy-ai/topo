@@ -57,6 +57,8 @@ jobs:
           go version | tee -a /tmp/topo-fedora-results/environment.txt
           case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5|go1.27.2|go1.27.2-X:nodwarf5) ;; *) exit 1 ;; esac
           rpm --eval '%{_unitdir} %{_sysusersdir}' | tee -a /tmp/topo-fedora-results/environment.txt
+          dnf -q repoquery --qf '%{name} %{evr} %{arch}' topo > /tmp/topo-fedora-results/name-query.txt
+          dnf -q repoquery --whatprovides /usr/bin/topo >> /tmp/topo-fedora-results/name-query.txt
       - name: Prepare source-pinned review inputs and complete licensing
         run: >-
           python3 packaging/distro/prepare-fedora.py
@@ -68,9 +70,9 @@ jobs:
           export GOTOOLCHAIN=local
           export GOFLAGS=-mod=vendor
           export GOMAXPROCS=2
-          go vet ./...
-          go test -race ./...
-          go run -mod=mod golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+          go vet ./... 2>&1 | tee /tmp/topo-fedora-results/review/reports/native-vet.log
+          go test -race ./... 2>&1 | tee /tmp/topo-fedora-results/review/reports/native-race.log
+          go run -mod=mod golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./... 2>&1 | tee /tmp/topo-fedora-results/review/reports/native-vulnerability.log
       - name: Build native synthetic lifecycle simulator
         run: |
           cd "/tmp/topo-fedora-results/review/source/topo-$(git rev-parse HEAD)"
@@ -93,6 +95,18 @@ jobs:
             --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
             --resultdir /tmp/topo-fedora-results/upgrade \
             --rebuild /tmp/topo-fedora-results/review/SRPMS/topo-0.4.7-0.2.*.src.rpm
+      - name: Inspect actual RPM license, bundled Provides and service payload
+        run: |
+          candidates=(/tmp/topo-fedora-results/mock/topo-0.4.7-0.1.*.rpm)
+          test "${#candidates[@]}" = 1
+          rpm -qp --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n%{LICENSE}\n' "${candidates[0]}" > /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qp --provides "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qp --requires "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qp --scripts "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qpl "${candidates[0]}" > /tmp/topo-fedora-results/rpm-files.txt
+          grep -Fx /usr/lib/sysusers.d/topo.conf /tmp/topo-fedora-results/rpm-files.txt
+          grep -Fx /usr/lib/systemd/system/topo-worker.service /tmp/topo-fedora-results/rpm-files.txt
+          grep -F 'bundled(golang(modernc.org/libc))' /tmp/topo-fedora-results/rpm-metadata.txt
       - name: Lint native spec, source and binary RPMs
         run: |
           rpmlint /tmp/topo-fedora-results/review/SPECS/topo.spec \
@@ -106,6 +120,9 @@ jobs:
           name: fedora-review-${{ matrix.release }}-${{ matrix.runner }}
           path: |
             /tmp/topo-fedora-results/environment.txt
+            /tmp/topo-fedora-results/name-query.txt
+            /tmp/topo-fedora-results/rpm-metadata.txt
+            /tmp/topo-fedora-results/rpm-files.txt
             /tmp/topo-fedora-results/rpmlint.txt
             /tmp/topo-fedora-results/review/reports/
             /tmp/topo-fedora-results/review/SOURCES/

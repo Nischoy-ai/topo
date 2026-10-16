@@ -1,6 +1,6 @@
 # Distribution repository submission preparation
 
-Status on **2026-10-15**: preparation only. Topo has not been submitted to or
+Status on **2026-10-16**: Fedora-first packaging validation in progress. Topo has not been submitted to or
 accepted by Debian, Ubuntu or Fedora in this work. The existing signed Nischoy
 APT/RPM repositories remain unchanged. Installing from those repositories does
 not establish availability in a distribution's default repositories.
@@ -25,8 +25,7 @@ does not configure ServiceNow, target authorization, credentials or trust.
   snapshot, including compiler and packaging tools. Its compressed primary
   checksum matches the downloaded `repomd.xml` entry.
 - `topo.spec.in` is a **Fedora source-build draft**, based on the Go SIG vendor
-  template. It intentionally cannot be submitted until its cumulative license,
-  source/vendor archives, changelog and checks are complete. It now includes the CLI, matching worker/agent units, dynamic sysusers and
+  template. Its complete cumulative license, source-pinned vendor archives and maintainer changelog are implemented; native acceptance results remain required. It now includes the CLI, matching worker/agent units, dynamic sysusers and
   Fedora lifecycle macros; native build/lint/lifecycle validation remains a gate.
 - `go-vendor-tools.toml` supplies explicit vendor-generation input with no
   dependency overrides or license exclusions.
@@ -34,23 +33,21 @@ does not configure ServiceNow, target authorization, credentials or trust.
   public maintainer, Soumik Sarkar <soumiks@gmail.com>. Sponsor, account, ticket
   and artifact URLs remain unset; no downstream status is inferred.
 
-The spec retains unresolved source/tag/version/maintainer tokens deliberately.
 The separate new `topo worker setup` work is unpublished and cannot be attributed
-to the existing 0.4.7 worker. Select a reviewed source and authorized new version
-before rendering submission metadata; do not retag 0.4.7. A template with any
-unresolved token, or null required submission field, must not enter a build or
-upload pipeline. No renderer or upload automation is enabled here.
+to the existing 0.4.7 worker. `prepare-fedora.py` renders a commit-pinned,
+unsigned review snapshot, verifies downloaded source against every public Git
+blob and rejects unresolved tokens or license differences. It does not upload
+or publish anything. Existing tags and released asset bytes remain unchanged.
 
-No `.dsc`, `.changes`, source RPM, distro build or lint result is represented as
-completed. The current host is macOS, has Go 1.25.5, and has no `sbuild`,
-`lintian`, `rpmbuild` or `dh-make-golang`; it is not a distro build environment.
-Do not use the older local compiler for release evidence. Existing Docker and
-installed Topo are out of scope; use disposable builders for the gates below.
+Native Fedora 44 and Rawhide source packaging is tested on disposable hosted
+amd64/arm64 runners. The upstream signed-release compiler stays at Go 1.26.9;
+the explicitly qualified Fedora matrix adds the distro Go 1.27.2 compiler.
+`GOTOOLCHAIN=local` prevents a package build from downloading a compiler.
+No workstation Docker, installed Topo or live lab is used.
 
-Run `python3 packaging/distro/check-preparation.py` to check the source hash,
-snapshot consistency and draft guards. Its recorded output is
-`preparation-checks.json`: a preparation PASS explicitly reports
-`submission_ready: false` and `distro_builds: NOT RUN`.
+`check-preparation.py` remains a static metadata check, not a native build
+verdict. Its dated `preparation-checks.json` reports the earlier preparation
+state. Real results must be read from the exact source snapshot's CI artifacts.
 
 ## Debian: dependency closure before an uploadable source package
 
@@ -148,48 +145,44 @@ provide the source/vendor archive and license-report workflow. Generated license
 results still require maintainer review; `Apache-2.0` alone is not the combined
 license expression for all code statically linked into Topo.
 
-The checked Rawhide x86_64 snapshot contains Go 1.27.2-1.fc46, go2rpm
-1.19.0-3.fc45 and go-vendor-tools 0.13.0-1.fc45, with no exact `topo` package.
-That is not release-wide name clearance or evidence for Fedora stable. The
-draft explicitly requires 1.26.9, preserving the current exact release baseline;
-it will not build against that Rawhide default. A Fedora build target providing
-1.26.9 or an explicitly approved and tested newer compiler policy is needed.
-Do not download a compiler from inside the package build or weaken this guard.
+The October 15 Rawhide metadata snapshot contains Go 1.27.2-1.fc46,
+go2rpm 1.19.0-3.fc45 and go-vendor-tools 0.13.0-1.fc45, with no exact `topo`
+package. This is not release-wide name clearance. Native Fedora 44 additionally
+provides Go 1.26.9 with Fedora's `nodwarf5` build variant. The compiler matrix is
+explicit in `ROADMAP.md`; unknown versions fail rather than downloading a new
+compiler or changing upstream dependency pins.
 
-Complete on a disposable Fedora packaging builder:
+`prepare-fedora.py --commit FULL_PUBLIC_SHA --output NEW_DIRECTORY` generates
+`SOURCES`, `SPECS` and reports. It verifies all downloaded source against the
+Git tree, uses official Go Vendor Tools with the Askalono detector, preserves
+module files and adds the fully attributed license notices. Every license file
+is checked, including hash-pinned manual classifications for composite texts.
+See [license review](fedora-license-review.md) for source/header/artwork details.
 
-1. Verify the exact upstream tag/source and source archive hash. Generate the
-   vendor archive from that tag with `go_vendor_archive`, explicit config and
-   the approved compiler. Compare generated `go.mod`/`go.sum` with upstream;
-   review any tidy drift rather than silently changing dependency pins.
-2. Use `go_vendor_license` to produce and review the full license report;
-   retain every required license/notice, resolve unknowns and replace the
-   draft's `@CUMULATIVE_SPDX_AFTER_VENDOR_REVIEW@` token. Validate generated
-   bundled module Provides and the license-install file list.
-3. Complete the real maintainer changelog, source locations, name clearance and
-   service-package parity: distro user creation/lifecycle macros, disabled
-   unconfigured services, preserved configuration and safe removal. Existing
-   nFPM scriptlets must not simply be copied as Fedora policy compliance.
-4. Expand/inspect the spec with the target's real RPM macros, create an SRPM,
-   build with `mock` offline from included sources, run tests, rpmlint and
-   install/upgrade/remove checks on disposable machines. Qualify amd64 and
-   arm64 separately; no architecture acceptance is inferred here.
-5. Obtain the maintainer's Fedora account/sponsorship as needed, then follow the
-   [new-contributor process](https://docs.fedoraproject.org/en-US/package-maintainers/New_Package_Process_for_New_Contributors/)
-   and [package review process](https://docs.fedoraproject.org/en-US/package-maintainers/Package_Review_Process/).
-   These docs returned an access-denied page to the research client on this date;
-   verify the current procedure before filing. Review, dist-git import, Koji
-   builds and publication are not completed by a local spec or Copr build.
+The native workflow builds an unsigned source RPM and uses `mock` with an
+offline build phase. The spec retains Fedora Go flags, runs `%gotest` and the
+vendor license check, installs a man page and both reviewed units, and uses
+sysusers plus standard systemd macros. Separate disposable systemd containers
+exercise actual RPM install, protected worker setup, a higher-release RPM
+upgrade and removal against a synthetic loopback server. The higher release is
+a CI transaction fixture of the same code, not a second product release.
+Native vet/race/vulnerability checks and rpmlint are required as well.
+No actual ServiceNow, target, reboot or production-readiness proof follows.
+
+The [submission and account checklist](fedora-submission.md) contains the
+prepared review text and current official process. After successful local/CI
+qualification, public Copr hosting, a Fedora username, review and sponsorship
+are still required. No external request has been filed.
 
 ## Source preparation follow-up
 
 The full-CLI candidate now has a reproducible 66-module vendor archive and
 network-disabled Linux amd64/arm64 cross-build evidence. No module pins changed.
 See [source preparation](fedora-source-preparation.md) and its exact receipts.
-The initial license report failed on three files after three checksum-pinned
+The historical initial license report failed on three files after three checksum-pinned
 composite-license classifications; [license review](fedora-license-review.md)
 records each one. These are not Fedora source-RPM builds or acceptance.
-The spec placeholders and service-package parity gates remain open.
+The subsequent classification and native packaging work supersedes those initial gaps; final native results must be read separately.
 
 ## Remaining gates
 
@@ -201,7 +194,7 @@ The spec placeholders and service-package parity gates remain open.
 | Distro reviewer/sponsor and archive acceptance | External distribution decisions, not promised dates. |
 | Ubuntu release/component and sync/backport route | Downstream maintainers and archive policy. |
 
-This preparation does not change runtime code, the current install path,
+This packaging preparation does not change the current published install path,
 signed releases, repositories, signing policy or supported discovery scope.
 
 The October 16 follow-up completes those classifications and retains full musl,

@@ -39,6 +39,7 @@ docker exec "$container_name" bash -euo pipefail -c '
   upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*.rpm)
   test "${#baseline[@]}" = 1
   test "${#upgrade[@]}" = 1
+  install -m 0755 /artifacts/topo-setup-controlsim /usr/local/bin/topo-setup-controlsim
   python3 scripts/test-worker-setup-systemd.py --rpm "${baseline[0]}" \
-    --upgrade-rpm "${upgrade[0]}" --simulator /artifacts/topo-setup-controlsim
+    --upgrade-rpm "${upgrade[0]}" --simulator /usr/local/bin/topo-setup-controlsim
 ' | tee "$fixture_dir/lifecycle.log"

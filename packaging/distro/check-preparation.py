@@ -45,7 +45,7 @@ def main():
         "public_maintainer_identity_complete": bool(
             fields["public_maintainer_name"] and fields["public_maintainer_email"]),
         "submission_ready": False,
-        "distro_builds": "NOT RUN",
+        "distro_builds": "NOT EVALUATED BY THIS STATIC CHECK",
         "external_submissions": "NONE",
         "limits": "Metadata consistency only; see README for open packaging gates",
     }, indent=2))

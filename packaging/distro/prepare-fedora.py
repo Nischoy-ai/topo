@@ -114,6 +114,29 @@ def main():
         )
     if any((source / name).read_bytes() != content for name, content in original.items()):
         raise ValueError("module files drifted during vendor preparation")
+    # Regenerate from a different path using only the populated module cache.
+    # The reviewed archive must not depend on the checkout path or a second download.
+    repeat = output / "source-repeat"
+    shutil.copytree(source, repeat, ignore=shutil.ignore_patterns("vendor"))
+    repeated_vendor = output / "vendor-repeat.tar.bz2"
+    offline_env = env | {"GOPROXY": "off", "GOSUMDB": "off"}
+    with (reports / "vendor-repeat.log").open("w") as log:
+        subprocess.run(
+            ["go_vendor_archive", "create", "--config", str(repeat / "packaging/distro/go-vendor-tools.toml"),
+             "--no-use-module-proxy", "--output", str(repeated_vendor), str(repeat)],
+            cwd=repeat, env=offline_env, stdout=log, stderr=subprocess.STDOUT, check=True,
+        )
+    if digest(vendor) != digest(repeated_vendor):
+        raise ValueError("vendor archive differs across paths/offline regeneration")
+    if any((repeat / name).read_bytes() != content for name, content in original.items()):
+        raise ValueError("module files drifted during offline regeneration")
+    (reports / "vendor-reproduction.json").write_text(json.dumps({
+        "status": "passed", "sha256": digest(vendor), "bytes": vendor.stat().st_size,
+        "different_source_paths": True, "repeat_proxy_and_sumdb": "off",
+        "module_files_unchanged": True,
+    }, indent=2) + "\n")
+    shutil.rmtree(repeat)
+    repeated_vendor.unlink()
     with (reports / "licenses.log").open("w") as log:
         subprocess.run(
             ["go_vendor_license", "-d", "askalono", "--config", str(config),
@@ -145,6 +168,7 @@ def main():
         "tracked_source_files_verified": checked,
         "go_version": version,
         "module_files_unchanged": True,
+        "vendor_reproduction": "passed_across_paths_with_offline_repeat",
         "license_expression": EXPECTED_LICENSE,
         "undetected_licenses": [],
         "artifacts": {
