@@ -117,7 +117,9 @@ def main():
             for candidate in [args.rpm, args.upgrade_rpm]:
                 require(command('rpm', '-qp', '--qf', '%{NAME}', str(Path(candidate).resolve())).stdout == b'topo',
                         'unexpected candidate package')
-            command('rpm', '-Uvh', str(Path(args.rpm).resolve()))
+            installed = command('rpm', '-Uvh', str(Path(args.rpm).resolve()), ok=False)
+            require(installed.returncode == 0, 'RPM installation failed: ' +
+                    (installed.stdout + installed.stderr).decode(errors='replace')[:4096])
             made.update({'rpm', 'binary', 'unit', 'user', 'group', 'agent-user', 'agent-group'})
             require(unit.read_bytes() == Path('packaging/systemd/topo-worker.package.service').read_bytes(),
                     'RPM unit differs from reviewed source')
@@ -202,6 +204,9 @@ def main():
                         break
                 require(token not in body, 'token leaked to setup output')
                 require((process.returncode == 0) == (expected_code == 0), 'unexpected setup exit status')
+                if marker.encode() not in body or next_answer != len(answers):
+                    print('Bounded token-free setup diagnostic:', bytes(body).decode(errors='replace'))
+                    print('Answers supplied:', next_answer, 'of', len(answers))
                 require(marker.encode() in body and next_answer == len(answers), 'missing setup outcome/prompt')
             finally:
                 if process.poll() is None:
