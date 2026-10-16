@@ -31,7 +31,8 @@ neither target access nor CMDB delivery.
 
 The ServiceNow application must already be installed with its required indexes
 and discovery source. An administrator and credential custodian must complete
-the [identity, OAuth and profile setup](pilot-quickstart.md#2-create-the-least-privilege-servicenow-identities).
+the separate [one-time administrator preparation](administrator-preparation.md).
+Setup reuses those records; it does not add a ServiceNow configuration wizard.
 Leave schedules inactive while connecting a new worker.
 
 Have these files ready on the discovery server:

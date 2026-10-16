@@ -9,6 +9,7 @@ verification and component details.
 | Task | Guide |
 | --- | --- |
 | Install the ServiceNow application and indexes | [XML installation and recovery](servicenow-update-set.md) · [Index checklist](servicenow-index-setup.md) |
+| Prepare identities, OAuth and a first Linux profile once | [Administrator preparation](administrator-preparation.md) |
 | Configure identities, protocol credentials, targets and scans | [Linux/Windows setup](mixed-inventory-setup.md) · [SSH-only setup](pilot-quickstart.md) |
 | Install the Linux or macOS worker | [Package-manager installation](distribution.md) |
 | Understand leases, retry, cancellation and retention | [Managed worker](servicenow-worker.md) |

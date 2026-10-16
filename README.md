@@ -42,10 +42,15 @@ Follow [your first ServiceNow discovery run](docs/first-success.md):
 1. Verify and import the **Topo 0.4.7 native XML**; confirm all three sets,
    474 updates and 32 required ordered index definitions, then run the
    discovery-source Fix Script.
-2. Configure least-privilege access, one approved Linux target and its verified
-   host key; install the [signed 0.4.7 worker](docs/distribution.md), check it and start it.
+2. Install the [signed 0.4.7 worker](docs/distribution.md) on your discovery
+   server, check its prepared connection and start it.
 3. Choose **Run now**, inspect the CMDB result and repeat to confirm
    reconciliation before enabling a schedule.
+
+After app import and before connecting the server, an administrator and
+credential custodian complete the separate [one-time preparation](docs/administrator-preparation.md)
+for identities, restricted OAuth, approved targets and the discovery profile.
+For a prepared installation, verify and reuse that configuration.
 
 The guide starts with Linux SSH and adds Windows, CIDRs, the Linux background
 service and macOS as optional next steps. Installation alone does not configure
