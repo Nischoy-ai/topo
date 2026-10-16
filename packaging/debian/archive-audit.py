@@ -40,7 +40,7 @@ def main():
         "source_commit": mapping["source_commit"],
         "apt_inrelease_sha256": roots,
         "modules": rows,
-        "toolchains": {name: command(["apt-cache", "policy", name]) for name in ("golang-go", "golang-1.26-go", "dh-golang", "dh-go")},
+        "toolchains": {name: command(["apt-cache", "policy", name]) for name in ("golang-go", "golang-1.26-go", "golang-1.27-go", "dh-golang", "dh-go")},
         "exact_topo_name": command(["apt-cache", "policy", "topo"]),
         "upload_ready": False,
         "limits": ["APT update must succeed without insecure/trust overrides before this script runs", "Candidate package versions do not establish nested Go module versions or API compatibility", "An import-root miss may need a documented distro module mapping, not a missing-package claim", "No acceptance, security equivalence or build qualification follows from availability"],
@@ -48,9 +48,10 @@ def main():
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     if not args.installed:
         names = {r["candidate_package"] for r in rows if r["apt_candidate"]}
-        compiler = report["toolchains"]["golang-1.26-go"]["output"]
-        if "Candidate:" in compiler and "Candidate: (none)" not in compiler:
-            names.add("golang-1.26-go")
+        for name in ("golang-1.26-go", "golang-1.27-go"):
+            compiler = report["toolchains"][name]["output"]
+            if "Candidate:" in compiler and "Candidate: (none)" not in compiler:
+                names.add(name)
         for name in sorted(names):
             print(name)
 

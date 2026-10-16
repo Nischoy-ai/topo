@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-export PATH := /usr/lib/go-1.26/bin:$(PATH)
+export PATH := /usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$(PATH)
 export GOTOOLCHAIN := local
 export GOPROXY := off
 export GOSUMDB := off
@@ -13,7 +13,7 @@ export DH_GOLANG_INSTALL_EXTRA := packaging scripts .github integrations docs RE
 
 override_dh_auto_configure:
 	test ! -d vendor
-	test "$$(go env GOVERSION)" = go1.26.9
+	case "$$(go env GOVERSION)" in go1.26.9|go1.27.2) ;; *) echo "Unqualified downstream Go compiler" >&2; exit 1 ;; esac
 	dh_auto_configure
 
 override_dh_auto_build:

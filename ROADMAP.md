@@ -32,6 +32,12 @@ Fedora source packaging separately qualifies the distro-provided Go 1.26.9
 (Fedora 44) and Go 1.27.2 (Rawhide), including Fedora’s nodwarf5 variant where
 applicable, and requires native security, race and source-package tests. This
 downstream compiler matrix does not change the upstream signed-release baseline.
+Debian/Ubuntu archive preparation separately evaluates native Go 1.26.9 and
+1.27.2 with unbundled distro libraries. An available newer compiler is not
+qualification: archive-library build, test, security and lifecycle evidence
+remain required. Older 1.26 patch levels are rejected. This packaging work
+does not alter the upstream Go 1.26.9 signed-release baseline or M3 order.
+
 An unexpected compiler version fails the packaging gate until reviewed.
 
 <a id="supported-customer-beta-path"></a>

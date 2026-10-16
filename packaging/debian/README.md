@@ -12,6 +12,10 @@ package names, import roots and versions must be checked against each archive.
 The October 15 preliminary index audit found older AWS/Azure/govmomi libraries
 and three unresolved roots. Candidate names are not dependency closure.
 
+Native downstream Go 1.26.9/1.27.2 evaluation is staged in `ROADMAP.md`;
+this does not change the upstream signed-release compiler baseline. Ubuntu
+26.10 has a 1.27 toolchain to evaluate; its older 1.26.8 is not a fallback.
+
 The `debian/` directory contains a `3.0 (quilt)` full-CLI source package, native
 Go/debhelper dependencies, a manpage, unchanged reviewed systemd units, separate
 service users and an installed CLI smoke test. Installation neither enables nor

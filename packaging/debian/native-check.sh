@@ -12,8 +12,8 @@ set -e
 python3 packaging/debian/archive-audit.py --map packaging/debian/dependency-map.json --output "$out/installed-providers.json" --installed
 printf '%s\n' "$install_status" > "$out/dependency-install.exit"
 dpkg-query -W > "$out/installed-packages.txt"
-PATH=/usr/lib/go-1.26/bin:$PATH go version > "$out/compiler.txt"
-PATH=/usr/lib/go-1.26/bin:$PATH go env >> "$out/compiler.txt"
+PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$PATH go version > "$out/compiler.txt"
+PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$PATH go env >> "$out/compiler.txt"
 # Native packaging tools and original public upstream tree, no Fedora vendor data.
 python3 packaging/debian/prepare-source.py --output "$out/source" > "$out/source-tree.txt"
 tree=$(cat "$out/source-tree.txt")
