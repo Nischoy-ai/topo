@@ -12,6 +12,8 @@ set -e
 python3 packaging/debian/archive-audit.py --map packaging/debian/dependency-map.json --output "$out/installed-providers.json" --installed
 printf '%s\n' "$install_status" > "$out/dependency-install.exit"
 dpkg-query -W > "$out/installed-packages.txt"
+PATH=/usr/lib/go-1.26/bin:$PATH go version > "$out/compiler.txt"
+PATH=/usr/lib/go-1.26/bin:$PATH go env >> "$out/compiler.txt"
 # Native packaging tools and original public upstream tree, no Fedora vendor data.
 python3 packaging/debian/prepare-source.py --output "$out/source" > "$out/source-tree.txt"
 tree=$(cat "$out/source-tree.txt")
@@ -19,6 +21,10 @@ cp /var/lib/apt/lists/*InRelease "$out/"
 set +e
 (cd "$tree" && dpkg-checkbuilddeps) > "$out/checkbuilddeps.log" 2>&1
 deps_status=$?
+licensecheck --recursive --copyright --machine "$tree" > "$out/source-licensecheck.log" 2>&1
+license_status=$?
+lintian "$out/source/"*.dsc > "$out/lintian-source.log" 2>&1
+lintian_status=$?
 # Network namespace denies all external traffic. GOPROXY/GOSUMDB are also off.
 # -d is diagnostic only: exposes API/import failures beyond missing Build-Depends.
 # It never makes an upload-ready result, even if an incidental build succeeds.
@@ -26,6 +32,8 @@ deps_status=$?
 build_status=$?
 set -e
 printf '%s\n' "$deps_status" > "$out/checkbuilddeps.exit"
+printf '%s\n' "$license_status" > "$out/source-licensecheck.exit"
+printf '%s\n' "$lintian_status" > "$out/lintian-source.exit"
 printf '%s\n' "$build_status" > "$out/diagnostic-build.exit"
 python3 - "$out" <<'PY'
 import json,sys
@@ -35,6 +43,8 @@ status={'upload_ready':False,'archive_accepted':False,'source_package_signed':Fa
  'dependency_install_exit':int((p/'dependency-install.exit').read_text()),
  'checkbuilddeps_exit':int((p/'checkbuilddeps.exit').read_text()),
  'diagnostic_offline_build_exit':int((p/'diagnostic-build.exit').read_text()),
+ 'source_lintian_exit':int((p/'lintian-source.exit').read_text()),
+ 'source_license_scan_exit':int((p/'source-licensecheck.exit').read_text()),
  'missing_apt_candidates':[r['candidate_package'] for r in a['modules'] if not r['apt_candidate']],
  'missing_exact_import_roots':[r['module'] for r in a['modules'] if not r['exact_import_directory_exists']],
  'remaining_gates':['dependency/module-version closure','DEP-5 copyright review','clean build without -d','unit/race/vulnerability tests on archive libraries','lintian/autopkgtest/lifecycle','owner signing key and sponsor review'],

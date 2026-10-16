@@ -23,7 +23,9 @@ inventory. This candidate must not be uploaded as a finished package.
 Use the `debian-ubuntu-archive-audit` workflow on disposable GitHub runners. It
 pins official Debian unstable and Ubuntu 26.10/26.04 image digests, uses normal
 signature-verified APT repositories, saves their signed InRelease roots, installs
-available candidate libraries and records exact installed package/import paths.
+available candidate libraries and records exact installed package/import paths. Known single-module package
+minimums include the unchanged x/crypto and x/net security baselines; nested
+AWS/Azure module compatibility still requires source-level review.
 
 `native-check.sh` produces an unsigned source candidate with `prepare-source.py`,
 runs `dpkg-checkbuilddeps`, then attempts a diagnostic build with all external

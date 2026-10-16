@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates git python3 dpkg-dev debhelper dh-golang lintian licensecheck gcc util-linux
+          apt-get install -y --no-install-recommends ca-certificates git python3 dpkg-dev debhelper dh-golang lintian licensecheck build-essential util-linux
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -48,6 +48,15 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: debian-audit-${{ matrix.suite }}
-          path: /tmp/topo-debian-results/
+          path: |
+            /tmp/topo-debian-results/*.json
+            /tmp/topo-debian-results/*.txt
+            /tmp/topo-debian-results/*.log
+            /tmp/topo-debian-results/*.exit
+            /tmp/topo-debian-results/*InRelease
+            /tmp/topo-debian-results/source/*.dsc
+            /tmp/topo-debian-results/source/*.tar.*
+            /tmp/topo-debian-results/source/*.json
+            /tmp/topo-debian-results/source/*.log
           if-no-files-found: error
           retention-days: 7
