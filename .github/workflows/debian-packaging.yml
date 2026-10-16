@@ -25,7 +25,7 @@ jobs:
     container:
       image: ${{ matrix.image }}
       # Only this disposable GitHub runner; needed to deny build-phase networking.
-      options: --cap-add SYS_ADMIN --security-opt seccomp=unconfined
+      options: --cap-add SYS_ADMIN --cap-add NET_ADMIN --security-opt seccomp=unconfined
     env:
       DEBIAN_FRONTEND: noninteractive
     steps:
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates git python3 dpkg-dev debhelper dh-golang lintian licensecheck build-essential util-linux
+          apt-get install -y --no-install-recommends ca-certificates git python3 dpkg-dev debhelper dh-golang lintian licensecheck build-essential util-linux iproute2
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}

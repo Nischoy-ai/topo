@@ -33,7 +33,9 @@ AWS/Azure module compatibility still requires source-level review.
 
 `native-check.sh` produces an unsigned source candidate with `prepare-source.py`,
 runs `dpkg-checkbuilddeps`, then attempts a diagnostic build with all external
-network access denied by a network namespace and Go proxy/checksum lookups off.
+network access denied by a network namespace (loopback enabled for local protocol
+simulators) and Go proxy/checksum lookups off. Tests use dh-golang’s own build
+environment across every Topo package.
 The diagnostic uses `-d` to expose import/API failures even when declared
 Build-Depends are missing. **It is not a clean build or an acceptance gate.**
 `STATUS.json` always keeps `upload_ready: false`; a green audit job means that

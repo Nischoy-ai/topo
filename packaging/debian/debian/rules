@@ -20,7 +20,7 @@ override_dh_auto_build:
 	dh_auto_build -- -trimpath -ldflags="-X main.version=0.4.7-debiansnapshot.3adbdb3"
 
 override_dh_auto_test:
-	cd _build/src/github.com/Nischoy-ai/topo && go test -timeout 10m ./...
+	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_test -- -timeout 10m
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source

@@ -28,7 +28,7 @@ lintian_status=$?
 # Network namespace denies all external traffic. GOPROXY/GOSUMDB are also off.
 # -d is diagnostic only: exposes API/import failures beyond missing Build-Depends.
 # It never makes an upload-ready result, even if an incidental build succeeds.
-(cd "$tree" && unshare --net -- dpkg-buildpackage --no-sign -b -d) > "$out/diagnostic-build.log" 2>&1
+(cd "$tree" && unshare --net -- sh -ec 'ip link set lo up; exec dpkg-buildpackage --no-sign -b -d') > "$out/diagnostic-build.log" 2>&1
 build_status=$?
 set -e
 printf '%s\n' "$deps_status" > "$out/checkbuilddeps.exit"
