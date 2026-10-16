@@ -1,0 +1,92 @@
+{
+  "source_url": "https://dl.fedoraproject.org/pub/fedora/linux/development/rawhide/Everything/x86_64/os/repodata/repomd.xml",
+  "primary_sha256": "5edc507b8d163597c49ae1cdefa43d938ccc0b1b3741bbe9649d98a1bcc926a8",
+  "exact_topo_found": false,
+  "packages": [
+    {
+      "name": "go-vendor-tools",
+      "arch": "noarch",
+      "version": {
+        "epoch": "0",
+        "ver": "0.13.0",
+        "rel": "1.fc45"
+      },
+      "location": {
+        "href": "Packages/g/go-vendor-tools-0.13.0-1.fc45.noarch.rpm"
+      },
+      "checksum": "9fd2a0f8f4146537e6008b055c6f26d943b1ae0a8cfaeb4c05f11a596934ac5e"
+    },
+    {
+      "name": "go2rpm",
+      "arch": "noarch",
+      "version": {
+        "epoch": "0",
+        "ver": "1.19.0",
+        "rel": "3.fc45"
+      },
+      "location": {
+        "href": "Packages/g/go2rpm-1.19.0-3.fc45.noarch.rpm"
+      },
+      "checksum": "119b21cff96eed50d65f2900ba8c7010dffe3c363d9506d26352e366d7a7f01f"
+    },
+    {
+      "name": "golang",
+      "arch": "x86_64",
+      "version": {
+        "epoch": "0",
+        "ver": "1.27.2",
+        "rel": "1.fc46"
+      },
+      "location": {
+        "href": "Packages/g/golang-1.27.2-1.fc46.x86_64.rpm"
+      },
+      "checksum": "31b9dd21d2f16a96f0a6abbd8a9639a759f2a6cf15ea5a5fb21c42d5f9f83dac"
+    },
+    {
+      "name": "golang-bin",
+      "arch": "x86_64",
+      "version": {
+        "epoch": "0",
+        "ver": "1.27.2",
+        "rel": "1.fc46"
+      },
+      "location": {
+        "href": "Packages/g/golang-bin-1.27.2-1.fc46.x86_64.rpm"
+      },
+      "checksum": "0751f5e30f1df6da08d06d8e07adfb21fcc2f23fe63888a3c04931c9fcc922b9"
+    },
+    {
+      "name": "rpmautospec",
+      "arch": "noarch",
+      "version": {
+        "epoch": "0",
+        "ver": "0.8.5",
+        "rel": "2.fc46"
+      },
+      "location": {
+        "href": "Packages/r/rpmautospec-0.8.5-2.fc46.noarch.rpm"
+      },
+      "checksum": "4b0df97f401d054a800090cc5b288c3c23bd6721bb917c9c627f4ca752a052f1"
+    },
+    {
+      "name": "systemd-rpm-macros",
+      "arch": "noarch",
+      "version": {
+        "epoch": "0",
+        "ver": "262",
+        "rel": "3.fc46"
+      },
+      "location": {
+        "href": "Packages/s/systemd-rpm-macros-262-3.fc46.noarch.rpm"
+      },
+      "checksum": "a2d61da4b600ae4a97302fec52d52d7069bebd2b96bb1a6fc090d817a57cd8bc"
+    }
+  ],
+  "limits": [
+    "Rawhide x86_64 only; not release-wide name clearance",
+    "HTTPS snapshot, not repository-signature verification",
+    "Availability only, not build validation"
+  ],
+  "observed_at_utc": "2026-10-16T02:30:05.903202+00:00",
+  "repomd_sha256": "fd5780a9cf5ffb278f13e21949e624a9761a7982894fad714d841da6027329c1"
+}
