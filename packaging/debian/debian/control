@@ -1,0 +1,85 @@
+Source: topo
+Section: net
+Priority: optional
+Maintainer: Soumik Sarkar <soumiks@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-sequence-golang,
+ golang-1.26-go (>= 1.26.9),
+ python3,
+ golang-github-aws-aws-sdk-go-v2-dev,
+ golang-github-aws-smithy-go-dev,
+ golang-github-azure-azure-sdk-for-go-dev,
+ golang-github-azure-go-ntlmssp-dev,
+ golang-github-azuread-microsoft-authentication-library-for-go-dev,
+ golang-github-cznic-mathutil-dev,
+ golang-github-davecgh-go-spew-dev,
+ golang-github-dustin-go-humanize-dev,
+ golang-github-emicklei-go-restful-dev,
+ golang-github-evanphx-json-patch-dev,
+ golang-github-fxamacker-cbor-dev,
+ golang-github-go-logr-logr-dev,
+ golang-github-go-openapi-jsonpointer-dev,
+ golang-github-go-openapi-jsonreference-dev,
+ golang-github-go-openapi-swag-dev,
+ golang-github-golang-jwt-jwt-v5-dev,
+ golang-github-google-gnostic-models-dev,
+ golang-github-google-uuid-dev,
+ golang-github-gosnmp-gosnmp-dev,
+ golang-github-josharian-intern-dev,
+ golang-github-json-iterator-go-dev,
+ golang-github-kylelemons-godebug-dev,
+ golang-github-mailru-easyjson-dev,
+ golang-github-mattn-go-isatty-dev,
+ golang-github-modern-go-concurrent-dev,
+ golang-github-modern-go-reflect2-dev,
+ golang-github-munnerz-goautoneg-dev,
+ golang-github-ncruces-go-strftime-dev,
+ golang-github-pkg-browser-dev,
+ golang-github-remyoudompheng-bigfft-dev,
+ golang-github-vmware-govmomi-dev,
+ golang-github-x448-float16-dev,
+ golang-golang-x-crypto-dev,
+ golang-golang-x-exp-dev,
+ golang-golang-x-net-dev,
+ golang-golang-x-oauth2-dev,
+ golang-golang-x-sys-dev,
+ golang-golang-x-term-dev,
+ golang-golang-x-text-dev,
+ golang-golang-x-time-dev,
+ golang-google-protobuf-dev,
+ golang-gopkg-inf.v0-dev,
+ golang-gopkg-yaml.v2-dev,
+ golang-gopkg-yaml.v3-dev,
+ golang-k8s-api-dev,
+ golang-k8s-apimachinery-dev,
+ golang-k8s-client-go-dev,
+ golang-k8s-klog-dev,
+ golang-k8s-kube-openapi-dev,
+ golang-k8s-sigs-json-dev,
+ golang-k8s-sigs-randfill-dev,
+ golang-k8s-sigs-structured-merge-diff-v6-dev,
+ golang-k8s-sigs-yaml-dev,
+ golang-k8s-utils-dev,
+ golang-modernc-libc-dev,
+ golang-modernc-memory-dev,
+ golang-modernc-sqlite-dev,
+Standards-Version: 4.7.4
+Homepage: https://github.com/Nischoy-ai/topo
+Rules-Requires-Root: no
+XS-Go-Import-Path: github.com/Nischoy-ai/topo
+
+Package: topo
+Architecture: any
+Depends:
+ adduser,
+ ca-certificates,
+ ${misc:Depends},
+ ${shlibs:Depends},
+Static-Built-Using: ${misc:Static-Built-Using}
+Description: destination-neutral infrastructure discovery worker and CLI
+ Topo discovers infrastructure through compiled-in, locally approved operations
+ and emits destination-neutral observations. Its outbound worker supports
+ ServiceNow-managed Linux SSH and restricted Windows HTTPS computer/interface
+ inventory. Administrator preparation, credentials and verified trust files
+ are required before discovery. Installation does not enable or start services.

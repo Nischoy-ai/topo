@@ -1,0 +1,43 @@
+#!/bin/bash
+# Disposable CI only. Records blockers; this audit is NOT a package acceptance gate.
+set -euo pipefail
+out=/tmp/topo-debian-results
+mkdir -p "$out"
+python3 packaging/debian/archive-audit.py --map packaging/debian/dependency-map.json --output "$out/apt-candidates.json" > "$out/available-packages.txt"
+mapfile -t candidates < "$out/available-packages.txt"
+set +e
+apt-get install -y --no-install-recommends "${candidates[@]}" > "$out/dependency-install.log" 2>&1
+install_status=$?
+set -e
+python3 packaging/debian/archive-audit.py --map packaging/debian/dependency-map.json --output "$out/installed-providers.json" --installed
+printf '%s\n' "$install_status" > "$out/dependency-install.exit"
+dpkg-query -W > "$out/installed-packages.txt"
+# Native packaging tools and original public upstream tree, no Fedora vendor data.
+python3 packaging/debian/prepare-source.py --output "$out/source" > "$out/source-tree.txt"
+tree=$(cat "$out/source-tree.txt")
+cp /var/lib/apt/lists/*InRelease "$out/"
+set +e
+(cd "$tree" && dpkg-checkbuilddeps) > "$out/checkbuilddeps.log" 2>&1
+deps_status=$?
+# Network namespace denies all external traffic. GOPROXY/GOSUMDB are also off.
+# -d is diagnostic only: exposes API/import failures beyond missing Build-Depends.
+# It never makes an upload-ready result, even if an incidental build succeeds.
+(cd "$tree" && unshare --net -- dpkg-buildpackage --no-sign -b -d) > "$out/diagnostic-build.log" 2>&1
+build_status=$?
+set -e
+printf '%s\n' "$deps_status" > "$out/checkbuilddeps.exit"
+printf '%s\n' "$build_status" > "$out/diagnostic-build.exit"
+python3 - "$out" <<'PY'
+import json,sys
+from pathlib import Path
+p=Path(sys.argv[1]); a=json.loads((p/'installed-providers.json').read_text())
+status={'upload_ready':False,'archive_accepted':False,'source_package_signed':False,
+ 'dependency_install_exit':int((p/'dependency-install.exit').read_text()),
+ 'checkbuilddeps_exit':int((p/'checkbuilddeps.exit').read_text()),
+ 'diagnostic_offline_build_exit':int((p/'diagnostic-build.exit').read_text()),
+ 'missing_apt_candidates':[r['candidate_package'] for r in a['modules'] if not r['apt_candidate']],
+ 'missing_exact_import_roots':[r['module'] for r in a['modules'] if not r['exact_import_directory_exists']],
+ 'remaining_gates':['dependency/module-version closure','DEP-5 copyright review','clean build without -d','unit/race/vulnerability tests on archive libraries','lintian/autopkgtest/lifecycle','owner signing key and sponsor review'],
+ 'note':'Audit job success means evidence was collected. Diagnostic -d build is not clean build qualification.'}
+(p/'STATUS.json').write_text(json.dumps(status,indent=2)+'\n'); print(json.dumps(status,indent=2))
+PY

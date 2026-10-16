@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Topo
+Upstream-Contact: Soumik Sarkar <soumiks@gmail.com>
+Source: https://github.com/Nischoy-ai/topo
+Comment: Review candidate, not upload-ready. Upstream source is not vendored.
+ The Fedora-only legal documents under packaging/distro/licenses retain their
+ original notices in the source; their DEP-5 inventory still requires review.
+ Static dependencies must come from separately maintained archive packages.
+
+Files: *
+Copyright: 2026 Nischoy Topo contributors
+License: Apache-2.0
+ On Debian systems the complete text of the Apache License version 2.0 is
+ available in /usr/share/common-licenses/Apache-2.0.

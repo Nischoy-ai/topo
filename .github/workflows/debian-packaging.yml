@@ -1,0 +1,53 @@
+name: debian-ubuntu-archive-audit
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/debian-packaging.yml'
+      - 'packaging/debian/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive-audit:
+    name: Archive audit (${{ matrix.suite }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: debian-unstable
+            image: debian:unstable@sha256:c1bc8c85a3b2395872d431404ca01b3d1a7c3e98610eb718d80725c573cc8017
+          - suite: ubuntu-26.10
+            image: ubuntu:26.10@sha256:ee126c2fa0249079a7e24ae3a3d29b04783ef93ab33c868751c9a1289d3fffff
+          - suite: ubuntu-26.04
+            image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    container:
+      image: ${{ matrix.image }}
+      # Only this disposable GitHub runner; needed to deny build-phase networking.
+      options: --cap-add SYS_ADMIN --security-opt seccomp=unconfined
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install tools using signature-verified native APT repositories
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 dpkg-dev debhelper dh-golang lintian licensecheck gcc util-linux
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Collect native archive closure and diagnostic offline build evidence
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash packaging/debian/native-check.sh
+      - name: Retain source candidate and exact audit results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: debian-audit-${{ matrix.suite }}
+          path: /tmp/topo-debian-results/
+          if-no-files-found: error
+          retention-days: 7

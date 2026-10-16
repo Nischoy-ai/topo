@@ -1,0 +1,3 @@
+Tests: installed-cli
+Depends: @
+Restrictions: superficial
