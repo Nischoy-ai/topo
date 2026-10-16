@@ -291,3 +291,16 @@ func TestInitialPreflightFailureLeavesSettingsReenterable(t *testing.T) {
 		t.Fatal("corrected setting not published")
 	}
 }
+
+func TestEnabledServiceRequiresPriorSetupReceipt(t *testing.T) {
+	for _, tc := range []struct {
+		state            string
+		receipt, allowed bool
+	}{
+		{"disabled", false, true}, {"enabled", false, false}, {"enabled", true, true}, {"masked", true, false}, {"enabled-runtime", false, false}, {"", false, false},
+	} {
+		if err := allowServiceState(tc.state, tc.receipt); (err == nil) != tc.allowed {
+			t.Fatalf("unsafe activation state %q receipt %v", tc.state, tc.receipt)
+		}
+	}
+}

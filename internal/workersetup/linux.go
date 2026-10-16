@@ -100,7 +100,7 @@ func (b *linuxBackend) ready(ctx context.Context) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	out, err := command(ctx, nil, "/usr/bin/systemctl", "show", "topo-worker.service", "--property=FragmentPath", "--property=DropInPaths", "--property=ActiveState")
+	out, err := command(ctx, nil, "/usr/bin/systemctl", "show", "topo-worker.service", "--property=FragmentPath", "--property=DropInPaths", "--property=ActiveState", "--property=UnitFileState")
 	if err != nil {
 		return errors.New("cannot inspect packaged worker service")
 	}
@@ -110,6 +110,17 @@ func (b *linuxBackend) ready(ctx context.Context) error {
 		if ok {
 			values[k] = v
 		}
+	}
+	// A previously enabled but unconfigured unit could start on reboot even if
+	// the operator declines activation. Only a receipt-backed retry may already
+	// be enabled (for example after partial activation from an earlier approval).
+	receiptValid := false
+	if values["UnitFileState"] == "enabled" {
+		saved, e := b.existing(ctx)
+		receiptValid = e == nil && saved != nil
+	}
+	if err = allowServiceState(values["UnitFileState"], receiptValid); err != nil {
+		return err
 	}
 	unit := values["FragmentPath"]
 	if (unit != "/usr/lib/systemd/system/topo-worker.service" && unit != "/lib/systemd/system/topo-worker.service") || values["DropInPaths"] != "" || (values["ActiveState"] != "inactive" && values["ActiveState"] != "failed") {
@@ -134,6 +145,13 @@ func (b *linuxBackend) ready(ctx context.Context) error {
 	}
 	return nil
 }
+func allowServiceState(state string, receiptValid bool) error {
+	if state == "disabled" || (state == "enabled" && receiptValid) {
+		return nil
+	}
+	return errors.New("service must be disabled for a new setup; existing enabled/custom service preserved")
+}
+
 func verifyOwned(f *os.File, uid, gid int, mode os.FileMode) error {
 	info, err := f.Stat()
 	if err != nil {
