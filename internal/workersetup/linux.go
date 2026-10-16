@@ -115,8 +115,17 @@ func (b *linuxBackend) ready(ctx context.Context) error {
 	if err = allowServiceState(values["UnitFileState"], receiptValid); err != nil {
 		return err
 	}
+	if err := validateServiceDropIns(values["DropInPaths"], func(path string) (string, error) {
+		body, err := readSecure(path, 8192, 0, false)
+		if err != nil {
+			return "", err
+		}
+		return digest(body), nil
+	}); err != nil {
+		return err
+	}
 	unit := values["FragmentPath"]
-	if (unit != "/usr/lib/systemd/system/topo-worker.service" && unit != "/lib/systemd/system/topo-worker.service") || values["DropInPaths"] != "" || (values["ActiveState"] != "inactive" && values["ActiveState"] != "failed") {
+	if (unit != "/usr/lib/systemd/system/topo-worker.service" && unit != "/lib/systemd/system/topo-worker.service") || (values["ActiveState"] != "inactive" && values["ActiveState"] != "failed") {
 		return errors.New("setup requires the unmodified inactive packaged service without overrides; existing service preserved")
 	}
 	body, err := readSecure(unit, 64<<10, 0, false)
@@ -445,4 +454,23 @@ func command(ctx context.Context, identity *syscall.Credential, program string, 
 		return nil, errors.New("bounded setup operation failed (process output withheld)")
 	}
 	return stdout.data, nil
+}
+
+// Fedora's global stop-timeout policy does not change the packaged worker's
+// identity, commands or credentials. Accept only the exact reviewed vendor file;
+// local, service-specific, additional and modified drop-ins remain unsupported.
+const fedoraTimeoutDropIn = "/usr/lib/systemd/system/service.d/10-timeout-abort.conf"
+const fedoraTimeoutSHA256 = "ae6b234f92bc22f1201a7572b59b454c9809f33c80d13f361b9674e1801acc37"
+
+func validateServiceDropIns(paths string, hashFile func(string) (string, error)) error {
+	if paths == "" {
+		return nil
+	}
+	if paths == fedoraTimeoutDropIn {
+		sum, err := hashFile(paths)
+		if err == nil && sum == fedoraTimeoutSHA256 {
+			return nil
+		}
+	}
+	return errors.New("setup requires reviewed packaged service policy; existing override preserved")
 }

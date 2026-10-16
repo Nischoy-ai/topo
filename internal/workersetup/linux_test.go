@@ -304,3 +304,34 @@ func TestEnabledServiceRequiresPriorSetupReceipt(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceDropInsRemainRestrictedToReviewedVendorPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		name, paths, sum string
+		readError        error
+		allowed, read    bool
+	}{
+		{name: "no drop-ins", allowed: true},
+		{name: "reviewed Fedora default", paths: fedoraTimeoutDropIn, sum: fedoraTimeoutSHA256, allowed: true, read: true},
+		{name: "modified vendor policy", paths: fedoraTimeoutDropIn, sum: strings.Repeat("0", 64), read: true},
+		{name: "unreadable vendor policy", paths: fedoraTimeoutDropIn, readError: errors.New("unsafe owner or mode"), read: true},
+		{name: "local global override", paths: "/etc/systemd/system/service.d/10-timeout-abort.conf"},
+		{name: "service-specific override", paths: "/usr/lib/systemd/system/topo-worker.service.d/10-timeout-abort.conf"},
+		{name: "additional override", paths: fedoraTimeoutDropIn + " /etc/systemd/system/topo-worker.service.d/custom.conf"},
+		{name: "duplicate path", paths: fedoraTimeoutDropIn + " " + fedoraTimeoutDropIn},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			err := validateServiceDropIns(tc.paths, func(path string) (string, error) {
+				called = true
+				if path != fedoraTimeoutDropIn {
+					t.Fatal("unreviewed path opened")
+				}
+				return tc.sum, tc.readError
+			})
+			if (err == nil) != tc.allowed || called != tc.read {
+				t.Fatalf("policy outcome: allowed=%v read=%v error=%v", tc.allowed, called, err)
+			}
+		})
+	}
+}

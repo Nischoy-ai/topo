@@ -93,3 +93,9 @@ The exact package name, supported distribution releases and command must be
 published only after repository acceptance and clean installation tests.
 An RPM specification, source package, PPA, Copr build or Nischoy repository does
 not establish default-repository availability.
+
+The source preview accepts Fedora’s standard global stop-timeout drop-in only
+at `/usr/lib/systemd/system/service.d/10-timeout-abort.conf`, with the exact
+reviewed SHA-256 `ae6b234f92bc22f1201a7572b59b454c9809f33c80d13f361b9674e1801acc37`
+and safe root ownership/permissions. Modified, local, service-specific or
+additional overrides are refused; setup does not change system-wide policy.
