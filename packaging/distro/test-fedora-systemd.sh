@@ -34,7 +34,7 @@ for attempt in {1..60}; do
   if docker exec "$container_name" systemctl show --property=Version --value >/dev/null 2>&1; then break; fi
   sleep 1
 done
-docker exec -i "$container_name" bash -seuo pipefail <<'TOPO_FEDORA_FIXTURETOPO_FEDORA_FIXTURE
+docker exec -i "$container_name" bash -seuo pipefail <<'TOPO_FEDORA_FIXTURE' | tee "$fixture_dir/lifecycle.log"
   arch=$(rpm --eval "%{_arch}")
   baseline=(/artifacts/mock/topo-0.4.7-0.1.*."$arch".rpm)
   upgrade=(/artifacts/upgrade/topo-0.4.7-0.2.*."$arch".rpm)
