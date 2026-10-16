@@ -68,6 +68,32 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  worker-setup-systemd:
+    # Dedicated fresh VM: package lifecycle tests intentionally preserve operator files.
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26.9"
+          cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: topo-ci-packages
+          path: ${{ runner.temp }}/topo-setup-packages
+      - name: Build registration-only loopback simulator
+        run: go build -trimpath -o "$RUNNER_TEMP/topo-setup-controlsim" ./internal/setupcontrolsim
+      - name: Exercise interactive packaged setup on disposable systemd VM
+        env:
+          TOPO_SETUP_DISPOSABLE_CI: "yes"
+        run: >-
+          sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_JOB,TOPO_SETUP_DISPOSABLE_CI
+          python3 scripts/test-worker-setup-systemd.py
+          --deb "$RUNNER_TEMP/topo-setup-packages/topo_0.0.0-ci_amd64.deb"
+          --simulator "$RUNNER_TEMP/topo-setup-controlsim"
+
   homebrew-beta:
     strategy:
       fail-fast: false

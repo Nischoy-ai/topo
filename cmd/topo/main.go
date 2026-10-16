@@ -901,9 +901,11 @@ func relayRun(args []string) error {
 
 func runWorker(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: topo worker <check|run>")
+		return errors.New("usage: topo worker <setup|check|run>")
 	}
 	switch args[0] {
+	case "setup":
+		return workerSetup(args[1:])
 	case "check":
 		return workerCheck(args[1:])
 	case "run":

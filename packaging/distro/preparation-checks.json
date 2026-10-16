@@ -1,0 +1,22 @@
+{
+  "preparation_metadata": "PASS",
+  "declared_modules": 66,
+  "go_mod_providers": 57,
+  "additional_source_candidates": 6,
+  "unresolved_module_roots": [
+    "github.com/ncruces/go-strftime",
+    "gopkg.in/evanphx/json-patch.v4",
+    "gopkg.in/yaml.v3"
+  ],
+  "unresolved_spec_tokens": [
+    "@CHANGELOG_DATE@",
+    "@SHORT_COMMIT@",
+    "@SNAPSHOT_DATE@",
+    "@UPSTREAM_COMMIT@"
+  ],
+  "public_maintainer_identity_complete": true,
+  "submission_ready": false,
+  "distro_builds": "NOT RUN",
+  "external_submissions": "NONE",
+  "limits": "Metadata consistency only; see README for open packaging gates"
+}

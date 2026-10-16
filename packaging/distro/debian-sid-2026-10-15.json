@@ -1,0 +1,960 @@
+{
+  "exact_topo_in_packages": null,
+  "generated_at_utc": "2026-10-16T02:26:21.274558+00:00",
+  "go_mod_sha256": "ea1aca9d4c4bb9d460246b1e2b94d75e370dc462a01b5fa382e8fa21aadf56c9",
+  "index_base_url": "https://deb.debian.org/debian/dists/sid/main/",
+  "inputs": {
+    "Contents-all.gz": "59c0705311446e7e83ecdaf2303a0a0e3477d3e70c53796bd7df5c01a79111c0",
+    "Packages.xz": "2f1cd0a78f7fcf69284e9aecc1ed0e1225c127a8e7ef7e4080008e11ae481880"
+  },
+  "limits": [
+    "Unsigned HTTPS metadata snapshot; not an apt trust verification",
+    "amd64 Packages plus architecture-independent source Contents only",
+    "Indexes may be generated at different times",
+    "Provider package version is not a multi-module upstream version",
+    "No build, API compatibility, license or acceptance claim"
+  ],
+  "modules": [
+    {
+      "module": "github.com/Azure/go-ntlmssp",
+      "providers": [],
+      "required_version": "v0.1.1",
+      "source_file_candidates": [
+        {
+          "example_path": "usr/share/gocode/src/github.com/Azure/go-ntlmssp/authenticate_message.go",
+          "match_kind": "exact_import_root",
+          "provider": {
+            "Filename": "pool/main/g/golang-github-azure-go-ntlmssp/golang-github-azure-go-ntlmssp-dev_0.0~git20221128.754e69321358-2_all.deb",
+            "Package": "golang-github-azure-go-ntlmssp-dev",
+            "SHA256": "8e02818695509323649e94188a7fef6c88d4cd4d671cc59b8e07df8fe2610721",
+            "Source": "golang-github-azure-go-ntlmssp",
+            "Version": "0.0~git20221128.754e69321358-2"
+          }
+        }
+      ]
+    },
+    {
+      "module": "golang.org/x/crypto",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-go.crypto/golang-golang-x-crypto-dev_0.57.0-2_all.deb",
+          "Package": "golang-golang-x-crypto-dev",
+          "SHA256": "90da3b961521e44514e7d55b61deab3564629e30a151dc2c0d09ce7c0d1814fb",
+          "Source": "golang-go.crypto",
+          "Version": "1:0.57.0-2"
+        }
+      ],
+      "required_version": "v0.57.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/sys",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-sys/golang-golang-x-sys-dev_0.49.0+dfsg-1_all.deb",
+          "Package": "golang-golang-x-sys-dev",
+          "SHA256": "4d759f69efca831b7c0680b3de298df1eebc1a7374747976c23df7e4ad7657b4",
+          "Source": "golang-golang-x-sys",
+          "Version": "0.49.0+dfsg-1"
+        }
+      ],
+      "required_version": "v0.48.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/azcore",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-azure-azure-sdk-for-go/golang-github-azure-azure-sdk-for-go-dev_68.0.0+git20231220.f497335+dfsg1-7_all.deb",
+          "Package": "golang-github-azure-azure-sdk-for-go-dev",
+          "SHA256": "a1efc7bbd6e86796cbd0d8b94d0819cddab7d563ba35e6636b9c574b3144fbae",
+          "Source": "golang-github-azure-azure-sdk-for-go",
+          "Version": "68.0.0+git20231220.f497335+dfsg1-7"
+        }
+      ],
+      "required_version": "v1.23.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/azidentity",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-azure-azure-sdk-for-go/golang-github-azure-azure-sdk-for-go-dev_68.0.0+git20231220.f497335+dfsg1-7_all.deb",
+          "Package": "golang-github-azure-azure-sdk-for-go-dev",
+          "SHA256": "a1efc7bbd6e86796cbd0d8b94d0819cddab7d563ba35e6636b9c574b3144fbae",
+          "Source": "golang-github-azure-azure-sdk-for-go",
+          "Version": "68.0.0+git20231220.f497335+dfsg1-7"
+        }
+      ],
+      "required_version": "v1.14.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/managementgroups/armmanagementgroups",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-azure-azure-sdk-for-go/golang-github-azure-azure-sdk-for-go-dev_68.0.0+git20231220.f497335+dfsg1-7_all.deb",
+          "Package": "golang-github-azure-azure-sdk-for-go-dev",
+          "SHA256": "a1efc7bbd6e86796cbd0d8b94d0819cddab7d563ba35e6636b9c574b3144fbae",
+          "Source": "golang-github-azure-azure-sdk-for-go",
+          "Version": "68.0.0+git20231220.f497335+dfsg1-7"
+        }
+      ],
+      "required_version": "v1.2.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-azure-azure-sdk-for-go/golang-github-azure-azure-sdk-for-go-dev_68.0.0+git20231220.f497335+dfsg1-7_all.deb",
+          "Package": "golang-github-azure-azure-sdk-for-go-dev",
+          "SHA256": "a1efc7bbd6e86796cbd0d8b94d0819cddab7d563ba35e6636b9c574b3144fbae",
+          "Source": "golang-github-azure-azure-sdk-for-go",
+          "Version": "68.0.0+git20231220.f497335+dfsg1-7"
+        }
+      ],
+      "required_version": "v1.3.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-aws-aws-sdk-go-v2/golang-github-aws-aws-sdk-go-v2-dev_1.41.7-2_all.deb",
+          "Package": "golang-github-aws-aws-sdk-go-v2-dev",
+          "SHA256": "8f88ad453ecebf858c8ea731d2d5bc8204caca25579574cf177c11f688ab27de",
+          "Source": "golang-github-aws-aws-sdk-go-v2",
+          "Version": "1.41.7-2"
+        }
+      ],
+      "required_version": "v1.43.7",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/credentials",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-aws-aws-sdk-go-v2/golang-github-aws-aws-sdk-go-v2-dev_1.41.7-2_all.deb",
+          "Package": "golang-github-aws-aws-sdk-go-v2-dev",
+          "SHA256": "8f88ad453ecebf858c8ea731d2d5bc8204caca25579574cf177c11f688ab27de",
+          "Source": "golang-github-aws-aws-sdk-go-v2",
+          "Version": "1.41.7-2"
+        }
+      ],
+      "required_version": "v1.19.37",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/service/organizations",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-aws-aws-sdk-go-v2/golang-github-aws-aws-sdk-go-v2-dev_1.41.7-2_all.deb",
+          "Package": "golang-github-aws-aws-sdk-go-v2-dev",
+          "SHA256": "8f88ad453ecebf858c8ea731d2d5bc8204caca25579574cf177c11f688ab27de",
+          "Source": "golang-github-aws-aws-sdk-go-v2",
+          "Version": "1.41.7-2"
+        }
+      ],
+      "required_version": "v1.54.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/gosnmp/gosnmp",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-gosnmp-gosnmp/golang-github-gosnmp-gosnmp-dev_1.43.2-1_all.deb",
+          "Package": "golang-github-gosnmp-gosnmp-dev",
+          "SHA256": "ae1fe52d2d13cef9e3988943abf7b281bad09c1447ce49e2c21c3e59d7601360",
+          "Source": "golang-github-gosnmp-gosnmp",
+          "Version": "1.43.2-1"
+        }
+      ],
+      "required_version": "v1.42.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/vmware/govmomi",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-vmware-govmomi/golang-github-vmware-govmomi-dev_0.24.2-4_all.deb",
+          "Package": "golang-github-vmware-govmomi-dev",
+          "SHA256": "1527b73f47dad4af59a538ddd51bd86f744b1ff82bced84c8aba57de8739f9f5",
+          "Source": "golang-github-vmware-govmomi",
+          "Version": "0.24.2-4"
+        }
+      ],
+      "required_version": "v0.52.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "k8s.io/api",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-api/golang-k8s-api-dev_0.36.4-1_all.deb",
+          "Package": "golang-k8s-api-dev",
+          "SHA256": "0b5f0e6bb3c55edf6a564496c5997b729e0b03c6597891a32dac9b6d71b9e109",
+          "Source": "golang-k8s-api",
+          "Version": "0.36.4-1"
+        }
+      ],
+      "required_version": "v0.35.8",
+      "source_file_candidates": []
+    },
+    {
+      "module": "k8s.io/apimachinery",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-apimachinery/golang-k8s-apimachinery-dev_0.36.4-3_all.deb",
+          "Package": "golang-k8s-apimachinery-dev",
+          "SHA256": "020045b2e32576be3350f382133cefaa6342f17ab8df24175667f6882b32925b",
+          "Source": "golang-k8s-apimachinery",
+          "Version": "0.36.4-3"
+        }
+      ],
+      "required_version": "v0.35.8",
+      "source_file_candidates": []
+    },
+    {
+      "module": "k8s.io/client-go",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-client-go/golang-k8s-client-go-dev_0.36.4-1_all.deb",
+          "Package": "golang-k8s-client-go-dev",
+          "SHA256": "959e75cd6a104d00a7b0262867f5064141a092dfd3ad55915033474c774e628a",
+          "Source": "golang-k8s-client-go",
+          "Version": "0.36.4-1"
+        }
+      ],
+      "required_version": "v0.35.8",
+      "source_file_candidates": []
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-modernc-sqlite/golang-modernc-sqlite-dev_1.40.0+dfsg-2_all.deb",
+          "Package": "golang-modernc-sqlite-dev",
+          "SHA256": "aa3a90ef962f0a365f0f9bdb8986a56051b13775f9b8506b6e5da083220e4dbb",
+          "Source": "golang-modernc-sqlite",
+          "Version": "1.40.0+dfsg-2"
+        }
+      ],
+      "required_version": "v1.39.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/internal",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-azure-azure-sdk-for-go/golang-github-azure-azure-sdk-for-go-dev_68.0.0+git20231220.f497335+dfsg1-7_all.deb",
+          "Package": "golang-github-azure-azure-sdk-for-go-dev",
+          "SHA256": "a1efc7bbd6e86796cbd0d8b94d0819cddab7d563ba35e6636b9c574b3144fbae",
+          "Source": "golang-github-azure-azure-sdk-for-go",
+          "Version": "68.0.0+git20231220.f497335+dfsg1-7"
+        }
+      ],
+      "required_version": "v1.12.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/AzureAD/microsoft-authentication-library-for-go",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-azuread-microsoft-authentication-library-for-go/golang-github-azuread-microsoft-authentication-library-for-go-dev_1.0.0-3_all.deb",
+          "Package": "golang-github-azuread-microsoft-authentication-library-for-go-dev",
+          "SHA256": "4d92989c968706dcde052745a3aa6143cadcf73c89c9abdbe91e1814929f54b5",
+          "Source": "golang-github-azuread-microsoft-authentication-library-for-go",
+          "Version": "1.0.0-3"
+        }
+      ],
+      "required_version": "v1.7.2",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/internal/configsources",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-aws-aws-sdk-go-v2/golang-github-aws-aws-sdk-go-v2-dev_1.41.7-2_all.deb",
+          "Package": "golang-github-aws-aws-sdk-go-v2-dev",
+          "SHA256": "8f88ad453ecebf858c8ea731d2d5bc8204caca25579574cf177c11f688ab27de",
+          "Source": "golang-github-aws-aws-sdk-go-v2",
+          "Version": "1.41.7-2"
+        }
+      ],
+      "required_version": "v1.4.38",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/internal/endpoints/v2",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-aws-aws-sdk-go-v2/golang-github-aws-aws-sdk-go-v2-dev_1.41.7-2_all.deb",
+          "Package": "golang-github-aws-aws-sdk-go-v2-dev",
+          "SHA256": "8f88ad453ecebf858c8ea731d2d5bc8204caca25579574cf177c11f688ab27de",
+          "Source": "golang-github-aws-aws-sdk-go-v2",
+          "Version": "1.41.7-2"
+        }
+      ],
+      "required_version": "v2.7.38",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/aws/smithy-go",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-aws-smithy-go/golang-github-aws-smithy-go-dev_1.25.1-3_all.deb",
+          "Package": "golang-github-aws-smithy-go-dev",
+          "SHA256": "76b2118d5499fc8c51c5caef34392d400a7dfff85671ec07d055548ccf7ee750",
+          "Source": "golang-github-aws-smithy-go",
+          "Version": "1.25.1-3"
+        }
+      ],
+      "required_version": "v1.27.8",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/davecgh/go-spew",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-davecgh-go-spew/golang-github-davecgh-go-spew-dev_1.1.1-7_all.deb",
+          "Package": "golang-github-davecgh-go-spew-dev",
+          "SHA256": "d64d3392caf0d0c339d6dd2d7d4c1f42a43f04ff461b791b932f1e8feaa626e7",
+          "Source": "golang-github-davecgh-go-spew",
+          "Version": "1.1.1-7"
+        }
+      ],
+      "required_version": "v1.1.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/dustin/go-humanize",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-dustin-go-humanize/golang-github-dustin-go-humanize-dev_1.0.1-1_all.deb",
+          "Package": "golang-github-dustin-go-humanize-dev",
+          "SHA256": "ceb158f58b7f8dae56ad5e2d63b598de7c9c869c1d53883173048e91dd473b40",
+          "Source": "golang-github-dustin-go-humanize",
+          "Version": "1.0.1-1"
+        }
+      ],
+      "required_version": "v1.0.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/emicklei/go-restful/v3",
+      "providers": [],
+      "required_version": "v3.12.2",
+      "source_file_candidates": [
+        {
+          "example_path": "usr/share/gocode/src/github.com/emicklei/go-restful/bench_curly_test.go",
+          "match_kind": "major_suffix_stripped_needs_review",
+          "provider": {
+            "Filename": "pool/main/g/golang-github-emicklei-go-restful/golang-github-emicklei-go-restful-dev_3.10.2-1_all.deb",
+            "Package": "golang-github-emicklei-go-restful-dev",
+            "SHA256": "d21ea63557d88ed7c39dc31181688c465b1d4f3df0396e03fd7ec98a4a929608",
+            "Source": "golang-github-emicklei-go-restful",
+            "Version": "3.10.2-1"
+          }
+        }
+      ]
+    },
+    {
+      "module": "github.com/fxamacker/cbor/v2",
+      "providers": [],
+      "required_version": "v2.9.0",
+      "source_file_candidates": [
+        {
+          "example_path": "usr/share/gocode/src/github.com/fxamacker/cbor/bench_test.go",
+          "match_kind": "major_suffix_stripped_needs_review",
+          "provider": {
+            "Filename": "pool/main/g/golang-github-fxamacker-cbor/golang-github-fxamacker-cbor-dev_2.9.6-2_all.deb",
+            "Package": "golang-github-fxamacker-cbor-dev",
+            "SHA256": "deb89810529a8c973a11dc034134e3d5f54894bb82a403277bd4203291c1f2ed",
+            "Source": "golang-github-fxamacker-cbor",
+            "Version": "2.9.6-2"
+          }
+        }
+      ]
+    },
+    {
+      "module": "github.com/go-logr/logr",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-go-logr-logr/golang-github-go-logr-logr-dev_1.4.4-1_all.deb",
+          "Package": "golang-github-go-logr-logr-dev",
+          "SHA256": "a5a6f929de397e028d0dd87f25101b06a42429c825737c77f9e88401ec04e708",
+          "Source": "golang-github-go-logr-logr",
+          "Version": "1.4.4-1"
+        }
+      ],
+      "required_version": "v1.4.3",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/go-openapi/jsonpointer",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-go-openapi-jsonpointer/golang-github-go-openapi-jsonpointer-dev_0.23.1-1_all.deb",
+          "Package": "golang-github-go-openapi-jsonpointer-dev",
+          "SHA256": "0b42c17e64781a6457cdaf2e3c74c1ec02009fd14e0ecce215b9378d4f3b859f",
+          "Source": "golang-github-go-openapi-jsonpointer",
+          "Version": "1:0.23.1-1"
+        }
+      ],
+      "required_version": "v0.21.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/go-openapi/jsonreference",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-go-openapi-jsonreference/golang-github-go-openapi-jsonreference-dev_0.21.5-1_all.deb",
+          "Package": "golang-github-go-openapi-jsonreference-dev",
+          "SHA256": "d48877a6b70e6625f7beb0aa6938a5b78da338e3f2fdab4cb0c22eda4192fc3a",
+          "Source": "golang-github-go-openapi-jsonreference",
+          "Version": "1:0.21.5-1"
+        }
+      ],
+      "required_version": "v0.20.2",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/go-openapi/swag",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-go-openapi-swag/golang-github-go-openapi-swag-dev_0.26.0-1_all.deb",
+          "Package": "golang-github-go-openapi-swag-dev",
+          "SHA256": "6fe49045c8d1fe21b3cc303c773dd4e0b22584366b7a23f9ebe930eaed157862",
+          "Source": "golang-github-go-openapi-swag",
+          "Version": "1:0.26.0-1"
+        }
+      ],
+      "required_version": "v0.23.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/golang-jwt/jwt/v5",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-golang-jwt-jwt-v5/golang-github-golang-jwt-jwt-v5-dev_5.3.1-1_all.deb",
+          "Package": "golang-github-golang-jwt-jwt-v5-dev",
+          "SHA256": "db5d6f44e931860a3a6e82daf45fb4870c1a91009f98aebb0f47b4b387d01592",
+          "Source": "golang-github-golang-jwt-jwt-v5",
+          "Version": "5.3.1-1"
+        }
+      ],
+      "required_version": "v5.3.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/google/gnostic-models",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-google-gnostic-models/golang-github-google-gnostic-models-dev_0.7.1-1_all.deb",
+          "Package": "golang-github-google-gnostic-models-dev",
+          "SHA256": "10f33e69392172a4283ec554dc72540036b24d7d38f9ac1f477eed668bf8ba0f",
+          "Source": "golang-github-google-gnostic-models",
+          "Version": "0.7.1-1"
+        }
+      ],
+      "required_version": "v0.7.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/google/uuid",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-google-uuid/golang-github-google-uuid-dev_1.6.0-1_all.deb",
+          "Package": "golang-github-google-uuid-dev",
+          "SHA256": "dac5a782fcd3baee1e74e6129977d5e6accffa1dcb83ded6de13cb4167b6171d",
+          "Source": "golang-github-google-uuid",
+          "Version": "1.6.0-1"
+        }
+      ],
+      "required_version": "v1.6.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/josharian/intern",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-josharian-intern/golang-github-josharian-intern-dev_1.0.0-3_all.deb",
+          "Package": "golang-github-josharian-intern-dev",
+          "SHA256": "a0c2943b8a2bc3e1b111f9604a5e8cd2c1c33ec399f0baca2bfc77bd8c12969c",
+          "Source": "golang-github-josharian-intern",
+          "Version": "1.0.0-3"
+        }
+      ],
+      "required_version": "v1.0.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/json-iterator/go",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-json-iterator-go/golang-github-json-iterator-go-dev_1.1.12-3_all.deb",
+          "Package": "golang-github-json-iterator-go-dev",
+          "SHA256": "b498b80352c8e6484f7100b118f5684b766cf474d9c8db48fe9f1792a45c3fdf",
+          "Source": "golang-github-json-iterator-go",
+          "Version": "1.1.12-3"
+        }
+      ],
+      "required_version": "v1.1.12",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/kylelemons/godebug",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-kylelemons-godebug/golang-github-kylelemons-godebug-dev_1.1.0-2_all.deb",
+          "Package": "golang-github-kylelemons-godebug-dev",
+          "SHA256": "4823794bf67e10243150e0a84425e1554be006b71791d7126c0c71f149e48293",
+          "Source": "golang-github-kylelemons-godebug",
+          "Version": "1.1.0-2"
+        }
+      ],
+      "required_version": "v1.1.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/mailru/easyjson",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-mailru-easyjson/golang-github-mailru-easyjson-dev_0.9.1-2_all.deb",
+          "Package": "golang-github-mailru-easyjson-dev",
+          "SHA256": "d1336059bc4abdca43ae5e989d15a28cbc2d708604d76ca4b982e97d365e7d9f",
+          "Source": "golang-github-mailru-easyjson",
+          "Version": "0.9.1-2"
+        }
+      ],
+      "required_version": "v0.7.7",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/mattn/go-isatty",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-mattn-go-isatty/golang-github-mattn-go-isatty-dev_0.0.24-1_all.deb",
+          "Package": "golang-github-mattn-go-isatty-dev",
+          "SHA256": "4350a0f9bac101a311ea70d4a6d0937eb5f555b6debaf3c48c83f778d95b7cb9",
+          "Source": "golang-github-mattn-go-isatty",
+          "Version": "0.0.24-1"
+        }
+      ],
+      "required_version": "v0.0.20",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/modern-go/concurrent",
+      "providers": [],
+      "required_version": "v0.0.0-20180306012644-bacd9c7ef1dd",
+      "source_file_candidates": [
+        {
+          "example_path": "usr/share/gocode/src/github.com/modern-go/concurrent/executor.go",
+          "match_kind": "exact_import_root",
+          "provider": {
+            "Filename": "pool/main/g/golang-github-modern-go-concurrent/golang-github-modern-go-concurrent-dev_1.0.3-1.1_all.deb",
+            "Package": "golang-github-modern-go-concurrent-dev",
+            "SHA256": "d49fedf2c7a250b2e7b720d37539995a78964b66a61327f466c67a94bab82999",
+            "Source": "golang-github-modern-go-concurrent",
+            "Version": "1.0.3-1.1"
+          }
+        }
+      ]
+    },
+    {
+      "module": "github.com/modern-go/reflect2",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-modern-go-reflect2/golang-github-modern-go-reflect2-dev_1.0.2-2_all.deb",
+          "Package": "golang-github-modern-go-reflect2-dev",
+          "SHA256": "af150a5172cf4c19bb321a53e67103e7fb18d07c1baa1e816a235155265d3948",
+          "Source": "golang-github-modern-go-reflect2",
+          "Version": "1.0.2-2"
+        }
+      ],
+      "required_version": "v1.0.3-0.20250322232337-35a7c28c31ee",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/munnerz/goautoneg",
+      "providers": [],
+      "required_version": "v0.0.0-20191010083416-a7dc8b61c822",
+      "source_file_candidates": [
+        {
+          "example_path": "usr/share/gocode/src/github.com/munnerz/goautoneg/autoneg.go",
+          "match_kind": "exact_import_root",
+          "provider": {
+            "Filename": "pool/main/g/golang-github-munnerz-goautoneg/golang-github-munnerz-goautoneg-dev_0.0~git20191010.a7dc8b6-2_all.deb",
+            "Package": "golang-github-munnerz-goautoneg-dev",
+            "SHA256": "17a0c8ce6c9cc9c45c9d395f20396f1f5019c660d84d6254952558c57f8b65dc",
+            "Source": "golang-github-munnerz-goautoneg",
+            "Version": "0.0~git20191010.a7dc8b6-2"
+          }
+        }
+      ]
+    },
+    {
+      "module": "github.com/ncruces/go-strftime",
+      "providers": [],
+      "required_version": "v0.1.9",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/pkg/browser",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-pkg-browser/golang-github-pkg-browser-dev_0.0~git20240102.5ac0b6a-1_all.deb",
+          "Package": "golang-github-pkg-browser-dev",
+          "SHA256": "ac7d68268f8c8a233943577b0e2184c79a881923ab837d61dc9c1657600357d4",
+          "Source": "golang-github-pkg-browser",
+          "Version": "0.0~git20240102.5ac0b6a-1"
+        }
+      ],
+      "required_version": "v0.0.0-20240102092130-5ac0b6a4141c",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/remyoudompheng/bigfft",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-remyoudompheng-bigfft/golang-github-remyoudompheng-bigfft-dev_0.0+git20230129.24d4a6f-1_all.deb",
+          "Package": "golang-github-remyoudompheng-bigfft-dev",
+          "SHA256": "605d41736f197dac589779c5b7eb831258ccd5a56ebb81e10cf9fa4b58489f30",
+          "Source": "golang-github-remyoudompheng-bigfft",
+          "Version": "0.0+git20230129.24d4a6f-1"
+        }
+      ],
+      "required_version": "v0.0.0-20230129092748-24d4a6f8daec",
+      "source_file_candidates": []
+    },
+    {
+      "module": "github.com/x448/float16",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-x448-float16/golang-github-x448-float16-dev_0.8.4-3_all.deb",
+          "Package": "golang-github-x448-float16-dev",
+          "SHA256": "4083f6b824ce95ff58626c14598209c464f0194fbcf840170e645411a0c4f91d",
+          "Source": "golang-github-x448-float16",
+          "Version": "0.8.4-3"
+        }
+      ],
+      "required_version": "v0.8.4",
+      "source_file_candidates": []
+    },
+    {
+      "module": "go.yaml.in/yaml/v2",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-yaml.v2/golang-gopkg-yaml.v2-dev_2.4.4-1_all.deb",
+          "Package": "golang-gopkg-yaml.v2-dev",
+          "SHA256": "348445a2b0d2789668e1e1eaf8a2230aac83cb231a1c513821c221042c621ae3",
+          "Source": "golang-yaml.v2",
+          "Version": "2.4.4-1"
+        }
+      ],
+      "required_version": "v2.4.3",
+      "source_file_candidates": []
+    },
+    {
+      "module": "go.yaml.in/yaml/v3",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-gopkg-yaml.v3/golang-gopkg-yaml.v3-dev_3.0.5-1_all.deb",
+          "Package": "golang-gopkg-yaml.v3-dev",
+          "SHA256": "3b51f8a9d4aa4ad1ef0c907b3cbb7d2f612c3afeb96ed0d138ffb668aae1c230",
+          "Source": "golang-gopkg-yaml.v3",
+          "Version": "3.0.5-1"
+        }
+      ],
+      "required_version": "v3.0.4",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/exp",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-exp/golang-golang-x-exp-dev_0.0~git20261009.ca0d7ba-1_all.deb",
+          "Package": "golang-golang-x-exp-dev",
+          "SHA256": "f701ee32763fc39756773343102780f422ec80ebdbb4a85bc64c8eb964fba880",
+          "Source": "golang-golang-x-exp",
+          "Version": "0.0~git20261009.ca0d7ba-1"
+        }
+      ],
+      "required_version": "v0.0.0-20250620022241-b7579e27df2b",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/net",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-net/golang-golang-x-net-dev_0.60.0-1_all.deb",
+          "Package": "golang-golang-x-net-dev",
+          "SHA256": "07cf3c0dfae37a61f54ea8ff10ff9875bea03a4225ea0c7a64f509f363df0776",
+          "Source": "golang-golang-x-net",
+          "Version": "1:0.60.0-1"
+        }
+      ],
+      "required_version": "v0.60.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/oauth2",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-oauth2/golang-golang-x-oauth2-dev_0.37.0-1_all.deb",
+          "Package": "golang-golang-x-oauth2-dev",
+          "SHA256": "cbb21c16cf2a92c4efc14ae02e791aef4b4d029d15840f311f8749d78ea14902",
+          "Source": "golang-golang-x-oauth2",
+          "Version": "0.37.0-1"
+        }
+      ],
+      "required_version": "v0.30.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/term",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-term/golang-golang-x-term-dev_0.47.0-1_all.deb",
+          "Package": "golang-golang-x-term-dev",
+          "SHA256": "df0e9c51d1e5b0d2b4dd1c75c786a29c299f1b9c40cd8070df3ed006e8b4fefb",
+          "Source": "golang-golang-x-term",
+          "Version": "0.47.0-1"
+        }
+      ],
+      "required_version": "v0.46.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/text",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-text/golang-golang-x-text-dev_0.43.0-1_all.deb",
+          "Package": "golang-golang-x-text-dev",
+          "SHA256": "b0114bcb485451026be0e49d5028ab9cfa5074ab2423c76bf924e52bfe648b74",
+          "Source": "golang-golang-x-text",
+          "Version": "0.43.0-1"
+        }
+      ],
+      "required_version": "v0.42.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "golang.org/x/time",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-golang-x-time/golang-golang-x-time-dev_0.16.0-1_all.deb",
+          "Package": "golang-golang-x-time-dev",
+          "SHA256": "b31cbf28a4a4de6207cf8955f151c98fc78e3572e93cf05cbfe2fe7a5c837f7f",
+          "Source": "golang-golang-x-time",
+          "Version": "0.16.0-1"
+        }
+      ],
+      "required_version": "v0.9.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "google.golang.org/protobuf",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-google-protobuf/golang-google-protobuf-dev_1.36.10-2_all.deb",
+          "Package": "golang-google-protobuf-dev",
+          "SHA256": "7f552704f80a5ec3d0d6a71dac3a4425af54e5a7dcd80994b5e346fc11dee068",
+          "Source": "golang-google-protobuf",
+          "Version": "1.36.10-2"
+        }
+      ],
+      "required_version": "v1.36.12-0.20260120151049-f2248ac996af",
+      "source_file_candidates": []
+    },
+    {
+      "module": "gopkg.in/evanphx/json-patch.v4",
+      "providers": [],
+      "required_version": "v4.13.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "gopkg.in/inf.v0",
+      "providers": [],
+      "required_version": "v0.9.1",
+      "source_file_candidates": [
+        {
+          "example_path": "usr/share/gocode/src/gopkg.in/inf.v0/benchmark_test.go",
+          "match_kind": "exact_import_root",
+          "provider": {
+            "Filename": "pool/main/g/golang-gopkg-inf.v0/golang-gopkg-inf.v0-dev_0.9.1-2_all.deb",
+            "Package": "golang-gopkg-inf.v0-dev",
+            "SHA256": "54d17e79a2e01ac94edec1659148853e767b551c778004b77d116e483005c100",
+            "Source": "golang-gopkg-inf.v0",
+            "Version": "0.9.1-2"
+          }
+        }
+      ]
+    },
+    {
+      "module": "gopkg.in/yaml.v3",
+      "providers": [],
+      "required_version": "v3.0.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "k8s.io/klog/v2",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-klog/golang-k8s-klog-dev_2.140.0-5_all.deb",
+          "Package": "golang-k8s-klog-dev",
+          "SHA256": "49847276d9f75a2ff5c8e24d368a79e79ece289b66c521d4a4fc7976f5eea979",
+          "Source": "golang-k8s-klog",
+          "Version": "2.140.0-5"
+        }
+      ],
+      "required_version": "v2.130.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "k8s.io/kube-openapi",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-kube-openapi/golang-k8s-kube-openapi-dev_0.0~git20260721.d427ff9-1_all.deb",
+          "Package": "golang-k8s-kube-openapi-dev",
+          "SHA256": "9490d7b5d6e32490d4b30b7bad208532fbd81174efbf01cf7db68d3259e9965d",
+          "Source": "golang-k8s-kube-openapi",
+          "Version": "0.0~git20260721.d427ff9-1"
+        }
+      ],
+      "required_version": "v0.0.0-20250910181357-589584f1c912",
+      "source_file_candidates": []
+    },
+    {
+      "module": "k8s.io/utils",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-utils/golang-k8s-utils-dev_0.0~git20260707.cf1189d-1_all.deb",
+          "Package": "golang-k8s-utils-dev",
+          "SHA256": "6f5965ef2384e264e10e8e6bf2ce69b6cbe21e111e9a33d57dcf8bd55ddfce3f",
+          "Source": "golang-k8s-utils",
+          "Version": "0.0~git20260707.cf1189d-1"
+        }
+      ],
+      "required_version": "v0.0.0-20251002143259-bc988d571ff4",
+      "source_file_candidates": []
+    },
+    {
+      "module": "modernc.org/libc",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-modernc-libc/golang-modernc-libc-dev_1.66.10-3_all.deb",
+          "Package": "golang-modernc-libc-dev",
+          "SHA256": "ec94cd91c01d7d730386a9abe398115135ef65932f19563cb86c463743ae4f07",
+          "Source": "golang-modernc-libc",
+          "Version": "1.66.10-3"
+        }
+      ],
+      "required_version": "v1.66.3",
+      "source_file_candidates": []
+    },
+    {
+      "module": "modernc.org/mathutil",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-github-cznic-mathutil/golang-github-cznic-mathutil-dev_1.7.1-1_all.deb",
+          "Package": "golang-github-cznic-mathutil-dev",
+          "SHA256": "7cc373c0c5998e30010324ca9631c0c0b2999c3d15c4a88b58469b7e886e8b7f",
+          "Source": "golang-github-cznic-mathutil",
+          "Version": "1.7.1-1"
+        }
+      ],
+      "required_version": "v1.7.1",
+      "source_file_candidates": []
+    },
+    {
+      "module": "modernc.org/memory",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-modernc-memory/golang-modernc-memory-dev_1.12.1+dfsg-2_all.deb",
+          "Package": "golang-modernc-memory-dev",
+          "SHA256": "ae3b443e1fdc210aa50144d8bbbbc20990b7d7be8e43640e1915dcfb7146adfe",
+          "Source": "golang-modernc-memory",
+          "Version": "1.12.1+dfsg-2"
+        }
+      ],
+      "required_version": "v1.11.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "sigs.k8s.io/json",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-sigs-json/golang-k8s-sigs-json-dev_0.0~git20260909.11ed52e-1_all.deb",
+          "Package": "golang-k8s-sigs-json-dev",
+          "SHA256": "3a944d8c2e8497311b54994c9de568353f5a2a5811bd9bd406b54be9e05d8bae",
+          "Source": "golang-k8s-sigs-json",
+          "Version": "0.0~git20260909.11ed52e-1"
+        }
+      ],
+      "required_version": "v0.0.0-20250730193827-2d320260d730",
+      "source_file_candidates": []
+    },
+    {
+      "module": "sigs.k8s.io/randfill",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-sigs-randfill/golang-k8s-sigs-randfill-dev_1.0.0-2_all.deb",
+          "Package": "golang-k8s-sigs-randfill-dev",
+          "SHA256": "581ddefd073dd77fd71b14721efd8940c6475568edeaec22bcc13961553ed054",
+          "Source": "golang-k8s-sigs-randfill",
+          "Version": "1.0.0-2"
+        }
+      ],
+      "required_version": "v1.0.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "sigs.k8s.io/structured-merge-diff/v6",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-sigs-structured-merge-diff-v6/golang-k8s-sigs-structured-merge-diff-v6-dev_6.4.2-1_all.deb",
+          "Package": "golang-k8s-sigs-structured-merge-diff-v6-dev",
+          "SHA256": "f361aa88be07bd6b04349e85d51d140114bfd628f9c993f657542d223adf21fc",
+          "Source": "golang-k8s-sigs-structured-merge-diff-v6",
+          "Version": "6.4.2-1"
+        }
+      ],
+      "required_version": "v6.3.0",
+      "source_file_candidates": []
+    },
+    {
+      "module": "sigs.k8s.io/yaml",
+      "providers": [
+        {
+          "Filename": "pool/main/g/golang-k8s-sigs-yaml/golang-k8s-sigs-yaml-dev_1.6.0-1_all.deb",
+          "Package": "golang-k8s-sigs-yaml-dev",
+          "SHA256": "6feee0cb84f2703a402e88c1fc72cf7b0f58009ad3030fe1fcdfb74a6c1712e1",
+          "Source": "golang-k8s-sigs-yaml",
+          "Version": "1.6.0-1"
+        }
+      ],
+      "required_version": "v1.6.0",
+      "source_file_candidates": []
+    }
+  ],
+  "source_commit": "d55f3e1abd8768f4442b008507999c25e72df1fb",
+  "toolchains": {
+    "golang-1.26-go": {
+      "Filename": "pool/main/g/golang-1.26/golang-1.26-go_1.26.9-1_amd64.deb",
+      "Package": "golang-1.26-go",
+      "SHA256": "528038f52c057445cab01fe02e5a7250a63d11ab2ef9b94451deb95cb12e7413",
+      "Source": "golang-1.26",
+      "Version": "1.26.9-1"
+    },
+    "golang-go": {
+      "Filename": "pool/main/g/golang-defaults/golang-go_1.27~1_amd64.deb",
+      "Package": "golang-go",
+      "SHA256": "4f91569a479873f0c2d0e31f132c0583d94bda51b317aeb6dbc4a51b2cccc00b",
+      "Source": "golang-defaults",
+      "Version": "2:1.27~1"
+    }
+  }
+}

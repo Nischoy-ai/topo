@@ -1,0 +1,3 @@
+# Dynamic service identities; existing users/groups are preserved by RPM.
+u topo-worker - "Topo ServiceNow Worker" /nonexistent
+u topo-agent - "Topo Agent" /var/lib/topo-agent

@@ -1,0 +1,82 @@
+# Preparation input only. No dependency overrides or license exclusions.
+# Full-CLI review inputs; every license file is checked with pinned manual composites.
+[licensing]
+detector = "askalono"
+
+[archive]
+use_module_proxy = true
+tidy = true
+# Preserve additional source/header and artwork attribution in the vendor archive.
+post_commands = [
+    ["cp", "packaging/distro/licenses/COPYRIGHT-MUSL-THIRD-PARTY", "vendor/modernc.org/libc/COPYRIGHT-MUSL-THIRD-PARTY"],
+    ["cp", "packaging/distro/licenses/LICENSE-Linux-man-pages-copyleft", "vendor/modernc.org/libc/LICENSE-Linux-man-pages-copyleft"],
+    ["cp", "packaging/distro/licenses/LICENSE-SunPro", "vendor/modernc.org/libc/LICENSE-SunPro"],
+    ["cp", "packaging/distro/licenses/LICENSE-bcrypt-Solar-Designer", "vendor/modernc.org/libc/LICENSE-bcrypt-Solar-Designer"],
+    ["cp", "packaging/distro/licenses/LICENSE-CC-BY-2.5", "vendor/modernc.org/memory/LICENSE-CC-BY-2.5"],
+    ["cp", "packaging/distro/licenses/LICENSE-CC0-1.0", "vendor/modernc.org/memory/LICENSE-CC0-1.0"],
+    ["cp", "packaging/distro/licenses/NOTICE-MEMORY-LOGO", "vendor/modernc.org/memory/NOTICE-MEMORY-LOGO"],
+]
+
+# Manually inspected composite license texts; pin hashes so upstream changes
+# require a fresh review. No license files or directories are excluded.
+# See fedora-license-review.md for rationale and dated classification history.
+
+[[licensing.licenses]]
+path = "vendor/github.com/gosnmp/gosnmp/LICENSE"
+sha256sum = "28b63cdfceda72f7b8c9a8db2d7ab07661eb4d6bb9fc020077925b6b4faf84fa"
+expression = "BSD-2-Clause AND BSD-3-Clause"
+
+[[licensing.licenses]]
+path = "vendor/go.yaml.in/yaml/v3/LICENSE"
+sha256sum = "d18f6323b71b0b768bb5e9616e36da390fbd39369a81807cca352de4e4e6aa0b"
+expression = "Apache-2.0 AND MIT"
+
+[[licensing.licenses]]
+path = "vendor/gopkg.in/yaml.v3/LICENSE"
+sha256sum = "d18f6323b71b0b768bb5e9616e36da390fbd39369a81807cca352de4e4e6aa0b"
+expression = "Apache-2.0 AND MIT"
+
+[[licensing.licenses]]
+path = "vendor/modernc.org/libc/COPYRIGHT-MUSL"
+sha256sum = "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af"
+expression = "BSD-2-Clause AND BSD-3-Clause AND ISC AND MIT AND SunPro AND bcrypt-Solar-Designer AND LicenseRef-Fedora-Public-Domain"
+
+[[licensing.licenses]]
+path = "vendor/modernc.org/libc/COPYRIGHT-MUSL-THIRD-PARTY"
+sha256sum = "acf3d99c992c38af16ad4a6e150a070a7b1fc6cb2177cb603664d6a822e5a74e"
+expression = "BSD-2-Clause AND BSD-3-Clause AND ISC AND MIT AND SunPro AND bcrypt-Solar-Designer AND LicenseRef-Fedora-Public-Domain"
+
+[[licensing.licenses]]
+path = "vendor/modernc.org/memory/LICENSE-LOGO"
+sha256sum = "5ae5bee3072a841376451b48d8cfcec7188e10543926d5870828d36c8a750dc5"
+expression = "CC-BY-2.5 AND CC0-1.0"
+
+[[licensing.licenses]]
+path = "vendor/modernc.org/sqlite/SQLITE-LICENSE"
+sha256sum = "8438c9c89b849131ead81d5435cb97fcf052df5b0b286dda8a2d4c29e6cb3fd0"
+expression = "LicenseRef-Fedora-Public-Domain"
+
+[[licensing.licenses]]
+path = "packaging/distro/licenses/COPYRIGHT-MUSL-THIRD-PARTY"
+sha256sum = "acf3d99c992c38af16ad4a6e150a070a7b1fc6cb2177cb603664d6a822e5a74e"
+expression = "BSD-2-Clause AND BSD-3-Clause AND ISC AND MIT AND SunPro AND bcrypt-Solar-Designer AND LicenseRef-Fedora-Public-Domain"
+
+[[licensing.licenses]]
+path = "packaging/distro/licenses/LICENSE-SunPro"
+sha256sum = "f5ab1c2763182c84a0b991a82d57b4176df0d109ca5d485d8446585696b26894"
+expression = "SunPro"
+
+[[licensing.licenses]]
+path = "vendor/modernc.org/libc/LICENSE-SunPro"
+sha256sum = "f5ab1c2763182c84a0b991a82d57b4176df0d109ca5d485d8446585696b26894"
+expression = "SunPro"
+
+[[licensing.licenses]]
+path = "packaging/distro/licenses/LICENSE-bcrypt-Solar-Designer"
+sha256sum = "29b9403d476147aa0ac0be2c3845c187a25a72c67d6250de823e24ae85b224a7"
+expression = "bcrypt-Solar-Designer"
+
+[[licensing.licenses]]
+path = "vendor/modernc.org/libc/LICENSE-bcrypt-Solar-Designer"
+sha256sum = "29b9403d476147aa0ac0be2c3845c187a25a72c67d6250de823e24ae85b224a7"
+expression = "bcrypt-Solar-Designer"

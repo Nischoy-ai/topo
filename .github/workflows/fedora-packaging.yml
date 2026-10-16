@@ -1,0 +1,186 @@
+name: fedora-packaging
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/fedora-packaging.yml'
+      - 'packaging/distro/**'
+      - 'packaging/systemd/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'pkg/**'
+      - 'scripts/test-worker-setup-systemd.py'
+permissions:
+  contents: read
+jobs:
+  fedora-package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04-arm
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+          - runner: ubuntu-24.04-arm
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      TOPO_FEDORA_RELEASE: ${{ matrix.release }}
+    container:
+      options: --privileged
+      image: ${{ matrix.image }}
+    steps:
+      - name: Install Fedora-native packaging tools
+        run: >-
+          dnf --refresh -y --setopt=install_weak_deps=False install gh askalono-cli git golang go-vendor-tools rpm-build rpmdevtools
+          rpmlint systemd-rpm-macros python3 python3-pip mock gcc
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Record signed-repository toolchain and packaging macros
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          mkdir -p /tmp/topo-fedora-results
+          rpm -q golang golang-bin go-vendor-tools rpm-build rpmlint systemd-rpm-macros mock | tee /tmp/topo-fedora-results/environment.txt
+          go version | tee -a /tmp/topo-fedora-results/environment.txt
+          case "$(go env GOVERSION)" in go1.26.9|go1.26.9-X:nodwarf5|go1.27.2|go1.27.2-X:nodwarf5) ;; *) exit 1 ;; esac
+          rpm --eval '%{_unitdir} %{_sysusersdir}' | tee -a /tmp/topo-fedora-results/environment.txt
+          dnf -q repoquery --qf '%{name} %{evr} %{arch}' topo > /tmp/topo-fedora-results/name-query.txt
+          dnf -q repoquery --whatprovides /usr/bin/topo >> /tmp/topo-fedora-results/name-query.txt
+      - name: Prepare source-pinned review inputs and complete licensing
+        run: >-
+          python3 packaging/distro/prepare-fedora.py
+          --commit "$(git rev-parse HEAD)"
+          --output /tmp/topo-fedora-results/review
+      - name: Qualify native compiler security, vet and race tests
+        run: |
+          cd "/tmp/topo-fedora-results/review/source/topo-$(git rev-parse HEAD)"
+          export GOTOOLCHAIN=local
+          export GOFLAGS=-mod=vendor
+          export GOMAXPROCS=2
+          go vet ./... 2>&1 | tee /tmp/topo-fedora-results/review/reports/native-vet.log
+          go test -race ./... 2>&1 | tee /tmp/topo-fedora-results/review/reports/native-race.log
+          go run -mod=mod golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./... 2>&1 | tee /tmp/topo-fedora-results/review/reports/native-vulnerability.log
+      - name: Build native synthetic lifecycle simulator
+        run: |
+          cd "/tmp/topo-fedora-results/review/source/topo-$(git rev-parse HEAD)"
+          CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=vendor go build -trimpath -o /tmp/topo-fedora-results/topo-setup-controlsim ./internal/setupcontrolsim
+      - name: Produce unsigned source RPM
+        run: >-
+          rpmbuild -bs /tmp/topo-fedora-results/review/SPECS/topo.spec
+          --define '_topdir /tmp/topo-fedora-results/review'
+      - name: Clean Fedora mock build with offline build phase
+        run: |
+          mock --no-cleanup-after --no-bootstrap-chroot --isolation=simple \
+            --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
+            --resultdir /tmp/topo-fedora-results/mock \
+            --rebuild /tmp/topo-fedora-results/review/SRPMS/*.src.rpm
+      - name: Build higher-release RPM for real transaction testing
+        run: |
+          mkdir -p /tmp/topo-fedora-results/upgrade-source/SPECS
+          ln -s /tmp/topo-fedora-results/review/SOURCES /tmp/topo-fedora-results/upgrade-source/SOURCES
+          sed -e 's/^Release: 0\.1/Release: 0.2/' -e 's/0\.4\.7-0\.1\./0.4.7-0.2./' \
+            /tmp/topo-fedora-results/review/SPECS/topo.spec > /tmp/topo-fedora-results/upgrade-source/SPECS/topo.spec
+          rpmbuild -bs /tmp/topo-fedora-results/upgrade-source/SPECS/topo.spec --define '_topdir /tmp/topo-fedora-results/upgrade-source'
+          mock --no-clean --no-cleanup-after --no-bootstrap-chroot --isolation=simple \
+            --root "fedora-${TOPO_FEDORA_RELEASE}-$(rpm --eval '%{_arch}')" \
+            --resultdir /tmp/topo-fedora-results/upgrade \
+            --rebuild /tmp/topo-fedora-results/upgrade-source/SRPMS/*.src.rpm
+      - name: Lint native spec, source and binary RPMs
+        run: |
+          rpmlint /tmp/topo-fedora-results/review/SPECS/topo.spec \
+            /tmp/topo-fedora-results/review/SRPMS/*.src.rpm \
+            /tmp/topo-fedora-results/mock/*.rpm \
+            | tee /tmp/topo-fedora-results/rpmlint.txt
+      - name: Inspect actual RPM license, bundled Provides and service payload
+        run: |
+          arch=$(rpm --eval '%{_arch}')
+          candidates=(/tmp/topo-fedora-results/mock/topo-0.4.7-0.1.*."$arch".rpm)
+          test "${#candidates[@]}" = 1
+          rpm -qp --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n%{LICENSE}\n' "${candidates[0]}" > /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qp --provides "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qp --requires "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qp --scripts "${candidates[0]}" >> /tmp/topo-fedora-results/rpm-metadata.txt
+          rpm -qpl "${candidates[0]}" > /tmp/topo-fedora-results/rpm-files.txt
+          grep -Fx /usr/lib/sysusers.d/topo.conf /tmp/topo-fedora-results/rpm-files.txt
+          grep -Fx /usr/lib/systemd/system/topo-worker.service /tmp/topo-fedora-results/rpm-files.txt
+          grep -F 'bundled(golang(modernc.org/libc))' /tmp/topo-fedora-results/rpm-metadata.txt
+      - name: Retain Fedora environment evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: fedora-review-${{ matrix.release }}-${{ matrix.runner }}
+          path: |
+            /tmp/topo-fedora-results/environment.txt
+            /tmp/topo-fedora-results/name-query.txt
+            /tmp/topo-fedora-results/rpm-metadata.txt
+            /tmp/topo-fedora-results/rpm-files.txt
+            /tmp/topo-fedora-results/rpmlint.txt
+            /tmp/topo-fedora-results/review/reports/
+            /tmp/topo-fedora-results/review/SOURCES/
+            /tmp/topo-fedora-results/review/SPECS/
+            /tmp/topo-fedora-results/review/SRPMS/
+            /tmp/topo-fedora-results/mock/
+            /tmp/topo-fedora-results/upgrade/
+            /tmp/topo-fedora-results/upgrade-source/SPECS/
+            /tmp/topo-fedora-results/upgrade-source/SRPMS/
+            /tmp/topo-fedora-results/topo-setup-controlsim
+          if-no-files-found: warn
+          retention-days: 7
+
+  fedora-systemd:
+    needs: fedora-package
+    # Preserve lifecycle diagnostics when a separate lint/metadata gate fails.
+    # The workflow still fails if any required packaging check fails.
+    if: ${{ !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04-arm
+            release: '44'
+            image: docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+          - runner: ubuntu-24.04
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+          - runner: ubuntu-24.04-arm
+            release: rawhide
+            image: docker.io/library/fedora:rawhide@sha256:a9bab18d01cf2c2cf62f3e79c72623405bce14ac062995cc6651a3073c802e41
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      TOPO_FEDORA_IMAGE: ${{ matrix.image }}
+      TOPO_SETUP_DISPOSABLE_CI: 'yes'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: fedora-review-${{ matrix.release }}-${{ matrix.runner }}
+          path: ${{ runner.temp }}/fedora-review
+      - name: Actual Fedora RPM install, setup, upgrade and removal
+        run: bash packaging/distro/test-fedora-systemd.sh "$RUNNER_TEMP/fedora-review"
+      - name: Retain lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: fedora-lifecycle-${{ matrix.release }}-${{ matrix.runner }}
+          path: ${{ runner.temp }}/topo-fedora-systemd.*/*.log
+          if-no-files-found: warn
+          retention-days: 7
