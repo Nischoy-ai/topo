@@ -42,14 +42,14 @@ Have these files ready on the discovery server:
 | Target allowlist | Absolute path to approved canonical IPv4 CIDRs, one per line, with at most 1,024 selected addresses. Start with one `/32` target. |
 | Verified host keys | Absolute path to SSH host keys covering the selected target addresses on port 22. Confirm fingerprints through an independent trusted source; `ssh-keyscan` alone is insufficient. |
 
-Files must be regular files owned by root or the invoking user; symlinks are
-rejected. Policy files must not be writable by other users. The assistant copies
+Files must be regular files owned by root or the invoking user; the input file
+itself cannot be a symlink. Policy files must not be writable by other users. The assistant copies
 approved inputs into restricted service files under `/etc/topo-worker`.
 
 ## Connect and start
 
 Run the command from an interactive terminal on a host with the matching Topo
-package and its dormant `topo-worker.service`. Follow the prompts. Confirm that
+package and its dormant, disabled `topo-worker.service`. Follow the prompts. Confirm that
 host identities were independently verified, then approve writing the new
 configuration. The assistant performs the same registration and heartbeat check
 as the packaged service, using the `topo-worker` account.
