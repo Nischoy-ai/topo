@@ -230,6 +230,10 @@ def main():
         checks.append('no token in PTY output, live process arguments or service journal; no simulator tasks/IRE')
         print(json.dumps({'status': 'passed', 'checks': checks, 'simulator': audit, 'scope': 'disposable ' + 'Debian' + ' systemd + synthetic loopback; no ServiceNow/target/reboot proof'}))
         command('dpkg', '--remove', 'topo')
+        deadline = time.monotonic() + 5
+        while Path('/proc', str(pid)).exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        require(not Path('/proc', str(pid)).exists(), 'package removal retained the worker process')
         require(snapshot() == before and (not unit.exists()) and (not Path('/usr/bin/topo').exists()), 'removal changed private configuration or retained payload')
         command('dpkg', '--purge', 'topo')
         made.discard('deb')

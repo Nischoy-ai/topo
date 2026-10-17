@@ -13,9 +13,17 @@ cleanup() {
  docker rm --force "$container" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+# Debian's Docker image inhibits maintscript service operations. This fresh
+# systemd fixture permits only its two tested services, so unexpected automatic
+# starts are observable and ordinary package-removal stops can execute.
+cat > "$fixture/policy-rc.d" <<'POLICY'
+#!/bin/sh
+case "$1" in topo-worker.service|topo-agent.service) exit 0 ;; *) exit 101 ;; esac
+POLICY
 cat > "$fixture/Dockerfile" <<'DOCKER'
 FROM debian:unstable@sha256:c1bc8c85a3b2395872d431404ca01b3d1a7c3e98610eb718d80725c573cc8017
 RUN apt-get update && apt-get install -y --no-install-recommends systemd python3 ca-certificates adduser util-linux && rm -rf /var/lib/apt/lists/*
+COPY --chmod=0755 policy-rc.d /usr/sbin/policy-rc.d
 STOPSIGNAL SIGRTMIN+3
 CMD ["/usr/lib/systemd/systemd"]
 DOCKER
