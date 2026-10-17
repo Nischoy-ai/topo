@@ -38,7 +38,7 @@ chown topo-builder:topo-builder "$(dirname "$PWD")"
 exec unshare --net /usr/local/bin/topo-offline-build "$@"
 COMMAND
 chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-build-command
-chroot /srv/chroot/unstable useradd --system --create-home --home-dir /var/lib/topo-builder --shell /bin/bash topo-builder
+chroot /srv/chroot/unstable useradd --system --user-group --create-home --home-dir /var/lib/topo-builder --shell /bin/bash topo-builder
 cat > "$out/sbuild-config.pl" <<'SBUILD'
 $build_env_cmnd = '/usr/local/bin/topo-build-command';
 $mailto = '';
