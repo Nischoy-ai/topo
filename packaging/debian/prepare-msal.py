@@ -13,7 +13,7 @@ for n in z.namelist():
  f=tree/r;f.parent.mkdir(parents=True,exist_ok=True);f.write_bytes(z.read(n))
 with (out/(name+'_1.2.2.orig.tar.gz')).open('xb') as f,gzip.GzipFile(fileobj=f,mode='wb',filename='',mtime=0) as g,tarfile.open(fileobj=g,mode='w') as t:
  for file in sorted(tree.rglob('*')):
-  i=t.gettarinfo(str(file),arcname=tree.name+'/'+str(file.relative_to(tree)));i.uid=i.gid=0;i.uname=i.gname='';i.mtime=0
+  i=t.gettarinfo(str(file),arcname=tree.name+'/'+str(file.relative_to(tree)));i.uid=i.gid=0;i.uname=i.gname='';i.mtime=1792231200
   if file.is_file():
    with file.open('rb') as src:t.addfile(i,src)
   else:t.addfile(i)
@@ -58,6 +58,7 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 \tdh_auto_install -- --no-binaries
+\tfind debian/golang-github-azuread-microsoft-authentication-library-for-go-dev -type f -name .gitignore -delete
 ''');(d/'rules').chmod(0o755)
 # All upstream files carry Microsoft MIT terms; keep its complete license.
 indent=lambda s:'\n'.join(' '+line if line else ' .' for line in s.splitlines())+'\n'

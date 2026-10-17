@@ -75,7 +75,7 @@ archive=out/(name+'_'+new+'.orig.tar.gz')
 with archive.open('xb') as f,gzip.GzipFile(fileobj=f,mode='wb',filename='',mtime=0) as g,tarfile.open(fileobj=g,mode='w') as t:
  for file in sorted(tree.rglob('*')):
   if file.is_relative_to(tree/'debian'):continue
-  i=t.gettarinfo(str(file),arcname=tree.name+'/'+str(file.relative_to(tree)));i.uid=i.gid=0;i.uname=i.gname='';i.mtime=0
+  i=t.gettarinfo(str(file),arcname=tree.name+'/'+str(file.relative_to(tree)));i.uid=i.gid=0;i.uname=i.gname='';i.mtime=1792231200
   if file.is_file():
    with file.open('rb') as src:t.addfile(i,src)
   else:t.addfile(i)

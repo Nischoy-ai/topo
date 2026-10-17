@@ -46,7 +46,7 @@ archive = out/(package+'_0.1.1.orig.tar.gz')
 with archive.open('xb') as f, gzip.GzipFile(fileobj=f, mode='wb', filename='', mtime=0) as g, tarfile.open(fileobj=g, mode='w') as tar:
     for path in sorted(tree.rglob('*')):
         info = tar.gettarinfo(str(path), arcname=tree.name+'/'+str(path.relative_to(tree)))
-        info.uid=info.gid=0;info.uname=info.gname='';info.mtime=0
+        info.uid=info.gid=0;info.uname=info.gname='';info.mtime=1792231200
         if path.is_file():
             with path.open('rb') as src: tar.addfile(info,src)
         else: tar.addfile(info)
@@ -96,6 +96,7 @@ override_dh_auto_test:
 override_dh_auto_install:
 \tdh_auto_install -- --no-binaries
 \trm -r debian/golang-github-azure-go-ntlmssp-dev/usr/share/gocode/src/github.com/Azure/go-ntlmssp/internal/md4
+\tfind debian/golang-github-azure-go-ntlmssp-dev -type f -name .gitignore -delete
 ''')
 (debian/'rules').chmod(0o755)
 (debian/'docs').write_text('README.md\n')
