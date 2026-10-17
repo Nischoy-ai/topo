@@ -46,3 +46,25 @@ explicit nested-module mapping and requirement because Debian client-go imports
 v5 while its packaged requirements still list v4. No installed library source,
 upstream go.mod/go.sum, arbitrary operation, security pin or runtime compatibility
 knob is altered to hide those problems.
+
+## Native security finding and dependency update candidates
+
+The native scan at3dfd473 used actual installed library versions and found
+GO-2024-2918 in Debian's azidentity1.5.0-beta.3. The upstream fixed release is
+1.6.0. `prepare-azure.py` prepares a separate Azure SDK source package with complete
+upstream azidentity1.6.0, azcore1.11.1 and internal1.8.0 modules. Original Debian
+sources/notices are retained for the remaining SDK. `prepare-msal.py` supplies
+its MSAL1.2.2 dependency as a separate source update. Each complete module archive
+is verified against a pinned Go h1 checksum independently checked with the
+official checksum database. No vulnerability record or upstream Topo pin changes.
+
+The Azure SDK candidate retains Debian's existing offline test exclusions. Its
+compilation scope is the updated SDK modules; full original source is installed.
+It adds explicit race-enabled Azure Arc regression tests for the security fix.
+This scope does not establish compatibility of every other Azure SDK consumer.
+Topo then independently compiles and tests its complete CLI with these packages.
+
+The original archive's MSAL1.0.0 diagnostic compatibility result above is historical;
+final security qualification requires the new dependency chain. All three
+library updates need separate Debian maintainer/sponsor review and archive
+acceptance before an archive-only Topo build is possible.

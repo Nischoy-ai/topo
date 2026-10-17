@@ -9,8 +9,9 @@ that does not qualify its Debian dependencies. Fedora's filed SRPM stays intact.
 Debian packaging uses archive-provided Go libraries rather than Fedora's vendor
 archive. `dependency-map.json` records candidates for all 66 declared modules;
 package names, import roots and versions must be checked against each archive.
-The October 15 preliminary index audit found older AWS/Azure/govmomi libraries
-and three unresolved roots. Candidate names are not dependency closure.
+The preliminary index audit was followed by actual offline builds.
+`dependency-compatibility.md` records the archive versions exercised, metadata
+repairs, and independently packaged library updates required by qualification.
 
 Native downstream Go 1.26.9/1.27.2 evaluation is staged in `ROADMAP.md`;
 this does not change the upstream signed-release compiler baseline. Ubuntu
@@ -27,8 +28,10 @@ and all dependency/build gates remain visible.
 The `debian/` directory contains a `3.0 (quilt)` full-CLI source package, native
 Go/debhelper dependencies, a manpage, unchanged reviewed systemd units, separate
 service users and an installed CLI smoke test. Installation neither enables nor
-starts discovery. `debian/copyright` is explicitly pending its complete DEP-5
-inventory. This candidate must not be uploaded as a finished package.
+starts discovery. `debian/copyright` now covers the full pinned source inventory and retained legal
+documents. Complete actual linked-library and Go runtime notices are collected
+into the DEB; see `copyright-review.md`. Qualification is still required before
+this candidate can be uploaded as a finished package.
 
 ## Reproduce the audit
 
@@ -50,11 +53,30 @@ Build-Depends are missing. **It is not a clean build or an acceptance gate.**
 results were collected, including failures. No missing dependency or security pin
 is silently replaced, bundled or downgraded. No code executes against real targets.
 
-Once dependencies and licensing are closed, qualification requires a fresh
-`sbuild` without `-d`, full tests/race/vulnerability checks using the chosen archive
-libraries, Lintian, autopkgtest and disposable systemd install/setup/upgrade/removal
-checks. Those gates have not passed for this candidate. The same-source package
-transaction test must not be confused with deferred release/N-1 upgrade evidence.
+The `debian-native-qualification` workflow creates independent clean `sbuild`
+chroots on AMD64 and ARM64. Build phases run without root or external networking;
+loopback remains available for protocol simulators. It prepares separate NTLM,
+MSAL and Azure SDK source-update candidates, builds each before Topo, and supplies
+their DEBs using `sbuild --extra-package`. Remaining dependencies come from the
+normal signed Debian unstable archive. No Fedora vendor archive is used.
+
+The Azure update replaces complete azidentity1.6.0, azcore1.11.1 and internal1.8.0
+modules and requires MSAL1.2.2; it addresses GO-2024-2918 found in the archive's
+azidentity1.5.0-beta.3. NTLM0.1.1 retains its malformed-challenge fix and uses the
+system x/crypto MD4 implementation. These are library-maintainer review candidates,
+not updates already accepted into Debian. Checksums and full license notices are
+retained with each source package.
+
+Qualification requires native vet/race tests, actual-version vulnerability
+analysis, Lintian, installed-package autopkgtest and real systemd install/setup/
+revision/removal tests. The security check uses unmodified pinned govulncheck and
+a frozen official vulnerability database against byte-verified native sources;
+local replacement paths must not hide library identities. The disposable systemd
+fixture only registers against a synthetic loopback server and receives no work.
+
+The same-source higher-revision package transaction is distinct from historical
+release/N-1 upgrade evidence. Only final exact-head results qualify a candidate;
+source-audit success or intermediate builds do not substitute for those results.
 
 ## Submission route
 
