@@ -23,6 +23,7 @@ while raw.strip():
 repairs = json.loads((build / "legacy-module-metadata.json").read_text())
 records = {}
 modules = {}
+compiled = []
 
 def owner(path):
     result = subprocess.check_output(["dpkg-query", "-S", str(path)], text=True)
@@ -53,8 +54,15 @@ for item in packages:
     names = item.get("GoFiles", []) + item.get("CgoFiles", [])
     if not names:
         raise ValueError(f"No attributable source files for {item['ImportPath']}")
-    package = owner((directory / names[0]).resolve())
+    source_names = sorted({name for field in ["GoFiles", "CgoFiles", "CFiles", "CXXFiles", "HFiles", "SFiles", "SysoFiles", "EmbedFiles"] for name in item.get(field, [])})
+    ownership = subprocess.check_output(["dpkg-query", "-S", *[str((directory/name).resolve()) for name in source_names]], text=True)
+    owners = {line.split(": ", 1)[0] for line in ownership.splitlines()}
+    if len(owners) != 1:
+        raise ValueError(f"Mixed installed source ownership: {item['ImportPath']}: {owners}")
+    package = owners.pop()
     retain(package)
+    compiled.append({"import_path": item["ImportPath"], "debian_owner": package,
+        "files": [{"name": name, "sha256": hashlib.sha256((directory/name).read_bytes()).hexdigest()} for name in source_names]})
     module = item.get("Module", {})
     module_name = module.get("Path")
     if module_name and module_name not in modules:
@@ -73,6 +81,7 @@ for item in packages:
             "identity":records[package]["identity"], "go_mod":(module_dir/"go.mod").read_text(),
             "version_constant_candidates":candidates,
             "warning":"Requested Go versions describe requirements, not the version of replaced Debian source."}
+(destination / "compiled-files.json").write_text(json.dumps(compiled, indent=2) + "\n")
 (destination / "module-sources.json").write_text(json.dumps(modules, indent=2) + "\n")
 (destination / "manifest.json").write_text(json.dumps(records, indent=2) + "\n")
 print(f"Retained complete copyright documents for {len(records)} installed packages")

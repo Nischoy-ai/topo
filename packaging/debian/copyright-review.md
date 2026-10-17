@@ -28,3 +28,19 @@ The source inventory is complete for the pinned snapshot. The binary notice
 manifest and its review require a successful native build with the final chosen
 libraries; no source-only scan substitutes for that remaining check. New source
 or changed dependency packages require a fresh inventory/notice review.
+
+The binary records distinguish full Debian source-package notices from code
+actually compiled on each architecture. `compiled-files.json` retains package
+paths, installed ownership and SHA-256 values for selected Go, assembly and
+embedded inputs. Every selected file must have the same installed owner within
+its package; mixed or missing ownership fails packaging. Full source-package
+notices can also cover documentation, tests or other operating systems that are
+not in the executable; retaining them does not assert those files were linked.
+
+In particular, modernc-libc's complete Debian notice includes generated Linux
+header/UUID material under LGPL terms and GCC exceptions alongside BSD/MIT
+source; it must not be described as entirely permissive from its root license.
+Go's noderivs notice concerns PNG test images, and go-restful's GPL paragraph
+concerns Debian metadata. Preserve these complete records and Debian's generated
+Static-Built-Using source identities for source/rebuild access. Source review
+does not rename the combined executable's dependency licenses to Apache-2.0.
