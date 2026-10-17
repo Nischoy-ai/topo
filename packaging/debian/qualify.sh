@@ -3,6 +3,7 @@
 set -euo pipefail
 test "${GITHUB_ACTIONS:-}" = true
 test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+test "${GITHUB_JOB:-}" = debian-native
 test -f /.dockerenv
 grep -qx ID=debian /etc/os-release
 out=/tmp/topo-debian-qualification
@@ -48,19 +49,22 @@ sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
  --purge-build=never --purge-deps=never --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
 # A directory schroot may retain /build physically under its root, while other
-# profiles bind the host /build. Locate the one fresh build by inode, not guess.
+# profiles bind /var/lib/sbuild/build to /build (verified schroot1.6.13-8).
+# Locate the one fresh build by inode and translate that explicit mount.
 mapfile -t placement < <(python3 - <<'LOCATE'
 from pathlib import Path
 seen={}
 chroot=Path('/srv/chroot/unstable')
-for base in [chroot/'build',Path('/build')]:
+for base in [chroot/'build',Path('/build'),Path('/var/lib/sbuild/build')]:
  if base.exists():
   for p in base.glob('**/_build/topo-setup-controlsim'):
    key=(p.stat().st_dev,p.stat().st_ino)
    seen.setdefault(key,p)
 if len(seen)!=1:raise ValueError(f'Expected one native simulator, found {list(seen.values())}')
 p=next(iter(seen.values()));source=p.parent.parent
-inside=Path('/')/source.relative_to(chroot) if source.is_relative_to(chroot) else source
+if source.is_relative_to(chroot):inside=Path('/')/source.relative_to(chroot)
+elif source.is_relative_to('/var/lib/sbuild/build'):inside=Path('/build')/source.relative_to('/var/lib/sbuild/build')
+else:inside=source
 print(p);print(inside)
 LOCATE
 )
@@ -68,7 +72,7 @@ test "${#placement[@]}" = 2
 cp "${placement[0]}" "$out/topo-setup-controlsim"
 source_dir="${placement[1]}"
 preserve_security() {
- for directory in /srv/chroot/unstable/build/topo-native-security /build/topo-native-security; do
+ for directory in /srv/chroot/unstable/build/topo-native-security /build/topo-native-security /var/lib/sbuild/build/topo-native-security; do
   if test -d "$directory"; then
    find "$directory" -maxdepth 1 -type f \( -name '*.json' -o -name 'govulncheck.log' \) -exec cp '{}' "$out/" \;
   fi

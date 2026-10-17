@@ -38,9 +38,25 @@ root=build/'src/github.com/Nischoy-ai/topo'
 records=json.loads((build.parent/'debian/topo/usr/share/doc/topo/linked-licenses/module-sources.json').read_text())
 index_bytes=urllib.request.urlopen('https://vuln.go.dev/index/modules.json',timeout=60).read()
 index={r['path']:r for r in json.loads(index_bytes)}
+providers={
+ 'github.com/Azure/azure-sdk-for-go/sdk/azidentity':'golang-github-azure-azure-sdk-for-go',
+ 'github.com/Azure/go-ntlmssp':'golang-github-azure-go-ntlmssp',
+ 'github.com/emicklei/go-restful/v3':'golang-github-emicklei-go-restful',
+ 'github.com/golang-jwt/jwt/v4':'golang-github-golang-jwt-jwt',
+ 'golang.org/x/crypto':'golang-go.crypto',
+ 'golang.org/x/net':'golang-golang-x-net',
+ 'golang.org/x/oauth2':'golang-golang-x-oauth2',
+ 'golang.org/x/sys':'golang-golang-x-sys',
+ 'golang.org/x/text':'golang-golang-x-text',
+ 'google.golang.org/protobuf':'golang-google-protobuf',
+ 'k8s.io/apimachinery':'golang-k8s-apimachinery',
+ 'k8s.io/client-go':'golang-k8s-client-go',
+}
 actual={}
 for module in sorted(records.keys() & index.keys()):
     record=records[module]
+    if providers.get(module)!=record['identity'].split('\t')[2]:
+        raise ValueError('Actual-version provider needs review: '+module)
     if module.startswith('github.com/Azure/azure-sdk-for-go/'):
         candidates=[c for c in record['version_constant_candidates'] if c['path']=='version.go']
         versions={v if v.startswith('v') else 'v'+v for c in candidates for v in c['values'] if re.fullmatch(r'v?\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?',v)}

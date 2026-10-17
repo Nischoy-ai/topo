@@ -39,7 +39,7 @@ def main():
     tree = output / ("topo-" + VERSION)
     if (tree / "vendor").exists() or (tree / ".maintainer").exists():
         raise ValueError("unbundled public source required")
-    shutil.copytree(ROOT / "packaging/debian/debian", tree / "debian")
+    shutil.copytree(ROOT / "packaging/debian/debian", tree / "debian", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     for service in ("worker", "agent"):
         if (tree / f"debian/topo.topo-{service}.service").read_bytes() != (tree / f"packaging/systemd/topo-{service}.package.service").read_bytes():
             raise ValueError("packaged service differs from reviewed upstream unit")
