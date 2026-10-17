@@ -28,18 +28,28 @@ for path,(v,h1) in modules.items():
  data=urllib.request.urlopen(url,timeout=60).read();z=zipfile.ZipFile(io.BytesIO(data))
  lines=''.join(hashlib.sha256(z.read(n)).hexdigest()+'  '+n+'\n' for n in sorted(z.namelist()))
  actual='h1:'+base64.b64encode(hashlib.sha256(lines.encode()).digest()).decode();assert actual==h1
- destination=tree/path;shutil.rmtree(destination);destination.mkdir()
+ destination=tree/path
+ nested=[f.parent for f in destination.rglob('go.mod') if f.parent!=destination]
+ retained=out/'nested-modules'/path
+ for child in nested:
+  shutil.copytree(child,retained/child.relative_to(destination))
+ shutil.rmtree(destination);destination.mkdir()
  prefix=m+'@'+v+'/'
  for n in z.namelist():
   assert n.startswith(prefix);rel=Path(n[len(prefix):]);assert '..' not in rel.parts
   target=destination/rel;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read(n))
- receipts[m]={'version':v,'h1':h1,'zip_sha256':hashlib.sha256(data).hexdigest(),'files':len(z.namelist())}
+ for child in nested:
+  rel=child.relative_to(destination);shutil.copytree(retained/rel,destination/rel)
+ receipts[m]={'retained_nested_modules':[str(child.relative_to(destination)) for child in nested],'version':v,'h1':h1,'zip_sha256':hashlib.sha256(data).hexdigest(),'files':len(z.namelist())}
 # Retain original Debian copyright and complete MIT text. Source changes and
 # minimal native test scope remain explicit for the library's maintainer review.
 (debian/'changelog').write_text(f"{name} ({version}) UNRELEASED; urgency=high\n\n  * Review candidate: update complete azidentity module to 1.6.0 for CVE-2024-35255.\n  * Update its azcore 1.11.1/internal 1.8.0 dependencies from verified upstream modules.\n\n -- Soumik Sarkar <soumiks@gmail.com>  Sat, 17 Oct 2026 10:00:00 +0000\n\n"+(debian/'changelog').read_text())
 control=(debian/'control').read_text().replace('Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>','Maintainer: Soumik Sarkar <soumiks@gmail.com>')
 control=control.replace('golang-github-azuread-microsoft-authentication-library-for-go-dev,','golang-github-azuread-microsoft-authentication-library-for-go-dev (>= 1.2.2),')
 (debian/'control').write_text(control)
+copyright=(debian/'copyright').read_text().replace('Copyright: 2015 Tianon Gravi <tianon@debian.org>', 'Copyright: 2015 Tianon Gravi <tianon@debian.org>\n 2026 Soumik Sarkar <soumiks@gmail.com>')
+copyright=copyright.replace('Files: debian/*', 'Files: sdk/azidentity/* sdk/azcore/* sdk/internal/*\nCopyright: Microsoft Corporation\nLicense: Expat\n\nFiles: debian/*')
+(debian/'copyright').write_text(copyright)
 # This metadata-only Go1.27 compatibility patch must still be relevant after the
 # full azcore replacement. Refresh it from the actual retained source.
 patches=debian/'patches';shutil.rmtree(patches);patches.mkdir()
