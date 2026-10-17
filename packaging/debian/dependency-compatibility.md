@@ -59,7 +59,9 @@ is verified against a pinned Go h1 checksum independently checked with the
 official checksum database. No vulnerability record or upstream Topo pin changes.
 
 The Azure SDK candidate retains Debian's existing offline test exclusions. Its
-compilation scope is the updated SDK modules; full original source is installed.
+compilation scope is the updated SDK modules. Installed development sources
+contain the Go APIs; repository automation is omitted. The complete repacked
+source, including that automation, remains in the source archive.
 It adds explicit race-enabled Azure Arc regression tests for the security fix.
 This scope does not establish compatibility of every other Azure SDK consumer.
 Topo then independently compiles and tests its complete CLI with these packages.
