@@ -14,7 +14,7 @@ dpkg-query -W > "$out/host-packages.txt"
 # Independent source update, authenticated by the original upstream Go checksum.
 python3 packaging/debian/prepare-ntlmssp.py --output "$out/ntlm-source" > "$out/ntlm-source-path.txt"
 # A fresh chroot is used for each build session. No host Go module cache enters it.
-sbuild-createchroot --arch="$arch" --include=ca-certificates,iproute2 unstable /srv/chroot/unstable "http://deb.debian.org/debian" > "$out/chroot.log" 2>&1
+sbuild-createchroot --arch="$arch" --include=ca-certificates,iproute2,passwd,util-linux unstable /srv/chroot/unstable "http://deb.debian.org/debian" > "$out/chroot.log" 2>&1
 # schroot does not implement sbuild's network switch. Use an explicit build-only
 # network namespace, after APT dependencies are installed, with loopback up.
 cat > /srv/chroot/unstable/usr/local/bin/topo-offline-build <<'OFFLINE'
