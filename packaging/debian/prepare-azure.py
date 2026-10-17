@@ -49,6 +49,7 @@ control=control.replace('golang-github-azuread-microsoft-authentication-library-
 (debian/'control').write_text(control)
 copyright=(debian/'copyright').read_text().replace('Copyright: 2015 Tianon Gravi <tianon@debian.org>', 'Copyright: 2015 Tianon Gravi <tianon@debian.org>\n 2026 Soumik Sarkar <soumiks@gmail.com>')
 copyright=copyright.replace('Files: debian/*', 'Files: sdk/azidentity/* sdk/azcore/* sdk/internal/*\nCopyright: Microsoft Corporation\nLicense: Expat\n\nFiles: debian/*')
+copyright=copyright.replace('License: Apache-2.0 or Expat\nComment: Debian packaging is licensed under the same terms as upstream', 'License: Apache-2.0\nComment: Apache-2.0 selected from the original metadata dual license;\n amendments are provided under Apache-2.0.')
 (debian/'copyright').write_text(copyright)
 # This metadata-only Go1.27 compatibility patch must still be relevant after the
 # full azcore replacement. Refresh it from the actual retained source.
