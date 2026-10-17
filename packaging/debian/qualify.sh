@@ -119,11 +119,24 @@ preserve_security() {
 trap preserve_security EXIT
 # Analyze the exact retained build sources and installed dependencies. This
 # subsequent analysis phase can fetch official tool/DB data; package builds cannot.
-if schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir" -- \
+# Keep scan and mount teardown outcomes distinct. A completed Go process can
+# release its final cwd/file references just after the command exits; retry only
+# normal session teardown, never lazy-unmount or ignore a remaining busy mount.
+session=$(schroot --begin-session --chroot="unstable-${arch}-sbuild" --user=root)
+scan_status=0
+schroot --run-session --chroot="$session" --user=root --directory="$source_dir" -- \
  env PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
- python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1; then
- :
-else
+ python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1 || scan_status=$?
+cleanup_status=1
+for attempt in 1 2 3 4 5; do
+ if schroot --end-session --chroot="$session" >> "$out/schroot-cleanup.log" 2>&1; then
+  cleanup_status=0
+  break
+ fi
+ sleep 2
+done
+printf 'scan %s\ncleanup %s\n' "$scan_status" "$cleanup_status" > "$out/security-phase-status.txt"
+if test "$cleanup_status" != 0; then
  python3 - "$out/schroot-processes.json" <<'PROCESSES'
 import json,os,sys
 from pathlib import Path
@@ -132,14 +145,16 @@ for process in Path('/proc').iterdir():
  if not process.name.isdigit():continue
  try:
   root=os.readlink(process/'root')
-  if not root.startswith('/run/schroot/mount/') and not root.startswith('/var/run/schroot/mount/'):continue
-  records.append({'pid':int(process.name),'comm':(process/'comm').read_text().strip(),'root':root,'cwd':os.readlink(process/'cwd')})
+  cwd=os.readlink(process/'cwd')
+  if '/schroot/' not in root and '/schroot/' not in cwd:continue
+  records.append({'pid':int(process.name),'comm':(process/'comm').read_text().strip(),'root':root,'cwd':cwd})
  except (FileNotFoundError,PermissionError,ProcessLookupError):continue
 Path(sys.argv[1]).write_text(json.dumps(records,indent=2)+'\n')
-print(json.dumps(records,indent=2))
 PROCESSES
- exit 1
+ cat /proc/self/mountinfo > "$out/schroot-mountinfo.txt"
 fi
+test "$scan_status" = 0
+test "$cleanup_status" = 0
 preserve_security
 # Collect every independent lint/smoke outcome before failing the gate. A first
 # lint error must not hide the other package reports or installed smoke result.

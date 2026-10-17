@@ -17,7 +17,7 @@ cat > "$fixture/Dockerfile" <<'DOCKER'
 FROM debian:unstable@sha256:c1bc8c85a3b2395872d431404ca01b3d1a7c3e98610eb718d80725c573cc8017
 RUN apt-get update && apt-get install -y --no-install-recommends systemd python3 ca-certificates adduser util-linux && rm -rf /var/lib/apt/lists/*
 STOPSIGNAL SIGRTMIN+3
-CMD ["/usr/sbin/init"]
+CMD ["/usr/lib/systemd/systemd"]
 DOCKER
 docker build --tag "$image" "$fixture"
 docker run --detach --name "$container" --privileged --cgroupns=private --network none \
