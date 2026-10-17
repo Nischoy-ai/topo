@@ -46,10 +46,19 @@ test "${#ntlm[@]}" = 1
 python3 packaging/debian/prepare-source.py --output "$out/topo-source" > "$out/topo-source-path.txt"
 sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
- --purge-build=never --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
+ --purge-build=never --purge-deps=never --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
 mapfile -t simulators < <(find /build -type f -path '*/_build/topo-setup-controlsim')
 test "${#simulators[@]}" = 1
 cp "${simulators[0]}" "$out/topo-setup-controlsim"
+# Keep exact installed build dependencies for source-security analysis, after
+# the clean offline build. No package compilation fetches from the network.
+source_dir=$(find /build -maxdepth 2 -type d -name 'topo-0.4.7*' | head -1)
+test -n "$source_dir"
+schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir" -- \
+ env PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+ python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1
+cp /build/topo-native-security/*.json "$out/"
+cp /build/topo-native-security/govulncheck.log "$out/"
 lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}" > "$out/ntlm-lintian.log" 2>&1
 lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes > "$out/topo-lintian.log" 2>&1
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
@@ -62,5 +71,5 @@ p=Path(sys.argv[1]); records={}
 for f in p.rglob('*'):
  if f.is_file() and (f.suffix in ('.deb','.dsc','.changes','.buildinfo') or f.name=='source-receipt.json'):
   records[str(f.relative_to(p))]={'bytes':f.stat().st_size,'sha256':hashlib.sha256(f.read_bytes()).hexdigest()}
-(p/'BUILD-RESULT.json').write_text(json.dumps({'architecture':sys.argv[2], 'clean_sbuild':True,'native_vet_and_race':True,'lintian':True,'autopkgtest':True,'dependency_update':'separate NTLM0.1.1 review candidate via sbuild --extra-package; not in Debian archive','source_signed':False,'archive_accepted':False,'upload_ready':False,'remaining':['native security equivalence review','real systemd package lifecycle','owner signing and sponsor/archive review'],'artifacts':records},indent=2)+'\n')
+(p/'BUILD-RESULT.json').write_text(json.dumps({'architecture':sys.argv[2], 'clean_sbuild':True,'native_vet_and_race':True,'native_actual_version_security':True,'lintian':True,'autopkgtest':True,'dependency_update':'separate NTLM0.1.1 review candidate via sbuild --extra-package; not in Debian archive','source_signed':False,'archive_accepted':False,'upload_ready':False,'remaining':['real systemd package lifecycle','owner signing and sponsor/archive review'],'artifacts':records},indent=2)+'\n')
 PY
