@@ -7,11 +7,13 @@ test "${GITHUB_JOB:-}" = debian-native
 test -f /.dockerenv
 grep -qx ID=debian /etc/os-release
 out=/tmp/topo-debian-qualification
-mkdir -p "$out"/{ntlm,topo,tests}
+mkdir -p "$out"/{ntlm,msal,azure,topo,tests}
 arch=$(dpkg --print-architecture)
 cp /var/lib/apt/lists/*InRelease "$out/"
 dpkg-query -W > "$out/host-packages.txt"
 # Independent source update, authenticated by the original upstream Go checksum.
+python3 packaging/debian/prepare-msal.py --output "$out/msal-source" > "$out/msal-source-path.txt"
+python3 packaging/debian/prepare-azure.py --output "$out/azure-source" > "$out/azure-source-path.txt"
 python3 packaging/debian/prepare-ntlmssp.py --output "$out/ntlm-source" > "$out/ntlm-source-path.txt"
 # A fresh chroot is used for each build session. No host Go module cache enters it.
 sbuild-createchroot --arch="$arch" --include=ca-certificates,iproute2,passwd,util-linux unstable /srv/chroot/unstable "http://deb.debian.org/debian" > "$out/chroot.log" 2>&1
@@ -30,7 +32,7 @@ cat > /srv/chroot/unstable/usr/local/bin/topo-build-command <<'COMMAND'
 #!/bin/sh
 set -eu
 test "$(id -u)" = 0
-case "$PWD" in /build/reproducible-path/topo-*|/build/reproducible-path/golang-github-azure-go-ntlmssp-*) ;; *) exit 1 ;; esac
+case "$PWD" in /build/reproducible-path/topo-*|/build/reproducible-path/golang-github-azure-*|/build/reproducible-path/golang-github-azuread-*) ;; *) exit 1 ;; esac
 chown -R topo-builder:topo-builder "$PWD"
 chown topo-builder:topo-builder "$(dirname "$PWD")"
 exec unshare --net /usr/local/bin/topo-offline-build "$@"
@@ -48,11 +50,19 @@ sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild
  "$out/ntlm-source/"*.dsc > "$out/ntlm-sbuild.log" 2>&1
 ntlm=("$out/ntlm/"*dev*.deb)
 test "${#ntlm[@]}" = 1
+sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
+ --arch-all --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/msal" \
+ "$out/msal-source/"*.dsc > "$out/msal-sbuild.log" 2>&1
+msal=("$out/msal/"*dev*.deb);test "${#msal[@]}" = 1
+sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
+ --arch-all --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/azure" \
+ --extra-package="${msal[0]}" "$out/azure-source/"*.dsc > "$out/azure-sbuild.log" 2>&1
+azure=("$out/azure/"*dev*.deb);test "${#azure[@]}" = 1
 # Prepare unbundled Topo source; all other dependencies come from normal Debian.
 python3 packaging/debian/prepare-source.py --output "$out/topo-source" > "$out/topo-source-path.txt"
 sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
- --purge-build=never --purge-deps=never --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
+ --purge-build=never --purge-deps=never --extra-package="${ntlm[0]}" --extra-package="${msal[0]}" --extra-package="${azure[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
 # A directory schroot may retain /build physically under its root, while other
 # profiles bind /var/lib/sbuild/build to /build (verified schroot1.6.13-8).
 # Locate the one fresh build by inode and translate that explicit mount.
@@ -91,6 +101,8 @@ schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir"
  python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1
 preserve_security
 lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}" > "$out/ntlm-lintian.log" 2>&1
+lintian "$out/msal-source/"*.dsc "${msal[0]}" > "$out/msal-lintian.log" 2>&1
+lintian "$out/azure-source/"*.dsc "${azure[0]}" > "$out/azure-lintian.log" 2>&1
 lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes > "$out/topo-lintian.log" 2>&1
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
 autopkgtest "$out/topo-source/"*.dsc "$out/topo/"topo_*"_${arch}.deb" \

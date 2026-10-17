@@ -42,6 +42,7 @@ providers={
  'github.com/Azure/azure-sdk-for-go/sdk/azidentity':'golang-github-azure-azure-sdk-for-go',
  'github.com/Azure/go-ntlmssp':'golang-github-azure-go-ntlmssp',
  'github.com/emicklei/go-restful/v3':'golang-github-emicklei-go-restful',
+ 'github.com/golang-jwt/jwt/v5':'golang-github-golang-jwt-jwt-v5',
  'github.com/golang-jwt/jwt/v4':'golang-github-golang-jwt-jwt',
  'golang.org/x/crypto':'golang-go.crypto',
  'golang.org/x/net':'golang-golang-x-net',
