@@ -32,6 +32,9 @@ def debian_upstream_version(version):
     if not match:raise ValueError('Unresolved actual Debian version: '+version)
     return 'v'+match[1]
 
+# This is the disposable chroot's root account, not the maintainer's host.
+# Use the documented command (GOTELEMETRY env is read-only) before Go tools.
+subprocess.run(['go','-C','/','telemetry','off'],check=True)
 build=Path(sys.argv[1]).resolve()
 out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=False)
 root=build/'src/github.com/Nischoy-ai/topo'

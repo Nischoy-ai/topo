@@ -25,6 +25,13 @@ set -eu
 ip link set lo up
 ip -brief link
 [ "$(ip -o link | wc -l)" -eq 1 ]
+# Configure the disposable builder before any instrumented Go tool starts.
+for tool in /usr/lib/go-1.27/bin/go /usr/lib/go-1.26/bin/go; do
+ if test -x "$tool"; then
+  runuser --user topo-builder -- "$tool" -C / telemetry off
+  break
+ fi
+done
 exec runuser --user topo-builder -- "$@"
 OFFLINE
 chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-offline-build
@@ -101,9 +108,27 @@ preserve_security() {
 trap preserve_security EXIT
 # Analyze the exact retained build sources and installed dependencies. This
 # subsequent analysis phase can fetch official tool/DB data; package builds cannot.
-schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir" -- \
+if schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir" -- \
  env PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
- python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1
+ python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1; then
+ :
+else
+ python3 - "$out/schroot-processes.json" <<'PROCESSES'
+import json,os,sys
+from pathlib import Path
+records=[]
+for process in Path('/proc').iterdir():
+ if not process.name.isdigit():continue
+ try:
+  root=os.readlink(process/'root')
+  if not root.startswith('/run/schroot/mount/') and not root.startswith('/var/run/schroot/mount/'):continue
+  records.append({'pid':int(process.name),'comm':(process/'comm').read_text().strip(),'root':root,'cwd':os.readlink(process/'cwd')})
+ except (FileNotFoundError,PermissionError,ProcessLookupError):continue
+Path(sys.argv[1]).write_text(json.dumps(records,indent=2)+'\n')
+print(json.dumps(records,indent=2))
+PROCESSES
+ exit 1
+fi
 preserve_security
 # Collect every independent lint/smoke outcome before failing the gate. A first
 # lint error must not hide the other package reports or installed smoke result.
