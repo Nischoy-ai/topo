@@ -1,0 +1,1972 @@
+{
+  "upstream_commit": "3adbdb36ad886396ad6267cd706c84bea6d35b99",
+  "review_type": "maintainer source inventory, not archive legal approval",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "2c3f28b20c8de6f72d7a7ff3b3473a9a1c22c5278edbb552b053158406020136",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".github/workflows/fedora-packaging.yml",
+      "sha256": "2f5340e91a12e0bbbce4a4c81679dac46543b4dfa6fbfefadcf3ac3f1fc64c25",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".github/workflows/live-beta.yml",
+      "sha256": "7ba1070ca8824758089574c67951cee1fc649c36b1d0c70f99f592fef7407c0b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".github/workflows/promote.yml",
+      "sha256": "5280cdaba427bfba2c61b63bc888f7816b43c4de43e9b025e73b3a933c592641",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "sha256": "f8e228e341dc69dd7f688bc421e5c4e4a87f35a69a27c91e4ed74dcf249ce099",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".github/workflows/servicenow-xml-proof.yml",
+      "sha256": "01e6334335e8c33d209e1fe2e2cf3b8b076c02f1cc0c7a81c37b7a7718ac238c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".github/workflows/sign-servicenow-xml.yml",
+      "sha256": "ff0120350cd8bdcf0147393cccdf7cddf844579191c57b5bc5227835281aad69",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "296ca3f1b455ae3eaaa88ab16261cd27e08d33551bdf83194e4fa9c4e10cd757",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sha256": "1a73bae22f07156d6c655b0f42ba3196a04abb6250c8743bcd9136eb79aca85c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "b16f635275171ea0bf6f50998b4d8ecae0f4b6bff9d9be32f7ac40d472701a78",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "478843c85342c03ae287959cc8167b2bf2264b266ecec02542b5395b5f0d62e5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "README.md",
+      "sha256": "d71f339daf91414423fbff566a5de7b50a95b8d506855054a42715d066922148",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "ROADMAP.md",
+      "sha256": "63bf7ab9189df0203fcef839896665b88ccee3585157a7b6ceee06842cff92c6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "fbaa5096eec1e208ffa1b3d5cccfee31fed6a7ec8820baede7835ce9f5df870e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "api/proto/topo/v1alpha1/observation.proto",
+      "sha256": "17b89cbdf6afdf3ad6eab2dcafb8dc391d93e75ed21c5f458d16deed21d05bcf",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "api/schema/topo-observation-v1alpha1.json",
+      "sha256": "bbb79818b6e839979ec3b25a15b174f42ccfe3e840de306712f489e74acb9437",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/main.go",
+      "sha256": "957ef792065047582853a570ea95ab56778340f34fe619cf34e4eb3e33fa438e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/main_test.go",
+      "sha256": "b2a9def7118ccd8e66d5c5210347087d1966b087b0e7552b40096fcdbd8b642f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/publish_servicenow.go",
+      "sha256": "62c552d1545aa83cb55de4517b91342b2beacf753a3c3c14e28935d8a83e2174",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/publish_servicenow_test.go",
+      "sha256": "bbe36565dc5b9be96504c838747bffc3bb04f93fb23d7b1171a87bcd5001d8aa",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/service_other.go",
+      "sha256": "23f0bc831ddfbbd8e7e2d1003bfcc60502effc2182865f1ec32bfe23ff983438",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/service_windows.go",
+      "sha256": "fb0c5b821ac90bf0d893723bbc33a061dd96317212104d71be4c8330c5571da8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "cmd/topo/worker_setup.go",
+      "sha256": "83adf84bafa0661e11c15967766e2a19245a787c9702b4ca12f0fc0d328df9a7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "compose.yaml",
+      "sha256": "f4f8b08f0f9a65709cc5c4628f3b0c9b0ca1260894003c66edde6bea72d4306d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "45e08265a47022526760095e416ab54e6b1d4282cbd2d7bc54e7f29276e85af0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/administrator-preparation.md",
+      "sha256": "2f0310a2bfd665544e8c996beb249b9db062b0eec0313698c8639e8971a2c4ee",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/architecture.md",
+      "sha256": "93326603e079d7613c13a8cc6141f9653759341d92989d8d5126de8bb34338be",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/aws.md",
+      "sha256": "87ccbbefaf940ebe6f3eacfa5dac8716dbefaea4956d872b1596db923b72137e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/azure.md",
+      "sha256": "d21258b3fc2caa362ab97fbe6287175db5d2530caa436988eac2117374c3c61d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/credential-references.md",
+      "sha256": "27a6e38b020d75bde4e95b4378ed8890fc33c19d851a9cda5b0abd31dccf51ed",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/deployment-security.md",
+      "sha256": "6e9044d564695fb074d8baaff2a840c3c42ae1f9df3ef6fcfd3cf8f942b7fcbc",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/development.md",
+      "sha256": "0be0c4db11afe7208dde1f7542e11f3f317f9f1895a151fd77f32b358694b9c5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/distribution.md",
+      "sha256": "9b3fe816589799d27c5430a57d27d34769da3772646c14c1f5a085b961aba287",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/enrollment.md",
+      "sha256": "1a3807350de0f1a4baa1b60cdb22ba19ea8e18c6fe010dd724933474d88ca087",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/evidence/README.md",
+      "sha256": "681805c936707de80625b4468a4961592ed570cd594790062dc6fe5bd430e2d3",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/evidence/distribution.md",
+      "sha256": "c9d783cb46697ab88633247c0314caeb321393da472d052a6f871015a844578d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/evidence/mixed-inventory.md",
+      "sha256": "c3a9bbc57a7d8449760209600043b46a13847d9f50f76068e34dd5fa4930e8ad",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/evidence/servicenow-ire.md",
+      "sha256": "b2f49daea3c9e18c80a4f2ad0bfdd8582fcd0d1832c77559166af49312f26455",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/evidence/servicenow-worker.md",
+      "sha256": "7e990259b6f7498c5e4afee3412d47abba41b2e06f36e560f0ea6dbf701b8ed9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/first-success.md",
+      "sha256": "6230402346f6c1953f3dce73a226ac499c5feac4e003cbe6dc488e6af0d21e0b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/heartbeats.md",
+      "sha256": "b47a1a5e39a3164d16be381132703a7442cc36bb29adb02862fd5afb10c64170",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/jobs.md",
+      "sha256": "5c58882782e60d90fc2bf668e5514343875ede4b48d9896675256a9643a82abe",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/kubernetes.md",
+      "sha256": "e7f40ad1473d05c059652c27b1593a3c792839ed7431aa4e51673db1ae492bd9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/mixed-inventory-pilot.md",
+      "sha256": "63be67ba5349cfb85deba1c88f30abdf930307bd37deb8fe58df92f12928deec",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/mixed-inventory-setup.md",
+      "sha256": "16c9d77df719fd538bfa67ff179f6fb4c95f9c614b4140164d04823e7cb0af3b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/packages.md",
+      "sha256": "cfde6fe004febb07ce3c13862a3603f13e6dfe39c081cb42bbaf1d2d1845379e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/pilot-quickstart.md",
+      "sha256": "6fd8332b5a31006a3d8d4fd2e10cacae46f5be165e47d4c645536d4ca6795fcc",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/releases.md",
+      "sha256": "b28da04d40ad2dc3d70ffddb440755b97c1335a250bac930abc498c0c42d5e77",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/scheduling.md",
+      "sha256": "8e96f7b6f39e12b217ac741eff7073273de08eeb5cdba933f7b7f7a4550e1367",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/security-review.md",
+      "sha256": "880e76a5902d8123dc0bf8cddc5a17eebd5722833b19fa006b2b75a79fc57ea5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-control-plane.md",
+      "sha256": "e422c2b8c578d4093c6016e350491a8a9b6c8a2d6ad644d1584ebbc31221469d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-index-setup.md",
+      "sha256": "db019d775094f2efca6b373ba3b1194f5f6335af0d165850a6eb499b87f72754",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-mid.md",
+      "sha256": "4ef4addd941f25d137e58f3ced129fb17b024815f03eda9457324b2ec19430c0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-relay.md",
+      "sha256": "89e96c041256ca136b36463da4b156a850eb7ac8c5336e70a90f5231fb320b15",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-update-set.md",
+      "sha256": "4704ea3691dc145b347c3a05996cc744e78723bc43659bfb13995bd3b2f17bc7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-validation.md",
+      "sha256": "a4695b35e35c79c0e8af02aaa0d637ed55f25a96f9fbcbae5068ee1440cd5c4e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow-worker.md",
+      "sha256": "275e5f4fec9649a06880d0f96499c84384918b301fcdb0404a7ff1365a68af77",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/servicenow.md",
+      "sha256": "c0e9e30bc19dc442173e3ce25cf08894f4e16b3e0118a61a14e63b9f874fbc92",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/snmp.md",
+      "sha256": "ffcb62ecfb1bcebe250c4ff227b5c8e622b62dc164b0b136acfa10f2b482610f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/source-resolution.md",
+      "sha256": "66635b90c22c7beb676fda5267c11ec906830c752a218ed7a0e7eb6120fe23b4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/ssh-discovery.md",
+      "sha256": "521cf0f331dcdc69c6faacf186a3ec6717460d7e8036eb99a9abea3a9530c14a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/storage.md",
+      "sha256": "60bcdf7e3b06e5dc8d6d082100e8eadbab74540089414af7ba9bb7f8c3906269",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/topo-agent.md",
+      "sha256": "c760f68f14de0ce27897b100e632761ea2cd7b0c4f130fc478cc7a8cf03c578c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/topo-lab.md",
+      "sha256": "6143b2aa61696f4486fa2bd4afe38cdaa969ba4b0696f554d2789c95dd6dba59",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/vmware.md",
+      "sha256": "e60fa55b19b76766b97ab0ec6866a518320da68169efe74008d95b5b08441cbd",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/winrm-discovery.md",
+      "sha256": "f246b1ee07370b5739b6ba22f936673c382198204dfcce888dea5db1a5ce035a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "docs/worker-setup.md",
+      "sha256": "28921e198e233ff7e2557c87e13ff61b4736e7a62efa83379998e3fa8526bf73",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "examples/lab/clean-500.json",
+      "sha256": "009e3e2999d5ebaadd323f0ac12514691ca016f375be8d083451102b4c404981",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "examples/lab/estate.json",
+      "sha256": "d016d14fc506ee93b8c4241a45cf321727045b7583d1243c27fb0034c727c7a3",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "examples/servicenow/ire-validation.jsonl",
+      "sha256": "60744ac8b9af29cb03a5d8d0036fd63c8f1bd9dd9435346106d195f4eedd760d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "examples/servicenow/relay-config.json",
+      "sha256": "97363eaf5d6c749e6a54e90b1b3318912adb407f81c69a92fc706bf2f4daeb68",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "go.mod",
+      "sha256": "ea1aca9d4c4bb9d460246b1e2b94d75e370dc462a01b5fa382e8fa21aadf56c9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "go.sum",
+      "sha256": "4f0850c0087829450f1e40464bcdc228407e89b460e9c614aa5fecd9e58003ad",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/global/README.md",
+      "sha256": "87b7281b9f69d26dfd338ff8a3d4d2c14038bebf2505766760f3cec757e0223f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/global/register-discovery-source.js",
+      "sha256": "fa0f0bcb6b2f23a8df78765e9cdd5f1a6c2b8027b5b54c0dd54ff31309951a20",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/global/register-discovery-source.test.js",
+      "sha256": "ce739e01a8817ee01ba9d9e9952267e9de602fabdf395abbdf23b9edf7d96a55",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/.gitignore",
+      "sha256": "b8e82b4cbdd52f8a6af388b3c2ee393dbd222152bb28591ca026d45e937a3652",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/README.md",
+      "sha256": "4669e1e0829b302411cf6aa3e02fbaa1078610071d2933c47839167a0bc70b4a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/application.json",
+      "sha256": "c1fe2618dff8d1d6100713da8ba86cd265417291cdcd31a61855ffc3ea518059",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/now.config.json",
+      "sha256": "167ef923b6f147373a9db04de7e1b426f2e06cc2e0f6318e61e48d2bc78aa0e1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/package-lock.json",
+      "sha256": "a2448166b3439e2fd0a963f3f2d314265f316332d5a1a09a26aef95bb3a789d1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/package.json",
+      "sha256": "4008b59ef82a0f29132eaae684b4001fbb5bdc1fa39e9c6f3066b46e8fb9a394",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/TopoControlPlane.js",
+      "sha256": "4c697199558ad9106063716b0d8aac2e1ea6a5883d2e0ab5bd35a03eaf9b43f4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/TopoIREProcessor.js",
+      "sha256": "36a9ee95022a612c6381db6e5d04ef4250322a20597dde1a6f4f2d1a91c0c259",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/TopoObservationMapper.js",
+      "sha256": "1425af33b78ae293524f6f3cc470499066cb00617134507327214f6a7d14b564",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/cancel_run.js",
+      "sha256": "4eedc169aee6ac279b3f0f1614d31e2ee39ab59e7369a47c30d883e87e86b445",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/claim_task.js",
+      "sha256": "894f7ae3d3f498c23ed552b0018db77cbdf3e3892c32fb35c5ecc4590d141f41",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/complete_task.js",
+      "sha256": "841b389f160bbe0ed41401ab8479c7c63f87d417545ec8db2979f2838f2dfc51",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/credential_task.js",
+      "sha256": "a38b9f524a07091effaff73694156097238b77cb08b0be30b92b50f615ef26f9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/enqueue_due_schedules.js",
+      "sha256": "47bede77c317c49aa1ae1c5374cdbcaf072ab9ad1a10d76d392f043f43fa2d50",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/ingest_result.js",
+      "sha256": "f321d78d5b52f8fe4164346468ec5cc8d0bd6501dea3348c76255a100c6b21ad",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/maintenance.js",
+      "sha256": "b10b54878765d1e9d0442bb9472bbcfad8880e9e7e9a68e676acb0ebca736f7a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/register_worker.js",
+      "sha256": "c43b6ff3e07cda0a9ff81205bb5a379e7605d9b1accac3012015dbb2307a6950",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/renew_task.js",
+      "sha256": "bb2582029939e82a9b783ecbc66df3b1df1a83dca4e63df89d854822ed773f0a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/run_now.js",
+      "sha256": "2da4292d0582a5ae3781d73ad5d97176d4fc60cd719feaada101c0c3790235e0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/validate_credential_binding.js",
+      "sha256": "36b757a69c1f18faa2c126464a1181d687c68de174a53c4bf221031e871d18c9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/validate_profile.js",
+      "sha256": "87a480c06003facb9674274044aa3ea4d0a684fdc8896a07e84093e17dd42203",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/validate_ssh_credential.js",
+      "sha256": "84f0066ca9b196d253b08463e1db87bf72bd8c866c96f57a26edd0a72bb9e7c7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/validate_target_scope.js",
+      "sha256": "967c5bae18a92052b8d49c523328a671d96d981e505b7977b4a554314031a928",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/scripts/worker_heartbeat.js",
+      "sha256": "5ed9c0b53e38ff4bc568c41581f1bffbea3a659d64775261f1cfaf389ec80209",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/src/fluent/generated/keys.ts",
+      "sha256": "2a03f490bc8cadac959ac9afaab6160e30d677e436bda37d1859b5821a5a52de",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/src/fluent/navigation.now.ts",
+      "sha256": "a415c74e2ac56e5e27dacf95d7a2b8b65ea23de01bf61540aa5f6570139b13fa",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/src/fluent/runtime.now.ts",
+      "sha256": "c81f7c15662f378daeb33111a0a3663fc7c4406ade84ad8a3415591491844642",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/src/fluent/security.now.ts",
+      "sha256": "f1bcd95bbe140c785244a898a761d6536f8ff50f8c7d3cacd987e560ece34da8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/src/fluent/tables.now.ts",
+      "sha256": "6c724543e38baf849f72fce02af408ae6640215611777a04cd60c9f629a68490",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/tests/password2_ssh_contract.test.js",
+      "sha256": "9ffc14c973c6df3dd6f7123b781aab2ff4ab26460ddb02ec907373841fc8410c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/tests/target_scope_planner.test.js",
+      "sha256": "7d74b6eee1fb6abe66bc6a2f54ac7e63366ebb2ce4accbd2c7b7f63444261489",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-control-plane/tests/windows_lease_authority.test.js",
+      "sha256": "a39774eb206c30b66305175b5ee365fb906593dabe292eb888805cf04933fe08",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-relay/application.json",
+      "sha256": "346724c93f5b63c9e09428b38067aa350438d76d3d8b51f719f2129c83de7cf8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-relay/scripts/enqueue_due_schedules.js",
+      "sha256": "bef2694f43b3c95193ef6d2ff75a7d54167a6b36a423485af266c53b88d4917d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-relay/scripts/poll.js",
+      "sha256": "644aed2d554bac3238871a62c1748ec1696f7bc3fe2f711a30c5e3f40ccb54c8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-relay/scripts/result.js",
+      "sha256": "63828fa6ef51a2ac699bed3ee95e89a876f123c7c83756ce0ee7b054c1742198",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "integrations/servicenow/topo-relay/scripts/start_discovery.js",
+      "sha256": "3a33945f9a8bf2928c0fa75023c7d7e8f524d80c828884fc5cf1e60daeeb3bae",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/agent/run.go",
+      "sha256": "40900472504e59db9edadf69d4d8f211a4f6eb7554294df9ebe1fff9109ddf5c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/agent/run_test.go",
+      "sha256": "7e2a5ee99f56c1dc0c3588c1ee09abdfedfde9ce0a3ce347c8b3a4c272e92fee",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/agent/sender.go",
+      "sha256": "c3378bfb220eebf5062003bbf36df2f326913de3922088bbef884d3b706be0e7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/agent/sender_test.go",
+      "sha256": "7a9187879ff1e12cbf461aabf52b61cbefa753f20ebeb27219f5daf9ff30b2d8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/agent/spool.go",
+      "sha256": "7f166594dd10a0e9bcba0fc6539f1c77194f036080e6cf611816b29d55aba11d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/agent/spool_test.go",
+      "sha256": "c989685fcee33bc3fe558318e1e4623d7e15085d2dfaf73bf01158924e93e1c8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/audit/audit.go",
+      "sha256": "d5e6023006af43718c89658115429f4998b46c6016e25999ef9dff7847eeeaa2",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/audit/audit_test.go",
+      "sha256": "b8af12288c3699ea6bcfce729f75c33f5516928b4bec4e3e862407d7b5d6e6a4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/audit_test.go",
+      "sha256": "bd603ede46adba0e9172faed9acfec9d97f01a7d5f1feb0cd2b329f2485ba5e2",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/authorization_test.go",
+      "sha256": "fe325b09740d8340741c9ab8987a5e1df7bcbbac12005dff6160e441fe4f8135",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/enrollment_test.go",
+      "sha256": "c237d0cd88b2eb2021a165da9a3b225a96e55df16eaf6fda6eefb94bba96b1c8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/heartbeat.go",
+      "sha256": "dd8bbf9b08e922c95fd7b503cb9fb2244fc8ddb5138d409f06c25b16771d6e6f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/heartbeat_test.go",
+      "sha256": "1c1dd2b91854ba9c1d1a736c169265b20f3481781d8ebee5b865cfccde2f6d32",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/jobs.go",
+      "sha256": "c2037348bffa181aabc29af2c0d7c207a14233339564b9267bf89dba281dca3d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/jobs_handler_test.go",
+      "sha256": "60566cf9879c115957e9594917de00e6e360d5cd8b75b715725d4a8bf316648c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/jobs_test.go",
+      "sha256": "d02af21848921feff7d38775374531b57b49248a2bd1306a835453fa5acbd350",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/mtls_test.go",
+      "sha256": "bdbf6956e9ebd0c8c68e8ed5c9d21f30affb1024997a7c7025a4c2c27b70dcc9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/revocation_test.go",
+      "sha256": "52b425fef4d339b52c390c379df8444cbbcaba3964c6fb1fd0c7e0f1c85d1f77",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/rotate_test.go",
+      "sha256": "c507f04cc11549f7e7e37011591979f26b6d9f7b0117b5bf2a78a81c136a3520",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/schedule.go",
+      "sha256": "29b5f8d1efae7c50e7d695ca36d0d038302a3f4ed75bbe56c774c5289976e381",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/schedule_test.go",
+      "sha256": "4a7a489756470249b0c982a8c9963269b8927f6320c6125ee51885e6fea5b9d3",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/server.go",
+      "sha256": "b49a1a8307878c53139e8f4ac5d78a2db198efdffdd046c4ea7f7137e82ffde9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/controller/server_test.go",
+      "sha256": "4048fbf5daf1431aacd0216f044dc86aae86bb89249e516e91e5a7081b172c7d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/darwinarchivetool/main.go",
+      "sha256": "934d4cf7cfa7de9544dd1f5831388c7ece15c52aea7ee139aa59ad1e663e1654",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/deb.go",
+      "sha256": "63f35668f24942b8d26a1ee6076aeea15d6cc887a6d3d6749bf115610ef4889f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/deb_test.go",
+      "sha256": "9af3441287e06763c31db7393079cc829a659f24f1935f9a14c19d592f2a9ff9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/distribution.go",
+      "sha256": "059052b765df438e8749c3bbd67e76e55047b50d07d63b2be05c074efb09ae9d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/distribution_test.go",
+      "sha256": "40d87f45cddd3f13311ee5e71a63e08947a30631a7402b74b7107d6e62a00d3a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/homebrew_fixture.go",
+      "sha256": "a5b1aebc2c296db69706875c14dc3e08aae3a77b9db77f8f8c99714a2125373b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/homebrew_fixture_test.go",
+      "sha256": "48203d0e04ace7c19ec90f5b11aef21982e57651a977716db1315bd60fdb4e0f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distribution/profile_test.go",
+      "sha256": "041e503292219e40f40a0d036907613ea4f5817edbb3effbf9f2c4a3ce2c5c4a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/distributiontool/main.go",
+      "sha256": "df7655b1016faa5bc7111177be59e1a8e2a2dc6057f4d2e1daf9a5e06837e5e1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/ca.go",
+      "sha256": "ed8c27efacaf1aa0730baab4dd8c6044148ba653f1fc3b97b40d8053a5605a1c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/ca_test.go",
+      "sha256": "365cb6b60970e6e29d24f9e9bc45823e65cfddcef3dceaafe767bc30ceb2ad27",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/client.go",
+      "sha256": "eac5619f8a6e18ca0fe99815ea857b86cc523348c38d94c62ffe9d1648c2e707",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/client_test.go",
+      "sha256": "b6c8d02b54cb925fc1884ad1544fffd1ec97cf1d8d3f841857265e54c957f85c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/protocol.go",
+      "sha256": "c8bb135d0d1e7f923d63c9b1b7bf7412574eb8221274d680b3c1c65ddaf3d570",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/tls.go",
+      "sha256": "d2b82412002cbe1d1251037ba056e2b40647b0e88466988e19e9cedfc4127bce",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/tls_test.go",
+      "sha256": "47d886c406506b5f6cf70f316752c2aa09eadfd7e27246c57b3acce9c80bcdba",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/tokens.go",
+      "sha256": "d0324f6b0a1e52abe74c512a4f17cfa08fb885c9e8cab90d7e1ffbec891b1f15",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/enrollment/tokens_test.go",
+      "sha256": "86e4bc22f9bf5272e0682e20266945310fd935b685950d622b60833f4b4b4491",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/irepublish/workflow.go",
+      "sha256": "479998ba56c05b43d567322d3d5957b2446f9bd9d0974cd2053c6b230060a5ec",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/irepublish/workflow_test.go",
+      "sha256": "d209cc6cf9c3afce3d4e69ed44c410da919619be55b4c27c09bef62a701ad0a0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/client.go",
+      "sha256": "553edfb1843d9bd838807c81b79378cf03a094b326146dddfb3407316f6f37ed",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/client_integration_test.go",
+      "sha256": "de516603399cc9228847954295a7f5a96f8ab247ca05a8b48d020677b4ed2b23",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/contract.go",
+      "sha256": "a8167cb13b3b3d4a4617adb95ea04766db75d5f25b8cb7895855db5e9237eda2",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/dispatcher.go",
+      "sha256": "f520251d1f7ce7a1a05ab8c9e36c75fbf2a47755bbb1a0f106c6e2176eb4aec5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/eccsim/server.go",
+      "sha256": "dab0018963a771341de3c7705066bfa38caf31a8af96ae184756e45edce949ef",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/lock_unix.go",
+      "sha256": "3b35f746aacd5558b3a523927b46e16e5175a3ee7c692e8b6f10343e428e728a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/lock_windows.go",
+      "sha256": "4b1c7ab55457c15f4fc2209c779d3cea2677be51d558ae2f60cb70200a5c7f78",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/run.go",
+      "sha256": "3a8d7df2967d69d3840b92631172aadd288e15992850c7ba3d4638225047c9a6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/run_test.go",
+      "sha256": "ba9d094b0826bbad92c88cfabb870275678af6d94cfe5c14615b3a2f5026ccb8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/state.go",
+      "sha256": "94a252462533adcf0fa8f7783b55b6f407b50d28702986e0f1d965dfdb65add2",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/state_test.go",
+      "sha256": "edd182558a736326fa9a29cdf9c8ef6c53215c879faa0e5e087ee9e5ce0228f9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/syncdir_unix.go",
+      "sha256": "c45aaf6d6702d1f7c342b89751907e74c9936660291d3e5bcbcc0e234865b012",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/syncdir_windows.go",
+      "sha256": "e1a79497ad4cd80e2ec7eb79446376be8ddc2c937037ba4d9c451292d4d92fce",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/xml.go",
+      "sha256": "6c80c02799485c53325bb074bc84d9db6b5dcf78eb64eadf7c4c0fec94c386bc",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/mid/xml_test.go",
+      "sha256": "6abf5375133d39c5dd2210427b6d27e85e057596684a468dc28bbbdf6c9101d0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/packagebuild/packagebuild.go",
+      "sha256": "24b54ec6c438975d95922df21d773abca787a16c73c4310cec1174bd20623b6d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/packagebuild/packagebuild_test.go",
+      "sha256": "e575aaa7a1c2bfa5df61863cc7852760329382379d2bbf3885dcef6b26efba9a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/packagebuild/profile_test.go",
+      "sha256": "fa7110a80eb81432f80fb399fcb6199c3248641050ab1424015de5947e5f9ee7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/packagetool/main.go",
+      "sha256": "97244aadf1431cdf7c44915abc02ef5ab73c1062b826d79452408c43ccfa2c48",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/productioncheck/check.go",
+      "sha256": "13124b6ee82ef07152987c74b68b8a0cbcde5156a8a14a316c837e3772f6f0ba",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/productioncheck/check_test.go",
+      "sha256": "9a48da3af6774ac235f5a488f0e4b79cf221680e7f65a2166b8abfc032b1e8d8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/productioncheck/gh.go",
+      "sha256": "423047a1b97c0fffca736d85432b9c9c4ca88fc755457adfabc298f0675ab01b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/productioncheck/profile_test.go",
+      "sha256": "7abe78ff38db22adc1b495a2a77d16514d75e96589ee75e21d32fac2e5c2a31c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/productionchecktool/main.go",
+      "sha256": "a8c62610de6eb4348207486f64802ef88c876eab9d2a178437f6e22930cf3e5d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/artifacts_test.go",
+      "sha256": "cb38af3e24cde2e5513d8752929d620739e732de8dafef09e04af71e366d5193",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/client.go",
+      "sha256": "57ffde4845585c05b0ea6109bef0bd80026c9902db94555c62dbe048525124d0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/client_test.go",
+      "sha256": "f69c98ef42bc8ba9261ceb1755b13c7c81cc65a9fe3e7d2a2d9a971465378970",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/config.go",
+      "sha256": "0b3759f38ab5a4f51ce17c0471bedcef8ee4032e8377ae109550b847f6f25a8a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/config_test.go",
+      "sha256": "c4bb15a9f20fb8239882a0721db6f2efd606f80fd126b566db7cff3f7028090c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/contract.go",
+      "sha256": "f1cf2c22cc632d580ba6dd1e36b4ab263148a9dff7147e6be0a7d2027a17632f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/executor.go",
+      "sha256": "96843afca8b5f074cbc80f0d22382621f9935ce43dd9568e69f483e08692181b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/run.go",
+      "sha256": "084eec822aa904d52596423cda721f866d4da2bfa9b9d227ff60864894b4ca2b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/run_test.go",
+      "sha256": "8e7929c30bbc9b76b664c1aba4a36fdf30e8628a2aaa5ffc740e49eb2ee9ccb9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/spool.go",
+      "sha256": "4f7d9043590200a558dc6c8dc41da758c1522e1a9cb6b1f6d8d68bfa743b5f27",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/relay/spool_test.go",
+      "sha256": "4ae8b65f8440ba75a2f90786384d06b931012ea1a0ad465b8f0ca58e9fde1aba",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/release/profile.go",
+      "sha256": "891ba83bf39be338f9535d9cd625993d80b3b72a1e1581278f77418c4057a24c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/release/profile_test.go",
+      "sha256": "46edf8dc28867d02d398f473855c1512b760f0843e9e7a4f6367531dbf13cf71",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/release/release.go",
+      "sha256": "b9ebca805bf642bafa62cdf2195f1b40c16d6a51e504a54cc63b8ba22a823e81",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/release/release_test.go",
+      "sha256": "61e7e9d2fe37df438607f6cfca00d5844a6eb6c6511266989b837f509fd03da5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/release/workflow_test.go",
+      "sha256": "e43d804cf79f30549d95362af05ca92810ae57674bd0676abe919c46337af537",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/releasetool/main.go",
+      "sha256": "b7338f6fb76294af81de640dafa0a15ec82213c5ea693d94a57ebcc670676ac7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/servicenowpackage/package.go",
+      "sha256": "8d4883314773e498490238581b9707bcf47ce6d33b2e615d4eea99bc15a3d668",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/servicenowpackage/package_test.go",
+      "sha256": "97fa5f394ef40cc82264223a4d6d5b6c862b71228530ac35c8113547c74167c8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/servicenowpackagetool/main.go",
+      "sha256": "75bdc7a375aff07350115af45255c76b6d07f9409da002dad8ec499ea182dadb",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/setupcontrolsim/main.go",
+      "sha256": "f2c3c779e31a92d251ecdb99afa5adab8ba5aee49b6b949eac254bac909100a5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/resolution.go",
+      "sha256": "a6e427843aa1cea5130b3b347e0e2f48942e14d46049ff4dd309c2ba349b7d0b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/resolution_test.go",
+      "sha256": "6c62c11d6ac7f75cc791e26e044f419bdf01856a7bb8694527a80fda96875e37",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/sqlite/backup.go",
+      "sha256": "ad587bff3ef9fdd5a6d16fb8116a7135839decb931271053eddee403f5aa83a3",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/sqlite/file_security_unix_test.go",
+      "sha256": "737082d8843bb2634d5e4142de6025fead2691b78be7ba5ce3cea628706b54be",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/sqlite/sqlite.go",
+      "sha256": "67794b5b9d64e45857af65848b91087ef17b2c1b1273a71f6bc86f1f43ca6286",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/sqlite/sqlite_test.go",
+      "sha256": "75e8d33cabc63061815167927eb2c64fb3ea829bf212adeb95f8b55bcee1c487",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/sqlite/syncdir_unix.go",
+      "sha256": "e521c9aea03ec778d950ae4d64cce2da70f518d877894dcf7e2305e7f0a73342",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/sqlite/syncdir_windows.go",
+      "sha256": "77a7283b0f1a61e040c07318be6b5b92b85f9467060cc57170968f0182515ff1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/store.go",
+      "sha256": "85308fe20a9018129d1dbbbf9fb6198c2b47ec7d0c4612ffcba0c2b192787531",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/store_test.go",
+      "sha256": "1256fb709de472bb6bbd201e28439c95fe15554602b6864cbb317906396802d7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/store/storetest/storetest.go",
+      "sha256": "f1acc7238bdc4bd396ffa7b7bed7d9f5bc2f4315ecef328b0c1a2157de87ef02",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/artifacts_test.go",
+      "sha256": "2a2ba5b808787b95b48511cfc5a49d80faf43b288b525374c14905a024b479c2",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/check_test.go",
+      "sha256": "3a7ca71bac6209f3d84ce428b6537deb79fc59343b39b8a8db64c5d1bb4e7e64",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/client.go",
+      "sha256": "01debf7134ad577e9861e2c37c8c00f99063a74afa5f1a051cf419a1dd06f691",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/client_test.go",
+      "sha256": "0f2473e4e6a2762b6de81479e53e97a1a8580e577ec47139234df5d464d2867c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/contract.go",
+      "sha256": "fdb230bf1a1476e143988569b215478760de877001a33159feb6cb9dbd210b3f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/controlsim/scale_test.go",
+      "sha256": "30c2ca96b41be51f16787b7535fde9b72952d95426935e2c1f4a6bf609d9d470",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/controlsim/server.go",
+      "sha256": "0e068bc378bbe5327585ee9ccc3fd12f3026744c69cc83ad43e43570680c3b67",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/controlsim/server_test.go",
+      "sha256": "db31a6003ee8c7a3c075895dfac3fd25c5d9eca2bd3ec2a495cda8566b5281d1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/executor.go",
+      "sha256": "d85456f8b2ab5c0d70f8be12b1dd8c0986973899b0a9eafe4c151d0f402c527c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/executor_test.go",
+      "sha256": "008754c4a5c5681208dec257c18f1c842caf46f02050641a587cf8187cf06320",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/partition.go",
+      "sha256": "9d3d471b27f7667e08ffe9a15b0ad4f25b96afde76fd25c8dbfb4bc854063fef",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/partition_test.go",
+      "sha256": "3dca31b9ee7d63f9e117962adabe63a4fa4d16aba24ca393dccd80a95346d971",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/policy.go",
+      "sha256": "dcee5816dff7f76c5e9b27038c7a1517ab81a0524bda6fbdd7eee1882ed8ccee",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/policy_test.go",
+      "sha256": "106e8b07cff6aa0885a9cdd9dee59578eab1d4e4e8f37e07bf0f533f2dfbc0b7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/realhost_test.go",
+      "sha256": "e00e6df5c0db78405615a8e0c986b48c4db2af03fbadfa954701758888a115b9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/realmanaged_test.go",
+      "sha256": "17bf3109e61443659b7edc48fff907bb63590ac3ea48e443a68bb68ccf8fb227",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/realsubnet_test.go",
+      "sha256": "2d415fa17592f9e5f86562a4ba821aadd97d5bfb2cd3c76eae79704af31e9659",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/run.go",
+      "sha256": "201434dcde03842875dac8e234ecc4c55b6446cfd9324af58a1c66489e313279",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/ssh_policy.go",
+      "sha256": "fa2608e7b8ff97c527022ddcab693940c987fb5bc9fb9a08efa1b15d6f719507",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/ssh_policy_test.go",
+      "sha256": "bb058fd543bcfcc0136805c30c9eef750957622a0780602ac1d8f6e0f068d6ee",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/start_limit.go",
+      "sha256": "0e75dec6bbf461e69750369bcfcc8193c3d65eca6ccd7cac7052abb88ebb4c58",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/winrm_policy.go",
+      "sha256": "268b45c45cfed2b14bb9fcf6cf091deff753de4ff8895814ab15f5dd73d69596",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/worker/winrm_policy_test.go",
+      "sha256": "178c5d1a4a70115f0088c4dac9d8c17582c6cd4b9ff9f47852cd2c58e93524bc",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/fifo_test.go",
+      "sha256": "cf539041447e0d316aafc4895a573e1f7e4eaa8a5a889a48786418b2841838f3",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/identity.go",
+      "sha256": "6ad4209ebc8b6157f9e6e8e14fa71c1c5b4598d383adf848627a6ac1b234c8a5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/identity_test.go",
+      "sha256": "d23ff98be968accb9059fa456dc0209a2d997489f0997a311a7f8987b823bc67",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/linux.go",
+      "sha256": "1f790edda692c7a35f679a39f8282df84a5bf1c182e88202c19c8b8398957cc9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/linux_test.go",
+      "sha256": "e826e0444f1d67c3574167fd6c9a23ad4756918c6a5a6c6cc58cc74cc6fa71b1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/setup.go",
+      "sha256": "e1acd29be9fbeaa373bd56fc12dc2ec09270b4acf852499dc762605c2a0ca639",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/setup_test.go",
+      "sha256": "281eb424d545daada1226dc5ad6fde0414bd9bac5333bbffe1c7057bed3d73ce",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/unsupported.go",
+      "sha256": "e491b514cf352ffd4f93ce877a0e2359d166ec78bf3104a237670397e4b542be",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "internal/workersetup/unsupported_test.go",
+      "sha256": "8e80fb239bd61dc0cebcb586468d8c14c0229197d5e3bf6600360d03823e5ace",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/README.md",
+      "sha256": "c2a7d6ea87a5498e2cc1e9e2b50f75f32f67f89d2ae2e36ef162ac23ec62586d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/audit-debian.py",
+      "sha256": "4cb6baf0352a69649b54a61cb8a1476680c003b47914895aed07fe564a36bc18",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/check-preparation.py",
+      "sha256": "8b9281ad796f71061d4ab6fe2638a56c65b078de8e398932bb930aed6cf7a895",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/debian-sid-2026-10-15.json",
+      "sha256": "8b20cd26a53b10baa2c5c166928815a17498cba8527aea684a7bc7df8a25ad72",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/fedora-license-review.md",
+      "sha256": "41c81144acc36923ea0028ef693e94938ff221114482e6394417b8cffdcea92e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/fedora-rawhide-2026-10-15.json",
+      "sha256": "09c1479d1aab419fc691f196399aa137db125e2c8a41641a244e0200c3616c95",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/fedora-source-preparation-2026-10-15.json",
+      "sha256": "72a752ce4eb155be484d78925b2dd892b58b2d7755adb767716582d6a6759ab4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/fedora-source-preparation.md",
+      "sha256": "fa7a7d32e04322e503e5ab6f834fdb57d33932ba0422c1d7acdfd27909e7f847",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/fedora-submission.md",
+      "sha256": "b27c2148cb42a8bfa3c26b4df200efcad3a6f6e5b3be5a78ef5f8e1b92536180",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/go-vendor-tools.toml",
+      "sha256": "3289aad28bd3c12a27b114279ad52eae31720839e416ec15c1db3f27f92e8230",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/licenses/COPYRIGHT-MUSL-THIRD-PARTY",
+      "sha256": "acf3d99c992c38af16ad4a6e150a070a7b1fc6cb2177cb603664d6a822e5a74e",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/licenses/LICENSE-CC-BY-2.5",
+      "sha256": "82d2eddedf451177a12c9753e518352f7f90fd4ca3542111c499be981e9a9600",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/licenses/LICENSE-CC0-1.0",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/licenses/LICENSE-Linux-man-pages-copyleft",
+      "sha256": "e7241c6405f8ad70943bcdb0fd83cb79fb25eec601ecf311acc9c72f19794d5a",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/licenses/LICENSE-SunPro",
+      "sha256": "f5ab1c2763182c84a0b991a82d57b4176df0d109ca5d485d8446585696b26894",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/licenses/LICENSE-bcrypt-Solar-Designer",
+      "sha256": "29b9403d476147aa0ac0be2c3845c187a25a72c67d6250de823e24ae85b224a7",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/licenses/NOTICE-MEMORY-LOGO",
+      "sha256": "25864be3f587e8b8d085a8584f84e5e91e1163910d7b0d81e1772925a7791c9e",
+      "classification": "retained third-party legal notice"
+    },
+    {
+      "path": "packaging/distro/preparation-checks.json",
+      "sha256": "e4408389e68f0bbdb0856987eacfa788aac05593a83e7d3b11047da26fa505dc",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/prepare-fedora.py",
+      "sha256": "58b04745ac6922957233efc782874c2e060e881d851a6a921530ade82339769b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/submission-fields.json",
+      "sha256": "043fcf443c3664a66d10e67b1b71050801da2406e704378477481ff69227b6f6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/test-fedora-systemd.sh",
+      "sha256": "a4d01bbc9eb3950b14f3c791ccfa1dbb5f0c693ef96334bf97853f2ee313e954",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/topo.1",
+      "sha256": "76ea6c06d8b3b7746486fe328cbf7803ee1d080bffe22a628e737190c0089df6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/topo.spec.in",
+      "sha256": "3108f06f99fd184b67acbab08a371f3b66df4fc82c15afcb28511960daf3e32e",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/distro/topo.sysusers",
+      "sha256": "0a2b612bc5c2ade133e65067c9fd4747129efe63366f6af31c3ccda6231ee8be",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/Chart.yaml",
+      "sha256": "3f328d0fb2fed05c7bd252c91ad948e231d96986c38d3545a2f2cbfa2aa590f5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/templates/NOTES.txt",
+      "sha256": "11745269872e1a192d2ee1ae53755b42872d431d80e5620945e73c16fc3c753a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/templates/_helpers.tpl",
+      "sha256": "47b78cc66e73567ca7e26e0e586e164c64488e3d6d5455e684efbb76978f0f89",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/templates/deployment.yaml",
+      "sha256": "d5d1a07a417a2fa4b3c3c67e371e3ba41cc3d68c3f21f2bc6cdc36eb063d84dd",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/templates/pvc.yaml",
+      "sha256": "f0919abfd53e17ea216ee50131adc0d849e15efc1dd94e5e50df9535bc5ec967",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/templates/service.yaml",
+      "sha256": "b27a674c5c3b955afa23fae267b0c7fcd309e296b413b640e68a269f6030ebb7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/templates/serviceaccount.yaml",
+      "sha256": "3ad611f6be763ad80dfd1a289c689a2f7cc3e7175004792969d4e2370f0fe286",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/helm/topo/values.yaml",
+      "sha256": "8ec41438d09e09a1d69ccada97c8f67feb0576b2b7cab1786ea666cad7f85858",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/linux/preinstall.sh",
+      "sha256": "1a41aadcbff147c6ce8864485704f9f8164844465db2609b3ef5276c74498696",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/linux/systemd-reload.sh",
+      "sha256": "4d45974aa470f8ab934cbbe95d2299bae0fe0051d56f442af483f22bacfc1191",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/nfpm.yaml",
+      "sha256": "b7dea4bacf2358f8924c4724c722577d462d917befe7260925b4773d30454423",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/systemd/topo-agent.env.example",
+      "sha256": "36864796a5e3b3d8e0ebc6ffc825006565706b1441a1c41a37d8ad20e222a5e8",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/systemd/topo-agent.package.service",
+      "sha256": "c81b887f7af883ef56b6d67a5fdba59a6ded95eaae390f871cf9e6898104c8a5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/systemd/topo-agent.service",
+      "sha256": "e940e95d9eb4bf4e1a60dd8f8048567ed55e6079e8c530a6eee5dbd67c73dcd4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/systemd/topo-worker.env.example",
+      "sha256": "4ec1944742513a65716877ed53304608e024d18edc5a509414056dc201ed0612",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/systemd/topo-worker.package.service",
+      "sha256": "0114ebc575bfcf0b15d007cbdbbd1a048018815c2486a59c6ddc128a9b17d25b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "packaging/windows/topo.wxs",
+      "sha256": "39e8730e88249c98b71a8f9cc8fbf01afa296a3c6d5190312e478079c02e4ab5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/credentialref/credentialref.go",
+      "sha256": "f1049cb3b6f8caa7e64a8af3547c66db40ea974f935f0ee0fe4b944483435666",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/credentialref/credentialref_test.go",
+      "sha256": "1c6f648784f2b349c9d61ea8765d5879892d92829274aa31f1c67ea5f34e201a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/credentialref/kubernetes/kubernetes.go",
+      "sha256": "e2e70ba89745dd2029fbd7b069b7afefd175b3627ec5139932f30e8f5785db17",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/credentialref/kubernetes/kubernetes_test.go",
+      "sha256": "776a44456987aa08dab1c4acf0337f23b4fe9ec6b9bf7aecadde64ed8f9e6e92",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/credentialref/vault/vault.go",
+      "sha256": "541ef604cc5a7fe2baab7925305361c76c82de18c983ec707821b41330d48f0c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/credentialref/vault/vault_test.go",
+      "sha256": "cdb3a692313991624ddca779d8d4f2a3dbc1c4dd936a777fe970529093e1c293",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/aws/integration_test.go",
+      "sha256": "84a9463a8c6fad2bc1c789a9090fa8a69e0c93e6c5103fa4a19c149a7a556fd4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/aws/parser.go",
+      "sha256": "cb2f588eda8ea72abb8dddf2083f086f0f7c382f7b7d373445bf5c223567adec",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/aws/parser_test.go",
+      "sha256": "ad5546fc66e55da080e3cb2fe36812c798f0e1f06887739d3c1485e4d05c10b4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/aws/plugin.go",
+      "sha256": "c087201b20bce229677da34ebfc1df8f20e61141aca530bb0a3047c098068078",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/aws/plugin_test.go",
+      "sha256": "93724dd3e69184ed26ff1721a932594f615084a2745edc643ddac8c24d2c6cf9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/azure/integration_test.go",
+      "sha256": "9a98fddfbe6cb9e06249c79197e126ff9d156a865f246c1e0386ae1d7533d858",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/azure/parser.go",
+      "sha256": "199d9231c4032ca83a8ef679f83e168bb35d0c08bae41286041a1aba92b01cd1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/azure/parser_test.go",
+      "sha256": "64429070df7869d3215aab2129b258fa8b9e05baa0f391f724c077fe7d711674",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/azure/plugin.go",
+      "sha256": "e5bcbc58d866f616da84217c306049b1de5df85d24449797f6e62fd2f525d629",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/azure/plugin_test.go",
+      "sha256": "15da97d8cb829166f60fb95a50c84282108f9bc8b42c288a1af3c2452842b23b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/discovery.go",
+      "sha256": "91eac780e92813f48484f54d676034ec3c1d4888454cb68211d9ae0252eb1717",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/kubernetes/integration_test.go",
+      "sha256": "78bd155a80b40d8f00f3d2408bd37d2dd526fc03bb6c7e34f9a2595508b56ce9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/kubernetes/parser.go",
+      "sha256": "ae01ec44504c28bc25b6d93cce25e733b95ad3eb4ef91a010abcd1dfef7474e3",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/kubernetes/parser_test.go",
+      "sha256": "17c627b1dc132c59d908bf4a312d79aa36746186f44f42c6a2cb33bb1052b062",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/kubernetes/plugin.go",
+      "sha256": "c70b08caab856745a59f71dadf821926d8ba9df10df7eb45d6861de7e9059356",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/kubernetes/plugin_test.go",
+      "sha256": "6a1e61283442e3442a636b24eddec1a63fe26879e5b6337958687658f52cee37",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/local/local.go",
+      "sha256": "dbb829ebe7cb2b21cdc42646308d75fb3cf1a3fe17ba52abb4041d96dea752c9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/snmp/integration_test.go",
+      "sha256": "06a71d5a4abd5beb19c622baeed182c7d4c2b08f63d122badef9a478a557a325",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/snmp/parser.go",
+      "sha256": "9d5e70f114132a95e9c75556c4f76082d7d2722004b0d3b40708c1c57d0512d6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/snmp/parser_test.go",
+      "sha256": "8521f7412a1f9f178c201be94db662186a38b62805704f31a681d82f38bd3526",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/snmp/plugin.go",
+      "sha256": "5e6e78185d8213bdbc53e91cca0a1cf42ba73e19362b1c372a7e9f25e7ef0bbe",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/snmp/plugin_test.go",
+      "sha256": "0122a29c4ef0ef055ee630849bb11ffd0dd6a96fe82a8f9ec897826f497aa005",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/sshlinux/commands.go",
+      "sha256": "da691a005811ce98436a87c1d98b1031e32934cbdddeb7adbc57ff3871cf9556",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/sshlinux/integration_test.go",
+      "sha256": "4a89f4c9ee6789faaeee983a5028a979d4bab587df3f816760ad877bf478f9a6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/sshlinux/mixed_integration_test.go",
+      "sha256": "63cbb854ad103d8fea67adc60dbff08e7be63986ccfddeacbcbfa9253296967a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/sshlinux/parser.go",
+      "sha256": "a72085122dc30fd3d609e4e0f0739ab95bfec645f259691eafcdb53e386f4c47",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/sshlinux/parser_test.go",
+      "sha256": "f2df2500731267a4a2ace21bc30d51d3868b7fb33744876f627b45af5b9373f5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/sshlinux/plugin.go",
+      "sha256": "ed529add5de4f3efc9c9b0b7c7d6608e749479e9463577e17a45f08576543016",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/vmware/integration_test.go",
+      "sha256": "b8b0ef5263ae96e94ebc069543dba1898e3c7d89bc46ed6f67f37c608a1bd931",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/vmware/parser.go",
+      "sha256": "93646465c7c60efebd09155eaa9bf04a09c43b8f18fda1cfec691c7899b07640",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/vmware/parser_test.go",
+      "sha256": "9a045f46c80ddd871a450ceb53c17239fc1346b661621f437bdc3d7e6238e41a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/vmware/plugin.go",
+      "sha256": "cae3c2ebc24cde69ffc013e6378ddc9213cf561f93da2cfd26519faf993b9be0",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/vmware/plugin_test.go",
+      "sha256": "d20c8bbe0ca50dcb8b3bc69d2bd93448a987d37232a1d44eeb99686bc63ce07c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/auth.go",
+      "sha256": "7fbc0831eb95762bf587178f78e7a2f57ba5f2749a637eed5a71010484f22f1b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/auth_test.go",
+      "sha256": "1895826fc1ab76bba9f4d74f1171e71f0220b2f9a4a943a370e4d5a36f8cfdee",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/integration_test.go",
+      "sha256": "8b0820121327db0fd7a3f42180142ed5ca31ffa48c1ffd65ed53e6ab81cf99be",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/operations.go",
+      "sha256": "efd851ab1511e8bed07c8e0dd8a3845e4f8da136ccf7cc6ba7c30734244e9130",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/parser.go",
+      "sha256": "d693819967b4fb002014592ba088c07ded0b5b956d0b9feb7cd0bcb82df260d1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/plugin.go",
+      "sha256": "f5bd48b54e5aaba5ca6e8031cfd6633138b4d7e292021ea406c20aff45a35813",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/protocol.go",
+      "sha256": "d69289500e72fc5c66bb77a1560a6f2ee96ad8fdf2f919342011e0be79bf5f44",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/protocol_test.go",
+      "sha256": "424be79361d0ef5233a28f04c4ad8d4f0955eaa3c55a638f63ab76c412a94d5c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/discovery/winrm/shell_protocol.go",
+      "sha256": "6dbc2baae7478cbef5c3baacd13abb9f0f25b2db3db0925541b5e37bd9c0e90a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/aws_organizations_server.go",
+      "sha256": "3268181a4a39f3f5f1453845d972ca4dea1cdf808d195db0aeb99abbb5d31069",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/azure_server.go",
+      "sha256": "89456d907d3911c1e692a864448f8b8fbd29735b9e21671f235752182046abc6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/client.go",
+      "sha256": "48755bd1a2deec1dfe20d3e0df7aa87a16b7a1110d1f7535e239c613b3474799",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/codec.go",
+      "sha256": "49bd5b63162817c9158153da73dd7dc53c708383a71b54742b6263f660367864",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/evaluate.go",
+      "sha256": "77cd5372c59ef17d19e2f0aef2d1d83f74feae9423b91bd8d1ccf4f53527aa5b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/kubernetes_server.go",
+      "sha256": "9a075754ab58e1df7e90eb00cea1b1c7044f4d5fcd8d769d06e81639fcf2177d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/lab_test.go",
+      "sha256": "983c57021fa20d1d315c0e9ae0f85072dd18fb501b7ee3b6838dd4195b641fc4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/scenario.go",
+      "sha256": "d2be8d0080db90bbc64adcba7aced4fed3ee5681df4defd1adad88b009a44a65",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/server.go",
+      "sha256": "cb311e04e530a0cfe554a55b37d5d909ba1c155edb36c3c9d3335bb9fcdf5b6d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/snmp_server.go",
+      "sha256": "e91b0c39394d65d33b14a4b3130ad260afec22ffcd29b705488cc8c3f94beaff",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/ssh_server.go",
+      "sha256": "c782a908da6032524c88059d78d950f097e801f35f9649874611ddf79538052c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/lab/winrm_server.go",
+      "sha256": "5a6f631c39c1a96d1917be12c2a8f45f9009ce8eb9307e062d2e40018b98bcc9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/model/model.go",
+      "sha256": "ca95182b1f5b88d6e54429bf76180aa29ceca1c91b30a18302c5c68a1204fa16",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/model/model_test.go",
+      "sha256": "bf438dbacb5ff79774e7b4bb7a0b39550d072d53df99109c8bb1e1ec43b3915b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/jsonlines/jsonlines.go",
+      "sha256": "856b9c0c5565ddff61fe1126671d55df4defb37b84b975783ffe88f2fd8f5396",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/publisher.go",
+      "sha256": "d8e3ad463f589a10fce680bcaae00bbbb1e3b06f749f928f3bb9e1b42a57fee9",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/servicenow/input.go",
+      "sha256": "11e41be62d340b558a4fcf0ed396f0b756d8e4a68a927bc5eca737e564b7ba60",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/servicenow/input_test.go",
+      "sha256": "44c107242ec1483c3d6e6b98374a73710b7c0ca16ee40007b19ca6a66cb41b74",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/servicenow/lab_idempotency_test.go",
+      "sha256": "7fee3d5393335afd070971732d90e6821fd95b5dc1d9af90cc4515d17880ca2d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/servicenow/servicenow.go",
+      "sha256": "54d029e15261751e519c8622faa3ff4d47525eb7b01ac14f39b1172fca16cfcb",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/servicenow/servicenow_test.go",
+      "sha256": "3e95fcb740eb6a3b48383c4fd69731a6a3218d996636a3795178b5c3a014b5b1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/webhook/webhook.go",
+      "sha256": "eb42c95095a12b2d73e36ac7863b87839eabbad0dba0ca04bfc18a0adee2707f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "pkg/publisher/webhook/webhook_test.go",
+      "sha256": "5b70a744e6df938ed80fa9c5ae699da9c2d10d437d5393b9819d62e5c6a6564f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "release/README.md",
+      "sha256": "a833eb150056c4df78398273bbc3cf88bdbb054544fb2a027c8ae4317d330714",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "release/servicenow-0.4.6-beta.2.SHA256SUMS",
+      "sha256": "d5ae861c47528146302611dac638192bab9dc08d997d50d2fd90d0524f9b5bf1",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "release/servicenow-0.4.6-beta.SHA256SUMS",
+      "sha256": "91e20e3df52602d0d8e5b560cbb4ee8d30ae420c0749ce53484a600c9e0af70a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "release/servicenow-0.4.7-beta.1.SHA256SUMS",
+      "sha256": "1f0548a479f466867767ffda02f57fa5e9412452bf46ddfe61a2db9303e30b6a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/build-distribution.sh",
+      "sha256": "d0214339e3d274bd8a6fa22ef753d651bfc4e61f8561b1b5026808dc0cd625f4",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/build-msi.ps1",
+      "sha256": "0977076f19ff294a765f1982782e84f79de3dbb0f474ede4484309af4d46b314",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/build-packages.sh",
+      "sha256": "22f489ead3f6f552b73ba8ffe280355e80ced22a2c03de398ba000ca7422f5c5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/build-release.sh",
+      "sha256": "6e645fc09246da7edf8c6f37ab101aab93687792299d0f65c4112ca20801f596",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/build-rpm-repositories.sh",
+      "sha256": "482a4d298cd8dc902ca11362c4c5db6a6f7da6b8132b5a6be3f1d93efb098936",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/build-servicenow-app.sh",
+      "sha256": "b888121b7bc74aa2d5cf7370d84065448d896a79a02adfff2f6c28d8586b9040",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/check-production-distribution.sh",
+      "sha256": "9a9722f74255ea9e9fb4a4cc338dd796b60f5bca271e77d4e9fd78b22b67ecac",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/check-servicenow-index-coverage.py",
+      "sha256": "3892becb2afbcd507f6defcb58cc767d287ccfb8cac7917a74cce9d557f7af8a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/check-workflow-interpolation.sh",
+      "sha256": "dd435a580bae14c57a8857ab3336be00250cefb4965eb1d63f3ca80942b8169b",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/fetch-nfpm.sh",
+      "sha256": "ee75c9c55d9a2b39af70a362187326659b0a27dd54c21e8d6fdbac92e16ed23c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/install-linux.sh",
+      "sha256": "ab827a4169c8a97e5d853d1b52f5f53851ae805cdb3a89ecf754fd21632e5fba",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/install-servicenow-app.sh",
+      "sha256": "4d86a65116f8f0d2375f49ef85cf7fe8dc7ce3e99047c6af670c211f777c96ff",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/package-servicenow-update-set.py",
+      "sha256": "215f9d7348897dbc29c9df50b48b8823c5eca0db47ecb13d2f64a55c11df8741",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/probe-servicenow-xml-export.py",
+      "sha256": "da48fc8cf384f4cb615acaf6ed511cbb6eaa45248dfc403e63925576380bcab6",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/security-review-checks.sh",
+      "sha256": "6b466cec655af707be5395f64c267e8ca0a01f672b46978ca87b6d2248d3f2ef",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/sign-repositories.sh",
+      "sha256": "9a5dce33dee4c79a04bcda0ae08218d44a5567f8bffc248fe6a13ad808818150",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/sign-rpms.sh",
+      "sha256": "91d7d00f49b81ed18fda7b56c0f9c16bbee7be4fabecd3b9ae940606aa57aecc",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-apt-upgrade.sh",
+      "sha256": "9b78c88e82505b20c9312a3eefd18803eac8d3b0f9029cc6365566c1d5963f1f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-homebrew-beta.sh",
+      "sha256": "b88c5f3b9a497fb3861ef079e107844dfde92d04f28ab2956fddb170c1fcf0f5",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-homebrew-promotion.sh",
+      "sha256": "e6ca2eea3ab4b4675568cde89520af03da99bb62093e6d7617c5e0a3d241c896",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-install-servicenow-app.sh",
+      "sha256": "b28a7ba11f96ea1ae208e69e98a2981212cf6c2934ca20872554585c7eb1ba10",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-linux-packages.sh",
+      "sha256": "17f27d5b241667c2582fed285e3faf7469a0096df2f59fa3f48923dcdab01361",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-live-beta-homebrew.sh",
+      "sha256": "9dc5824fda08fc12025d2cb47f6e6d33b56346eb074ed9e67926397b4b501c32",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-live-beta-linux.sh",
+      "sha256": "82e54d40dfe3186d716697d97c691f25d7ceaf8b09e0675d47f83e34fcf2706a",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-msi.ps1",
+      "sha256": "1b126b8e7f19f23027d41bc5b5a51e08a2096eb4ae3e9e6cb4445c58dcba7326",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test-worker-setup-systemd.py",
+      "sha256": "d03b27da34d6b86f9949463f414437dd7eb9055771c0bba315b6c4209d76173c",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test_install_linux.py",
+      "sha256": "d6ff3a1120c28cdf871eef89e9674d821842eab134ccf6f687573db79d17a801",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test_servicenow_index_coverage.py",
+      "sha256": "5c47ceab0e59ae16bc799ed9ec2a6dbd3192f8dca2c8b55744cdd4da853c43ff",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test_servicenow_signing_input.py",
+      "sha256": "0015d7b9294bc8eefa7d2c5453308c53f7d6d8ff75849d905dce972d8ddf1c8f",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test_servicenow_update_set.py",
+      "sha256": "058e155b0b2772ad652b39e19370c5ef64bc16789b82f0caf171e542ad6069c7",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/test_servicenow_xml_export.py",
+      "sha256": "d19d0688416fad86084f8371579afcded7ccade275841f316a9b7f4ee4533587",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    },
+    {
+      "path": "scripts/verify-servicenow-signing-input.py",
+      "sha256": "f482f8123bd4cc701e56f20ef96b2546c87d9b0e14bb7f0f6e33dc9b65a4733d",
+      "classification": "project source/documentation under repository Apache-2.0 license"
+    }
+  ],
+  "linked_dependencies": "Build-time attribution derives from the actual Go import closure and retains full installed Debian copyright documents; this source inventory does not qualify an unbuilt binary."
+}

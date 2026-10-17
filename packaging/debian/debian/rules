@@ -5,6 +5,8 @@ export GOTOOLCHAIN := local
 export GOPROXY := off
 export GOSUMDB := off
 export GOMAXPROCS := 2
+# dh-go does not discover the nested v5 module beneath this legacy v4 root.
+export DH_GOLANG_MODULE_MAPPINGS := github.com/evanphx/json-patch/v5:github.com/evanphx/json-patch/v5
 export DH_GOLANG_BUILDPKG := github.com/Nischoy-ai/topo/cmd/topo
 # Tests read reviewed units, workflow fixtures and ServiceNow application files.
 export DH_GOLANG_INSTALL_EXTRA := packaging scripts .github integrations docs examples README.md ROADMAP.md SECURITY.md
@@ -31,3 +33,7 @@ override_dh_auto_install:
 override_dh_installsystemd:
 	dh_installsystemd --name=topo-worker --no-enable --no-start
 	dh_installsystemd --name=topo-agent --no-enable --no-start
+
+override_dh_installdocs:
+	python3 debian/collect-linked-copyright.py _build debian/topo/usr/share/doc/topo/linked-licenses
+	dh_installdocs
