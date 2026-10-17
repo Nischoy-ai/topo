@@ -47,18 +47,40 @@ python3 packaging/debian/prepare-source.py --output "$out/topo-source" > "$out/t
 sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
  --purge-build=never --purge-deps=never --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
-mapfile -t simulators < <(find /build -type f -path '*/_build/topo-setup-controlsim')
-test "${#simulators[@]}" = 1
-cp "${simulators[0]}" "$out/topo-setup-controlsim"
-# Keep exact installed build dependencies for source-security analysis, after
-# the clean offline build. No package compilation fetches from the network.
-source_dir=$(find /build -maxdepth 2 -type d -name 'topo-0.4.7*' | head -1)
-test -n "$source_dir"
+# A directory schroot may retain /build physically under its root, while other
+# profiles bind the host /build. Locate the one fresh build by inode, not guess.
+mapfile -t placement < <(python3 - <<'LOCATE'
+from pathlib import Path
+seen={}
+chroot=Path('/srv/chroot/unstable')
+for base in [chroot/'build',Path('/build')]:
+ if base.exists():
+  for p in base.glob('**/_build/topo-setup-controlsim'):
+   key=(p.stat().st_dev,p.stat().st_ino)
+   seen.setdefault(key,p)
+if len(seen)!=1:raise ValueError(f'Expected one native simulator, found {list(seen.values())}')
+p=next(iter(seen.values()));source=p.parent.parent
+inside=Path('/')/source.relative_to(chroot) if source.is_relative_to(chroot) else source
+print(p);print(inside)
+LOCATE
+)
+test "${#placement[@]}" = 2
+cp "${placement[0]}" "$out/topo-setup-controlsim"
+source_dir="${placement[1]}"
+preserve_security() {
+ for directory in /srv/chroot/unstable/build/topo-native-security /build/topo-native-security; do
+  if test -d "$directory"; then
+   find "$directory" -maxdepth 1 -type f \( -name '*.json' -o -name 'govulncheck.log' \) -exec cp '{}' "$out/" \;
+  fi
+ done
+}
+trap preserve_security EXIT
+# Analyze the exact retained build sources and installed dependencies. This
+# subsequent analysis phase can fetch official tool/DB data; package builds cannot.
 schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir" -- \
  env PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
  python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1
-cp /build/topo-native-security/*.json "$out/"
-cp /build/topo-native-security/govulncheck.log "$out/"
+preserve_security
 lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}" > "$out/ntlm-lintian.log" 2>&1
 lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes > "$out/topo-lintian.log" 2>&1
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
