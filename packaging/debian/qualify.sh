@@ -105,13 +105,28 @@ schroot --chroot="unstable-${arch}-sbuild" --user=root --directory="$source_dir"
  env PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
  python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1
 preserve_security
-lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}" > "$out/ntlm-lintian.log" 2>&1
-lintian "$out/msal-source/"*.dsc "${msal[0]}" > "$out/msal-lintian.log" 2>&1
-lintian "$out/azure-source/"*.dsc "${azure[0]}" > "$out/azure-lintian.log" 2>&1
-lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes > "$out/topo-lintian.log" 2>&1
+# Collect every independent lint/smoke outcome before failing the gate. A first
+# lint error must not hide the other package reports or installed smoke result.
+failed=0
+record_check() {
+ name=$1;shift
+ if "$@" > "$out/$name.log" 2>&1; then
+  printf '%s %s\n' "$name" 0 >> "$out/package-checks.txt"
+ else
+  status=$?
+  printf '%s %s\n' "$name" "$status" >> "$out/package-checks.txt"
+  tail -n 80 "$out/$name.log"
+  failed=1
+ fi
+}
+record_check ntlm-lintian lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}"
+record_check msal-lintian lintian "$out/msal-source/"*.dsc "${msal[0]}"
+record_check azure-lintian lintian "$out/azure-source/"*.dsc "${azure[0]}"
+record_check topo-lintian lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
-autopkgtest "$out/topo-source/"*.dsc "$out/topo/"topo_*"_${arch}.deb" \
- --output-dir="$out/tests/autopkgtest" -- schroot "unstable-${arch}-sbuild" > "$out/autopkgtest.log" 2>&1
+record_check autopkgtest autopkgtest "$out/topo-source/"*.dsc "$out/topo/"topo_*"_${arch}.deb" \
+ --output-dir="$out/tests/autopkgtest" -- schroot "unstable-${arch}-sbuild"
+test "$failed" = 0
 python3 - "$out" "$arch" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
