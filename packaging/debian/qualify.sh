@@ -31,14 +31,14 @@ $mailto = '';
 1;
 SBUILD
 export SBUILD_CONFIG="$out/sbuild-config.pl"
-sbuild --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
+sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --arch-all --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/ntlm" \
  "$out/ntlm-source/"*.dsc > "$out/ntlm-sbuild.log" 2>&1
 ntlm=("$out/ntlm/"*dev*.deb)
 test "${#ntlm[@]}" = 1
 # Prepare unbundled Topo source; all other dependencies come from normal Debian.
 python3 packaging/debian/prepare-source.py --output "$out/topo-source" > "$out/topo-source-path.txt"
-sbuild --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
+sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
  --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
 lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}" > "$out/ntlm-lintian.log" 2>&1

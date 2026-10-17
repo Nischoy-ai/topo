@@ -45,6 +45,10 @@ jobs:
             /tmp/topo-debian-qualification/*.txt
             /tmp/topo-debian-qualification/*.log
             /tmp/topo-debian-qualification/*InRelease
+            /tmp/topo-debian-qualification/ntlm/*.build
+            /tmp/topo-debian-qualification/ntlm/*.log
+            /tmp/topo-debian-qualification/topo/*.build
+            /tmp/topo-debian-qualification/topo/*.log
             /tmp/topo-debian-qualification/ntlm/*.deb
             /tmp/topo-debian-qualification/ntlm/*.changes
             /tmp/topo-debian-qualification/ntlm/*.buildinfo
