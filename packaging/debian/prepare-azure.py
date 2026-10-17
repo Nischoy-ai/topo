@@ -53,6 +53,10 @@ if new_test!=old_test:
  patch+=''.join(difflib.unified_diff(old_test.splitlines(True),new_test.splitlines(True),fromfile='a/sdk/azcore/messaging/cloud_event_test.go',tofile='b/sdk/azcore/messaging/cloud_event_test.go'))
  (patches/'go127-json-error.patch').write_text(patch.replace('\\n','\n'))
  (patches/'series').write_text('go127-json-error.patch\n')
+rules=(debian/'rules').read_text()
+rules=rules.replace('# Disable unneeded stuff', 'export PATH := /usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$(PATH)\nexport GOTOOLCHAIN := local\nexport GOPROXY := off\nexport GOSUMDB := off\nexport GOMAXPROCS := 2\nexport DH_GOLANG_INSTALL_ALL := 1\n# Native compilation covers updated SDK modules; original complete source is installed.\nexport DH_GOLANG_BUILDPKG := github.com/Azure/azure-sdk-for-go/sdk/azcore/... github.com/Azure/azure-sdk-for-go/sdk/azidentity/... github.com/Azure/azure-sdk-for-go/sdk/internal/...\n\n# Disable unneeded stuff')
+rules+='\noverride_dh_auto_build:\n\tdh_auto_build --builddirectory=_build\n\nexecute_after_dh_auto_test:\n\tcd _build/src/github.com/Azure/azure-sdk-for-go/sdk/azidentity && GO111MODULE=off GOPATH=$(CURDIR)/_build go test -race -run '^TestManagedIdentityCredential_AzureArc' -count=1 -v .\n'
+(debian/'rules').write_text(rules)
 # Original library test exclusions are retained, documented rather than reported
 # as a complete Azure SDK test pass. Topo independently vets/race-tests its full CLI.
 # Build the same library source package separately before using its .deb in Topo.
