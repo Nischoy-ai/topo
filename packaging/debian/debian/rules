@@ -20,6 +20,9 @@ override_dh_auto_configure:
 	# dh-go constructs the workspace from module roots, then builds only the CLI.
 	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_configure
 	python3 debian/fix-module-metadata.py _build
+	# Debian client-go imports v5 while its packaged go.mod still lists v4.
+	# Add the installed v5 requirement only to the private downstream build copy.
+	cd _build/src/github.com/Nischoy-ai/topo && GOWORK=off go mod edit -require=github.com/evanphx/json-patch/v5@v5.7.0
 
 override_dh_auto_build:
 	dh_auto_build -- -trimpath -ldflags="-X main.version=0.4.7-debiansnapshot.3adbdb3"

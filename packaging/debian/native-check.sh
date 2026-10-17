@@ -32,6 +32,8 @@ lintian_status=$?
 build_status=$?
 cp "$tree/_build/legacy-module-metadata.json" "$out/" 2>/dev/null || true
 cp "$tree/_build/go.work" "$out/go-work.txt" 2>/dev/null || true
+# Keep the actual package/import graph, including errors, for dependency decisions.
+(cd "$tree/_build" && unshare --net -- env PATH="/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$PATH" GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off go list -deps -e -json github.com/Nischoy-ai/topo/cmd/topo) > "$out/import-graph.json" 2> "$out/import-graph.log"
 set -e
 printf '%s\n' "$deps_status" > "$out/checkbuilddeps.exit"
 printf '%s\n' "$license_status" > "$out/source-licensecheck.exit"
