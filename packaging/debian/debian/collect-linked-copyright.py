@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import re
 import subprocess
 import sys
 
@@ -21,6 +22,7 @@ while raw.strip():
     raw = raw.lstrip()[end:]
 repairs = json.loads((build / "legacy-module-metadata.json").read_text())
 records = {}
+modules = {}
 
 def owner(path):
     result = subprocess.check_output(["dpkg-query", "-S", str(path)], text=True)
@@ -51,6 +53,26 @@ for item in packages:
     names = item.get("GoFiles", []) + item.get("CgoFiles", [])
     if not names:
         raise ValueError(f"No attributable source files for {item['ImportPath']}")
-    retain(owner((directory / names[0]).resolve()))
+    package = owner((directory / names[0]).resolve())
+    retain(package)
+    module = item.get("Module", {})
+    module_name = module.get("Path")
+    if module_name and module_name not in modules:
+        module_dir = Path(module["Dir"])
+        candidates = []
+        # Version constants for nested Azure/AWS modules cannot be inferred
+        # from the Debian monorepo source-package version.
+        for pattern in ("*version*.go", "*/*version*.go", "*/*/*version*.go", "*metadata*.go", "*/*metadata*.go", "*/*/*metadata*.go"):
+            for source in module_dir.glob(pattern):
+                if source.is_file() and source.stat().st_size <= 65536:
+                    text = source.read_text(errors="strict")
+                    matches = re.findall(r'(?:[Vv]ersion|[Mm]oduleVersion|[Ss][Dd][Kk]Version)\s*=\s*"([^"\n]+)"', text)
+                    if matches:
+                        candidates.append({"path":str(source.relative_to(module_dir)), "values":matches, "sha256":hashlib.sha256(source.read_bytes()).hexdigest()})
+        modules[module_name] = {"requested_version":module.get("Version"), "debian_owner":package,
+            "identity":records[package]["identity"], "go_mod":(module_dir/"go.mod").read_text(),
+            "version_constant_candidates":candidates,
+            "warning":"Requested Go versions describe requirements, not the version of replaced Debian source."}
+(destination / "module-sources.json").write_text(json.dumps(modules, indent=2) + "\n")
 (destination / "manifest.json").write_text(json.dumps(records, indent=2) + "\n")
 print(f"Retained complete copyright documents for {len(records)} installed packages")
