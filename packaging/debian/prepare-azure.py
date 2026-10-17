@@ -43,7 +43,7 @@ for path,(v,h1) in modules.items():
  receipts[m]={'retained_nested_modules':[str(child.relative_to(destination)) for child in nested],'version':v,'h1':h1,'zip_sha256':hashlib.sha256(data).hexdigest(),'files':len(z.namelist())}
 # Retain original Debian copyright and complete MIT text. Source changes and
 # minimal native test scope remain explicit for the library's maintainer review.
-(debian/'changelog').write_text(f"{name} ({version}) UNRELEASED; urgency=high\n\n  * Review candidate: update complete azidentity module to 1.6.0 for CVE-2024-35255.\n  * Update its azcore 1.11.1/internal 1.8.0 dependencies from verified upstream modules.\n\n -- Soumik Sarkar <soumiks@gmail.com>  Sat, 17 Oct 2026 10:00:00 +0000\n\n"+(debian/'changelog').read_text())
+(debian/'changelog').write_text(f"{name} ({version}) unstable; urgency=high\n\n  * Update complete azidentity module to 1.6.0 for CVE-2024-35255.\n  * Update azcore 1.11.1/internal 1.8.0 from verified upstream modules.\n\n -- Soumik Sarkar <soumiks@gmail.com>  Sat, 17 Oct 2026 10:00:00 +0000\n\n"+(debian/'changelog').read_text())
 control=(debian/'control').read_text().replace('Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>','Maintainer: Soumik Sarkar <soumiks@gmail.com>')
 control=control.replace('golang-github-azuread-microsoft-authentication-library-for-go-dev,','golang-github-azuread-microsoft-authentication-library-for-go-dev (>= 1.2.2),')
 (debian/'control').write_text(control)
@@ -67,6 +67,11 @@ if new_test!=old_test:
 rules=(debian/'rules').read_text()
 rules=rules.replace('# Disable unneeded stuff', 'export PATH := /usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$(PATH)\nexport GOTOOLCHAIN := local\nexport GOPROXY := off\nexport GOSUMDB := off\nexport GOMAXPROCS := 2\nexport DH_GOLANG_INSTALL_ALL := 1\n# Native compilation covers updated SDK modules; original complete source is installed.\nexport DH_GOLANG_BUILDPKG := github.com/Azure/azure-sdk-for-go/sdk/azcore/... github.com/Azure/azure-sdk-for-go/sdk/azidentity/... github.com/Azure/azure-sdk-for-go/sdk/internal/...\n\n# Disable unneeded stuff')
 rules+='\noverride_dh_auto_build:\n\tdh_auto_build --builddirectory=_build\n\noverride_dh_auto_install:\n\tdh_auto_install -- --no-binaries\n\nexecute_after_dh_auto_test:\n\tcd _build/src/github.com/Azure/azure-sdk-for-go/sdk/azidentity && AZURE_RECORD_MODE=live GO111MODULE=off GOPATH=$(CURDIR)/_build go test -race -run "^TestManagedIdentityCredential_AzureArc(Errors)?$$" -count=1 -v .\n'
+(debian/'rules').write_text(rules)
+# Installed development sources omit repository/build automation, not Go API
+# inputs. The complete original/repacked sources remain in the source archive.
+rules=(debian/'rules').read_text()
+rules=rules.replace('\tdh_auto_install -- --no-binaries', '\tdh_auto_install -- --no-binaries\n\trm -r debian/golang-github-azure-azure-sdk-for-go-dev/usr/share/gocode/src/github.com/Azure/azure-sdk-for-go/eng\n\tfind debian/golang-github-azure-azure-sdk-for-go-dev -type f -name .gitattributes -delete')
 (debian/'rules').write_text(rules)
 # Original library test exclusions are retained, documented rather than reported
 # as a complete Azure SDK test pass. Topo independently vets/race-tests its full CLI.

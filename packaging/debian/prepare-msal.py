@@ -36,7 +36,7 @@ Description: Microsoft Authentication Library for Go (development files)
  Authentication library for Microsoft identity platforms. This separate source
  update enables the reviewed Azure Identity security update.
 ''')
-(d/'changelog').write_text(f'''{name} ({version}) UNRELEASED; urgency=medium
+(d/'changelog').write_text(f'''{name} ({version}) unstable; urgency=medium
 
   * Prepare upstream 1.2.2 for Azure Identity 1.6.0 dependency review.
 

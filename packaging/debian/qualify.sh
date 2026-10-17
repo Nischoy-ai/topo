@@ -17,6 +17,17 @@ python3 packaging/debian/prepare-azure.py --output "$out/azure-source" > "$out/a
 python3 packaging/debian/prepare-ntlmssp.py --output "$out/ntlm-source" > "$out/ntlm-source-path.txt"
 # A fresh chroot is used for each build session. No host Go module cache enters it.
 sbuild-createchroot --arch="$arch" --include=ca-certificates,iproute2,passwd,util-linux unstable /srv/chroot/unstable "http://deb.debian.org/debian" > "$out/chroot.log" 2>&1
+# autopkgtest requires a genuinely ephemeral testbed. Snapshot the pristine
+# runtime chroot before build dependencies or source trees enter it.
+tar --one-file-system -czf "$out/autopkgtest-base.tar.gz" -C /srv/chroot/unstable .
+cat > /etc/schroot/chroot.d/topo-autopkgtest <<EOF
+[topo-autopkgtest]
+type=file
+file=$out/autopkgtest-base.tar.gz
+profile=default
+users=root
+root-users=root
+EOF
 # schroot does not implement sbuild's network switch. Use an explicit build-only
 # network namespace, after APT dependencies are installed, with loopback up.
 cat > /srv/chroot/unstable/usr/local/bin/topo-offline-build <<'OFFLINE'
@@ -150,7 +161,7 @@ record_check azure-lintian lintian "$out/azure-source/"*.dsc "${azure[0]}"
 record_check topo-lintian lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
 record_check autopkgtest autopkgtest "$out/topo-source/"*.dsc "$out/topo/"topo_*"_${arch}.deb" \
- --output-dir="$out/tests/autopkgtest" -- schroot "unstable-${arch}-sbuild"
+ --output-dir="$out/tests/autopkgtest" -- schroot topo-autopkgtest
 test "$failed" = 0
 python3 - "$out" "$arch" <<'PY'
 import hashlib,json,sys

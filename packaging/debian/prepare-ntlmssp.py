@@ -71,7 +71,7 @@ Description: Go NTLM/Negotiate authentication over HTTP (development files)
  malformed challenge fix in version 0.1.1. It is an unsigned review candidate,
  not an accepted Debian archive update.
 ''')
-(debian/'changelog').write_text(f'''{package} ({debversion}) UNRELEASED; urgency=medium
+(debian/'changelog').write_text(f'''{package} ({debversion}) unstable; urgency=medium
 
   * Prepare upstream 0.1.1 update, including malformed challenge bounds fix.
   * Use the separately maintained Debian x/crypto MD4 implementation.
