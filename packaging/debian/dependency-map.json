@@ -1,6 +1,6 @@
 {
   "source_commit": "3adbdb36ad886396ad6267cd706c84bea6d35b99",
-  "limits": "Candidate names only. Signed APT, installed import paths and offline build must establish availability/compatibility. No version downgrades authorized.",
+  "limits": "Upstream requirements are retained verbatim. Native Debian compatibility floors are documented in dependency-compatibility.md; security floors and upstream go.mod/go.sum remain unchanged. Availability alone does not qualify a package.",
   "modules": [
     {
       "module": "github.com/Azure/go-ntlmssp",

@@ -51,7 +51,7 @@ def main():
         "upstream_commit": UPSTREAM, "upstream_version": VERSION,
         "packaging_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "signed": False, "upload_ready": False, "archive_accepted": False,
-        "status": "review candidate; dependency closure, copyright review, clean build and sponsor required",
+        "status": "review candidate; native qualification, signing and sponsor/archive review tracked separately",
         "files": files,
     }, indent=2) + "\n")
     print(tree)

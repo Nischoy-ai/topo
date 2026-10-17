@@ -23,15 +23,20 @@ set -eu
 ip link set lo up
 ip -brief link
 [ "$(ip -o link | wc -l)" -eq 1 ]
-exec "$@"
+exec runuser --user topo-builder -- "$@"
 OFFLINE
 chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-offline-build
 cat > /srv/chroot/unstable/usr/local/bin/topo-build-command <<'COMMAND'
 #!/bin/sh
 set -eu
+test "$(id -u)" = 0
+case "$PWD" in /build/reproducible-path/topo-*|/build/reproducible-path/golang-github-azure-go-ntlmssp-*) ;; *) exit 1 ;; esac
+chown -R topo-builder:topo-builder "$PWD"
+chown topo-builder:topo-builder "$(dirname "$PWD")"
 exec unshare --net /usr/local/bin/topo-offline-build "$@"
 COMMAND
 chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-build-command
+chroot /srv/chroot/unstable useradd --system --create-home --home-dir /var/lib/topo-builder --shell /bin/bash topo-builder
 cat > "$out/sbuild-config.pl" <<'SBUILD'
 $build_env_cmnd = '/usr/local/bin/topo-build-command';
 $mailto = '';

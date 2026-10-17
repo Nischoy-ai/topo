@@ -6,6 +6,7 @@ Build-Depends:
  debhelper-compat (= 13),
  dh-go (>= 1.69),
  gh,
+ git,
  golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2),
  python3,
  golang-github-aws-aws-sdk-go-v2-dev (>= 1.41.7),
