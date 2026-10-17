@@ -12,7 +12,7 @@ out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
 name='golang-github-azure-azure-sdk-for-go'
 old='68.0.0+git20231220.f497335+dfsg1'
 new=old+'+azidentity1.6.0'
-version=new+'-1~topo1'
+version=new+'-1~topo2'
 base='https://deb.debian.org/debian/pool/main/g/'+name+'/'
 inputs={name+'_'+old+'.orig.tar.xz':'0229ef1bd5a3c9c62021d6e4bacd67d95b976768fea4825b4d3628ba190e03aa',name+'_'+old+'-7.debian.tar.xz':'74834f052a4e7d9ce0e66ae01af564dcd57c827bce42d86d87ba612f12b6213b'}
 for filename,sha in inputs.items():
@@ -65,7 +65,7 @@ if new_test!=old_test:
  (patches/'series').write_text('go127-json-error.patch\n')
 rules=(debian/'rules').read_text()
 rules=rules.replace('# Disable unneeded stuff', 'export PATH := /usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$(PATH)\nexport GOTOOLCHAIN := local\nexport GOPROXY := off\nexport GOSUMDB := off\nexport GOMAXPROCS := 2\nexport DH_GOLANG_INSTALL_ALL := 1\n# Native compilation covers updated SDK modules; original complete source is installed.\nexport DH_GOLANG_BUILDPKG := github.com/Azure/azure-sdk-for-go/sdk/azcore/... github.com/Azure/azure-sdk-for-go/sdk/azidentity/... github.com/Azure/azure-sdk-for-go/sdk/internal/...\n\n# Disable unneeded stuff')
-rules+='\noverride_dh_auto_build:\n\tdh_auto_build --builddirectory=_build\n\nexecute_after_dh_auto_test:\n\tcd _build/src/github.com/Azure/azure-sdk-for-go/sdk/azidentity && AZURE_RECORD_MODE=live GO111MODULE=off GOPATH=$(CURDIR)/_build go test -race -run "^TestManagedIdentityCredential_AzureArc(Errors)?$$" -count=1 -v .\n'
+rules+='\noverride_dh_auto_build:\n\tdh_auto_build --builddirectory=_build\n\noverride_dh_auto_install:\n\tdh_auto_install -- --no-binaries\n\nexecute_after_dh_auto_test:\n\tcd _build/src/github.com/Azure/azure-sdk-for-go/sdk/azidentity && AZURE_RECORD_MODE=live GO111MODULE=off GOPATH=$(CURDIR)/_build go test -race -run "^TestManagedIdentityCredential_AzureArc(Errors)?$$" -count=1 -v .\n'
 (debian/'rules').write_text(rules)
 # Original library test exclusions are retained, documented rather than reported
 # as a complete Azure SDK test pass. Topo independently vets/race-tests its full CLI.

@@ -21,7 +21,7 @@ root = Path(__file__).resolve().parents[2]
 module = 'github.com/Azure/go-ntlmssp'
 version = 'v0.1.1'
 package = 'golang-github-azure-go-ntlmssp'
-debversion = '0.1.1-1~topo2'
+debversion = '0.1.1-1~topo3'
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--output', type=Path, required=True)
 a = p.parse_args()
@@ -92,6 +92,10 @@ export DH_GOLANG_EXCLUDES := github.com/Azure/go-ntlmssp/internal/md4
 
 override_dh_auto_test:
 \tdh_auto_test -- -race -timeout 10m
+
+override_dh_auto_install:
+\tdh_auto_install -- --no-binaries
+\trm -r debian/golang-github-azure-go-ntlmssp-dev/usr/share/gocode/src/github.com/Azure/go-ntlmssp/internal/md4
 ''')
 (debian/'rules').chmod(0o755)
 (debian/'docs').write_text('README.md\n')

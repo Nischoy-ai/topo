@@ -4,7 +4,7 @@ import argparse,base64,gzip,hashlib,io,json,subprocess,tarfile,urllib.request,zi
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
 out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
-module='github.com/AzureAD/microsoft-authentication-library-for-go';v='v1.2.2';name='golang-github-azuread-microsoft-authentication-library-for-go';version='1.2.2-1~topo1'
+module='github.com/AzureAD/microsoft-authentication-library-for-go';v='v1.2.2';name='golang-github-azuread-microsoft-authentication-library-for-go';version='1.2.2-1~topo2'
 url='https://proxy.golang.org/github.com/!azure!a!d/microsoft-authentication-library-for-go/@v/'+v+'.zip'
 data=urllib.request.urlopen(url,timeout=60).read();z=zipfile.ZipFile(io.BytesIO(data));lines=''.join(hashlib.sha256(z.read(n)).hexdigest()+'  '+n+'\n' for n in sorted(z.namelist()));h='h1:'+base64.b64encode(hashlib.sha256(lines.encode()).digest()).decode();assert h=='h1:XHOnouVk1mxXfQidrMEnLlPk9UMeRtyBTnEFtxkV0kU='
 tree=out/(name+'-1.2.2');tree.mkdir();prefix=module+'@'+v+'/'
@@ -49,11 +49,15 @@ export GOPROXY := off
 export GOSUMDB := off
 export GOMAXPROCS := 2
 export DH_GOLANG_INSTALL_ALL := 1
+export DH_GOLANG_EXCLUDES := microsoft-authentication-library-for-go/apps/tests
 %:
 \tdh $@ --buildsystem=golang --with=golang --builddirectory=_build
 
 override_dh_auto_test:
-\tDH_GOLANG_EXCLUDES="microsoft-authentication-library-for-go/apps/tests/integration microsoft-authentication-library-for-go/apps/tests/performance" dh_auto_test -- -race -timeout 10m
+\tdh_auto_test -- -race -timeout 10m
+
+override_dh_auto_install:
+\tdh_auto_install -- --no-binaries
 ''');(d/'rules').chmod(0o755)
 # All upstream files carry Microsoft MIT terms; keep its complete license.
 indent=lambda s:'\n'.join(' '+line if line else ' .' for line in s.splitlines())+'\n'
