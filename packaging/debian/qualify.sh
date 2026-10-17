@@ -25,8 +25,14 @@ ip -brief link
 exec "$@"
 OFFLINE
 chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-offline-build
+cat > /srv/chroot/unstable/usr/local/bin/topo-build-command <<'COMMAND'
+#!/bin/sh
+set -eu
+exec unshare --user --map-root-user --net /usr/local/bin/topo-offline-build "$@"
+COMMAND
+chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-build-command
 cat > "$out/sbuild-config.pl" <<'SBUILD'
-$build_env_cmnd = 'unshare --user --map-root-user --net /usr/local/bin/topo-offline-build';
+$build_env_cmnd = '/usr/local/bin/topo-build-command';
 $mailto = '';
 1;
 SBUILD
