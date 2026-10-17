@@ -65,7 +65,7 @@ XS-Go-Import-Path: github.com/Azure/go-ntlmssp
 Package: {package}-dev
 Architecture: all
 Multi-Arch: foreign
-Depends: ${{misc:Depends}}
+Depends: golang-golang-x-crypto-dev (>= 1:0.57.0), ${{misc:Depends}}
 Description: Go NTLM/Negotiate authentication over HTTP (development files)
  Pure-Go NTLM authentication over HTTP. This source update retains the upstream
  malformed challenge fix in version 0.1.1. It is an unsigned review candidate,
@@ -130,7 +130,7 @@ License: Apache-2.0
 patches=debian/'patches';patches.mkdir()
 changes={
     'nlmp.go':(tree/'nlmp.go').read_text().replace('github.com/Azure/go-ntlmssp/internal/md4','golang.org/x/crypto/md4'),
-    'go.mod':(tree/'go.mod').read_text()+'\nrequire golang.org/x/crypto v0.57.0\n',
+    'go.mod':(tree/'go.mod').read_text().replace('go 1.24','go 1.26.0')+'\nrequire golang.org/x/crypto v0.57.0\n',
 }
 assert changes['nlmp.go']!=(tree/'nlmp.go').read_text()
 patch='Description: Use Debian x/crypto MD4 instead of the upstream copied implementation\nAuthor: Soumik Sarkar <soumiks@gmail.com>\nForwarded: not-needed\nLast-Update: 2026-10-17\n\n'
