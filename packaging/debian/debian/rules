@@ -38,8 +38,8 @@ override_dh_auto_install:
 	dh_auto_install -- --no-source
 
 override_dh_installsystemd:
-	dh_installsystemd --name=topo-worker --no-enable --no-start
-	dh_installsystemd --name=topo-agent --no-enable --no-start
+	dh_installsystemd --name=topo-worker --no-enable --no-start --no-stop-on-upgrade
+	dh_installsystemd --name=topo-agent --no-enable --no-start --no-stop-on-upgrade
 
 override_dh_installdocs:
 	python3 debian/collect-linked-copyright.py _build debian/topo/usr/share/doc/topo/linked-licenses

@@ -103,3 +103,11 @@ References:
 - [Debian Mentors maintainer guide](https://mentors.debian.net/intro-maintainers/)
 - [Debian WNPP](https://www.debian.org/devel/wnpp/)
 - [Ubuntu new-package process](https://ubuntu.com/project/docs/how-ubuntu-is-made/processes/new-packages/)
+
+The service maintainer scripts preserve an already running worker during package
+upgrades (`--no-stop-on-upgrade`) and never enable/start it on initial install.
+An operator must explicitly restart the service when ready to use a newly
+installed executable. Package removal still stops its services and retains
+operator configuration and service identities. The lifecycle fixture tests a
+same-source higher package revision; it does not establish release/N-1 upgrade
+compatibility or reboot behavior.
