@@ -41,6 +41,7 @@ jobs:
         with:
           name: debian-native-${{ runner.arch }}
           path: |
+            /tmp/topo-debian-qualification/topo-setup-controlsim
             /tmp/topo-debian-qualification/*.json
             /tmp/topo-debian-qualification/*.txt
             /tmp/topo-debian-qualification/*.log
@@ -62,3 +63,34 @@ jobs:
             /tmp/topo-debian-qualification/tests/**
           retention-days: 7
           if-no-files-found: error
+
+  debian-systemd:
+    needs: debian-native
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: X64
+          - runner: ubuntu-24.04-arm
+            architecture: ARM64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: debian-native-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/topo-debian-native
+      - name: Real Debian package and worker systemd lifecycle
+        shell: bash
+        run: bash packaging/debian/test-systemd.sh "$RUNNER_TEMP/topo-debian-native"
+      - name: Retain systemd lifecycle logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: debian-systemd-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/topo-debian-systemd.*/*.log
+          retention-days: 7

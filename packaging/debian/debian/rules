@@ -26,6 +26,7 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 	dh_auto_build -- -trimpath -ldflags="-X main.version=0.4.7-debiansnapshot.3adbdb3"
+	cd _build && CGO_ENABLED=0 go build -trimpath -o topo-setup-controlsim ../debian/fixtures/setupcontrolsim/main.go
 
 override_dh_auto_test:
 	cd _build/src/github.com/Nischoy-ai/topo && GOWORK=$(CURDIR)/_build/go.work GOPATH=$(CURDIR)/_build GOCACHE=$(CURDIR)/_build/go-build go vet ./...
@@ -41,3 +42,6 @@ override_dh_installsystemd:
 override_dh_installdocs:
 	python3 debian/collect-linked-copyright.py _build debian/topo/usr/share/doc/topo/linked-licenses
 	dh_installdocs
+
+override_dh_compress:
+	dh_compress -Xlinked-licenses

@@ -46,7 +46,10 @@ test "${#ntlm[@]}" = 1
 python3 packaging/debian/prepare-source.py --output "$out/topo-source" > "$out/topo-source-path.txt"
 sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
- --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
+ --purge-build=never --extra-package="${ntlm[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
+mapfile -t simulators < <(find /build -type f -path '*/_build/topo-setup-controlsim')
+test "${#simulators[@]}" = 1
+cp "${simulators[0]}" "$out/topo-setup-controlsim"
 lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}" > "$out/ntlm-lintian.log" 2>&1
 lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes > "$out/topo-lintian.log" 2>&1
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
