@@ -15,7 +15,7 @@ python3 packaging/debian/prepare-ntlmssp.py --output "$out/ntlm-source" > "$out/
 # A fresh chroot is used for each build session. No host Go module cache enters it.
 sbuild-createchroot --arch="$arch" --include=ca-certificates,iproute2 unstable /srv/chroot/unstable "http://deb.debian.org/debian" > "$out/chroot.log" 2>&1
 # schroot does not implement sbuild's network switch. Use an explicit build-only
-# user/network namespace, after APT dependencies are installed, with loopback up.
+# network namespace, after APT dependencies are installed, with loopback up.
 cat > /srv/chroot/unstable/usr/local/bin/topo-offline-build <<'OFFLINE'
 #!/bin/sh
 set -eu
@@ -28,7 +28,7 @@ chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-offline-build
 cat > /srv/chroot/unstable/usr/local/bin/topo-build-command <<'COMMAND'
 #!/bin/sh
 set -eu
-exec unshare --user --map-root-user --net /usr/local/bin/topo-offline-build "$@"
+exec unshare --net /usr/local/bin/topo-offline-build "$@"
 COMMAND
 chmod 0755 /srv/chroot/unstable/usr/local/bin/topo-build-command
 cat > "$out/sbuild-config.pl" <<'SBUILD'

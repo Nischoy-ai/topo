@@ -62,7 +62,7 @@ for item in packages:
         candidates = []
         # Version constants for nested Azure/AWS modules cannot be inferred
         # from the Debian monorepo source-package version.
-        for pattern in ("*version*.go", "*/*version*.go", "*/*/*version*.go", "*metadata*.go", "*/*metadata*.go", "*/*/*metadata*.go"):
+        for pattern in ("*version*.go", "*/*version*.go", "*/*/*version*.go", "*/*/*/*version*.go", "constants.go", "internal/shared/shared.go", "*metadata*.go", "*/*metadata*.go", "*/*/*metadata*.go"):
             for source in module_dir.glob(pattern):
                 if source.is_file() and source.stat().st_size <= 65536:
                     text = source.read_text(errors="strict")
