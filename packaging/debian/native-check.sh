@@ -30,6 +30,8 @@ lintian_status=$?
 # It never makes an upload-ready result, even if an incidental build succeeds.
 (cd "$tree" && unshare --net -- sh -ec 'ip link set lo up; exec dpkg-buildpackage --no-sign -b -d') > "$out/diagnostic-build.log" 2>&1
 build_status=$?
+cp "$tree/_build/legacy-module-metadata.json" "$out/" 2>/dev/null || true
+cp "$tree/_build/go.work" "$out/go-work.txt" 2>/dev/null || true
 set -e
 printf '%s\n' "$deps_status" > "$out/checkbuilddeps.exit"
 printf '%s\n' "$license_status" > "$out/source-licensecheck.exit"

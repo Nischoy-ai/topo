@@ -17,6 +17,7 @@ override_dh_auto_configure:
 	case "$$(go env GOVERSION)" in go1.26.9|go1.27.2) ;; *) echo "Unqualified downstream Go compiler" >&2; exit 1 ;; esac
 	# dh-go constructs the workspace from module roots, then builds only the CLI.
 	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_configure
+	python3 debian/fix-module-metadata.py _build
 
 override_dh_auto_build:
 	dh_auto_build -- -trimpath -ldflags="-X main.version=0.4.7-debiansnapshot.3adbdb3"
