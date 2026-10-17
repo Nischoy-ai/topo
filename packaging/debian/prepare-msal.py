@@ -53,7 +53,7 @@ export DH_GOLANG_INSTALL_ALL := 1
 \tdh $@ --buildsystem=golang --with=golang --builddirectory=_build
 
 override_dh_auto_test:
-\tdh_auto_test -- -race -timeout 10m
+\tDH_GOLANG_EXCLUDES="microsoft-authentication-library-for-go/apps/tests/integration microsoft-authentication-library-for-go/apps/tests/performance" dh_auto_test -- -race -timeout 10m
 ''');(d/'rules').chmod(0o755)
 # All upstream files carry Microsoft MIT terms; keep its complete license.
 indent=lambda s:'\n'.join(' '+line if line else ' .' for line in s.splitlines())+'\n'

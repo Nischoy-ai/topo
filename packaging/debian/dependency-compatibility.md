@@ -68,3 +68,8 @@ The original archive's MSAL1.0.0 diagnostic compatibility result above is histor
 final security qualification requires the new dependency chain. All three
 library updates need separate Debian maintainer/sponsor review and archive
 acceptance before an archive-only Topo build is possible.
+
+MSAL's separate `apps/tests/integration` and `apps/tests/performance` suites
+require Microsoft lab credentials/endpoints and are excluded from the offline
+package test. All ordinary library unit tests retain race checking. No live
+authentication or performance result is inferred from this package build.
