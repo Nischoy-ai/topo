@@ -19,6 +19,17 @@ import sys
 import urllib.request
 import zipfile
 
+def debian_upstream_version(version):
+    # Debian revision suffixes (including this staged -1~topo1) are not part of
+    # the upstream semantic version used by the Go vulnerability database.
+    value=version.split(':')[-1]
+    upstream=value.rsplit('-',1)[0] if '-' in value else value
+    if '+really' in upstream or '~' in upstream:
+        raise ValueError('Ambiguous actual Debian version: '+version)
+    match=re.match(r'(\d+\.\d+\.\d+)(?:[+]|$)',upstream)
+    if not match:raise ValueError('Unresolved actual Debian version: '+version)
+    return 'v'+match[1]
+
 build=Path(sys.argv[1]).resolve()
 out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=False)
 root=build/'src/github.com/Nischoy-ai/topo'
@@ -34,11 +45,7 @@ for module in sorted(records.keys() & index.keys()):
         if len(versions)!=1:raise ValueError(f'Unresolved actual SDK version: {module}: {candidates}')
         actual[module]=versions.pop()
     else:
-        version=record['identity'].split('\t')[3].split(':')[-1]
-        if '+really' in version or '~' in version:raise ValueError('Ambiguous actual Debian version: '+version)
-        match=re.match(r'(\d+\.\d+\.\d+)(?:[+-]|$)',version)
-        if not match:raise ValueError(f'Unresolved actual version: {module}: {version}')
-        actual[module]='v'+match[1]
+        actual[module]=debian_upstream_version(record['identity'].split('\t')[3])
 (out/'actual-vulnerability-module-versions.json').write_text(json.dumps(actual,indent=2)+'\n')
 
 def packages(cwd,env):
