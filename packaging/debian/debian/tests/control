@@ -1,3 +1,6 @@
 Tests: installed-cli
 Depends: @
 Restrictions: superficial
+
+Tests: offline-publish
+Depends: @, python3
