@@ -24,8 +24,10 @@ def debian_upstream_version(version):
     # the upstream semantic version used by the Go vulnerability database.
     value=version.split(':')[-1]
     upstream=value.rsplit('-',1)[0] if '-' in value else value
-    if '+really' in upstream or '~' in upstream:
+    if upstream.count('+really') > 1 or '~' in upstream:
         raise ValueError('Ambiguous actual Debian version: '+version)
+    if '+really' in upstream:
+        upstream=upstream.split('+really',1)[1]
     match=re.match(r'(\d+\.\d+\.\d+)(?:[+]|$)',upstream)
     if not match:raise ValueError('Unresolved actual Debian version: '+version)
     return 'v'+match[1]
@@ -41,7 +43,7 @@ for module in sorted(records.keys() & index.keys()):
     record=records[module]
     if module.startswith('github.com/Azure/azure-sdk-for-go/'):
         candidates=[c for c in record['version_constant_candidates'] if c['path']=='version.go']
-        versions={v if v.startswith('v') else 'v'+v for c in candidates for v in c['values'] if re.fullmatch(r'v?\d+\.\d+\.\d+',v)}
+        versions={v if v.startswith('v') else 'v'+v for c in candidates for v in c['values'] if re.fullmatch(r'v?\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?',v)}
         if len(versions)!=1:raise ValueError(f'Unresolved actual SDK version: {module}: {candidates}')
         actual[module]=versions.pop()
     else:
