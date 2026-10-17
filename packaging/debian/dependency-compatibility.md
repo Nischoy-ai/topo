@@ -73,3 +73,10 @@ MSAL's separate `apps/tests/integration` and `apps/tests/performance` suites
 require Microsoft lab credentials/endpoints and are excluded from the offline
 package test. All ordinary library unit tests retain race checking. No live
 authentication or performance result is inferred from this package build.
+
+Azure's TestMain normally starts a recording proxy and requires a git checkout
+even for mock-only tests. The explicit Arc invocation selects exactly the two
+upstream Arc mock-server test functions and sets the supported AZURE_RECORD_MODE
+to `live` solely to bypass that recording proxy. Both functions use the SDK mock
+transport; the build still has only loopback and no cloud credentials. This is
+not an Azure live-authentication test. No upstream test function is rewritten.
