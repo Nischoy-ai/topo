@@ -7,6 +7,7 @@ verified against Topo's original go.sum; compilation is offline and separate.
 import argparse
 import base64
 import gzip
+import difflib
 import hashlib
 import io
 import json
@@ -20,7 +21,7 @@ root = Path(__file__).resolve().parents[2]
 module = 'github.com/Azure/go-ntlmssp'
 version = 'v0.1.1'
 package = 'golang-github-azure-go-ntlmssp'
-debversion = '0.1.1-1~topo1'
+debversion = '0.1.1-1~topo2'
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--output', type=Path, required=True)
 a = p.parse_args()
@@ -55,7 +56,7 @@ debian=tree/'debian'; (debian/'source').mkdir(parents=True)
 Section: golang
 Priority: optional
 Maintainer: Soumik Sarkar <soumiks@gmail.com>
-Build-Depends: debhelper-compat (= 13), dh-go (>= 1.69), golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2)
+Build-Depends: debhelper-compat (= 13), dh-go (>= 1.69), golang-golang-x-crypto-dev (>= 1:0.57.0), golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2)
 Standards-Version: 4.7.4
 Homepage: https://github.com/Azure/go-ntlmssp
 Rules-Requires-Root: no
@@ -73,7 +74,8 @@ Description: Go NTLM/Negotiate authentication over HTTP (development files)
 (debian/'changelog').write_text(f'''{package} ({debversion}) UNRELEASED; urgency=medium
 
   * Prepare upstream 0.1.1 update, including malformed challenge bounds fix.
-  * Retain MIT and copied Go MD4 BSD-3-Clause attribution in full.
+  * Use the separately maintained Debian x/crypto MD4 implementation.
+  * Retain MIT and copied Go MD4 BSD-3-Clause source attribution in full.
 
  -- Soumik Sarkar <soumiks@gmail.com>  Sat, 17 Oct 2026 10:00:00 +0000
 ''')
@@ -84,6 +86,7 @@ export GOPROXY := off
 export GOSUMDB := off
 export GOMAXPROCS := 2
 export DH_GOLANG_INSTALL_ALL := 1
+export DH_GOLANG_EXCLUDES := github.com/Azure/go-ntlmssp/internal/md4
 %:
 \tdh $@ --buildsystem=golang --with=golang --builddirectory=_build
 
@@ -108,7 +111,9 @@ Files: internal/md4/*
 Copyright: 2009 The Go Authors
 License: BSD-3-Clause
 Comment: Upstream internal/md4/README.md identifies the copied x/crypto MD4
- implementation. Source headers refer to the Go BSD license; retain it here.
+ implementation. The original source and its notices are retained. A Debian
+ patch uses the system x/crypto module instead; the unused internal copy is
+ excluded from native build targets and installed development sources.
 
 Files: debian/*
 Copyright: 2026 Soumik Sarkar <soumiks@gmail.com>
@@ -121,7 +126,21 @@ License: Apache-2.0
 ''')
 # Match the Topo source package's narrowly documented dh-go addon lint exception.
 (debian/'source/lintian-overrides').write_text((root/'packaging/debian/debian/source/lintian-overrides').read_text().replace('topo source:', package+' source:'))
+# Downstream unbundling patch, with unchanged original source archive above.
+patches=debian/'patches';patches.mkdir()
+changes={
+    'nlmp.go':(tree/'nlmp.go').read_text().replace('github.com/Azure/go-ntlmssp/internal/md4','golang.org/x/crypto/md4'),
+    'go.mod':(tree/'go.mod').read_text()+'\nrequire golang.org/x/crypto v0.57.0\n',
+}
+assert changes['nlmp.go']!=(tree/'nlmp.go').read_text()
+patch='Description: Use Debian x/crypto MD4 instead of the upstream copied implementation\nAuthor: Soumik Sarkar <soumiks@gmail.com>\nForwarded: not-needed\nLast-Update: 2026-10-17\n\n'
+for name,new in changes.items():
+    patch+=''.join(difflib.unified_diff((tree/name).read_text().splitlines(True),new.splitlines(True),fromfile='a/'+name,tofile='b/'+name))
+(patches/'use-system-md4.patch').write_text(patch)
+(patches/'series').write_text('use-system-md4.patch\n')
+with (out/'patch-application.log').open('w') as log:
+    subprocess.run(['dpkg-source','--before-build',str(tree)],cwd=out,stdout=log,stderr=subprocess.STDOUT,check=True)
 with (out/'dpkg-source.log').open('w') as log:
     subprocess.run(['dpkg-source','--build',str(tree)],cwd=out,stdout=log,stderr=subprocess.STDOUT,check=True)
-(out/'source-receipt.json').write_text(json.dumps({'module':module,'version':version,'source_url':url,'zip_sha256':hashlib.sha256(data).hexdigest(),'original_go_sum_h1':h1,'signed':False,'archive_accepted':False,'purpose':'separate NTLM dependency-update review candidate; never bundled into Topo source'},indent=2)+'\n')
+(out/'source-receipt.json').write_text(json.dumps({'module':module,'version':version,'source_url':url,'zip_sha256':hashlib.sha256(data).hexdigest(),'original_go_sum_h1':h1,'debian_version':debversion,'downstream_patch':'use-system-md4.patch','signed':False,'archive_accepted':False,'purpose':'separate NTLM dependency-update review candidate; never bundled into Topo source'},indent=2)+'\n')
 print(tree)
