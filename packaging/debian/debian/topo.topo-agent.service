@@ -1,0 +1,49 @@
+[Unit]
+Description=Topo Agent - outbound-only endpoint discovery agent
+Documentation=https://github.com/Nischoy-ai/topo/blob/main/docs/topo-agent.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=topo-agent
+Group=topo-agent
+
+# Package installation deliberately does not create this file or start the
+# service. Copy the packaged example, then supply restricted secret files.
+EnvironmentFile=/etc/topo-agent/topo-agent.env
+
+ExecStart=/usr/bin/topo agent run \
+    -controller-url ${TOPO_AGENT_CONTROLLER_URL} \
+    -api-key-ref file:/etc/topo-agent/api-key \
+    -spool-dir /var/lib/topo-agent/spool \
+    -spool-key-ref file:/etc/topo-agent/spool-key
+
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=30
+StateDirectory=topo-agent
+StateDirectoryMode=0750
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

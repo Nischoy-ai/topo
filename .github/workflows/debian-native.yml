@@ -1,0 +1,96 @@
+name: debian-native-qualification
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/debian-native.yml'
+      - 'packaging/debian/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  debian-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    container:
+      image: debian:unstable@sha256:c1bc8c85a3b2395872d431404ca01b3d1a7c3e98610eb718d80725c573cc8017
+      options: --privileged
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install native clean-build and package-test tools
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 sbuild sbuild-schroot schroot debootstrap dpkg-dev lintian autopkgtest
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Clean native builds with offline build phase and actual package tests
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash packaging/debian/qualify.sh
+      - name: Retain exact source, binaries, package identities and failed-test logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: debian-native-${{ runner.arch }}
+          path: |
+            /tmp/topo-debian-qualification/topo-setup-controlsim
+            /tmp/topo-debian-qualification/*.json
+            /tmp/topo-debian-qualification/*.txt
+            /tmp/topo-debian-qualification/*.log
+            /tmp/topo-debian-qualification/*InRelease
+            /tmp/topo-debian-qualification/*/*.build
+            /tmp/topo-debian-qualification/*/*.log
+            /tmp/topo-debian-qualification/topo/*.build
+            /tmp/topo-debian-qualification/topo/*.log
+            /tmp/topo-debian-qualification/*/*.deb
+            /tmp/topo-debian-qualification/*/*.changes
+            /tmp/topo-debian-qualification/*/*.buildinfo
+            /tmp/topo-debian-qualification/topo/*.deb
+            /tmp/topo-debian-qualification/topo/*.changes
+            /tmp/topo-debian-qualification/topo/*.buildinfo
+            /tmp/topo-debian-qualification/*-source/*.dsc
+            /tmp/topo-debian-qualification/*-source/*.tar.*
+            /tmp/topo-debian-qualification/*-source/*.json
+            /tmp/topo-debian-qualification/*-source/*.log
+            /tmp/topo-debian-qualification/tests/**
+          retention-days: 7
+          if-no-files-found: error
+
+  debian-systemd:
+    needs: debian-native
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: X64
+          - runner: ubuntu-24.04-arm
+            architecture: ARM64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: debian-native-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/topo-debian-native
+      - name: Real Debian package and worker systemd lifecycle
+        shell: bash
+        run: bash packaging/debian/test-systemd.sh "$RUNNER_TEMP/topo-debian-native"
+      - name: Retain systemd lifecycle logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: debian-systemd-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/topo-debian-systemd.*/*.log
+          retention-days: 7

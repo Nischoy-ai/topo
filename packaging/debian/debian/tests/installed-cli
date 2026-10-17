@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+topo version
+test -x /usr/bin/topo
+test -f /usr/share/man/man1/topo.1.gz
+test -f /usr/lib/systemd/system/topo-worker.service || test -f /lib/systemd/system/topo-worker.service
+# Never configure, register or start a worker during a package smoke test.

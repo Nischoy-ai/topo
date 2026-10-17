@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+case "$1" in
+ configure)
+  if ! getent passwd topo-worker >/dev/null; then
+   adduser --system --group --home /nonexistent --no-create-home topo-worker
+  fi
+  if ! getent passwd topo-agent >/dev/null; then
+   adduser --system --group --home /var/lib/topo-agent --no-create-home topo-agent
+  fi
+  ;;
+esac
+# Users and administrator-owned configuration/state are preserved on removal.
+#DEBHELPER#
