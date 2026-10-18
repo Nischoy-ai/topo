@@ -44,7 +44,8 @@ for path,(v,h1) in modules.items():
 # Retain original Debian copyright and complete MIT text. Source changes and
 # minimal native test scope remain explicit for the library's maintainer review.
 (debian/'changelog').write_text(f"{name} ({version}) unstable; urgency=high\n\n  * Update complete azidentity module to 1.6.0 for CVE-2024-35255.\n  * Update azcore 1.11.1/internal 1.8.0 from verified upstream modules.\n\n -- Soumik Sarkar <soumiks@gmail.com>  Sat, 17 Oct 2026 10:00:00 +0000\n\n"+(debian/'changelog').read_text())
-control=(debian/'control').read_text().replace('Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>','Maintainer: Soumik Sarkar <soumiks@gmail.com>')
+# Preserve the existing Debian team Maintainer and Uploaders.
+control=(debian/'control').read_text()
 control=control.replace('golang-github-azuread-microsoft-authentication-library-for-go-dev,','golang-github-azuread-microsoft-authentication-library-for-go-dev (>= 1.2.2),')
 (debian/'control').write_text(control)
 copyright=(debian/'copyright').read_text().replace('Copyright: 2015 Tianon Gravi <tianon@debian.org>', 'Copyright: 2015 Tianon Gravi <tianon@debian.org>\n 2026 Soumik Sarkar <soumiks@gmail.com>')

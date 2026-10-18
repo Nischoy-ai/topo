@@ -55,7 +55,8 @@ debian=tree/'debian'; (debian/'source').mkdir(parents=True)
 (debian/'control').write_text(f'''Source: {package}
 Section: golang
 Priority: optional
-Maintainer: Soumik Sarkar <soumiks@gmail.com>
+Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Uploaders: Shengjing Zhu <zhsj@debian.org>
 Build-Depends: debhelper-compat (= 13), dh-go (>= 1.69), golang-golang-x-crypto-dev (>= 1:0.57.0), golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2)
 Standards-Version: 4.7.4
 Homepage: https://github.com/Azure/go-ntlmssp

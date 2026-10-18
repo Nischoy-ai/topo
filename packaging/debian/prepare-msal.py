@@ -21,7 +21,8 @@ d=tree/'debian';(d/'source').mkdir(parents=True);(d/'source/format').write_text(
 (d/'control').write_text(f'''Source: {name}
 Section: golang
 Priority: optional
-Maintainer: Soumik Sarkar <soumiks@gmail.com>
+Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Uploaders: M Hickford <mirth.hickford@gmail.com>
 Build-Depends: debhelper-compat (= 13), dh-go (>= 1.69), golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2), golang-github-pkg-browser-dev, golang-github-golang-jwt-jwt-v5-dev, golang-github-google-uuid-dev, golang-github-kylelemons-godebug-dev, golang-github-montanaflynn-stats-dev, golang-golang-x-sys-dev, golang-github-stretchr-testify-dev
 Standards-Version: 4.7.4
 Homepage: https://github.com/AzureAD/microsoft-authentication-library-for-go
