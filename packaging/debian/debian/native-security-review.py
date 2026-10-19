@@ -19,18 +19,7 @@ import sys
 import urllib.request
 import zipfile
 
-def debian_upstream_version(version):
-    # Debian revision suffixes (including this staged -1~topo1) are not part of
-    # the upstream semantic version used by the Go vulnerability database.
-    value=version.split(':')[-1]
-    upstream=value.rsplit('-',1)[0] if '-' in value else value
-    if upstream.count('+really') > 1 or '~' in upstream:
-        raise ValueError('Ambiguous actual Debian version: '+version)
-    if '+really' in upstream:
-        upstream=upstream.split('+really',1)[1]
-    match=re.match(r'(\d+\.\d+\.\d+)(?:[+]|$)',upstream)
-    if not match:raise ValueError('Unresolved actual Debian version: '+version)
-    return 'v'+match[1]
+from archive_security_policy import debian_upstream_version, classify_scan
 
 # This is the disposable chroot's root account, not the maintainer's host.
 # Use the documented command (GOTELEMETRY env is read-only) before Go tools.
@@ -67,7 +56,7 @@ for module in sorted(records.keys() & index.keys()):
         if len(versions)!=1:raise ValueError(f'Unresolved actual SDK version: {module}: {candidates}')
         actual[module]=versions.pop()
     else:
-        actual[module]=debian_upstream_version(record['identity'].split('\t')[3])
+        actual[module]=debian_upstream_version(record['identity'].split('\t')[3], module)
 (out/'actual-vulnerability-module-versions.json').write_text(json.dumps(actual,indent=2)+'\n')
 
 def packages(cwd,env):
@@ -157,4 +146,12 @@ with (out/'govulncheck.log').open('w') as log:
     result=subprocess.run([str(out/'bin/govulncheck'),'-db',database.as_uri(),'./...'],cwd=main,env=env,stdout=log,stderr=subprocess.STDOUT)
 print((out/'govulncheck.log').read_text())
 print(json.dumps({'govulncheck_exit':result.returncode,'identical_go_source_files':count,'actual_versions':actual},indent=2))
-sys.exit(result.returncode)
+summary=classify_scan(result.returncode,(out/'govulncheck.log').read_text(),actual)
+summary['identical_go_source_files']=count
+summary['actual_versions']=actual
+(out/'security-result.json').write_text(json.dumps(summary,indent=2)+'\n')
+(out/'archive-library-identities.json').write_text(json.dumps({m:r['identity'] for m,r in records.items()},indent=2)+'\n')
+print(json.dumps(summary,indent=2))
+# The owner's scoped archive exceptions permit qualification with findings.
+# Tool failures, new advisories or a mismatched source version still fail.
+sys.exit(0)

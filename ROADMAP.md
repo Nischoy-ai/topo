@@ -34,8 +34,10 @@ applicable, and requires native security, race and source-package tests. This
 downstream compiler matrix does not change the upstream signed-release baseline.
 Debian/Ubuntu archive preparation separately evaluates native Go 1.26.9 and
 1.27.2 with unbundled distro libraries. An available newer compiler is not
-qualification: archive-library build, test, security and lifecycle evidence
-remain required. Older 1.26 patch levels are rejected. This packaging work
+qualification: archive-library build, test, security analysis and lifecycle evidence
+remain required. For the Debian candidate, the owner accepted the recorded
+NTLM/Azure Identity archive findings on 2026-10-18; those findings remain disclosed
+and are not a clean security pass. Older 1.26 patch levels are rejected. This packaging work
 does not alter the upstream Go 1.26.9 signed-release baseline or M3 order.
 
 An unexpected compiler version fails the packaging gate until reviewed.

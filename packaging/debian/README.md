@@ -1,37 +1,30 @@
 # Debian and Ubuntu archive preparation
 
-This is an **unreleased, unqualified review candidate**, not a default-repository
-package or a replacement for the signed Nischoy APT channel. The full CLI is
-retained. The source input is public commit
-`3adbdb36ad886396ad6267cd706c84bea6d35b99`, separately qualified for Fedora;
-that does not qualify its Debian dependencies. Fedora's filed SRPM stays intact.
+This is an unsigned review candidate for the full Topo CLI, using official
+Debian archive libraries. It is not accepted into Debian or Ubuntu's default
+repositories. The pinned public upstream input is
+`3adbdb36ad886396ad6267cd706c84bea6d35b99`; original Go sources and module
+manifests remain unchanged. Fedora's submitted sources stay intact.
 
-Debian packaging uses archive-provided Go libraries rather than Fedora's vendor
-archive. `dependency-map.json` records candidates for all 66 declared modules;
-package names, import roots and versions must be checked against each archive.
-The preliminary index audit was followed by actual offline builds.
-`dependency-compatibility.md` records the archive versions exercised, metadata
-repairs, and independently packaged library updates required by qualification.
+On 2026-10-18 the owner directed this candidate to use the official NTLM,
+Azure SDK and MSAL packages despite the recorded archive security findings.
+The qualification path no longer builds or injects three separate dependency
+updates. `prepare-ntlmssp.py`, `prepare-msal.py` and `prepare-azure.py` remain
+historical review tooling and are not called by the current qualification.
 
-Native downstream Go 1.26.9/1.27.2 evaluation is staged in `ROADMAP.md`;
-this does not change the upstream signed-release compiler baseline. Ubuntu
-26.10 has a 1.27 toolchain to evaluate; its older 1.26.8 is not a fallback.
+Debian packaging uses module-aware `dh-go >= 1.69`, a native Go 1.26.9/1.27.2
+compiler, and unbundled library source. Legacy go-flowrate module metadata and
+nested json-patch/v5 mappings are repaired in private build copies. Native
+compiler evaluation does not change the upstream signed-release baseline.
+`dependency-compatibility.md` records archive versions and evidence by scope;
+`dependency-map.json` retains upstream requirements for reference, not a claim
+that each is a minimum compatible Debian API version.
 
-The candidate requires module-aware `dh-go >= 1.69` and explicitly enables
-modules; legacy `dh-golang`/GOPATH mode changes Go runtime defaults, including
-the HTTP mux behavior Topo’s controllers and simulators require. No runtime
-compatibility knob is used to hide that mismatch. The source Lintian override
-is limited to its obsolete addon-provider check: `dh-go` supplies that addon,
-but current Lintian still insists on legacy `dh-golang`. Other lint results
-and all dependency/build gates remain visible.
-
-The `debian/` directory contains a `3.0 (quilt)` full-CLI source package, native
-Go/debhelper dependencies, a manpage, unchanged reviewed systemd units, separate
-service users and an installed CLI smoke test. Installation neither enables nor
-starts discovery. `debian/copyright` now covers the full pinned source inventory and retained legal
-documents. Complete actual linked-library and Go runtime notices are collected
-into the DEB; see `copyright-review.md`. Qualification is still required before
-this candidate can be uploaded as a finished package.
+The package retains DEP-5 coverage, complete actual linked-source/runtime
+notices, Static-Built-Using, reviewed units and separate service users. Initial
+installation does not enable or start discovery. Qualification still requires
+clean native build/test, package/lifecycle checks and security-analysis results.
+The owner-accepted findings are reported as findings, not marked fixed or clean.
 
 ## Reproduce the audit
 
@@ -53,36 +46,35 @@ Build-Depends are missing. **It is not a clean build or an acceptance gate.**
 results were collected, including failures. No missing dependency or security pin
 is silently replaced, bundled or downgraded. No code executes against real targets.
 
-The `debian-native-qualification` workflow creates independent clean `sbuild`
-chroots on AMD64 and ARM64. Build phases run without root or external networking;
-loopback remains available for protocol simulators. It prepares separate NTLM,
-MSAL and Azure SDK source-update candidates, builds each before Topo, and supplies
-their DEBs using `sbuild --extra-package`. Remaining dependencies come from the
-normal signed Debian unstable archive. No Fedora vendor archive is used.
+The `debian-native-qualification` workflow builds the complete CLI in fresh
+AMD64 and ARM64 `sbuild` chroots. Dependencies come only from normal signed
+Debian unstable repositories: no local library DEBs, `--extra-package` injection,
+vendor archive or network-enabled build phase. Build phases run as a nonroot
+account with only loopback networking for local protocol simulators.
 
-The Azure update replaces complete azidentity1.6.0, azcore1.11.1 and internal1.8.0
-modules and requires MSAL1.2.2; it addresses GO-2024-2918 found in the archive's
-azidentity1.5.0-beta.3. NTLM0.1.1 retains its malformed-challenge fix and uses the
-system x/crypto MD4 implementation. These are library-maintainer review candidates,
-not updates already accepted into Debian. Checksums and full license notices are
-retained with each source package.
+Native vet/race tests, Topo Lintian, installed-package autopkgtests and real
+systemd install/setup/same-source revision/remove/purge/cleanup remain required.
+The explicit simulator performs no real ServiceNow discovery. Historical
+release/N-1 upgrade, reboot and live estate compatibility are not implied.
 
-Qualification requires native vet/race tests, actual-version vulnerability
-analysis, Lintian, installed-package autopkgtest and real systemd install/setup/
-revision/removal tests. The security check uses unmodified pinned govulncheck and
-a frozen official vulnerability database against byte-verified native sources;
-local replacement paths must not hide library identities. The disposable systemd
-fixture only registers against a synthetic loopback server and receives no work.
+Security analysis runs unmodified pinned govulncheck over byte-verified native
+sources and actual installed versions. For this Debian review candidate only,
+`GO-2024-2918` at azidentity `v1.5.0-beta.3` and `GO-2026-5543` at the NTLM
+`754e69321358` snapshot are owner-accepted on 2026-10-18. They remain in logs and
+`security-result.json`; `BUILD-RESULT.json` records a findings-accepted status
+and a false clean-security boolean when present. Tool failures, mismatched
+source versions and other reachable findings still fail qualification. This
+exception does not weaken upstream or Fedora security/release gates.
 
-The same-source higher-revision package transaction is distinct from historical
-release/N-1 upgrade evidence. Only final exact-head results qualify a candidate;
-source-audit success or intermediate builds do not substitute for those results.
+Source/audit CI success is evidence collection, not archive qualification.
+Any previous successful three-dependency-update matrix is historical and cannot
+qualify this changed archive-only input. Exact-head results are required.
 
 ## Submission route
 
 1. Check Debian WNPP, Mentors, Salsa and Ubuntu's existing package requests for a
    duplicate. File a Debian ITP for Topo; link any dependency-update/new-package
-   work rather than suggesting the full package is already upload-ready.
+   work if needed rather than suggesting the full package is already upload-ready.
 2. Complete dependency packaging and DEP-5 licensing, then clean package tests.
 3. Soumik signs the source upload with his own OpenPGP key registered at Debian
    Mentors. A Debian Developer sponsor reviews it and uploads to Debian NEW;

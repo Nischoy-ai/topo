@@ -7,14 +7,10 @@ test "${GITHUB_JOB:-}" = debian-native
 test -f /.dockerenv
 grep -qx ID=debian /etc/os-release
 out=/tmp/topo-debian-qualification
-mkdir -p "$out"/{ntlm,msal,azure,topo,tests}
+mkdir -p "$out"/{topo,tests}
 arch=$(dpkg --print-architecture)
 cp /var/lib/apt/lists/*InRelease "$out/"
 dpkg-query -W > "$out/host-packages.txt"
-# Independent source update, authenticated by the original upstream Go checksum.
-python3 packaging/debian/prepare-msal.py --output "$out/msal-source" > "$out/msal-source-path.txt"
-python3 packaging/debian/prepare-azure.py --output "$out/azure-source" > "$out/azure-source-path.txt"
-python3 packaging/debian/prepare-ntlmssp.py --output "$out/ntlm-source" > "$out/ntlm-source-path.txt"
 # A fresh chroot is used for each build session. No host Go module cache enters it.
 sbuild-createchroot --arch="$arch" --include=ca-certificates,iproute2,passwd,util-linux unstable /srv/chroot/unstable "http://deb.debian.org/debian" > "$out/chroot.log" 2>&1
 # autopkgtest requires a genuinely ephemeral testbed. Snapshot the pristine
@@ -68,24 +64,11 @@ $mailto = '';
 1;
 SBUILD
 export SBUILD_CONFIG="$out/sbuild-config.pl"
-sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
- --arch-all --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/ntlm" \
- "$out/ntlm-source/"*.dsc > "$out/ntlm-sbuild.log" 2>&1
-ntlm=("$out/ntlm/"*dev*.deb)
-test "${#ntlm[@]}" = 1
-sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
- --arch-all --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/msal" \
- "$out/msal-source/"*.dsc > "$out/msal-sbuild.log" 2>&1
-msal=("$out/msal/"*dev*.deb);test "${#msal[@]}" = 1
-sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
- --arch-all --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/azure" \
- --extra-package="${msal[0]}" "$out/azure-source/"*.dsc > "$out/azure-sbuild.log" 2>&1
-azure=("$out/azure/"*dev*.deb);test "${#azure[@]}" = 1
-# Prepare unbundled Topo source; all other dependencies come from normal Debian.
+# Prepare unbundled Topo source; every library comes from the official archive.
 python3 packaging/debian/prepare-source.py --output "$out/topo-source" > "$out/topo-source-path.txt"
 sbuild --nolog --verbose --chroot-mode=schroot --chroot="unstable-${arch}-sbuild" --dist=unstable --arch="$arch" \
  --no-enable-network --no-run-lintian --jobs=2 --build-dir="$out/topo" \
- --purge-build=never --purge-deps=never --extra-package="${ntlm[0]}" --extra-package="${msal[0]}" --extra-package="${azure[0]}" "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
+ --purge-build=never --purge-deps=never "$out/topo-source/"*.dsc > "$out/topo-sbuild.log" 2>&1
 # A directory schroot may retain /build physically under its root, while other
 # profiles bind /var/lib/sbuild/build to /build (verified schroot1.6.13-8).
 # Locate the one fresh build by inode and translate that explicit mount.
@@ -170,9 +153,6 @@ record_check() {
   failed=1
  fi
 }
-record_check ntlm-lintian lintian "$out/ntlm-source/"*.dsc "${ntlm[0]}"
-record_check msal-lintian lintian "$out/msal-source/"*.dsc "${msal[0]}"
-record_check azure-lintian lintian "$out/azure-source/"*.dsc "${azure[0]}"
 record_check topo-lintian lintian "$out/topo-source/"*.dsc "$out/topo/"*.changes
 # An actual installed-package autopkgtest in a disposable chroot (not extraction).
 record_check autopkgtest autopkgtest "$out/topo-source/"*.dsc "$out/topo/"topo_*"_${arch}.deb" \
@@ -182,8 +162,9 @@ python3 - "$out" "$arch" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
 p=Path(sys.argv[1]); records={}
+security=json.loads((p/'security-result.json').read_text())
 for f in p.rglob('*'):
  if f.is_file() and (f.suffix in ('.deb','.dsc','.changes','.buildinfo') or f.name=='source-receipt.json'):
   records[str(f.relative_to(p))]={'bytes':f.stat().st_size,'sha256':hashlib.sha256(f.read_bytes()).hexdigest()}
-(p/'BUILD-RESULT.json').write_text(json.dumps({'architecture':sys.argv[2], 'clean_sbuild':True,'native_vet_and_race':True,'native_actual_version_security':True,'lintian':True,'autopkgtest':True,'dependency_update':'separate NTLM0.1.1 review candidate via sbuild --extra-package; not in Debian archive','source_signed':False,'archive_accepted':False,'upload_ready':False,'remaining':['real systemd package lifecycle','owner signing and sponsor/archive review'],'artifacts':records},indent=2)+'\n')
+(p/'BUILD-RESULT.json').write_text(json.dumps({'architecture':sys.argv[2], 'clean_sbuild':True,'native_vet_and_race':True,'native_actual_version_security':security['status']=='passed','security_scan_completed':True,'security_result':security,'lintian':True,'autopkgtest':True,'dependencies':'official Debian unstable packages only; no extra-package or bundled sources','source_signed':False,'archive_accepted':False,'upload_ready':False,'remaining':['real systemd package lifecycle','owner signing and sponsor/archive review; known security findings disclosed'],'artifacts':records},indent=2)+'\n')
 PY

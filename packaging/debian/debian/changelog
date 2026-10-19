@@ -1,3 +1,11 @@
+topo (0.4.7~git20261016.3adbdb3-2) unstable; urgency=medium
+
+  * Build using official Debian NTLM, Azure SDK and MSAL library versions.
+  * Remove separately built library update packages from qualification.
+  * Record owner-accepted archive security findings without marking them fixed.
+
+ -- Soumik Sarkar <soumiks@gmail.com>  Sun, 18 Oct 2026 12:00:00 +0000
+
 topo (0.4.7~git20261016.3adbdb3-1) unstable; urgency=medium
 
   * Initial unbundled full-CLI review candidate.

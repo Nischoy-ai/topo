@@ -1,5 +1,27 @@
 # Debian dependency compatibility
 
+## Current archive-only candidate (owner direction, 2026-10-18)
+
+The full CLI now uses official Debian unstable NTLM, Azure SDK and MSAL packages.
+No separately prepared library update is built or injected by `qualify.sh`.
+Declared compatible floors for the three library packages are:
+
+| Debian library package | Archive version selected for testing |
+| --- | --- |
+| golang-github-azure-go-ntlmssp-dev | 0.0~git20221128.754e69321358-2 |
+| golang-github-azure-azure-sdk-for-go-dev | 68.0.0+git20231220.f497335+dfsg1-7 |
+| golang-github-azuread-microsoft-authentication-library-for-go-dev | 1.0.0-3 |
+
+The owner explicitly accepted the NTLM malformed-challenge finding
+`GO-2026-5543` and Azure Identity `GO-2024-2918` for this downstream candidate.
+Actual scan output and source versions remain recorded. A green build does not
+make those vulnerabilities fixed. The compiler and other library requirements,
+original upstream go.mod/go.sum, source and signed-release inputs are unchanged.
+The historical update candidates below are not prerequisites for this route.
+Archive-only native build/test/lifecycle evidence must be collected afresh.
+
+## Historical compatibility and security-update investigation
+
 Upstream go.mod/go.sum remain byte-identical to the public 3adbdb3 snapshot.
 Debian uses its independently maintained library sources and its module-aware
 workspace. Go's reported requested module version is **not** the version of
@@ -67,9 +89,9 @@ This scope does not establish compatibility of every other Azure SDK consumer.
 Topo then independently compiles and tests its complete CLI with these packages.
 
 The original archive's MSAL1.0.0 diagnostic compatibility result above is historical;
-final security qualification requires the new dependency chain. All three
-library updates need separate Debian maintainer/sponsor review and archive
-acceptance before an archive-only Topo build is possible.
+that historical security-clean candidate required the new dependency chain.
+The owner superseded that requirement with the archive-only, findings-accepted
+candidate above; those three proposed updates are no longer prerequisites.
 
 MSAL's separate `apps/tests/integration` and `apps/tests/performance` suites
 require Microsoft lab credentials/endpoints and are excluded from the offline
