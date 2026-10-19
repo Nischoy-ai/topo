@@ -1,0 +1,52 @@
+#!/usr/bin/python3
+"""Exercise the installed CLI's offline mapping and rejection contract."""
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+
+observation = {
+    'schema_version': 'v1alpha1',
+    'observation_id': 'debian-autopkgtest-observation',
+    'site_id': 'debian-autopkgtest-site',
+    'collector_id': 'debian-autopkgtest-collector',
+    'plugin': 'local-host',
+    'observed_at': '2026-10-17T10:00:00Z',
+    'assets': [
+        {'type': 'host', 'native_id': 'debian-autopkgtest-host', 'name': 'fixture-host'},
+        {'type': 'network_interface', 'native_id': 'debian-autopkgtest-nic',
+         'name': 'fixture0', 'attributes': {'mac_address': '02:00:00:00:00:01'}},
+    ],
+    'relationships': [{'type': 'host_has_interface',
+                       'from_native_id': 'debian-autopkgtest-host',
+                       'to_native_id': 'debian-autopkgtest-nic'}],
+}
+with tempfile.TemporaryDirectory(prefix='topo-autopkgtest-') as directory:
+    missing = Path(directory) / 'missing-token'
+    # No apply flag, real instance or credential. If preview tries to read the
+    # missing reference or contact this unused loopback port, it cannot pass.
+    command = ['/usr/bin/topo', 'publish', 'servicenow',
+               '-instance', 'https://127.0.0.1:9', '-timeout', '2s',
+               '-token-ref', 'file:' + str(missing)]
+    def run(value):
+        return subprocess.run(command, input=json.dumps(value) + '\n', text=True,
+                              capture_output=True, timeout=10)
+    first = run(observation)
+    assert first.returncode == 0, 'installed offline publisher failed'
+    value = json.loads(first.stdout)
+    assert (value['mode'], value['envelopes'], value['items'], value['relations']) == ('preview', 1, 2, 1)
+    items = value['payload']['items']
+    identities = {item['sys_object_source_info']['source_native_key']: item['className'] for item in items}
+    assert identities == {'debian-autopkgtest-host': 'cmdb_ci_computer',
+                          'debian-autopkgtest-nic': 'cmdb_ci_network_adapter'}
+    relation = value['payload']['relations'][0]
+    assert relation['type'] == 'Owns::Owned by'
+    assert items[relation['parent']]['className'] == 'cmdb_ci_computer'
+    assert items[relation['child']]['className'] == 'cmdb_ci_network_adapter'
+    repeat = run(observation)
+    assert repeat.returncode == 0 and json.loads(repeat.stdout) == value, 'preview identity/payload changed on repeat'
+    unsupported = json.loads(json.dumps(observation))
+    unsupported['assets'][0]['type'] = 'volume'
+    assert run(unsupported).returncode != 0, 'unsupported class was accepted'
+    assert not missing.exists(), 'preview created a credential file'
+print('Installed offline publisher mapping, stable repeat and unsupported-class rejection passed')

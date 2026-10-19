@@ -1,0 +1,402 @@
+{
+  "source_commit": "3adbdb36ad886396ad6267cd706c84bea6d35b99",
+  "limits": "Upstream requirements are recorded verbatim, not imposed as Debian API minimums. Native Debian compatibility floors are documented in dependency-compatibility.md. The owner accepted the recorded NTLM/Azure Identity archive findings on 2026-10-18; official Debian library versions are used without separate updates. Upstream go.mod/go.sum and signed-release inputs remain unchanged.",
+  "modules": [
+    {
+      "module": "github.com/Azure/go-ntlmssp",
+      "required_version": "v0.1.1",
+      "candidate_package": "golang-github-azure-go-ntlmssp-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/crypto",
+      "required_version": "v0.57.0",
+      "candidate_package": "golang-golang-x-crypto-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/sys",
+      "required_version": "v0.48.0",
+      "candidate_package": "golang-golang-x-sys-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/azcore",
+      "required_version": "v1.23.0",
+      "candidate_package": "golang-github-azure-azure-sdk-for-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/azidentity",
+      "required_version": "v1.14.0",
+      "candidate_package": "golang-github-azure-azure-sdk-for-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/managementgroups/armmanagementgroups",
+      "required_version": "v1.2.0",
+      "candidate_package": "golang-github-azure-azure-sdk-for-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions",
+      "required_version": "v1.3.0",
+      "candidate_package": "golang-github-azure-azure-sdk-for-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2",
+      "required_version": "v1.43.7",
+      "candidate_package": "golang-github-aws-aws-sdk-go-v2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/credentials",
+      "required_version": "v1.19.37",
+      "candidate_package": "golang-github-aws-aws-sdk-go-v2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/service/organizations",
+      "required_version": "v1.54.1",
+      "candidate_package": "golang-github-aws-aws-sdk-go-v2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/gosnmp/gosnmp",
+      "required_version": "v1.42.1",
+      "candidate_package": "golang-github-gosnmp-gosnmp-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/vmware/govmomi",
+      "required_version": "v0.52.0",
+      "candidate_package": "golang-github-vmware-govmomi-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "k8s.io/api",
+      "required_version": "v0.35.8",
+      "candidate_package": "golang-k8s-api-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "k8s.io/apimachinery",
+      "required_version": "v0.35.8",
+      "candidate_package": "golang-k8s-apimachinery-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "k8s.io/client-go",
+      "required_version": "v0.35.8",
+      "candidate_package": "golang-k8s-client-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "required_version": "v1.39.0",
+      "candidate_package": "golang-modernc-sqlite-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/Azure/azure-sdk-for-go/sdk/internal",
+      "required_version": "v1.12.0",
+      "candidate_package": "golang-github-azure-azure-sdk-for-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/AzureAD/microsoft-authentication-library-for-go",
+      "required_version": "v1.7.2",
+      "candidate_package": "golang-github-azuread-microsoft-authentication-library-for-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/internal/configsources",
+      "required_version": "v1.4.38",
+      "candidate_package": "golang-github-aws-aws-sdk-go-v2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/aws/aws-sdk-go-v2/internal/endpoints/v2",
+      "required_version": "v2.7.38",
+      "candidate_package": "golang-github-aws-aws-sdk-go-v2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/aws/smithy-go",
+      "required_version": "v1.27.8",
+      "candidate_package": "golang-github-aws-smithy-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/davecgh/go-spew",
+      "required_version": "v1.1.1",
+      "candidate_package": "golang-github-davecgh-go-spew-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/dustin/go-humanize",
+      "required_version": "v1.0.1",
+      "candidate_package": "golang-github-dustin-go-humanize-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/emicklei/go-restful/v3",
+      "required_version": "v3.12.2",
+      "candidate_package": "golang-github-emicklei-go-restful-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/fxamacker/cbor/v2",
+      "required_version": "v2.9.0",
+      "candidate_package": "golang-github-fxamacker-cbor-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/go-logr/logr",
+      "required_version": "v1.4.3",
+      "candidate_package": "golang-github-go-logr-logr-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/go-openapi/jsonpointer",
+      "required_version": "v0.21.0",
+      "candidate_package": "golang-github-go-openapi-jsonpointer-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/go-openapi/jsonreference",
+      "required_version": "v0.20.2",
+      "candidate_package": "golang-github-go-openapi-jsonreference-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/go-openapi/swag",
+      "required_version": "v0.23.0",
+      "candidate_package": "golang-github-go-openapi-swag-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/golang-jwt/jwt/v5",
+      "required_version": "v5.3.1",
+      "candidate_package": "golang-github-golang-jwt-jwt-v5-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/google/gnostic-models",
+      "required_version": "v0.7.0",
+      "candidate_package": "golang-github-google-gnostic-models-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/google/uuid",
+      "required_version": "v1.6.0",
+      "candidate_package": "golang-github-google-uuid-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/josharian/intern",
+      "required_version": "v1.0.0",
+      "candidate_package": "golang-github-josharian-intern-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/json-iterator/go",
+      "required_version": "v1.1.12",
+      "candidate_package": "golang-github-json-iterator-go-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/kylelemons/godebug",
+      "required_version": "v1.1.0",
+      "candidate_package": "golang-github-kylelemons-godebug-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/mailru/easyjson",
+      "required_version": "v0.7.7",
+      "candidate_package": "golang-github-mailru-easyjson-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/mattn/go-isatty",
+      "required_version": "v0.0.20",
+      "candidate_package": "golang-github-mattn-go-isatty-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/modern-go/concurrent",
+      "required_version": "v0.0.0-20180306012644-bacd9c7ef1dd",
+      "candidate_package": "golang-github-modern-go-concurrent-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/modern-go/reflect2",
+      "required_version": "v1.0.3-0.20250322232337-35a7c28c31ee",
+      "candidate_package": "golang-github-modern-go-reflect2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/munnerz/goautoneg",
+      "required_version": "v0.0.0-20191010083416-a7dc8b61c822",
+      "candidate_package": "golang-github-munnerz-goautoneg-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/ncruces/go-strftime",
+      "required_version": "v0.1.9",
+      "candidate_package": "golang-github-ncruces-go-strftime-dev",
+      "mapping_status": "unverified_candidate"
+    },
+    {
+      "module": "github.com/pkg/browser",
+      "required_version": "v0.0.0-20240102092130-5ac0b6a4141c",
+      "candidate_package": "golang-github-pkg-browser-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/remyoudompheng/bigfft",
+      "required_version": "v0.0.0-20230129092748-24d4a6f8daec",
+      "candidate_package": "golang-github-remyoudompheng-bigfft-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "github.com/x448/float16",
+      "required_version": "v0.8.4",
+      "candidate_package": "golang-github-x448-float16-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "go.yaml.in/yaml/v2",
+      "required_version": "v2.4.3",
+      "candidate_package": "golang-gopkg-yaml.v2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "go.yaml.in/yaml/v3",
+      "required_version": "v3.0.4",
+      "candidate_package": "golang-gopkg-yaml.v3-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/exp",
+      "required_version": "v0.0.0-20250620022241-b7579e27df2b",
+      "candidate_package": "golang-golang-x-exp-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/net",
+      "required_version": "v0.60.0",
+      "candidate_package": "golang-golang-x-net-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/oauth2",
+      "required_version": "v0.30.0",
+      "candidate_package": "golang-golang-x-oauth2-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/term",
+      "required_version": "v0.46.0",
+      "candidate_package": "golang-golang-x-term-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/text",
+      "required_version": "v0.42.0",
+      "candidate_package": "golang-golang-x-text-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "golang.org/x/time",
+      "required_version": "v0.9.0",
+      "candidate_package": "golang-golang-x-time-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "google.golang.org/protobuf",
+      "required_version": "v1.36.12-0.20260120151049-f2248ac996af",
+      "candidate_package": "golang-google-protobuf-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "gopkg.in/evanphx/json-patch.v4",
+      "required_version": "v4.13.0",
+      "candidate_package": "golang-github-evanphx-json-patch-dev",
+      "mapping_status": "unverified_candidate"
+    },
+    {
+      "module": "gopkg.in/inf.v0",
+      "required_version": "v0.9.1",
+      "candidate_package": "golang-gopkg-inf.v0-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "gopkg.in/yaml.v3",
+      "required_version": "v3.0.1",
+      "candidate_package": "golang-gopkg-yaml.v3-dev",
+      "mapping_status": "unverified_candidate"
+    },
+    {
+      "module": "k8s.io/klog/v2",
+      "required_version": "v2.130.1",
+      "candidate_package": "golang-k8s-klog-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "k8s.io/kube-openapi",
+      "required_version": "v0.0.0-20250910181357-589584f1c912",
+      "candidate_package": "golang-k8s-kube-openapi-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "k8s.io/utils",
+      "required_version": "v0.0.0-20251002143259-bc988d571ff4",
+      "candidate_package": "golang-k8s-utils-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "modernc.org/libc",
+      "required_version": "v1.66.3",
+      "candidate_package": "golang-modernc-libc-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "modernc.org/mathutil",
+      "required_version": "v1.7.1",
+      "candidate_package": "golang-github-cznic-mathutil-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "modernc.org/memory",
+      "required_version": "v1.11.0",
+      "candidate_package": "golang-modernc-memory-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "sigs.k8s.io/json",
+      "required_version": "v0.0.0-20250730193827-2d320260d730",
+      "candidate_package": "golang-k8s-sigs-json-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "sigs.k8s.io/randfill",
+      "required_version": "v1.0.0",
+      "candidate_package": "golang-k8s-sigs-randfill-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "sigs.k8s.io/structured-merge-diff/v6",
+      "required_version": "v6.3.0",
+      "candidate_package": "golang-k8s-sigs-structured-merge-diff-v6-dev",
+      "mapping_status": "index_candidate"
+    },
+    {
+      "module": "sigs.k8s.io/yaml",
+      "required_version": "v1.6.0",
+      "candidate_package": "golang-k8s-sigs-yaml-dev",
+      "mapping_status": "index_candidate"
+    }
+  ]
+}
