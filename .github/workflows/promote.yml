@@ -77,10 +77,11 @@ jobs:
             --json isDraft,isPrerelease,publishedAt,tagName)
           test "$(jq -r .tagName <<<"$release")" = "$VERSION"
           test "$(jq -r .isDraft <<<"$release")" = false
+          # Betas are published as the latest release (see release.yml), so the
+          # beta channel relies on the prerelease tag suffix checked above rather
+          # than GitHub's pre-release flag. Stable must never be a pre-release.
           if [[ "$CHANNEL" == stable ]]; then
             test "$(jq -r .isPrerelease <<<"$release")" = false
-          else
-            test "$(jq -r .isPrerelease <<<"$release")" = true
           fi
           test -n "$(jq -r .publishedAt <<<"$release")"
           promotion_at=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
