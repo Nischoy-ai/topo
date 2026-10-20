@@ -74,7 +74,7 @@ sudo apt-get install topo  # Debian/Ubuntu
 topo version
 ```
 
-**Expected:** `v0.4.7-beta.1`. Installation alone does not configure or start
+**Expected:** a version starting with `v0.4.7`. Installation alone does not configure or start
 scans. Prepare an absolute private directory, OAuth token file, `targets.allow`
 containing only the approved target CIDR, and verified `known_hosts` identifying
 that IP on port 22. Use an owner-only directory and token mode `0600` for this
