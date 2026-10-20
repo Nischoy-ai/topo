@@ -35,6 +35,18 @@ and `host_has_interface` mapped to `Owns::Owned by`. This release does not provi
 the broad estate coverage needed to replace Device42, for either Linux or Windows estates. Other discovery components in the source tree have separate validation
 limits; see the [roadmap](ROADMAP.md).
 
+## Download
+
+Topo has two parts: the worker, which runs in your network, and the ServiceNow
+app. Download both, or build them from source:
+**[Get Topo: download or build](docs/get-topo.md)**.
+
+| Part | Download |
+| --- | --- |
+| Worker for Linux | [x86-64](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_linux_amd64.tar.gz) · [ARM64](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_linux_arm64.tar.gz) · [.deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_amd64.deb) · [.rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo-0.4.7-beta.1-1.x86_64.rpm) |
+| Worker for macOS | [Apple silicon](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_darwin_arm64.tar.gz) · [Intel](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_darwin_amd64.tar.gz) |
+| ServiceNow app | [XML with checklists (.zip)](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/nischoy-topo-0.4.7-beta.zip) · [XML only](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/nischoy-topo-0.4.7-combined.xml) |
+
 ## Start ServiceNow discovery in three steps
 
 Follow [your first ServiceNow discovery run](docs/first-success.md):

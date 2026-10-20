@@ -65,7 +65,8 @@ revisions and matching bindings; see [scope and binding rules](mixed-inventory-s
 ## 3. Install, check and start the worker
 
 Set up the [signed APT or RPM repository](distribution.md#user-installation),
-then install using **one** matching command:
+then install using **one** matching command. To skip the repository, download
+the binary or package directly from [Get Topo](get-topo.md#the-worker).
 
 ```sh
 sudo apt-get install topo  # Debian/Ubuntu

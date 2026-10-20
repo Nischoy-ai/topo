@@ -8,6 +8,7 @@ verification and component details.
 
 | Task | Guide |
 | --- | --- |
+| Download or build the worker and ServiceNow app | [Get Topo](get-topo.md) |
 | Install the ServiceNow application and indexes | [XML installation and recovery](servicenow-update-set.md) · [Index checklist](servicenow-index-setup.md) |
 | Configure identities, protocol credentials, targets and scans | [Linux/Windows setup](mixed-inventory-setup.md) · [SSH-only setup](pilot-quickstart.md) |
 | Install the Linux or macOS worker | [Package-manager installation](distribution.md) |
