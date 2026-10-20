@@ -18,23 +18,23 @@ Current version: **0.4.7 beta**.
 
 | Platform | Download |
 | --- | --- |
-| Linux x86-64 | [topo_0.4.7-beta.1_linux_amd64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_linux_amd64.tar.gz) |
-| Linux ARM64 | [topo_0.4.7-beta.1_linux_arm64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_linux_arm64.tar.gz) |
-| macOS Intel | [topo_0.4.7-beta.1_darwin_amd64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_darwin_amd64.tar.gz) |
-| macOS Apple silicon | [topo_0.4.7-beta.1_darwin_arm64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_darwin_arm64.tar.gz) |
-| Debian / Ubuntu package | [amd64 .deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_amd64.deb) · [arm64 .deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_arm64.deb) |
-| Fedora / RHEL package | [x86_64 .rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo-0.4.7-beta.1-1.x86_64.rpm) · [aarch64 .rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo-0.4.7-beta.1-1.aarch64.rpm) |
+| Linux x86-64 | [topo_0.4.7-beta.2_linux_amd64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_linux_amd64.tar.gz) |
+| Linux ARM64 | [topo_0.4.7-beta.2_linux_arm64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_linux_arm64.tar.gz) |
+| macOS Intel | [topo_0.4.7-beta.2_darwin_amd64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_darwin_amd64.tar.gz) |
+| macOS Apple silicon | [topo_0.4.7-beta.2_darwin_arm64.tar.gz](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_darwin_arm64.tar.gz) |
+| Debian / Ubuntu package | [amd64 .deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_amd64.deb) · [arm64 .deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_arm64.deb) |
+| Fedora / RHEL package | [x86_64 .rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo-0.4.7-beta.2-1.x86_64.rpm) · [aarch64 .rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo-0.4.7-beta.2-1.aarch64.rpm) |
 
-All files, including [`SHA256SUMS`](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/SHA256SUMS),
-are on the [v0.4.7-beta.1 release page](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1).
+All files, including [`SHA256SUMS`](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/SHA256SUMS),
+are on the [v0.4.7-beta.2 release page](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2).
 
 Download `SHA256SUMS` next to your file, check it, then unpack:
 
 ```sh
 grep linux_amd64.tar.gz SHA256SUMS | sha256sum -c   # macOS: use shasum -a 256 -c
-tar xzf topo_0.4.7-beta.1_linux_amd64.tar.gz
-sudo install topo_0.4.7-beta.1_linux_amd64/topo /usr/local/bin/topo
-topo version                                  # prints v0.4.7-beta.1
+tar xzf topo_0.4.7-beta.2_linux_amd64.tar.gz
+sudo install topo_0.4.7-beta.2_linux_amd64/topo /usr/local/bin/topo
+topo version                                  # prints v0.4.7-beta.2
 ```
 
 The `.deb` and `.rpm` packages also add systemd units for running the worker
@@ -42,8 +42,8 @@ as a background service. Install them with the package manager so it handles
 dependencies:
 
 ```sh
-sudo apt install ./topo_0.4.7-beta.1_amd64.deb     # Debian / Ubuntu
-sudo dnf install ./topo-0.4.7-beta.1-1.x86_64.rpm  # Fedora / RHEL
+sudo apt install ./topo_0.4.7-beta.2_amd64.deb     # Debian / Ubuntu
+sudo dnf install ./topo-0.4.7-beta.2-1.x86_64.rpm  # Fedora / RHEL
 ```
 
 Installing does not start anything. To get updates through `apt` or `dnf`
@@ -57,7 +57,7 @@ You need Go 1.26 or later and Git.
 ```sh
 git clone https://github.com/Nischoy-ai/topo.git
 cd topo
-git checkout v0.4.7-beta.1
+git checkout v0.4.7-beta.2
 make build
 ./bin/topo version
 ```
@@ -76,13 +76,13 @@ blocks it, set `GOPROXY` to your internal mirror.
 
 ### Download
 
-Download the app from the [servicenow-0.4.7-beta.1 release page](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1):
+The app is on the same [v0.4.7-beta.2 release page](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2):
 
-- [nischoy-topo-0.4.7-beta.zip](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/nischoy-topo-0.4.7-beta.zip):
+- [nischoy-topo-0.4.7-beta.zip](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/nischoy-topo-0.4.7-beta.zip):
   the XML plus the installation checklists, which is what most people want
-- [nischoy-topo-0.4.7-combined.xml](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/nischoy-topo-0.4.7-combined.xml):
+- [nischoy-topo-0.4.7-combined.xml](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/nischoy-topo-0.4.7-combined.xml):
   the XML on its own
-- [SHA256SUMS](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/SHA256SUMS)
+- [SHA256SUMS](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/SHA256SUMS)
 
 Import the XML through **Retrieved Update Sets > Import Update Set from XML**,
 then preview and commit it. Follow the
@@ -105,7 +105,7 @@ for creating the alias.
    ```sh
    git clone https://github.com/Nischoy-ai/topo.git
    cd topo
-   git checkout servicenow-0.4.7-beta.1
+   git checkout v0.4.7-beta.2
    scripts/install-servicenow-app.sh <your-sdk-alias>
    ```
 
