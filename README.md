@@ -38,11 +38,11 @@ Start on a development instance with one Linux machine to discover. The
 
 1. [Install the ServiceNow app](docs/first-success.md#1-install-the-servicenow-app)
    by importing the XML.
-2. [Add a worker user and your target](docs/first-success.md#2-set-up-access-and-five-records)
+2. [Add a worker user and your target](docs/first-success.md#2-create-the-worker-user-and-five-records)
    in the app.
-3. [Install and start the worker](docs/first-success.md#3-install-check-and-start-the-worker)
+3. [Install and start the worker](docs/first-success.md#3-install-and-start-the-worker)
    on a Linux machine in your network.
-4. [Click **Run now**](docs/first-success.md#4-run-inspect-and-repeat) and
+4. [Click **Run now**](docs/first-success.md#4-run-discovery) and
    check the results in the CMDB.
 
 Windows targets and subnets come after that; see
