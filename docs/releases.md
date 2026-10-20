@@ -175,9 +175,14 @@ for the trust semantics of those commands.
 
 ## Maintainer release procedure
 
-1. Merge a green release-preparation PR to `main` and choose a semantic version.
-2. Create and push one immutable semantic tag at that exact `main` commit.
-3. Confirm the tagged commit's `main` CI run is green. The tag workflow verifies
+1. Publish and sign the ServiceNow XML package first, as described in
+   [release/README.md](../release/README.md). Put its release tag, for example
+   `servicenow-0.4.7-beta.1`, in `release/servicenow-package`. The worker release
+   copies that package's ZIP and XML after checking them against the committed
+   `release/<tag>.SHA256SUMS`, so one release page carries both parts.
+2. Merge a green release-preparation PR to `main` and choose a semantic version.
+3. Create and push one immutable semantic tag at that exact `main` commit.
+4. Confirm the tagged commit's `main` CI run is green. The tag workflow verifies
    the commit is reachable from `origin/main`, reproduces the release archive
    and package sets, exercises native package lifecycles, requires and verifies
    OpenPGP signatures on RPMs, plus Authenticode and Developer ID/notarization
@@ -190,8 +195,11 @@ for the trust semantics of those commands.
    ordinary build jobs in the protected `native-package-signing` environment;
    Windows signing instead uses a short-lived GitHub OIDC token and a
    non-exportable Azure Artifact Signing profile.
-4. Verify one archive independently with both commands above before promoting
+5. Verify one archive independently with both commands above before promoting
    the release to any package repository.
+
+Beta tags are published as the latest release, so customers can find them.
+Tags containing `-alpha`, `-rc` or `-preview` stay pre-releases.
 
 Do not create a replacement release for an existing tag or overwrite a release
 asset. Correct a bad release with a new version. GitHub environment protection

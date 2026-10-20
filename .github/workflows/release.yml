@@ -384,6 +384,12 @@ jobs:
             -out "dist/topo_${FILENAME_VERSION}_offline.tar.gz" -version "$VERSION"
           go run ./internal/packagetool -mode finalize -out dist
           (cd dist && sha256sum --check SHA256SUMS)
+      # One release carries both parts. The reviewed XML package is published
+      # first; the next checksum step covers it with the worker files.
+      - name: Add the reviewed ServiceNow app package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/add-servicenow-package.sh dist
       - name: Generate release-wide SPDX SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
@@ -459,18 +465,22 @@ jobs:
           VERSION: ${{ needs.build-packages.outputs.version }}
         run: |
           set -euo pipefail
-          prerelease=()
+          channel=()
           notes=()
-          if [[ "$VERSION" == *-* ]]; then
-            prerelease+=(--prerelease)
+          # Betas are what customers install, so they become the latest release.
+          # Only alpha, release-candidate and preview tags stay pre-releases.
+          if [[ "$VERSION" =~ -(alpha|rc|preview) ]]; then
+            channel+=(--prerelease)
+          else
+            channel+=(--latest)
           fi
           if [[ "$RELEASE_PROFILE" == linux-homebrew-beta ]]; then
-            notes+=(--notes "Linux APT/RPM and macOS Homebrew CLI beta. macOS binaries are not Developer-ID-signed or Apple-notarized; the Homebrew path is tested without disabling Gatekeeper. Release checksums are Sigstore-signed and artifacts have GitHub provenance; these are not Apple identity or malware-review guarantees. Windows downloads are deferred. Includes the ServiceNow pilot application; not a ServiceNow Store-certified release.")
+            notes+=(--notes "Topo has two parts, both attached: the worker for your platform, and the ServiceNow app (the nischoy-topo ZIP has the XML with installation checklists). See https://github.com/Nischoy-ai/topo/blob/main/docs/get-topo.md to download or build each. Linux APT/RPM and macOS Homebrew CLI beta. macOS binaries are not Developer-ID-signed or Apple-notarized; the Homebrew path is tested without disabling Gatekeeper. Release checksums are Sigstore-signed and artifacts have GitHub provenance; these are not Apple identity or malware-review guarantees. Windows downloads are deferred. The ServiceNow app is not a ServiceNow Store-certified release.")
           elif [[ "$RELEASE_PROFILE" == linux-macos-beta ]]; then
-            notes+=(--notes "Linux APT/RPM and macOS/Homebrew beta. Windows downloads and signing are deferred. Includes the ServiceNow pilot application; not a ServiceNow Store-certified release.")
+            notes+=(--notes "Topo has two parts, both attached: the worker for your platform, and the ServiceNow app (the nischoy-topo ZIP has the XML with installation checklists). See https://github.com/Nischoy-ai/topo/blob/main/docs/get-topo.md to download or build each. Linux APT/RPM and macOS/Homebrew beta. Windows downloads and signing are deferred. The ServiceNow app is not a ServiceNow Store-certified release.")
           fi
           gh release create "$VERSION" dist/* \
             --verify-tag \
             --title "Topo $VERSION" \
             --generate-notes \
-            "${prerelease[@]}" "${notes[@]}"
+            "${channel[@]}" "${notes[@]}"
