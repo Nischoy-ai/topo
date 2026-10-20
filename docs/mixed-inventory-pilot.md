@@ -2,7 +2,7 @@
 
 # Managed Linux and Windows inventory release
 
-The native app **0.4.7** and signed worker **v0.4.7-beta.1** are published.
+The native app **0.4.7** and the signed **0.4.7** worker are published.
 Use the [Linux/Windows setup](mixed-inventory-setup.md) or [SSH-only setup](pilot-quickstart.md)
 with matching versions. The dated history below distinguishes source fixtures,
 live acceptance and published artifact verification; publication does not add
