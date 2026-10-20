@@ -27,9 +27,9 @@ app. Download both, or build them from source:
 
 | Part | Download |
 | --- | --- |
-| Worker for Linux | [x86-64](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_linux_amd64.tar.gz) · [ARM64](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_linux_arm64.tar.gz) · [.deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_amd64.deb) · [.rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo-0.4.7-beta.1-1.x86_64.rpm) |
-| Worker for macOS | [Apple silicon](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_darwin_arm64.tar.gz) · [Intel](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.1/topo_0.4.7-beta.1_darwin_amd64.tar.gz) |
-| ServiceNow app | [XML with checklists (.zip)](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/nischoy-topo-0.4.7-beta.zip) · [XML only](https://github.com/Nischoy-ai/topo/releases/download/servicenow-0.4.7-beta.1/nischoy-topo-0.4.7-combined.xml) |
+| Worker for Linux | [x86-64](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_linux_amd64.tar.gz) · [ARM64](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_linux_arm64.tar.gz) · [.deb](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_amd64.deb) · [.rpm](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo-0.4.7-beta.2-1.x86_64.rpm) |
+| Worker for macOS | [Apple silicon](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_darwin_arm64.tar.gz) · [Intel](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/topo_0.4.7-beta.2_darwin_amd64.tar.gz) |
+| ServiceNow app | [XML with checklists (.zip)](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/nischoy-topo-0.4.7-beta.zip) · [XML only](https://github.com/Nischoy-ai/topo/releases/download/v0.4.7-beta.2/nischoy-topo-0.4.7-combined.xml) |
 
 ## Get started
 
