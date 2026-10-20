@@ -314,3 +314,29 @@ func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestPromotionAcceptsBetasPublishedAsLatest(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "promote.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, step, ok := strings.Cut(string(data), "      - name: Validate immutable release and channel inputs\n")
+	if !ok {
+		t.Fatal("missing release validation step")
+	}
+	step, _, _ = strings.Cut(step, "\n      - name:")
+	// release.yml publishes betas as the latest release, so the beta channel
+	// must not require GitHub's pre-release flag. The tag suffix still gates it.
+	if strings.Contains(step, `.isPrerelease <<<"$release")" = true`) {
+		t.Fatal("beta promotion must not require the GitHub pre-release flag")
+	}
+	for _, required := range []string{
+		`echo "beta promotion requires a prerelease" >&2`,
+		`echo "stable promotion rejects prereleases" >&2`,
+		`test "$(jq -r .isPrerelease <<<"$release")" = false`,
+	} {
+		if !strings.Contains(step, required) {
+			t.Fatalf("missing release channel gate %q", required)
+		}
+	}
+}
