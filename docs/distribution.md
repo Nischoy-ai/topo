@@ -5,16 +5,16 @@ the official macOS Homebrew tap on amd64 and arm64.
 
 ## Release availability
 
-The [Topo 0.4.7 application XML](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1)
-is published with all 32 indexes. Its matching signed worker,
-**`v0.4.7-beta.1`**, is available through the APT/RPM repositories and
-official Homebrew tap. The [worker release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
-also provides archives and verification files for offline installation.
+The [Topo 0.4.7 release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2)
+carries both parts: the application XML with all 32 indexes, and the signed
+worker **`v0.4.7-beta.2`** with archives and verification files for offline
+installation. The APT/RPM repositories and official Homebrew tap provide
+**`v0.4.7-beta.1`**, which has the same worker code.
 
 Use the setup commands below, or download and
 [verify the published worker](releases.md#verify-a-downloaded-release).
-Confirm `topo version` is **`v0.4.7-beta.1`** before configuring credentials or
-starting discovery. Source fixes do not update an installed worker.
+Confirm `topo version` starts with **`v0.4.7`** before configuring credentials
+or starting discovery. Source fixes do not update an installed worker.
 
 ## User installation
 
@@ -154,7 +154,7 @@ sudo dnf upgrade topo
 brew update && brew upgrade nischoy-ai/tap/topo-beta
 ```
 
-Confirm `topo version` prints `v0.4.7-beta.1`, run `topo worker check` with
+Confirm `topo version` starts with `v0.4.7`, run `topo worker check` with
 the existing configuration, then restart the worker. See the
 [worker setup guide](pilot-quickstart.md#4-install-and-configure-the-worker)
 for service commands. Users of a separate development tap must remove its
@@ -173,7 +173,7 @@ Never silently replace immutable worker release assets or reuse a release tag.
 
 ## ServiceNow application XML
 
-[Topo 0.4.7](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1)
+[Topo 0.4.7](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2)
 is published as one native batch containing the application, 32 indexes and
 discovery-source setup. Follow [XML installation](servicenow-update-set.md).
 Verify its [signed checksum manifest](releases.md#verify-the-servicenow-package)

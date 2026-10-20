@@ -3,11 +3,11 @@
 New setup? Start with [your first discovery run](first-success.md) for the
 short Linux path, then return here for detailed configuration.
 
-The signed worker [v0.4.7-beta.1](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.1)
-is public from source `c70c5813895fcae20c54ee1fac54e0e44e9e531f`, alongside the
-[Topo 0.4.7 native package](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
-Install the matching worker through the [signed channels](distribution.md)
-and confirm `topo version` reports `v0.4.7-beta.1` before configuring it.
+The signed 0.4.7 worker and the Topo 0.4.7 native package are both on the
+[v0.4.7-beta.2 release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2).
+Install the worker from there or through the [signed channels](distribution.md),
+which provide `v0.4.7-beta.1` with the same worker code. Confirm
+`topo version` starts with `v0.4.7` before configuring it.
 
 The 0.4.7 workflow discovers computers and IP-enabled interfaces on Linux over
 verified SSH/22 and Windows over verified HTTPS/5986 with NTLMv2. Linux and macOS
@@ -25,7 +25,7 @@ combined XML, 474 metadata updates and three distinct update sets: app, 32 index
 definitions and the Global discovery-source Fix Script. Its XML SHA-256 is
 `45a13e48c675b77d11e2ff1610ff04b0e63cd396daad22f2c529d2be9b05b721`
 (1,418,336 bytes). The native export repeats an identical parent record; this
-is still three distinct sets. Download it from the [native package release](https://github.com/Nischoy-ai/topo/releases/tag/servicenow-0.4.7-beta.1).
+is still three distinct sets. Download it from the [v0.4.7-beta.2 release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2).
 
 Verify its signed checksum manifest using the exact protected
 workflow commit in the release notes before importing. Then import through
@@ -139,7 +139,7 @@ canonical IPv4 CIDRs, one per line, and should grant only approved targets.
 Prepare separate SSH/Windows allowlists, verified `known_hosts`, and trusted
 WinRM CA PEM. A ServiceNow scope cannot widen these local grants.
 
-Install and verify the matching `v0.4.7-beta.1` worker through its signed release
+Install and verify a 0.4.7 worker through its signed release
 or the release package-manager channels. Confirm `topo version`, then
 replace the instance, pool/site and paths in this installed-binary example.
 

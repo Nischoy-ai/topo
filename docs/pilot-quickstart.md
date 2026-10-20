@@ -99,9 +99,9 @@ has succeeded.
 
 ## 4. Install and configure the worker
 
-The matching worker build is `v0.4.7-beta.1`. Configure the signed [APT or RPM
+Use a 0.4.7 worker. Configure the signed [APT or RPM
 repository](distribution.md#user-installation), install the worker, and confirm
-`topo version` prints `v0.4.7-beta.1`. For offline installation, download matching release files and
+`topo version` starts with `v0.4.7`. For offline installation, download matching release files and
 verify `SHA256SUMS`, its Sigstore bundle and GitHub attestation as described in
 [release verification](releases.md). DEB and RPM packages install a hardened
 but dormant `topo-worker.service`; installation never creates config or secret
