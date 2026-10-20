@@ -11,3 +11,4 @@
 /.maintainer/
 /AGENTS.md
 /docs/project-plan.md
+__pycache__/

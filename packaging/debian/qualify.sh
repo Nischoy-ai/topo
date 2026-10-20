@@ -78,20 +78,22 @@ seen={}
 chroot=Path('/srv/chroot/unstable')
 for base in [chroot/'build',Path('/build'),Path('/var/lib/sbuild/build')]:
  if base.exists():
-  for p in base.glob('**/_build/topo-setup-controlsim'):
+  for p in base.glob('**/_build/go.work'):
    key=(p.stat().st_dev,p.stat().st_ino)
    seen.setdefault(key,p)
-if len(seen)!=1:raise ValueError(f'Expected one native simulator, found {list(seen.values())}')
+if len(seen)!=1:raise ValueError(f'Expected one native build tree, found {list(seen.values())}')
 p=next(iter(seen.values()));source=p.parent.parent
 if source.is_relative_to(chroot):inside=Path('/')/source.relative_to(chroot)
 elif source.is_relative_to('/var/lib/sbuild/build'):inside=Path('/build')/source.relative_to('/var/lib/sbuild/build')
 else:inside=source
-print(p);print(inside)
+print(source);print(inside)
 LOCATE
 )
 test "${#placement[@]}" = 2
-cp "${placement[0]}" "$out/topo-setup-controlsim"
 source_dir="${placement[1]}"
+# CI-only review scripts and the registration simulator are not part of the
+# Debian source package; copy them next to the retained build tree.
+cp -r packaging/debian/ci "${placement[0]}/topo-ci"
 preserve_security() {
  for directory in /srv/chroot/unstable/build/topo-native-security /build/topo-native-security /var/lib/sbuild/build/topo-native-security; do
   if test -d "$directory"; then
@@ -109,7 +111,16 @@ session=$(schroot --begin-session --chroot="unstable-${arch}-sbuild" --user=root
 scan_status=0
 schroot --run-session --chroot="$session" --user=root --directory="$source_dir" -- \
  env PATH=/usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
- python3 debian/native-security-review.py _build /build/topo-native-security > "$out/native-security.log" 2>&1 || scan_status=$?
+ GO111MODULE=on GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off \
+ sh -c 'set -e
+  python3 topo-ci/collect-linked-copyright.py _build /build/topo-linked-sources
+  python3 topo-ci/native-security-review.py _build /build/topo-native-security /build/topo-linked-sources/module-sources.json
+  fixture=_build/src/github.com/Nischoy-ai/topo/debianfixtures/setupcontrolsim
+  mkdir -p "$fixture"
+  cp topo-ci/setupcontrolsim/main.go "$fixture/"
+  cd _build
+  CGO_ENABLED=0 go build -trimpath -o topo-setup-controlsim github.com/Nischoy-ai/topo/debianfixtures/setupcontrolsim' \
+ > "$out/native-security.log" 2>&1 || scan_status=$?
 cleanup_status=1
 for attempt in 1 2 3 4 5; do
  if schroot --end-session --chroot="$session" >> "$out/schroot-cleanup.log" 2>&1; then
@@ -138,6 +149,7 @@ PROCESSES
 fi
 test "$scan_status" = 0
 test "$cleanup_status" = 0
+cp "${placement[0]}/_build/topo-setup-controlsim" "$out/topo-setup-controlsim"
 preserve_security
 # Collect every independent lint/smoke outcome before failing the gate. A first
 # lint error must not hide the other package reports or installed smoke result.

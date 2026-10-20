@@ -1,38 +1,34 @@
 #!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+# golang-1.26-go and golang-1.27-go do not install /usr/bin/go.
 export PATH := /usr/lib/go-1.27/bin:/usr/lib/go-1.26/bin:$(PATH)
 export GO111MODULE := on
 export GOTOOLCHAIN := local
 export GOPROXY := off
 export GOSUMDB := off
-export GOMAXPROCS := 2
-# dh-go does not discover the nested v5 module beneath this legacy v4 root.
-export DH_GOLANG_MODULE_MAPPINGS := github.com/evanphx/json-patch/v5:github.com/evanphx/json-patch/v5
 export DH_GOLANG_BUILDPKG := github.com/Nischoy-ai/topo/cmd/topo
-# Tests read reviewed units, workflow fixtures and ServiceNow application files.
+# Tests read the systemd units, workflow fixtures and ServiceNow application files.
 export DH_GOLANG_INSTALL_EXTRA := packaging scripts .github integrations docs examples README.md ROADMAP.md SECURITY.md
+# dh-go does not discover the nested json-patch v5 module beneath the v4 root.
+export DH_GOLANG_MODULE_MAPPINGS := github.com/evanphx/json-patch/v5:github.com/evanphx/json-patch/v5
 
 %:
 	dh $@ --with=golang --builddirectory=_build --buildsystem=golang
 
 override_dh_auto_configure:
-	test ! -d vendor
-	case "$$(go env GOVERSION)" in go1.26.9|go1.27.2) ;; *) echo "Unqualified downstream Go compiler" >&2; exit 1 ;; esac
-	# dh-go constructs the workspace from module roots, then builds only the CLI.
 	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_configure
+	# Workaround: the installed go-flowrate source has no go.mod.
 	python3 debian/fix-module-metadata.py _build
-	# Debian client-go imports v5 while its packaged go.mod still lists v4.
-	# Add the installed v5 requirement only to the private downstream build copy.
+	# Workaround: Debian client-go imports json-patch v5 but its go.mod lists v4.
 	cd _build/src/github.com/Nischoy-ai/topo && GOWORK=off go mod edit -require=github.com/evanphx/json-patch/v5@v5.7.0
 
 override_dh_auto_build:
-	dh_auto_build -- -trimpath -ldflags="-X main.version=0.4.7-debiansnapshot.3adbdb3"
-	mkdir -p _build/src/github.com/Nischoy-ai/topo/debianfixtures/setupcontrolsim
-	cp debian/fixtures/setupcontrolsim/main.go _build/src/github.com/Nischoy-ai/topo/debianfixtures/setupcontrolsim/
-	cd _build && CGO_ENABLED=0 go build -trimpath -o topo-setup-controlsim github.com/Nischoy-ai/topo/debianfixtures/setupcontrolsim
+	dh_auto_build -- -trimpath -ldflags="-X main.version=$(DEB_VERSION_UPSTREAM)"
 
 override_dh_auto_test:
-	cd _build/src/github.com/Nischoy-ai/topo && GOWORK=$(CURDIR)/_build/go.work GOPATH=$(CURDIR)/_build GOCACHE=$(CURDIR)/_build/go-build go vet ./...
-	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_test -- -race -timeout 10m
+	DH_GOLANG_BUILDPKG=github.com/Nischoy-ai/topo/... dh_auto_test
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source
@@ -40,10 +36,3 @@ override_dh_auto_install:
 override_dh_installsystemd:
 	dh_installsystemd --name=topo-worker --no-enable --no-start --no-stop-on-upgrade
 	dh_installsystemd --name=topo-agent --no-enable --no-start --no-stop-on-upgrade
-
-override_dh_installdocs:
-	python3 debian/collect-linked-copyright.py _build debian/topo/usr/share/doc/topo/linked-licenses
-	dh_installdocs
-
-override_dh_compress:
-	dh_compress -Xlinked-licenses

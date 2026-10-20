@@ -27,7 +27,7 @@ subprocess.run(['go','-C','/','telemetry','off'],check=True)
 build=Path(sys.argv[1]).resolve()
 out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=False)
 root=build/'src/github.com/Nischoy-ai/topo'
-records=json.loads((build.parent/'debian/topo/usr/share/doc/topo/linked-licenses/module-sources.json').read_text())
+records=json.loads(Path(sys.argv[3]).read_text())
 index_bytes=urllib.request.urlopen('https://vuln.go.dev/index/modules.json',timeout=60).read()
 index={r['path']:r for r in json.loads(index_bytes)}
 providers={

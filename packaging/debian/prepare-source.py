@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Build an unsigned Debian source review candidate from the pinned public tree.
+"""Build an unsigned Debian source package from an upstream release tag.
 
-No upload, signing, dependency download, vendor archive or release publication.
+The version comes from debian/changelog and the tarball from tag v<version>.
+TOPO_UPSTREAM_REF overrides the tag, for CI runs before a release is tagged.
 """
 import argparse
 import gzip
@@ -14,8 +15,9 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[2]
-UPSTREAM = "3adbdb36ad886396ad6267cd706c84bea6d35b99"
-VERSION = "0.4.7~git20261016.3adbdb3"
+CHANGELOG = ROOT / "packaging/debian/debian/changelog"
+VERSION = subprocess.check_output(["dpkg-parsechangelog", "-l", str(CHANGELOG), "-S", "Version"], text=True).strip().rsplit("-", 1)[0]
+UPSTREAM = os.environ.get("TOPO_UPSTREAM_REF") or "v" + VERSION
 
 
 def main():
@@ -48,7 +50,8 @@ def main():
         subprocess.run(["dpkg-source", "--build", str(tree)], cwd=output, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
     files = {p.name: {"bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in output.iterdir() if p.is_file()}
     (output / "source-manifest.json").write_text(json.dumps({
-        "upstream_commit": UPSTREAM, "upstream_version": VERSION,
+        "upstream_ref": UPSTREAM,
+        "upstream_commit": subprocess.check_output(["git", "rev-parse", UPSTREAM + "^{commit}"], cwd=ROOT, text=True).strip(), "upstream_version": VERSION,
         "packaging_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "signed": False, "upload_ready": False, "archive_accepted": False,
         "status": "review candidate; native qualification, signing and sponsor/archive review tracked separately",

@@ -28,6 +28,8 @@ jobs:
       options: --cap-add SYS_ADMIN --cap-add NET_ADMIN --security-opt seccomp=unconfined
     env:
       DEBIAN_FRONTEND: noninteractive
+      # Until v0.4.7 is tagged, build the commit that was reviewed. Remove after tagging.
+      TOPO_UPSTREAM_REF: 3adbdb36ad886396ad6267cd706c84bea6d35b99
     steps:
       - name: Install tools using signature-verified native APT repositories
         shell: bash
