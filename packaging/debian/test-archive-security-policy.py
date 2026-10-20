@@ -4,7 +4,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('policy', Path(__file__).parent/'debian/archive_security_policy.py')
+spec = importlib.util.spec_from_file_location('policy', Path(__file__).parent/'ci/archive_security_policy.py')
 policy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(policy)
 

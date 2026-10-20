@@ -2,13 +2,9 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Topo
 Upstream-Contact: Soumik Sarkar <soumiks@gmail.com>
 Source: https://github.com/Nischoy-ai/topo
-Comment: The source package contains Topo's own source and retained third-party
- legal documents for Fedora source packaging, but no vendored dependency code
- or logo image. The legal documents below are preserved verbatim and do not
- change the license of Topo's own source. The Debian executable uses separately
- packaged libraries. Their exact package identities and complete copyright
- documents are installed under /usr/share/doc/topo/linked-licenses/; the build
- fails if a linked source cannot be attributed to an installed Debian package.
+Comment: Third-party license documents under packaging/distro/licenses are
+ retained for other distributions' packaging and are listed below. The Debian
+ build uses separately packaged libraries and bundles no dependency code.
 
 Files: *
 Copyright: 2026 Nischoy Topo contributors

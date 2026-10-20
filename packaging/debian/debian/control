@@ -5,8 +5,6 @@ Maintainer: Soumik Sarkar <soumiks@gmail.com>
 Build-Depends:
  debhelper-compat (= 13),
  dh-go (>= 1.69),
- gh,
- git,
  golang-1.26-go (>= 1.26.9) | golang-1.27-go (>= 1.27.2),
  python3,
  golang-github-aws-aws-sdk-go-v2-dev (>= 1.41.7),
@@ -78,9 +76,14 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Static-Built-Using: ${misc:Static-Built-Using}
-Description: destination-neutral infrastructure discovery worker and CLI
- Topo discovers infrastructure through compiled-in, locally approved operations
- and emits destination-neutral observations. Its outbound worker supports
- ServiceNow-managed Linux SSH and restricted Windows HTTPS computer/interface
- inventory. Administrator preparation, credentials and verified trust files
- are required before discovery. Installation does not enable or start services.
+Description: outbound worker for ServiceNow discovery of Linux and Windows hosts
+ Topo is a discovery worker for ServiceNow. It runs inside a network that
+ ServiceNow cannot reach directly, connects outbound to the ServiceNow
+ instance, and discovers only targets that an administrator has approved.
+ It collects computer and network interface inventory from Linux hosts over
+ SSH and from Windows hosts over WinRM (HTTPS), and returns the results to
+ ServiceNow for reconciliation into the CMDB.
+ .
+ This package provides the topo command and systemd units for the worker
+ and agent services. The services are not enabled or started on
+ installation.

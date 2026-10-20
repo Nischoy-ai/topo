@@ -76,17 +76,6 @@ def main():
         made.update({'deb', 'binary', 'unit', 'user', 'group', 'agent-user', 'agent-group'})
         require(unit.read_bytes() == Path('packaging/systemd/topo-worker.package.service').read_bytes(), 'unit differs from reviewed source')
         initial_version = command('dpkg-query', '-W', '-f=${Version}', 'topo').stdout
-        notice_dir = Path('/usr/share/doc/topo/linked-licenses')
-        notices = json.loads((notice_dir / 'manifest.json').read_text())
-        require(bool(notices), 'missing linked copyright manifest')
-        for record in notices.values():
-            notice = notice_dir / record['document']
-            if not notice.exists() and notice.with_suffix(notice.suffix + '.gz').exists():
-                import gzip
-                data = gzip.decompress(notice.with_suffix(notice.suffix + '.gz').read_bytes())
-            else:
-                data = notice.read_bytes()
-            require(hashlib.sha256(data).hexdigest() == record['sha256'], 'linked copyright bytes changed')
         identity = pwd.getpwnam('topo-worker')
         service_gid = grp.getgrnam('topo-worker').gr_gid
         require(identity.pw_uid != 0 and identity.pw_dir == '/nonexistent' and (Path(identity.pw_shell).resolve() == Path('/usr/sbin/nologin').resolve()), 'incorrect package identity')

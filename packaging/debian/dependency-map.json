@@ -1,6 +1,6 @@
 {
   "source_commit": "3adbdb36ad886396ad6267cd706c84bea6d35b99",
-  "limits": "Upstream requirements are recorded verbatim, not imposed as Debian API minimums. Native Debian compatibility floors are documented in dependency-compatibility.md. The owner accepted the recorded NTLM/Azure Identity archive findings on 2026-10-18; official Debian library versions are used without separate updates. Upstream go.mod/go.sum and signed-release inputs remain unchanged.",
+  "limits": "Upstream go.mod requirements, recorded for the archive audit. They are not Debian minimum versions; debian/control holds the tested floors.",
   "modules": [
     {
       "module": "github.com/Azure/go-ntlmssp",

@@ -1,4 +1,2 @@
-# dh-go 1.69 provides the golang addon/buildsystem and module-aware workspace.
-# Current Lintian's addon table still requires historical dh-golang, which
-# selects incompatible GOPATH mode. Keep the explicit dh-go Build-Depends.
+# The golang addon is provided by dh-go, which Lintian does not yet recognise.
 topo source: missing-build-dependency-for-dh-addon golang (does not satisfy dh-golang:any) [debian/rules]
