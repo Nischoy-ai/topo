@@ -288,7 +288,7 @@ func TestLiveBetaAcceptanceKeepsPublicTrustBoundaries(t *testing.T) {
 		},
 		"scripts/test-live-beta-homebrew.sh": {
 			"github-hosted", "refusing to overwrite", `brew tap "$tap" https://github.com/Nischoy-ai/homebrew-tap`,
-			"400a28b2fd5fb47ac25a72ccf765779560a129474e1f05ac839e793a949002d8",
+			"df136e87c14ad8d8cda63ca2b48409a1c0dce81901e6faeeda0ea3faaaa10654",
 			"shasum -a 256 --check", `brew audit --strict --online "$formula"`,
 			`brew install --formula "$formula"`, `brew test "$formula"`, `brew uninstall --formula "$formula"`,
 		},
