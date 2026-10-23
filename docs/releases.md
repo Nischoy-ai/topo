@@ -34,7 +34,7 @@ provenance instructions below cover different files.
 
 Topo worker releases are built only from semantic tags (`vMAJOR.MINOR.PATCH`, with an
 optional prerelease suffix) whose commit is already reachable from `main`.
-`.github/workflows/release.yml` uses the exact Go 1.26.9 toolchain and
+`.github/workflows/release.yml` uses the exact Go 1.26.10 toolchain and
 commit-pinned actions.
 
 The current reviewed workflow selects **`linux-homebrew-beta`**. It accepts

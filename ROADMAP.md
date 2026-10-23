@@ -22,7 +22,7 @@ credential lifecycle and the separate standalone-controller storage controls.
 
 ## Release engineering baseline
 
-Release/security builds use exact **Go 1.26.9** with Go 1.26 compatibility.
+Release/security builds use exact **Go 1.26.10** with Go 1.26 compatibility.
 The 2026-10-08 vulnerability scan required this patch and `golang.org/x/net`
 0.60.0; the [security record](docs/security-review.md#2026-10-08-build-baseline-update)
 retains the affected scan and verification scope. This patch update preserves

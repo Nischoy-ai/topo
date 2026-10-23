@@ -251,8 +251,8 @@ func TestPublicHomebrewFormulaAuditInCI(t *testing.T) {
 	}
 	script := string(data)
 	for _, required := range []string{
-		"version=v0.4.7-beta.1",
-		"manifest_sha256=0287bb010e6e965dc8106f10ea824bbf10358cc27fb64ffb823e5707603418e3",
+		"version=v0.4.7-beta.2",
+		"manifest_sha256=7e85fcc2976aa2889ca13a19fa20dd9c19f775090a4675acf2c3342db0461229",
 		`"${RUNNER_ENVIRONMENT:-}" != github-hosted`,
 		`brew audit --strict --online "$formula"`, `brew install --formula "$formula"`,
 		`brew test "$formula"`, `test "$(topo version)" = "$version"`, `brew uninstall --formula "$formula"`,
