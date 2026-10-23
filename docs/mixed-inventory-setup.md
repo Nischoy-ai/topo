@@ -6,8 +6,7 @@ short Linux path, then return here for detailed configuration.
 The signed 0.4.7 worker and the Topo 0.4.7 native package are both on the
 [v0.4.7-beta.2 release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2).
 Install the worker from there or through the [signed channels](distribution.md),
-which provide `v0.4.7-beta.1` with the same worker code. Confirm
-`topo version` starts with `v0.4.7` before configuring it.
+and confirm `topo version` starts with `v0.4.7` before configuring it.
 
 The 0.4.7 workflow discovers computers and IP-enabled interfaces on Linux over
 verified SSH/22 and Windows over verified HTTPS/5986 with NTLMv2. Linux and macOS
@@ -223,7 +222,7 @@ or IRE, address changes and service/reboot recovery were not exercised.
 
 | Area | Evidence at this source boundary | Limit |
 | --- | --- | --- |
-| Public release | Signed v0.4.7-beta.1 worker channels and native 0.4.7 XML | Focused Linux/Windows computer/interfaces; Windows installers and Apple identity/notarization excluded |
+| Public release | Signed v0.4.7-beta.2 worker channels and native 0.4.7 XML | Focused Linux/Windows computer/interfaces; Windows installers and Apple identity/notarization excluded |
 | Ubuntu 24.04 SSH | Real direct repeats and managed subnet/broker/IRE repeats | Three-address bounded lab scope; no broad estate guarantee |
 | Windows Server 2022/2025 | Real non-admin HTTPS/NTLM managed repeats, negatives and cancelled-expiry recovery | Restricted computer/interfaces; no domain/Kerberos or address-change proof |
 | Subnet bounds | Real exclusions, local denial, 1,024 planning ceiling, pacing, pool capacity, cancellation, unreachable isolation | No 1,024-host live scan; collection did not demonstrate two simultaneous SSH connections |

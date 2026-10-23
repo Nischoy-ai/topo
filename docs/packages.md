@@ -165,7 +165,7 @@ repositories, the Nischoy Homebrew tap, Microsoft's WinGet catalog, and a GHCR
 OCI Helm registry. It adds native signing, stable/prerelease policy, key rotation,
 and clean-machine gates without rebuilding Topo. See
 [package-manager distribution](distribution.md). Linux and Homebrew
-channels publish the signed `v0.4.7-beta.1` worker. See the
+channels publish the signed `v0.4.7-beta.2` worker. See the
 [distribution evidence](evidence/distribution.md#047-beta-worker) for the
 published source and channel validation. Stable/N-1 and Windows publication
 remain separate.
