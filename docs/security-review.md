@@ -35,7 +35,7 @@ remediation commit. Maintainer tests do not change that status.
 
 ## Reproducible checks
 
-The current release/security baseline is exact Go 1.26.9. Run:
+The current release/security baseline is exact Go 1.26.10. Run:
 
 ```sh
 scripts/security-review-checks.sh
@@ -66,6 +66,19 @@ nine moderate and two high transitive npm advisories (see the dated
 exposure and is not covered by a zero-reachable-finding Go scan. That historical
 audit is not a fresh npm assessment or a claim that these advisories are cleared.
 Keep the SDK lock file under review and isolate builds from production secrets.
+
+## 2026-10-23 build baseline update
+
+The [PR CI scan](https://github.com/Nischoy-ai/topo/actions/runs/39894957587)
+found one reachable standard-library advisory in Go 1.26.9 after the
+`v0.4.7-beta.2` worker was published. Go 1.26.10 is the scanner's fix.
+
+| Advisory | Affected build dependency | Patch required |
+| --- | --- | --- |
+| GO-2026-6809 | Go `crypto/x509` | Go 1.26.10 |
+
+`v0.4.7-beta.2` and earlier workers were built with Go 1.26.9 and are not
+rebuilt or relabeled. `v0.4.7-beta.3` is the first worker built with Go 1.26.10.
 
 ## 2026-10-08 build baseline update
 

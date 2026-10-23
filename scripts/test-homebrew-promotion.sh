@@ -9,8 +9,8 @@ fi
 
 # Independently verified against the exact tag's Sigstore identity/provenance.
 # Updating this fixture requires a reviewed version AND checksum-manifest pin.
-version=v0.4.7-beta.1
-manifest_sha256=0287bb010e6e965dc8106f10ea824bbf10358cc27fb64ffb823e5707603418e3
+version=v0.4.7-beta.2
+manifest_sha256=7e85fcc2976aa2889ca13a19fa20dd9c19f775090a4675acf2c3342db0461229
 tap=nischoy-ai/tap
 formula=$tap/topo-beta
 if brew list --formula topo >/dev/null 2>&1 || brew list --formula topo-beta >/dev/null 2>&1 ||

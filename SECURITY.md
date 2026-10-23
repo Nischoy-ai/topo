@@ -90,7 +90,7 @@ See [IRE setup](docs/servicenow.md) and
 
 ## Release verification
 
-Release builds produce reproducible worker archives with exact Go 1.26.9. Release workflows
+Release builds produce reproducible worker archives with exact Go 1.26.10. Release workflows
 use pinned actions, restricted tokens, signed checksums, SBOMs and GitHub
 provenance attestations. Linux package/repository metadata is signed; protected
 signing and promotion environments require review. The
