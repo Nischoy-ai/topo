@@ -3,8 +3,8 @@
 Check [worker availability](distribution.md#release-availability) before downloading.
 The signed [worker `v0.4.7-beta.2`](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2)
 is published with its binary archives, signed checksum manifest and provenance,
-and a copy of the ServiceNow XML package. The Homebrew/APT/RPM channels provide
-`v0.4.7-beta.1`, which has the same worker code.
+and a copy of the ServiceNow XML package. It is also available through the
+Homebrew/APT/RPM channels.
 The [ServiceNow XML package](servicenow-update-set.md) is a separate manual
 artifact with its own signed checksum manifest and [validation record](servicenow-validation.md).
 Worker provenance is separate from XML-package authentication.

@@ -2,11 +2,10 @@
 
 ## Versions receiving fixes
 
-The current application release is **Topo 0.4.7**. The patched 0.4.7 worker
-is available as `v0.4.7-beta.2` from the
+The current application release is **Topo 0.4.7**. The patched worker
+`v0.4.7-beta.2` is available from the
 [release page](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2),
-and as `v0.4.7-beta.1` through signed Linux APT/RPM repositories and the
-official Homebrew tap. Both contain the same worker code. Upgrade earlier workers using the
+the signed Linux APT/RPM repositories and the official Homebrew tap. Upgrade earlier workers using the
 [package installation guide](docs/distribution.md#upgrade-an-existing-worker).
 
 Security fixes are maintained on `main`. Record `topo version` when reporting

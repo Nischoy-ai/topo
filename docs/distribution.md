@@ -8,8 +8,8 @@ the official macOS Homebrew tap on amd64 and arm64.
 The [Topo 0.4.7 release](https://github.com/Nischoy-ai/topo/releases/tag/v0.4.7-beta.2)
 carries both parts: the application XML with all 32 indexes, and the signed
 worker **`v0.4.7-beta.2`** with archives and verification files for offline
-installation. The APT/RPM repositories and official Homebrew tap provide
-**`v0.4.7-beta.1`**, which has the same worker code.
+installation. The same worker is available through the APT/RPM repositories
+and official Homebrew tap.
 
 Use the setup commands below, or download and
 [verify the published worker](releases.md#verify-a-downloaded-release).
@@ -131,7 +131,7 @@ signature verification. A partially completed promotion
 can leave channels at different states, so verify each public channel result.
 
 The APT `Version` field comes from the authenticated DEB control archive, not its
-filename or Git tag. For `v0.4.7-beta.1` it is `0.4.7~beta.1-1`; a future stable
+filename or Git tag. For `v0.4.7-beta.2` it is `0.4.7~beta.2-1`; a future stable
 `v0.4.7` package is `0.4.7-1`. The tilde makes the suffixed revision sort before the unsuffixed version. Both
 Linux architectures must agree with their package metadata before promotion proceeds.
 CI also exercises signed repositories with synthetic prerelease-to-prerelease and
